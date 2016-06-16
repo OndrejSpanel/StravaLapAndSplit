@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Google App Engine" type="GoogleAppEngineDevServer" factoryName="Local" APPLICATION_SERVER_NAME="AppEngine Dev 1.9.38" ALTERNATIVE_JRE_ENABLED="false">
+  <configuration default="false" name="Google App Engine Dev" type="GoogleAppEngineDevServer" factoryName="Local" APPLICATION_SERVER_NAME="AppEngine Dev 1.9.38" ALTERNATIVE_JRE_ENABLED="false">
     <server-settings>
       <option name="artifact" value="StravaLapAndSplit:war exploded" />
       <artifact>StravaLapAndSplit:war exploded</artifact>
