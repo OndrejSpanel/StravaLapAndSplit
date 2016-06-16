@@ -7,21 +7,19 @@
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="com.github.opengrabeso.stravalas.*" %>
+<%@ page import="com.google.appengine.api.utils.SystemProperty" %>
 <html>
   <head>
     <title>Strava Split And Lap</title>
   </head>
   <body>
-  <form action="activity.jsp" method="POST">
-    <%
-      String clientId = "8138";
-      String clientSecret = Main.secret();
-    %>
-    <p>Activity to edit:  <input type="text" name="activityId"/>
-      <input type="submit" value="Submit" />
-      <%=  clientSecret %>
-    </p>
-  </form>
+  <%
+    Boolean localhost = SystemProperty.environment.value() == SystemProperty.Environment.Value.Development;
+    String hostname = localhost ? "http://localhost:8080" : "https://strava-lap-and-split.appspot.com/";
+    String uri = "https://www.strava.com/oauth/authorize?";
+    String action = uri + "client_id=8138&response_type=code&redirect_uri=" + hostname + "/token_exchange.jsp&scope=write,view_private";
+  %>
+  <a href=<%=action%>>Connect with STRAVA</a>
 
   <%= Main.someComputation() %>
 
