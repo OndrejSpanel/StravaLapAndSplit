@@ -12,17 +12,11 @@
     <title>Strava Split And Lap</title>
   </head>
   <body>
-  <p>Activity to edit:</p>
-
-  <p>Original laps:</p>
-  <p>Laps found:</p>
-  <p>Split at:</p>
-
-  <p>Counting to three:</p>
-  <% for (int i=1; i<4; i++) { %>
-  <p>This number is <%= Main.doComputation(i) %>.</p>
-  <% } %>
-  <p>OK.</p>
+  <form action="activity.jsp" method="POST">
+    <p>Activity to edit:  <input type="text" name="activityId"/>
+      <input type="submit" value="Submit" />
+    </p>
+  </form>
 
   <%= Main.someComputation() %>
 
