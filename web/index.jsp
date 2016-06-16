@@ -7,17 +7,19 @@
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="com.github.opengrabeso.stravalas.*" %>
-<%@ page import="com.google.appengine.api.utils.SystemProperty" %>
 <html>
   <head>
     <title>Strava Split And Lap</title>
   </head>
   <body>
   <%
-    Boolean localhost = SystemProperty.environment.value() == SystemProperty.Environment.Value.Development;
-    String hostname = localhost ? "http://localhost:8080" : "https://strava-lap-and-split.appspot.com/";
+    String hostname = request.getServerName();
+    int port = request.getServerPort();
+    String scheme = request.getScheme();
+
+    String serverUri = scheme + "://" + hostname + (port != 80 ? String.format(":%d", port) : "");
     String uri = "https://www.strava.com/oauth/authorize?";
-    String action = uri + "client_id=8138&response_type=code&redirect_uri=" + hostname + "/token_exchange.jsp&scope=write,view_private";
+    String action = uri + "client_id=8138&response_type=code&redirect_uri=" + serverUri + "/token_exchange.jsp&scope=write,view_private";
   %>
   <a href=<%=action%>>Connect with STRAVA</a>
 
