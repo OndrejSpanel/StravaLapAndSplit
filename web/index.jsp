@@ -13,8 +13,13 @@
   </head>
   <body>
   <form action="activity.jsp" method="POST">
+    <%
+      String clientId = "8138";
+      String clientSecret = Main.secret();
+    %>
     <p>Activity to edit:  <input type="text" name="activityId"/>
       <input type="submit" value="Submit" />
+      <%=  clientSecret %>
     </p>
   </form>
 

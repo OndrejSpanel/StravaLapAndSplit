@@ -8,4 +8,9 @@ object Main {
   def getLapsFrom(id: String): Array[Double] = {
     Array(0.0, 0.5, 1.0)
   }
+
+  def secret: String = {
+    val secretStream = Main.getClass.getResourceAsStream("/secret.txt")
+    scala.io.Source.fromInputStream(secretStream).mkString
+  }
 }
