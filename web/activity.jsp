@@ -14,7 +14,7 @@
 <%
   String authToken = (String)session.getAttribute("authToken");
   String actId = request.getParameter("activityId");
-  double[] laps = Main.getLapsFrom(actId);
+  double[] laps = Main.getLapsFrom(authToken, actId);
 
 %>
 
