@@ -1,4 +1,4 @@
-<%--
+<%@ page import="com.github.opengrabeso.stravalas.Main" %><%--
   Created by IntelliJ IDEA.
   User: Ondra
   Date: 16.6.2016
@@ -12,7 +12,8 @@
 </head>
 <body>
 <%
-  String authToken = request.getParameter("code");
+  String code = request.getParameter("code");
+  String authToken = Main.stravaAuth(code);
   session.setAttribute("authToken", authToken);
 %>
 <form action="activity.jsp" method="get">
