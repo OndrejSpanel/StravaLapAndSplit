@@ -11,6 +11,15 @@
   <title>Strava Split And Lap - authentication</title>
 </head>
 <body>
-  Code = <%= request.getParameter("code") %>
+<%
+  String authToken = request.getParameter("code");
+  session.setAttribute("authToken", authToken);
+%>
+<p>Code = <%=authToken %></p>
+<form action="activity.jsp" method="get">
+  <p>Activity ID: <input type="text" name="activityId"/>
+    <input type="submit" value="Submit"/>
+  </p>
+</form>
 </body>
 </html>
