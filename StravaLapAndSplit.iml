@@ -32,5 +32,6 @@
     <orderEntry type="library" name="AppEngine API" level="project" />
     <orderEntry type="library" name="scala-sdk-2.11.8" level="project" />
     <orderEntry type="library" name="com.google.http-client:google-http-client-appengine:1.22.0" level="project" />
+    <orderEntry type="library" name="com.google.api-client:google-api-client-jackson2:1.22.0" level="project" />
   </component>
 </module>
