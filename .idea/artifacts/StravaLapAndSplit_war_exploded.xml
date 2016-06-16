@@ -12,6 +12,8 @@
           <element id="library" level="project" name="scala-sdk-2.11.8" />
           <element id="library" level="project" name="com.google.http-client:google-http-client-appengine:1.22.0" />
           <element id="library" level="project" name="com.google.api-client:google-api-client-jackson2:1.22.0" />
+          <element id="library" level="project" name="joda-time:joda-time:2.9.4" />
+          <element id="library" level="project" name="org.joda:joda-convert:1.8.1" />
         </element>
       </element>
     </root>

@@ -8,6 +8,7 @@ import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
+import org.joda.time.DateTime
 
 object Main {
   private val transport = new NetHttpTransport()
@@ -47,15 +48,27 @@ object Main {
   }
 
   def getLapsFrom(authToken: String, id: String): Array[Double] = {
+    def authorizeHeaders(request: HttpRequest) = {
+      val headers = request.getHeaders
+      headers.put("Authorization:", s"Bearer $authToken")
+    }
+
     val request = requestFactory.buildGetRequest(new GenericUrl(s"https://www.strava.com/api/v3/activities/$id"))
 
-    val headers = request.getHeaders
-    headers.put("Authorization:", s"Bearer $authToken")
-    //request.setHeaders(headers)
+    authorizeHeaders(request)
 
-    val response = request.execute() // TODO: async?
+    val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-    val responseJson = jsonMapper.readTree(response.getContent)
+    val startDateStr = responseJson.path("start_date").getTextValue
+
+    val startTime = DateTime.parse(startDateStr)
+
+    val requestLaps = requestFactory.buildGetRequest(new GenericUrl(s"https://www.strava.com/api/v3/activities/$id/laps"))
+    authorizeHeaders(requestLaps)
+
+    val lapsJson = jsonMapper.readTree(requestLaps.execute().getContent)
+
+
     Array(0.0, 0.5, 1.0)
   }
 
