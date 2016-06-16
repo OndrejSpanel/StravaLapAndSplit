@@ -14,6 +14,10 @@ object Main {
   private val jsonFactory = new JacksonFactory()
   private val jsonMapper = new ObjectMapper()
 
+  private val requestFactory = transport.createRequestFactory(new HttpRequestInitializer() {
+    override def initialize(request: HttpRequest) = request.setParser(new JsonObjectParser(jsonFactory))
+  })
+
   def someComputation: String = "I have computed this!"
 
   def doComputation(i: Int): String = ("*" + i.toString) * 2
@@ -24,9 +28,6 @@ object Main {
   }
 
   def stravaAuth(code: String): String = {
-    val requestFactory = transport.createRequestFactory(new HttpRequestInitializer() {
-      override def initialize(request: HttpRequest) = request.setParser(new JsonObjectParser(jsonFactory))
-    })
 
     val json = new util.HashMap[String, String]()
 
@@ -46,7 +47,15 @@ object Main {
   }
 
   def getLapsFrom(authToken: String, id: String): Array[Double] = {
+    val request = requestFactory.buildGetRequest(new GenericUrl(s"https://www.strava.com/api/v3/activities/$id"))
 
+    val headers = request.getHeaders
+    headers.put("Authorization:", s"Bearer $authToken")
+    //request.setHeaders(headers)
+
+    val response = request.execute() // TODO: async?
+
+    val responseJson = jsonMapper.readTree(response.getContent)
     Array(0.0, 0.5, 1.0)
   }
 
