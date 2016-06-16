@@ -15,7 +15,6 @@
   String authToken = request.getParameter("code");
   session.setAttribute("authToken", authToken);
 %>
-<p>Code = <%=authToken %></p>
 <form action="activity.jsp" method="get">
   <p>Activity ID: <input type="text" name="activityId"/>
     <input type="submit" value="Submit"/>

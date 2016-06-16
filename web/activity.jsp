@@ -18,8 +18,6 @@
 
 %>
 
-<p>Code = <%=authToken %></p>
-
 <p>Original laps:</p>
 <p>Laps found:</p>
 <% for (double lap : laps) { %>
