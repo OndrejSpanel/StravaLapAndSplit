@@ -14,13 +14,12 @@
 <%
   String authToken = (String)session.getAttribute("authToken");
   String actId = request.getParameter("activityId");
-  double[] laps = Main.getLapsFrom(authToken, actId);
+  String[] laps = Main.getLapsFrom(authToken, actId);
 
 %>
 
 <p>Original laps:</p>
-<p>Laps found:</p>
-<% for (double lap : laps) { %>
+<% for (String lap : laps) { %>
 <p>Lap time <%= lap %>.</p>
 <% } %>
 <p>Split at:</p>

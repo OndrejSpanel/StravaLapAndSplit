@@ -47,7 +47,7 @@ object Main {
 
   }
 
-  def getLapsFrom(authToken: String, id: String): Array[Double] = {
+  def getLapsFrom(authToken: String, id: String): Array[String] = {
     def authorizeHeaders(request: HttpRequest) = {
       val headers = request.getHeaders
       headers.put("Authorization:", s"Bearer $authToken")
@@ -68,8 +68,14 @@ object Main {
 
     val lapsJson = jsonMapper.readTree(requestLaps.execute().getContent)
 
+    import scala.collection.JavaConverters._
 
-    Array(0.0, 0.5, 1.0)
+    val laps = for (lap <- lapsJson.getElements.asScala) yield {
+      val lapTimeStr = lap.path("start_date").getTextValue
+      val lapTime = DateTime.parse(lapTimeStr)
+      lapTime.toString()
+    }
+    laps.toArray
   }
 
 }
