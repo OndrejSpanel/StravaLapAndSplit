@@ -16,6 +16,7 @@
     </JAVADOC>
     <SOURCES>
       <root url="jar://$MAVEN_REPOSITORY$/com/google/http-client/google-http-client-appengine/1.22.0/google-http-client-appengine-1.22.0-sources.jar!/" />
+      <root url="jar://$USER_HOME$/.ideaLibSources/google-http-client-1.22.0-sources.jar!/" />
     </SOURCES>
   </library>
 </component>

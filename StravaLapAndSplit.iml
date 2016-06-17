@@ -32,8 +32,8 @@
     <orderEntry type="library" name="AppEngine API" level="project" />
     <orderEntry type="library" name="scala-sdk-2.11.8" level="project" />
     <orderEntry type="library" name="com.google.http-client:google-http-client-appengine:1.22.0" level="project" />
-    <orderEntry type="library" name="com.google.api-client:google-api-client-jackson2:1.22.0" level="project" />
     <orderEntry type="library" name="joda-time:joda-time:2.9.4" level="project" />
     <orderEntry type="library" name="org.joda:joda-convert:1.8.1" level="project" />
+    <orderEntry type="library" name="com.google.http-client:google-http-client-jackson2:1.20.0" level="project" />
   </component>
 </module>
