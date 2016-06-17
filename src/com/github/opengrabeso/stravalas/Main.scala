@@ -6,7 +6,7 @@ import com.google.api.client.http.{GenericUrl, HttpRequest, HttpRequestInitializ
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
-import com.google.api.client.json.jackson2.JacksonFactory
+import com.google.api.client.json.jackson.JacksonFactory
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.DateTime
 

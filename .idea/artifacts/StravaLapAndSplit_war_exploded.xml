@@ -8,11 +8,12 @@
           <element id="module-output" name="StravaLapAndSplit" />
         </element>
         <element id="directory" name="lib">
-          <element id="library" level="project" name="AppEngine API" />
           <element id="library" level="project" name="scala-sdk-2.11.8" />
           <element id="library" level="project" name="com.google.http-client:google-http-client-appengine:1.22.0" />
           <element id="library" level="project" name="joda-time:joda-time:2.9.4" />
           <element id="library" level="project" name="org.joda:joda-convert:1.8.1" />
+          <element id="library" level="project" name="com.google.http-client:google-http-client-jackson:1.22.0" />
+          <element id="library" level="project" name="AppEngine API" />
         </element>
       </element>
     </root>
