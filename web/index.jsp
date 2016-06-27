@@ -16,14 +16,22 @@
     String hostname = request.getServerName();
     int port = request.getServerPort();
     String scheme = request.getScheme();
+    String clientId = Main.secret()._1;
 
     String serverUri = scheme + "://" + hostname + (port != 80 ? String.format(":%d", port) : "");
     String uri = "https://www.strava.com/oauth/authorize?";
-    String action = uri + "client_id=8138&response_type=code&redirect_uri=" + serverUri + "/token_exchange.jsp&scope=write,view_private";
+    String action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/token_exchange.jsp&scope=write,view_private";
   %>
-  <a href=<%=action%>>Connect with STRAVA</a>
+  <h3>Work in progress, not doing anything usefull yet</h3>
+  <p>
+    This tool allows you to split activity or edit lap information for it.
+    It automatically detects places where you have stopped and allows you to create a split or lap there.
+  </p>
+  <p>
+    <i>Note: the original activity needs to be deleted in the process, therefore you will lose any comments and kudos on it.</i>
+  </p>
+  <a href=<%=action%>><img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"/></a>
 
-  <%= Main.someComputation() %>
 
   </body>
 </html>
