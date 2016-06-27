@@ -16,10 +16,11 @@
     String hostname = request.getServerName();
     int port = request.getServerPort();
     String scheme = request.getScheme();
+    String clientId = Main.secret()._1;
 
     String serverUri = scheme + "://" + hostname + (port != 80 ? String.format(":%d", port) : "");
     String uri = "https://www.strava.com/oauth/authorize?";
-    String action = uri + "client_id=8138&response_type=code&redirect_uri=" + serverUri + "/token_exchange.jsp&scope=write,view_private";
+    String action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/token_exchange.jsp&scope=write,view_private";
   %>
   <a href=<%=action%>>Connect with STRAVA</a>
 

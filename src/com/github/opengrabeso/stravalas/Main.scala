@@ -23,17 +23,19 @@ object Main {
 
   def doComputation(i: Int): String = ("*" + i.toString) * 2
 
-  def secret: String = {
+  def secret: (String, String) = {
     val secretStream = Main.getClass.getResourceAsStream("/secret.txt")
-    scala.io.Source.fromInputStream(secretStream).mkString
+    val lines = scala.io.Source.fromInputStream(secretStream).getLines
+    (lines.next(), lines.next())
   }
 
   def stravaAuth(code: String): String = {
 
     val json = new util.HashMap[String, String]()
+    val (clientId, clientSecret) = secret
 
-    json.put("client_id", "8138") // TODO: DRY
-    json.put("client_secret", secret) // TODO: DRY
+    json.put("client_id", clientId)
+    json.put("client_secret", clientSecret)
     json.put("code", code)
 
     val content = new JsonHttpContent(new JacksonFactory(), json)
