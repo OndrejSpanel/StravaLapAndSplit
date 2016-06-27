@@ -17,6 +17,7 @@
   session.setAttribute("authToken", authToken);
 %>
 <form action="activity.jsp" method="get">
+  <p>Athlete: <b><%= Main.athlete(authToken)%></b></p>
   <p>Activity ID: <input type="text" name="activityId"/>
     <input type="submit" value="Submit"/>
   </p>

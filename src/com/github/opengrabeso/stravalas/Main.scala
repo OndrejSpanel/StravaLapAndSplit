@@ -59,19 +59,41 @@ object Main {
 
   }
 
+  def authorizeHeaders(request: HttpRequest, authToken: String) = {
+    val headers = request.getHeaders
+    headers.put("Authorization:", s"Bearer $authToken")
+  }
+
+  def athlete(authToken: String): String = {
+    val uri = s"https://www.strava.com/api/v3/athlete"
+    val request = requestFactory.buildGetRequest(new GenericUrl(uri))
+
+    authorizeHeaders(request, authToken)
+
+    logger.log(Level.INFO, s"GET uri $uri")
+    logger.log(Level.INFO, s"request headers ${request.getHeaders.toString}")
+
+    val response = request.execute().getContent
+
+    val responseString = Source.fromInputStream(response).mkString
+
+    logger.log(Level.INFO, s"Response $responseString")
+
+    val json = jsonMapper.readTree(responseString)
+
+    val firstname = json.path("firstname").getTextValue
+    val lastname = json.path("lastname").getTextValue
+    firstname + " " + lastname
+  }
+
   def getLapsFrom(authToken: String, id: String): Array[String] = {
-    def authorizeHeaders(request: HttpRequest) = {
-      val headers = request.getHeaders
-      headers.put("Authorization:", s"Bearer $authToken")
-    }
 
     val uri = s"https://www.strava.com/api/v3/activities/$id"
     val request = requestFactory.buildGetRequest(new GenericUrl(uri))
 
-    authorizeHeaders(request)
+    authorizeHeaders(request, authToken)
 
     logger.log(Level.INFO, s"GET uri $uri")
-    logger.log(Level.INFO, s"authToken $authToken, id $id")
     logger.log(Level.INFO, s"request headers ${request.getHeaders.toString}")
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
@@ -81,7 +103,7 @@ object Main {
     val startTime = DateTime.parse(startDateStr)
 
     val requestLaps = requestFactory.buildGetRequest(new GenericUrl(s"https://www.strava.com/api/v3/activities/$id/laps"))
-    authorizeHeaders(requestLaps)
+    authorizeHeaders(requestLaps, authToken)
 
     val response = Source.fromInputStream(requestLaps.execute().getContent).mkString
 
