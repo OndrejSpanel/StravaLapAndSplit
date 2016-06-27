@@ -11,6 +11,8 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.DateTime
 
+import DateTimeOps._
+
 import scala.io.Source
 
 object Main {
@@ -113,12 +115,14 @@ object Main {
 
     import scala.collection.JavaConverters._
 
-    val laps = for (lap <- lapsJson.getElements.asScala) yield {
+    val lapTimes = (for (lap <- lapsJson.getElements.asScala) yield {
       val lapTimeStr = lap.path("start_date").getTextValue
-      val lapTime = DateTime.parse(lapTimeStr)
-      lapTime.toString()
-    }
-    laps.toArray
+      DateTime.parse(lapTimeStr)
+    }).toSeq
+
+    val allLaps = if (lapTimes.nonEmpty && lapTimes.head > startTime) startTime +: lapTimes else lapTimes
+
+    allLaps.map(_.toString).toArray
   }
 
 }
