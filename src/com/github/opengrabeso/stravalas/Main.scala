@@ -1,7 +1,7 @@
 package com.github.opengrabeso.stravalas
 
 import java.util
-import java.util.logging.{Level, Logger}
+import java.util.logging.Logger
 
 import com.google.api.client.http.{GenericUrl, HttpRequest, HttpRequestInitializer}
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -44,8 +44,6 @@ object Main {
     json.put("client_secret", clientSecret)
     json.put("code", code)
 
-    logger.log(Level.INFO, s"client_id $clientId, code $code")
-
     val content = new JsonHttpContent(new JacksonFactory(), json)
 
     val request = requestFactory.buildPostRequest(new GenericUrl("https://www.strava.com/oauth/token"), content)
@@ -53,8 +51,6 @@ object Main {
 
     val responseJson = jsonMapper.readTree(response.getContent)
     val token = responseJson.path("access_token").getTextValue
-
-    logger.log(Level.INFO, s"token $token")
 
     token
 
@@ -68,9 +64,6 @@ object Main {
   def athlete(authToken: String): String = {
     val uri = s"https://www.strava.com/api/v3/athlete"
     val request = buildGetRequest(uri, authToken, "")
-
-    logger.log(Level.INFO, s"GET uri $uri")
-    logger.log(Level.INFO, s"request headers ${request.getHeaders.toString}")
 
     val response = request.execute().getContent
 
@@ -98,9 +91,6 @@ object Main {
 
     val uri = s"https://www.strava.com/api/v3/activities/$id"
     val request = buildGetRequest(uri, authToken, "")
-
-    logger.log(Level.INFO, s"GET uri $uri")
-    logger.log(Level.INFO, s"request headers ${request.getHeaders.toString}")
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
