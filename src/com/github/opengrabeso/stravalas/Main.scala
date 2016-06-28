@@ -8,11 +8,12 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
 import com.google.api.client.json.jackson.JacksonFactory
-import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.{DateTime, Period, Seconds}
 
 import scala.collection.JavaConverters._
 import DateTimeOps._
+import com.google.appengine.repackaged.org.codehaus.jackson.JsonNode
+import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.format.PeriodFormatterBuilder
 
 object Main {
@@ -80,27 +81,35 @@ object Main {
     def link: String = s"https://www.strava.com/activities/$id"
   }
 
+  object ActivityId {
+    def load(json: JsonNode): ActivityId = {
+      val name = json.path("name").getTextValue
+      val id = json.path("id").getLongValue
+
+      ActivityId(id, name)
+    }
+  }
+
   def lastActivity(authToken: String): ActivityId = {
     val uri = "https://www.strava.com/api/v3/athlete/activities"
     val request = buildGetRequest(uri, authToken, "per_page=1")
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
-    val name = responseJson.get(0).path("name").getTextValue
-    val id = responseJson.get(0).path("id").getLongValue
-
-    ActivityId(id, name)
+    ActivityId.load(responseJson.get(0))
   }
 
-  case class ActivityLaps(laps: Array[Int], pauses: Array[Int])
+  case class ActivityLaps(id: ActivityId, laps: Array[Int], pauses: Array[Int])
 
   def getLapsFrom(authToken: String, id: String): ActivityLaps = {
 
+    val uri = s"https://www.strava.com/api/v3/activities/$id"
+    val request = buildGetRequest(uri, authToken, "")
+
+    val responseJson = jsonMapper.readTree(request.execute().getContent)
+
+    val actId = ActivityId(responseJson.path("id").getLongValue, responseJson.path("name").getTextValue)
+
     val laps = {
-      val uri = s"https://www.strava.com/api/v3/activities/$id"
-      val request = buildGetRequest(uri, authToken, "")
-
-      val responseJson = jsonMapper.readTree(request.execute().getContent)
-
       val startDateStr = responseJson.path("start_date").getTextValue
 
       val startTime = DateTime.parse(startDateStr)
@@ -163,9 +172,9 @@ object Main {
 
       val ignoredClose = ignoreTooClose(0, stoppedTimes, Nil).reverse
 
-      ignoredClose.toArray // TODO: convert to TimeZone
+      ignoredClose.toArray
     }
-    ActivityLaps(laps, pauses)
+    ActivityLaps(actId, laps, pauses)
   }
 
   def displaySeconds(duration: Int): String = {

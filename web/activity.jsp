@@ -8,15 +8,14 @@
 
 <body>
 
-<p>Activity ID <%= request.getParameter("activityId")%>
-</p>
-
 <%
   String authToken = (String)session.getAttribute("authToken");
   String actId = request.getParameter("activityId");
   Main.ActivityLaps laps = Main.getLapsFrom(authToken, actId);
 
 %>
+
+<a href="<%= laps.id().link()%>"><%= laps.id().name()%></a>
 
 <p>Original laps:</p>
 <% for (int t : laps.laps()) { %>
