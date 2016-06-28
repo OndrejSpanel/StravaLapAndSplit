@@ -141,7 +141,7 @@ object Main {
         val segName = seg.path("name")
         val segStart = Seconds.secondsBetween(startTime, segStartTime).getSeconds
         val segDuration = seg.path("elapsed_time").getIntValue
-        val segPrivate = seg.path("private").getBooleanValue
+        val segPrivate = seg.path("segment").path("private").getBooleanValue
         val title = if (segPrivate) "private segment" else "segment"
         Seq(
           Event(s"Start $title $segName", segStart),
