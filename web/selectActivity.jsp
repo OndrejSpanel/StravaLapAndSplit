@@ -18,7 +18,7 @@
 %>
 <form action="activity.jsp" method="get">
   <p>Athlete: <b><%= Main.athlete(authToken)%></b></p>
-  <p>Activity ID: <input type="text" name="activityId"/>
+  <p>Activity ID: <input type="text" name="activityId" value=""/>
     <input type="submit" value="Submit"/>
   </p>
 </form>

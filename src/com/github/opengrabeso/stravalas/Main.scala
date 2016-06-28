@@ -77,11 +77,7 @@ object Main {
 
     val response = request.execute().getContent
 
-    val responseString = Source.fromInputStream(response).mkString
-
-    logger.log(Level.INFO, s"Response $responseString")
-
-    val json = jsonMapper.readTree(responseString)
+    val json = jsonMapper.readTree(response)
 
     val firstname = json.path("firstname").getTextValue
     val lastname = json.path("lastname").getTextValue
@@ -107,9 +103,7 @@ object Main {
     val requestLaps = requestFactory.buildGetRequest(new GenericUrl(s"https://www.strava.com/api/v3/activities/$id/laps"))
     authorizeHeaders(requestLaps, authToken)
 
-    val response = Source.fromInputStream(requestLaps.execute().getContent).mkString
-
-    logger.log(Level.INFO, s"Response $response")
+    val response = requestLaps.execute().getContent
 
     val lapsJson = jsonMapper.readTree(response)
 

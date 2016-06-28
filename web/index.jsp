@@ -20,7 +20,7 @@
 
     String serverUri = scheme + "://" + hostname + (port != 80 ? String.format(":%d", port) : "");
     String uri = "https://www.strava.com/oauth/authorize?";
-    String action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/token_exchange.jsp&scope=write,view_private";
+    String action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/selectActivity.jsp&scope=write,view_private";
   %>
   <h3>Work in progress, not doing anything usefull yet</h3>
   <p>
