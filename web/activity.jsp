@@ -19,11 +19,19 @@
 </a>
 
 <table border="1">
+  <tr>
+    <th>Event</th>
+    <th>Time</th>
+    <th>Distance</th>
+  </tr>
   <% for (Main.Event t : laps.events()) { %>
   <tr>
-    <td><%= t.kind()%></td>
-    <td><%= Main.displaySeconds(t.stamp().time()) %></td>
-    <td><%= Main.displayDistance(t.stamp().dist()) %></td>
+    <td><%= t.kind()%>
+    </td>
+    <td><%= Main.displaySeconds(t.stamp().time()) %>
+    </td>
+    <td><%= Main.displayDistance(t.stamp().dist()) %>
+    </td>
   </tr>
   <% } %>
 </table>
