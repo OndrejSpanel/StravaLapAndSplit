@@ -9,9 +9,9 @@ import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
 import com.google.api.client.json.jackson.JacksonFactory
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
-import org.joda.time.DateTime
-import scala.collection.JavaConverters._
+import org.joda.time.{DateTime, Seconds}
 
+import scala.collection.JavaConverters._
 import DateTimeOps._
 
 object Main {
@@ -114,10 +114,11 @@ object Main {
         DateTime.parse(lapTimeStr)
       }).toSeq
 
-      val allLaps = if (lapTimes.nonEmpty && lapTimes.head > startTime) startTime +: lapTimes else lapTimes
+      // TODO: remove start and end time, cannot edit them in any way
 
+      val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
 
-      allLaps.map(_.toString).toArray
+      lapsInSeconds.map(_.toString).toArray
     }
 
     val pauses = {
@@ -140,15 +141,15 @@ object Main {
       val stoppedTimes = (moving.headOption, time.headOption) match {
         case (Some(m), Some(t)) =>
           val mData = m.path("data").asScala.map(_.asBoolean()).toSeq
-          val tData = t.path("data").asScala.map(_.asLong()).toSeq
+          val tData = t.path("data").asScala.map(_.asInt()).toSeq
           val edges = mData zip mData.drop(1)
           (edges zip tData).filter(et => et._1._1 && !et._1._2).map(_._2)
         case (_, _) =>
-          Seq[Long]()
+          Seq()
       }
 
       // ignore following too close
-      def ignoreTooClose(prev: Long, times: Seq[Long], ret: Seq[Long]): Seq[Long] = {
+      def ignoreTooClose(prev: Int, times: Seq[Int], ret: Seq[Int]): Seq[Int] = {
         times match {
           case head :: tail =>
             if (head < prev + 30) ignoreTooClose(head, tail, ret)
