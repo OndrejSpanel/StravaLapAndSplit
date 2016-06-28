@@ -110,18 +110,17 @@ object Main {
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
     val actId = ActivityId(responseJson.path("id").getLongValue, responseJson.path("name").getTextValue)
+    val startDateStr = responseJson.path("start_date").getTextValue
+    val startTime = DateTime.parse(startDateStr)
 
     val laps = {
-      val startDateStr = responseJson.path("start_date").getTextValue
 
-      val startTime = DateTime.parse(startDateStr)
 
       val requestLaps = buildGetRequest(s"https://www.strava.com/api/v3/activities/$id/laps", authToken, "")
 
       val response = requestLaps.execute().getContent
 
       val lapsJson = jsonMapper.readTree(response)
-
 
       val lapTimes = (for (lap <- lapsJson.getElements.asScala) yield {
         val lapTimeStr = lap.path("start_date").getTextValue
@@ -133,6 +132,22 @@ object Main {
       val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
 
       lapsInSeconds
+    }
+
+    val segments = {
+      val segmentList = responseJson.path("segment_efforts").asScala
+      segmentList.flatMap {seg =>
+        val segStartTime = DateTime.parse(seg.path("start_date").getTextValue)
+        val segName = seg.path("name")
+        val segStart = Seconds.secondsBetween(startTime, segStartTime).getSeconds
+        val segDuration = seg.path("elapsed_time").getIntValue
+        val segPrivate = seg.path("private").getBooleanValue
+        val title = if (segPrivate) "private segment" else "segment"
+        Seq(
+          Event(s"Start $title $segName", segStart),
+          Event(s"End $title $segName", segStart + segDuration)
+        )
+      }
     }
 
     val pauses = {
@@ -177,7 +192,7 @@ object Main {
       ignoredClose
     }
 
-    val events = laps.map(Event("Lap", _)) ++ pauses.map(Event("Pause", _))
+    val events = laps.map(Event("Lap", _)) ++ pauses.map(Event("Pause", _)) ++ segments
 
     val eventsByTime = events.sortBy(_.time)
 

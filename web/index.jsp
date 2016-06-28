@@ -28,7 +28,7 @@
     It automatically detects places where you have stopped and allows you to create a split or lap there.
   </p>
   <p>
-    <i>Note: the original activity needs to be deleted in the process, therefore you will lose any comments and kudos on it.</i>
+    <i>Note: the original activity needs to be deleted in the process, therefore you will lose any comments and kudos you already have on it and your achievements will be recomputed.</i>
   </p>
   <a href=<%=action%>><img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"/></a>
 
