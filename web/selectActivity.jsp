@@ -19,7 +19,7 @@
 %>
 <form action="activity.jsp" method="get">
   <p>Athlete: <b><%= Main.athlete(authToken)%></b></p>
-  <p>Last activity: <%=activity.id()%> <b><%=activity.name()%></b></p>
+  <p>Last activity: <%=activity.id()%> <a href="<%=(activity.link())%>"><%=activity.name()%></a></p>
   <p>Activity ID: <input type="text" name="activityId" value="<%=activity.id()%>"/>
     <input type="submit" value="Submit"/>
   </p>

@@ -76,7 +76,9 @@ object Main {
     firstname + " " + lastname
   }
 
-  case class ActivityId(id: Long, name: String)
+  case class ActivityId(id: Long, name: String) {
+    def link: String = s"https://www.strava.com/activities/$id"
+  }
 
   def lastActivity(authToken: String): ActivityId = {
     val uri = "https://www.strava.com/api/v3/athlete/activities"
