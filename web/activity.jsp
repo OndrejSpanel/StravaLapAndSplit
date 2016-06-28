@@ -11,26 +11,18 @@
 <%
   String authToken = (String) session.getAttribute("authToken");
   String actId = request.getParameter("activityId");
-  Main.ActivityLaps laps = Main.getLapsFrom(authToken, actId);
+  Main.ActivityEvents laps = Main.getEventsFrom(authToken, actId);
 
 %>
 
 <a href="<%= laps.id().link()%>"><%= laps.id().name()%>
 </a>
 
-<p>Original laps:</p>
 <table border="1">
-  <% for (int t : laps.laps()) { %>
+  <% for (Main.Event t : laps.events()) { %>
   <tr>
-    <td>Lap time <%= Main.displaySeconds(t) %>.</td>
-  </tr>
-  <% } %>
-</table>
-<p>Pauses:</p>
-<table border="1">
-  <% for (int t : laps.pauses()) { %>
-  <tr>
-    <td>Pause time <%= Main.displaySeconds(t) %>.</td>
+    <td><%= t.kind()%></td>
+    <td><%= Main.displaySeconds(t.time()) %>.</td>
   </tr>
   <% } %>
 </table>

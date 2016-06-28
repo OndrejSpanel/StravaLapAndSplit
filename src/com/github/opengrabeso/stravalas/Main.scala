@@ -98,9 +98,11 @@ object Main {
     ActivityId.load(responseJson.get(0))
   }
 
-  case class ActivityLaps(id: ActivityId, laps: Array[Int], pauses: Array[Int])
+  case class Event(kind: String, time: Int)
 
-  def getLapsFrom(authToken: String, id: String): ActivityLaps = {
+  case class ActivityEvents(id: ActivityId, events: Array[Event])
+
+  def getEventsFrom(authToken: String, id: String): ActivityEvents = {
 
     val uri = s"https://www.strava.com/api/v3/activities/$id"
     val request = buildGetRequest(uri, authToken, "")
@@ -130,7 +132,7 @@ object Main {
 
       val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
 
-      lapsInSeconds.toArray
+      lapsInSeconds
     }
 
     val pauses = {
@@ -172,9 +174,14 @@ object Main {
 
       val ignoredClose = ignoreTooClose(0, stoppedTimes, Nil).reverse
 
-      ignoredClose.toArray
+      ignoredClose
     }
-    ActivityLaps(actId, laps, pauses)
+
+    val events = laps.map(Event("Lap", _)) ++ pauses.map(Event("Pause", _))
+
+    val eventsByTime = events.sortBy(_.time)
+
+    ActivityEvents(actId, eventsByTime.toArray)
   }
 
   def displaySeconds(duration: Int): String = {
