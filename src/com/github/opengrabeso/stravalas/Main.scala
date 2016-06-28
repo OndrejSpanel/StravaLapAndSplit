@@ -13,8 +13,6 @@ import org.joda.time.DateTime
 
 import DateTimeOps._
 
-import scala.io.Source
-
 object Main {
   private val transport = new NetHttpTransport()
   private val jsonFactory = new JacksonFactory()
@@ -82,6 +80,20 @@ object Main {
     val firstname = json.path("firstname").getTextValue
     val lastname = json.path("lastname").getTextValue
     firstname + " " + lastname
+  }
+
+  case class ActivityId(id: Long, name: String)
+
+  def lastActivity(authToken: String): ActivityId = {
+    val uri = "https://www.strava.com/api/v3/athlete/activities?per_page=1"
+    val request = requestFactory.buildGetRequest(new GenericUrl(uri))
+    authorizeHeaders(request, authToken)
+
+    val responseJson = jsonMapper.readTree(request.execute().getContent)
+    val name = responseJson.get(0).path("name").getTextValue
+    val id = responseJson.get(0).path("id").getLongValue
+
+    ActivityId(id, name)
   }
 
   def getLapsFrom(authToken: String, id: String): Array[String] = {
