@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravalas
 
 import java.util
 import java.util.logging.Logger
+import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 
 import com.google.api.client.http.{GenericUrl, HttpRequest, HttpRequestInitializer}
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -215,6 +216,11 @@ object Main {
     ActivityEvents(actId, eventsByTime.toArray)
   }
 
+
+  def process(laps: ActivityEvents): String = {
+    "A file data to download"
+  }
+
   def displaySeconds(duration: Int): String = {
     val myFormat =
       new PeriodFormatterBuilder()
@@ -231,4 +237,14 @@ object Main {
 
   def displayDistance(dist: Double): String = "%.2f".format(dist*0.001)
 
+}
+
+class Download extends HttpServlet {
+  override def doPost(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
+
+    val id = req.getParameter("id")
+    val op = req.getParameter("operation")
+
+    super.doPost(req, resp)
+  }
 }
