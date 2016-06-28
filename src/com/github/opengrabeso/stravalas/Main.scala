@@ -10,6 +10,7 @@ import com.google.api.client.json.JsonObjectParser
 import com.google.api.client.json.jackson.JacksonFactory
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.DateTime
+import scala.collection.JavaConverters._
 
 import DateTimeOps._
 
@@ -91,32 +92,76 @@ object Main {
 
   def getLapsFrom(authToken: String, id: String): ActivityLaps = {
 
-    val uri = s"https://www.strava.com/api/v3/activities/$id"
-    val request = buildGetRequest(uri, authToken, "")
+    val laps = {
+      val uri = s"https://www.strava.com/api/v3/activities/$id"
+      val request = buildGetRequest(uri, authToken, "")
 
-    val responseJson = jsonMapper.readTree(request.execute().getContent)
+      val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-    val startDateStr = responseJson.path("start_date").getTextValue
+      val startDateStr = responseJson.path("start_date").getTextValue
 
-    val startTime = DateTime.parse(startDateStr)
+      val startTime = DateTime.parse(startDateStr)
 
-    val requestLaps = buildGetRequest(s"https://www.strava.com/api/v3/activities/$id/laps", authToken, "")
+      val requestLaps = buildGetRequest(s"https://www.strava.com/api/v3/activities/$id/laps", authToken, "")
 
-    val response = requestLaps.execute().getContent
+      val response = requestLaps.execute().getContent
 
-    val lapsJson = jsonMapper.readTree(response)
+      val lapsJson = jsonMapper.readTree(response)
 
-    import scala.collection.JavaConverters._
 
-    val lapTimes = (for (lap <- lapsJson.getElements.asScala) yield {
-      val lapTimeStr = lap.path("start_date").getTextValue
-      DateTime.parse(lapTimeStr)
-    }).toSeq
+      val lapTimes = (for (lap <- lapsJson.getElements.asScala) yield {
+        val lapTimeStr = lap.path("start_date").getTextValue
+        DateTime.parse(lapTimeStr)
+      }).toSeq
 
-    val allLaps = if (lapTimes.nonEmpty && lapTimes.head > startTime) startTime +: lapTimes else lapTimes
+      val allLaps = if (lapTimes.nonEmpty && lapTimes.head > startTime) startTime +: lapTimes else lapTimes
 
-    val laps = allLaps.map(_.toString).toArray
-    ActivityLaps(laps, Array())
+
+      allLaps.map(_.toString).toArray
+    }
+
+    val pauses = {
+      val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
+
+      val streamTypes = allStreams.mkString(",")
+
+      val uri = s"https://www.strava.com/api/v3/activities/$id/streams/$streamTypes"
+      val request = buildGetRequest(uri, authToken, "")
+
+      val response = request.execute().getContent
+
+      val responseJson = jsonMapper.readTree(response)
+
+      // detect where not moving based on "moving" stream
+
+      val streams = responseJson.getElements.asScala
+      val time = streams.filter(_.path("type").getTextValue == "time").toStream
+      val moving = streams.filter(_.path("type").getTextValue == "moving").toStream
+      val stoppedTimes = (moving.headOption, time.headOption) match {
+        case (Some(m), Some(t)) =>
+          val mData = m.path("data").asScala.map(_.asBoolean()).toSeq
+          val tData = t.path("data").asScala.map(_.asLong()).toSeq
+          val edges = mData zip mData.drop(1)
+          (edges zip tData).filter(et => et._1._1 && !et._1._2).map(_._2)
+        case (_, _) =>
+          Seq[Long]()
+      }
+
+      // ignore following too close
+      def ignoreTooClose(prev: Long, times: Seq[Long], ret: Seq[Long]): Seq[Long] = {
+        times match {
+          case head :: tail =>
+            if (head < prev + 30) ignoreTooClose(head, tail, ret)
+            else ignoreTooClose(head, tail, head +: ret)
+          case _ => ret
+        }
+      }
+
+      val ignoredClose = ignoreTooClose(0, stoppedTimes, Nil).reverse
+
+      ignoredClose.map(_.toString).toArray // TODO: convert to TimeZone
+    }
+    ActivityLaps(laps, pauses)
   }
 
 }
