@@ -14,18 +14,18 @@
 <%
   String authToken = (String)session.getAttribute("authToken");
   String actId = request.getParameter("activityId");
-  String[] laps = Main.getLapsFrom(authToken, actId);
+  Main.ActivityLaps laps = Main.getLapsFrom(authToken, actId);
 
 %>
 
 <p>Original laps:</p>
-<% for (String lap : laps) { %>
+<% for (String lap : laps.laps()) { %>
 <p>Lap time <%= lap %>.</p>
 <% } %>
-<p>Split at:</p>
-
-<p>Counting to three:</p>
-<p>OK.</p>
+<p>Pauses:</p>
+<% for (String lap : laps.pauses()) { %>
+<p>Pause time <%= lap %>.</p>
+<% } %>
 
 </body>
 </html>

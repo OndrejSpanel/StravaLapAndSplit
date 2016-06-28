@@ -87,7 +87,9 @@ object Main {
     ActivityId(id, name)
   }
 
-  def getLapsFrom(authToken: String, id: String): Array[String] = {
+  case class ActivityLaps(laps: Array[String], pauses: Array[String])
+
+  def getLapsFrom(authToken: String, id: String): ActivityLaps = {
 
     val uri = s"https://www.strava.com/api/v3/activities/$id"
     val request = buildGetRequest(uri, authToken, "")
@@ -113,7 +115,8 @@ object Main {
 
     val allLaps = if (lapTimes.nonEmpty && lapTimes.head > startTime) startTime +: lapTimes else lapTimes
 
-    allLaps.map(_.toString).toArray
+    val laps = allLaps.map(_.toString).toArray
+    ActivityLaps(laps, Array())
   }
 
 }
