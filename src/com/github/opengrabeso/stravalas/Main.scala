@@ -24,9 +24,11 @@ object Main {
     override def initialize(request: HttpRequest) = request.setParser(new JsonObjectParser(jsonFactory))
   })
 
-  def someComputation: String = "I have computed this!"
-
-  def doComputation(i: Int): String = ("*" + i.toString) * 2
+  def buildGetRequest(uri: String, authToken: String): HttpRequest = {
+    val request = requestFactory.buildGetRequest(new GenericUrl(uri))
+    authorizeHeaders(request, authToken)
+    request
+  }
 
   def secret: (String, String) = {
     val secretStream = Main.getClass.getResourceAsStream("/secret.txt")
@@ -66,9 +68,7 @@ object Main {
 
   def athlete(authToken: String): String = {
     val uri = s"https://www.strava.com/api/v3/athlete"
-    val request = requestFactory.buildGetRequest(new GenericUrl(uri))
-
-    authorizeHeaders(request, authToken)
+    val request = buildGetRequest(uri, authToken)
 
     logger.log(Level.INFO, s"GET uri $uri")
     logger.log(Level.INFO, s"request headers ${request.getHeaders.toString}")
@@ -86,8 +86,7 @@ object Main {
 
   def lastActivity(authToken: String): ActivityId = {
     val uri = "https://www.strava.com/api/v3/athlete/activities?per_page=1"
-    val request = requestFactory.buildGetRequest(new GenericUrl(uri))
-    authorizeHeaders(request, authToken)
+    val request = buildGetRequest(uri, authToken)
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
     val name = responseJson.get(0).path("name").getTextValue
@@ -99,9 +98,7 @@ object Main {
   def getLapsFrom(authToken: String, id: String): Array[String] = {
 
     val uri = s"https://www.strava.com/api/v3/activities/$id"
-    val request = requestFactory.buildGetRequest(new GenericUrl(uri))
-
-    authorizeHeaders(request, authToken)
+    val request = buildGetRequest(uri, authToken)
 
     logger.log(Level.INFO, s"GET uri $uri")
     logger.log(Level.INFO, s"request headers ${request.getHeaders.toString}")
@@ -112,8 +109,7 @@ object Main {
 
     val startTime = DateTime.parse(startDateStr)
 
-    val requestLaps = requestFactory.buildGetRequest(new GenericUrl(s"https://www.strava.com/api/v3/activities/$id/laps"))
-    authorizeHeaders(requestLaps, authToken)
+    val requestLaps = buildGetRequest(s"https://www.strava.com/api/v3/activities/$id/laps", authToken)
 
     val response = requestLaps.execute().getContent
 
