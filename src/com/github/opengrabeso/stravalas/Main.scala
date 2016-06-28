@@ -9,10 +9,11 @@ import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
 import com.google.api.client.json.jackson.JacksonFactory
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
-import org.joda.time.{DateTime, Seconds}
+import org.joda.time.{DateTime, Period, Seconds}
 
 import scala.collection.JavaConverters._
 import DateTimeOps._
+import org.joda.time.format.PeriodFormatterBuilder
 
 object Main {
   private val transport = new NetHttpTransport()
@@ -88,7 +89,7 @@ object Main {
     ActivityId(id, name)
   }
 
-  case class ActivityLaps(laps: Array[String], pauses: Array[String])
+  case class ActivityLaps(laps: Array[Int], pauses: Array[Int])
 
   def getLapsFrom(authToken: String, id: String): ActivityLaps = {
 
@@ -118,7 +119,7 @@ object Main {
 
       val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
 
-      lapsInSeconds.map(_.toString).toArray
+      lapsInSeconds.toArray
     }
 
     val pauses = {
@@ -160,9 +161,23 @@ object Main {
 
       val ignoredClose = ignoreTooClose(0, stoppedTimes, Nil).reverse
 
-      ignoredClose.map(_.toString).toArray // TODO: convert to TimeZone
+      ignoredClose.toArray // TODO: convert to TimeZone
     }
     ActivityLaps(laps, pauses)
+  }
+
+  def displaySeconds(duration: Int): String = {
+    val myFormat =
+      new PeriodFormatterBuilder()
+        .printZeroNever().appendHours()
+        .appendSeparator(":")
+        .printZeroAlways().minimumPrintedDigits(2).appendMinutes()
+        .appendSeparator(":")
+        .printZeroAlways().minimumPrintedDigits(2).appendSeconds()
+        .toFormatter
+
+    val period = Period.seconds(duration).normalizedStandard()
+    myFormat.print(period)
   }
 
 }

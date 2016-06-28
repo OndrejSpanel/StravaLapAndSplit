@@ -19,12 +19,12 @@
 %>
 
 <p>Original laps:</p>
-<% for (String lap : laps.laps()) { %>
-<p>Lap time <%= lap %>.</p>
+<% for (int t : laps.laps()) { %>
+<p>Lap time <%= Main.displaySeconds(t) %>.</p>
 <% } %>
 <p>Pauses:</p>
-<% for (String lap : laps.pauses()) { %>
-<p>Pause time <%= lap %>.</p>
+<% for (int t : laps.pauses()) { %>
+<p>Pause time <%= Main.displaySeconds(t) %>.</p>
 <% } %>
 
 </body>
