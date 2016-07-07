@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravalas
 
 import java.util
 import java.util.logging.Logger
+import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 
 import com.google.api.client.http.{GenericUrl, HttpRequest, HttpRequestInitializer}
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -98,7 +99,9 @@ object Main {
     ActivityId.load(responseJson.get(0))
   }
 
-  case class Event(kind: String, time: Int)
+  case class Stamp(time: Int, dist: Double)
+
+  case class Event(kind: String, stamp: Stamp)
 
   case class ActivityEvents(id: ActivityId, events: Array[Event])
 
@@ -113,8 +116,35 @@ object Main {
     val startDateStr = responseJson.path("start_date").getTextValue
     val startTime = DateTime.parse(startDateStr)
 
-    val laps = {
+    object ActivityStreams {
+      private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
 
+      private val streamTypes = allStreams.mkString(",")
+
+      private val uri = s"https://www.strava.com/api/v3/activities/$id/streams/$streamTypes"
+      private val request = buildGetRequest(uri, authToken, "")
+
+      private val response = request.execute().getContent
+
+      private val responseJson = jsonMapper.readTree(response)
+
+      // detect where not moving based on "moving" stream
+
+      val streams = responseJson.getElements.asScala
+      val time = streams.filter(_.path("type").getTextValue == "time").toStream
+      val dist = streams.filter(_.path("type").getTextValue == "distance").toStream
+
+      val tData = time.head.path("data").asScala.map(_.asInt()).toSeq
+      val dData = dist.head.path("data").asScala.map(_.asDouble()).toSeq
+
+      val stamps = (tData zip dData).map((Stamp.apply _).tupled)
+
+      def stampForTime(time: Int): Stamp = {
+        stamps.filter(_.time >= time).head
+      }
+    }
+
+    val laps = {
 
       val requestLaps = buildGetRequest(s"https://www.strava.com/api/v3/activities/$id/laps", authToken, "")
 
@@ -131,7 +161,7 @@ object Main {
 
       val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
 
-      lapsInSeconds
+      lapsInSeconds.map(ActivityStreams.stampForTime)
     }
 
     val segments = {
@@ -144,45 +174,32 @@ object Main {
         val segPrivate = seg.path("segment").path("private").getBooleanValue
         val title = if (segPrivate) "private segment" else "segment"
         Seq(
-          Event(s"Start $title $segName", segStart),
-          Event(s"End $title $segName", segStart + segDuration)
+          Event(s"Start $title $segName", ActivityStreams.stampForTime(segStart)),
+          Event(s"End $title $segName", ActivityStreams.stampForTime(segStart + segDuration))
         )
       }
     }
 
     val pauses = {
-      val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
-
-      val streamTypes = allStreams.mkString(",")
-
-      val uri = s"https://www.strava.com/api/v3/activities/$id/streams/$streamTypes"
-      val request = buildGetRequest(uri, authToken, "")
-
-      val response = request.execute().getContent
-
-      val responseJson = jsonMapper.readTree(response)
-
-      // detect where not moving based on "moving" stream
-
-      val streams = responseJson.getElements.asScala
-      val time = streams.filter(_.path("type").getTextValue == "time").toStream
+      import ActivityStreams._
       val moving = streams.filter(_.path("type").getTextValue == "moving").toStream
-      val stoppedTimes = (moving.headOption, time.headOption) match {
-        case (Some(m), Some(t)) =>
+      val stoppedTimes = (moving.headOption, time.headOption, dist.headOption) match {
+        case (Some(m), Some(t), Some(d)) =>
           val mData = m.path("data").asScala.map(_.asBoolean()).toSeq
           val tData = t.path("data").asScala.map(_.asInt()).toSeq
+          val dData = d.path("data").asScala.map(_.asDouble()).toSeq
           val edges = mData zip mData.drop(1)
-          (edges zip tData).filter(et => et._1._1 && !et._1._2).map(_._2)
-        case (_, _) =>
+          (edges zip stamps).filter(et => et._1._1 && !et._1._2).map(_._2)
+        case _ =>
           Seq()
       }
 
       // ignore following too close
-      def ignoreTooClose(prev: Int, times: Seq[Int], ret: Seq[Int]): Seq[Int] = {
+      def ignoreTooClose(prev: Int, times: Seq[Stamp], ret: Seq[Stamp]): Seq[Stamp] = {
         times match {
           case head :: tail =>
-            if (head < prev + 30) ignoreTooClose(head, tail, ret)
-            else ignoreTooClose(head, tail, head +: ret)
+            if (head.time < prev + 30) ignoreTooClose(head.time, tail, ret)
+            else ignoreTooClose(head.time, tail, head +: ret)
           case _ => ret
         }
       }
@@ -194,9 +211,14 @@ object Main {
 
     val events = laps.map(Event("Lap", _)) ++ pauses.map(Event("Pause", _)) ++ segments
 
-    val eventsByTime = events.sortBy(_.time)
+    val eventsByTime = events.sortBy(_.stamp.time)
 
     ActivityEvents(actId, eventsByTime.toArray)
+  }
+
+
+  def process(laps: ActivityEvents): String = {
+    "A file data to download"
   }
 
   def displaySeconds(duration: Int): String = {
@@ -213,4 +235,16 @@ object Main {
     myFormat.print(period)
   }
 
+  def displayDistance(dist: Double): String = "%.2f".format(dist*0.001)
+
+}
+
+class Download extends HttpServlet {
+  override def doPost(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
+
+    val id = req.getParameter("id")
+    val op = req.getParameter("operation")
+
+    super.doPost(req, resp)
+  }
 }
