@@ -17,6 +17,9 @@ import com.google.appengine.repackaged.org.codehaus.jackson.JsonNode
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.format.PeriodFormatterBuilder
 
+import com.garmin.fit
+import com.garmin.fit._
+
 object Main {
   private val transport = new NetHttpTransport()
   private val jsonFactory = new JacksonFactory()
@@ -221,6 +224,11 @@ object Main {
     "A file data to download"
   }
 
+  def downloadResult(id: String, op: String): Array[Byte] = {
+    val ret = "Testing download".getBytes
+    ret
+  }
+
   def displaySeconds(duration: Int): String = {
     val myFormat =
       new PeriodFormatterBuilder()
@@ -245,6 +253,14 @@ class Download extends HttpServlet {
     val id = req.getParameter("id")
     val op = req.getParameter("operation")
 
-    super.doPost(req, resp)
+    val ret = Main.downloadResult(id, op)
+
+
+    resp.setContentType("application/octet-stream")
+    resp.setStatus(200)
+    resp.setHeader("Content-Disposition", s"attachment;filename=split_$id.fit")
+
+    val out = resp.getOutputStream
+    out.write(ret)
   }
 }
