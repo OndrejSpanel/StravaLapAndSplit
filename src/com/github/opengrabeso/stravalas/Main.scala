@@ -17,6 +17,9 @@ import com.google.appengine.repackaged.org.codehaus.jackson.JsonNode
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.format.PeriodFormatterBuilder
 
+import com.garmin.fit
+import com.garmin.fit._
+
 object Main {
   private val transport = new NetHttpTransport()
   private val jsonFactory = new JacksonFactory()
