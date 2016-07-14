@@ -103,8 +103,6 @@ object Main {
 
   case class Event(kind: String, stamp: Stamp)
 
-  case class GPS(lat: Double, long: Double, time: DateTime)
-
   case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])])
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
