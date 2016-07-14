@@ -202,11 +202,10 @@ object Main {
 
     val pauses = {
       import ActivityStreams._
-      val moving = streams.filter(_.path("type").getTextValue == "moving").toStream
-      val stoppedTimes = (moving.headOption, time.headOption, dist.headOption) match {
-        case (Some(m), Some(t), Some(d)) =>
-          val mData = getDataByName("data", _.asBoolean())
-          val edges = mData zip mData.drop(1)
+      val moving = getDataByName("moving", _.asBoolean).toStream
+      val stoppedTimes = (moving.headOption, stamps.headOption) match {
+        case (Some(_), Some(_)) =>
+          val edges = moving zip moving.drop(1)
           (edges zip stamps).filter(et => et._1._1 && !et._1._2).map(_._2)
         case _ =>
           Seq()
