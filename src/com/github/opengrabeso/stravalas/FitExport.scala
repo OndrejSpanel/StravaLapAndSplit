@@ -4,7 +4,7 @@ import com.garmin.fit._
 import Main.ActivityEvents
 import com.garmin.fit
 import DateTimeOps._
-import org.joda.time.{DateTime=>JodaDateTime}
+import org.joda.time.{DateTime => JodaDateTime}
 
 object FitExport {
   type Encoder = MesgListener with MesgDefinitionListener
@@ -33,6 +33,7 @@ object FitExport {
 
     abstract class FitEvent {
       def time: JodaDateTime
+
       def encode(encoder: Encoder)
     }
 
@@ -51,21 +52,31 @@ object FitExport {
       msg.setPositionLong((latlng._2 * longLatScale).toInt)
 
     }
-    case class GPSEvent(time: JodaDateTime, lat: Double, lng: Double) extends DataEvent(time, encodeLatLng(_, (lat, lng)))
 
-    case class HREvent(time: JodaDateTime, hr: Int) extends DataEvent(time, _.setHeartRate(hr.toShort))
+    class GPSEvent(val time: JodaDateTime, val lat: Double, val lng: Double) extends DataEvent(time, encodeLatLng(_, (lat, lng)))
+
+    class AttribEvent(val time: JodaDateTime, data: Int, set: (RecordMesg, Int) => Unit) extends DataEvent(time, set(_, data))
 
     import events.id.startTime
 
-    val gpsAsEvents = events.gps.zipWithIndex.map { case (gps,i) =>
-      GPSEvent(startTime.plusSeconds(i), gps._1, gps._2)
+    val gpsAsEvents = events.gps.zipWithIndex.map { case (gps, i) =>
+      new GPSEvent(startTime.plusSeconds(i), gps._1, gps._2)
     }
 
-    val hrAsEvents = events.hr.zipWithIndex.map { case (hr, i) =>
-      HREvent(startTime.plusSeconds(i), hr)
+    val attributesAsEvents = events.attributes.flatMap { case (name, attrib) =>
+      val createAttribEvent: (RecordMesg, Int) => Unit = (msg, value) =>
+        name match {
+          case "heartrate" => msg.setHeartRate(value.toShort)
+          case "watts" => msg.setPower(value)
+          case "cadence" => msg.setCadence(value.toShort)
+          case "temp" => msg.setTemperature(value.toByte)
+        }
+      attrib.zipWithIndex.map { case (data, i) =>
+        new AttribEvent(startTime.plusSeconds(i), data, createAttribEvent)
+      }
     }
 
-    val allEvents = (gpsAsEvents ++ hrAsEvents).toVector.sortBy(_.time)
+    val allEvents = (gpsAsEvents ++ attributesAsEvents).toVector.sortBy(_.time)
 
     allEvents.foreach(_.encode(encoder))
 

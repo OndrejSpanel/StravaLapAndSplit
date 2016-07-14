@@ -105,7 +105,7 @@ object Main {
 
   case class GPS(lat: Double, long: Double, time: DateTime)
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], hr: Seq[Int], cadence: Seq[Int], watts: Seq[Int], temp: Seq[Int])
+  case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])])
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
 
@@ -142,10 +142,10 @@ object Main {
       val time = getDataByName("time", _.asInt)
       val dist = getDataByName("distance", _.asDouble)
       val latlng = getDataByName("latlng", loadGpsPair)
-      val heartrate = getDataByName("heartrate", _.asInt)
-      val cadence = getDataByName("cadence", _.asInt)
-      val watts = getDataByName("watts", _.asInt)
-      val temp = getDataByName("temp", _.asInt)
+      val heartrate = getAttribByName("heartrate", _.asInt)
+      val cadence = getAttribByName("cadence", _.asInt)
+      val watts = getAttribByName("watts", _.asInt)
+      val temp = getAttribByName("temp", _.asInt)
 
       def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Seq[T] = {
         if (stream.isEmpty) Nil
@@ -154,6 +154,9 @@ object Main {
       def getDataByName[T](name: String, get: JsonNode => T): Seq[T] = {
         val stream = streams.filter(_.path("type").getTextValue == name).toStream
         getData(stream, get)
+      }
+      def getAttribByName(name: String, get: JsonNode => Int): (String, Seq[Int]) = {
+        name -> getDataByName(name, _.asInt)
       }
 
       val stamps = (time zip dist).map((Stamp.apply _).tupled)
@@ -231,7 +234,7 @@ object Main {
     val eventsByTime = events.sortBy(_.stamp.time)
 
     import ActivityStreams._
-    ActivityEvents(actId, eventsByTime.toArray, latlng, heartrate, cadence, watts, temp)
+    ActivityEvents(actId, eventsByTime.toArray, latlng, Seq(heartrate, cadence, watts, temp))
   }
 
 
