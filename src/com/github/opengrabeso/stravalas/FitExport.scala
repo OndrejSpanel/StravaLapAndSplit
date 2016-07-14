@@ -36,17 +36,24 @@ object FitExport {
       def encode(encoder: Encoder)
     }
 
-    case class GPSEvent(time: JodaDateTime, lat: Double, lng: Double) extends FitEvent {
+    abstract class DataEvent(time: JodaDateTime, set: RecordMesg => Unit) extends FitEvent {
       override def encode(encoder: Encoder): Unit = {
         val myMsg = new RecordMesg()
-        val longLatScale = (1L << 31).toDouble / 180
         myMsg.setTimestamp(toTimestamp(time))
-        myMsg.setPositionLong((lng * longLatScale).toInt)
-        myMsg.setPositionLat((lat * longLatScale).toInt)
+        set(myMsg)
         encoder.onMesg(myMsg)
-
       }
     }
+
+    def encodeLatLng(msg: RecordMesg, latlng: (Double, Double)) = {
+      val longLatScale = (1L << 31).toDouble / 180
+      msg.setPositionLat((latlng._1 * longLatScale).toInt)
+      msg.setPositionLong((latlng._2 * longLatScale).toInt)
+
+    }
+    case class GPSEvent(time: JodaDateTime, lat: Double, lng: Double) extends DataEvent(time, encodeLatLng(_, (lat, lng)))
+
+    case class HREvent(time: JodaDateTime, hr: Int) extends DataEvent(time, _.setHeartRate(hr.toShort))
 
     import events.id.startTime
 

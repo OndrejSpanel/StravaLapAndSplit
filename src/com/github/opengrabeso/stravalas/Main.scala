@@ -105,7 +105,7 @@ object Main {
 
   case class GPS(lat: Double, long: Double, time: DateTime)
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)])
+  case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], hr: Seq[Int], cadence: Seq[Int], watts: Seq[Int], temp: Seq[Int])
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
 
@@ -130,17 +130,33 @@ object Main {
 
       private val responseJson = jsonMapper.readTree(response)
 
-      // detect where not moving based on "moving" stream
-
       val streams = responseJson.getElements.asScala.toIterable
-      val time = streams.filter(_.path("type").getTextValue == "time").toStream
-      val dist = streams.filter(_.path("type").getTextValue == "distance").toStream
-      val gps = streams.filter(_.path("type").getTextValue == "latlng").toStream
 
-      val tData = time.head.path("data").asScala.map(_.asInt()).toSeq
-      val dData = dist.head.path("data").asScala.map(_.asDouble()).toSeq
+      private def loadGpsPair(gpsItem: JsonNode) = {
+        val elements = gpsItem.getElements
+        val lat = elements.next.asDouble
+        val lng = elements.next.asDouble
+        (lat, lng)
+      }
 
-      val stamps = (tData zip dData).map((Stamp.apply _).tupled)
+      val time = getDataByName("time", _.asInt)
+      val dist = getDataByName("distance", _.asDouble)
+      val latlng = getDataByName("latlng", loadGpsPair)
+      val heartrate = getDataByName("heartrate", _.asInt)
+      val cadence = getDataByName("cadence", _.asInt)
+      val watts = getDataByName("watts", _.asInt)
+      val temp = getDataByName("temp", _.asInt)
+
+      def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Seq[T] = {
+        if (stream.isEmpty) Nil
+        else stream.head.path("data").asScala.map(get).toSeq
+      }
+      def getDataByName[T](name: String, get: JsonNode => T): Seq[T] = {
+        val stream = streams.filter(_.path("type").getTextValue == name).toStream
+        getData(stream, get)
+      }
+
+      val stamps = (time zip dist).map((Stamp.apply _).tupled)
 
       def stampForTime(time: Int): Stamp = {
         stamps.filter(_.time >= time).head
@@ -188,8 +204,7 @@ object Main {
       val moving = streams.filter(_.path("type").getTextValue == "moving").toStream
       val stoppedTimes = (moving.headOption, time.headOption, dist.headOption) match {
         case (Some(m), Some(t), Some(d)) =>
-          val mData = m.path("data").asScala.map(_.asBoolean()).toSeq
-          val tData = t.path("data").asScala.map(_.asInt()).toSeq
+          val mData = getDataByName("data", _.asBoolean())
           val edges = mData zip mData.drop(1)
           (edges zip stamps).filter(et => et._1._1 && !et._1._2).map(_._2)
         case _ =>
@@ -215,15 +230,8 @@ object Main {
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
-    val gpsStream = ActivityStreams.streams.filter(_.path("type").getTextValue == "latlng").toStream
-    val gpsData = ActivityStreams.gps.head.path("data").asScala.map{ gpsItem =>
-      val elements = gpsItem.getElements
-      val lat = elements.next.asDouble
-      val lng = elements.next.asDouble
-      (lat, lng)
-      }.toSeq
-
-    ActivityEvents(actId, eventsByTime.toArray, gpsData)
+    import ActivityStreams._
+    ActivityEvents(actId, eventsByTime.toArray, latlng, heartrate, cadence, watts, temp)
   }
 
 
