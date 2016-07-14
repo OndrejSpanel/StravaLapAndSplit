@@ -4,7 +4,7 @@ import com.garmin.fit._
 import Main.ActivityEvents
 import com.garmin.fit
 import DateTimeOps._
-import org.joda.time.{DateTime => JodaDateTime}
+import org.joda.time.{Duration, Seconds, DateTime => JodaDateTime}
 
 object FitExport {
   type Encoder = MesgListener with MesgDefinitionListener
@@ -76,9 +76,50 @@ object FitExport {
       }
     }
 
-    val allEvents = (gpsAsEvents ++ attributesAsEvents).toVector.sortBy(_.time)
+    object LapAutoClose {
+      var openLap = false
+      var lapCounter = 0
+      var lastLapStart = events.id.startTime
 
+      def closeLap(time: JodaDateTime): Unit = {
+        if (openLap && time > lastLapStart) {
+          val myMsg = new LapMesg()
+          myMsg.setEvent(Event.LAP)
+          myMsg.setEventType(EventType.STOP)
+          myMsg.setStartTime(toTimestamp(lastLapStart))
+          myMsg.setTimestamp(toTimestamp(time))
+          myMsg.setMessageIndex(lapCounter)
+          val lapDurationSec = Seconds.secondsBetween(lastLapStart, time).getSeconds.toFloat
+          lapCounter += 1
+          myMsg.setTotalElapsedTime(lapDurationSec)
+          myMsg.setTotalTimerTime(lapDurationSec)
+          encoder.onMesg(myMsg)
+        }
+        lastLapStart = time
+        openLap = true
+      }
+    }
+
+
+
+    class LapEvent(val time: JodaDateTime) extends FitEvent {
+      override def encode(encoder: Encoder): Unit = {
+        LapAutoClose.closeLap(time)
+      }
+    }
+
+    val lapsAsEvents = events.events.flatMap {
+      case Main.Event("Lap", time) =>
+        Some(new LapEvent(startTime.plusSeconds(time.time)))
+      case _ =>
+        None
+    }
+
+    val allEvents = (gpsAsEvents ++ attributesAsEvents ++ lapsAsEvents).toVector.sortBy(_.time)
+
+    LapAutoClose.closeLap(allEvents.head.time)
     allEvents.foreach(_.encode(encoder))
+    LapAutoClose.closeLap(allEvents.last.time)
 
     encoder.close
   }
