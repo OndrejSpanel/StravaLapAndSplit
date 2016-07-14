@@ -106,7 +106,9 @@ object Main {
 
   case class Event(kind: String, stamp: Stamp)
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event])
+  case class GPS(lat: Double, long: Double, time: DateTime)
+
+  case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)])
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
 
@@ -133,9 +135,10 @@ object Main {
 
       // detect where not moving based on "moving" stream
 
-      val streams = responseJson.getElements.asScala
+      val streams = responseJson.getElements.asScala.toIterable
       val time = streams.filter(_.path("type").getTextValue == "time").toStream
       val dist = streams.filter(_.path("type").getTextValue == "distance").toStream
+      val gps = streams.filter(_.path("type").getTextValue == "latlng").toStream
 
       val tData = time.head.path("data").asScala.map(_.asInt()).toSeq
       val dData = dist.head.path("data").asScala.map(_.asDouble()).toSeq
@@ -190,7 +193,6 @@ object Main {
         case (Some(m), Some(t), Some(d)) =>
           val mData = m.path("data").asScala.map(_.asBoolean()).toSeq
           val tData = t.path("data").asScala.map(_.asInt()).toSeq
-          val dData = d.path("data").asScala.map(_.asDouble()).toSeq
           val edges = mData zip mData.drop(1)
           (edges zip stamps).filter(et => et._1._1 && !et._1._2).map(_._2)
         case _ =>
@@ -216,7 +218,15 @@ object Main {
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
-    ActivityEvents(actId, eventsByTime.toArray)
+    val gpsStream = ActivityStreams.streams.filter(_.path("type").getTextValue == "latlng").toStream
+    val gpsData = ActivityStreams.gps.head.path("data").asScala.map{ gpsItem =>
+      val elements = gpsItem.getElements
+      val lat = elements.next.asDouble
+      val lng = elements.next.asDouble
+      (lat, lng)
+      }.toSeq
+
+    ActivityEvents(actId, eventsByTime.toArray, gpsData)
   }
 
 
