@@ -214,7 +214,7 @@ object Main {
       // ignore following too close
       def ignoreTooClose(prev: Int, times: Seq[Stamp], ret: Seq[Stamp]): Seq[Stamp] = {
         times match {
-          case head :: tail =>
+          case head +: tail =>
             if (head.time < prev + 30) ignoreTooClose(head.time, tail, ret)
             else ignoreTooClose(head.time, tail, head +: ret)
           case _ => ret

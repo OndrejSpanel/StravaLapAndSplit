@@ -111,6 +111,8 @@ object FitExport {
     val lapsAsEvents = events.events.flatMap {
       case Main.Event("Lap", time) =>
         Some(new LapEvent(startTime.plusSeconds(time.time)))
+      case Main.Event("Pause", time) =>
+        Some(new LapEvent(startTime.plusSeconds(time.time)))
       case _ =>
         None
     }
