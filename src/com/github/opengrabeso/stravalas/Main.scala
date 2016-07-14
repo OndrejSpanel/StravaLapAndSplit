@@ -130,6 +130,18 @@ object Main {
 
       val streams = responseJson.getElements.asScala.toIterable
 
+      def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Seq[T] = {
+        if (stream.isEmpty) Nil
+        else stream.head.path("data").asScala.map(get).toSeq
+      }
+      def getDataByName[T](name: String, get: JsonNode => T): Seq[T] = {
+        val stream = streams.filter(_.path("type").getTextValue == name).toStream
+        getData(stream, get)
+      }
+      def getAttribByName(name: String): (String, Seq[Int]) = {
+        name -> getDataByName(name, _.asInt)
+      }
+
       private def loadGpsPair(gpsItem: JsonNode) = {
         val elements = gpsItem.getElements
         val lat = elements.next.asDouble
@@ -140,22 +152,10 @@ object Main {
       val time = getDataByName("time", _.asInt)
       val dist = getDataByName("distance", _.asDouble)
       val latlng = getDataByName("latlng", loadGpsPair)
-      val heartrate = getAttribByName("heartrate", _.asInt)
-      val cadence = getAttribByName("cadence", _.asInt)
-      val watts = getAttribByName("watts", _.asInt)
-      val temp = getAttribByName("temp", _.asInt)
-
-      def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Seq[T] = {
-        if (stream.isEmpty) Nil
-        else stream.head.path("data").asScala.map(get).toSeq
-      }
-      def getDataByName[T](name: String, get: JsonNode => T): Seq[T] = {
-        val stream = streams.filter(_.path("type").getTextValue == name).toStream
-        getData(stream, get)
-      }
-      def getAttribByName(name: String, get: JsonNode => Int): (String, Seq[Int]) = {
-        name -> getDataByName(name, _.asInt)
-      }
+      val heartrate = getAttribByName("heartrate")
+      val cadence = getAttribByName("cadence")
+      val watts = getAttribByName("watts")
+      val temp = getAttribByName("temp")
 
       val stamps = (time zip dist).map((Stamp.apply _).tupled)
 
