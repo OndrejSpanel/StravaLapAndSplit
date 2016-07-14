@@ -61,7 +61,11 @@ object FitExport {
       GPSEvent(startTime.plusSeconds(i), gps._1, gps._2)
     }
 
-    val allEvents = gpsAsEvents.toVector.sortBy(_.time)
+    val hrAsEvents = events.hr.zipWithIndex.map { case (hr, i) =>
+      HREvent(startTime.plusSeconds(i), hr)
+    }
+
+    val allEvents = (gpsAsEvents ++ hrAsEvents).toVector.sortBy(_.time)
 
     allEvents.foreach(_.encode(encoder))
 
