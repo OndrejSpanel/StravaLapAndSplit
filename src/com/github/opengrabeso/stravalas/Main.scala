@@ -224,8 +224,11 @@ object Main {
     "A file data to download"
   }
 
-  def downloadResult(id: String, op: String): Array[Byte] = {
-    val ret = "Testing download".getBytes
+  def downloadResult(authToken: String, id: String, op: String): Array[Byte] = {
+
+    val events = getEventsFrom(authToken, id)
+
+    val ret = s"Testing download ${events.id.name}".getBytes
     ret
   }
 
@@ -252,8 +255,9 @@ class Download extends HttpServlet {
 
     val id = req.getParameter("id")
     val op = req.getParameter("operation")
+    val authToken = req.getParameter("auth_token")
 
-    val ret = Main.downloadResult(id, op)
+    val ret = Main.downloadResult(authToken, id, op)
 
 
     resp.setContentType("application/octet-stream")
