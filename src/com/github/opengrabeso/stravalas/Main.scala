@@ -12,13 +12,9 @@ import com.google.api.client.json.jackson.JacksonFactory
 import org.joda.time.{DateTime, Period, Seconds}
 
 import scala.collection.JavaConverters._
-import DateTimeOps._
 import com.google.appengine.repackaged.org.codehaus.jackson.JsonNode
 import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.format.PeriodFormatterBuilder
-
-import com.garmin.fit
-import com.garmin.fit._
 
 object Main {
   private val transport = new NetHttpTransport()
@@ -81,7 +77,7 @@ object Main {
     firstname + " " + lastname
   }
 
-  case class ActivityId(id: Long, name: String) {
+  case class ActivityId(id: Long, name: String, startTime: DateTime) {
     def link: String = s"https://www.strava.com/activities/$id"
   }
 
@@ -89,8 +85,9 @@ object Main {
     def load(json: JsonNode): ActivityId = {
       val name = json.path("name").getTextValue
       val id = json.path("id").getLongValue
+      val time = DateTime.parse(json.path("start_date").getTextValue)
 
-      ActivityId(id, name)
+      ActivityId(id, name, time)
     }
   }
 
@@ -117,7 +114,7 @@ object Main {
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-    val actId = ActivityId(responseJson.path("id").getLongValue, responseJson.path("name").getTextValue)
+    val actId = ActivityId.load(responseJson)
     val startDateStr = responseJson.path("start_date").getTextValue
     val startTime = DateTime.parse(startDateStr)
 
@@ -238,8 +235,9 @@ object Main {
 
     val events = getEventsFrom(authToken, id)
 
-    val ret = s"Testing download ${events.id.name}".getBytes
-    ret
+    val export = FitExport.export(events)
+
+    export
   }
 
   def displaySeconds(duration: Int): String = {

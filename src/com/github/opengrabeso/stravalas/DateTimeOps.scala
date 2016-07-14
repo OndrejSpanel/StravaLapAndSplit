@@ -8,4 +8,7 @@ object DateTimeOps {
 
   }
 
+  implicit def zonedDateTimeOrdering: Ordering[DateTime] = new Ordering[DateTime] {
+    override def compare(x: DateTime, y: DateTime): Int = x.compareTo(y)
+  }
 }

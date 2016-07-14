@@ -14,6 +14,7 @@
           <element id="library" level="project" name="org.joda:joda-convert:1.8.1" />
           <element id="library" level="project" name="com.google.http-client:google-http-client-jackson:1.22.0" />
           <element id="library" level="project" name="AppEngine API" />
+          <element id="library" level="project" name="fit" />
         </element>
       </element>
     </root>
