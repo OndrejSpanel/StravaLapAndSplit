@@ -27,7 +27,7 @@
     </tr>
     <% for (Main.Event t : laps.events()) { %>
     <tr>
-      <td><%= t.kind()%>
+      <td><%= t.description()%>
       </td>
       <td><%= Main.displaySeconds(t.stamp().time()) %>
       </td>

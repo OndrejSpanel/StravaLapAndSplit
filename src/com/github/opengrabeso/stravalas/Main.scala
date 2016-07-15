@@ -101,7 +101,32 @@ object Main {
 
   case class Stamp(time: Int, dist: Double)
 
-  case class Event(kind: String, stamp: Stamp)
+  sealed abstract class Event {
+    def stamp: Stamp
+    def description: String
+  }
+  case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
+    def description: String = s"Pause $duration sec"
+  }
+  case class LapEvent(stamp: Stamp) extends Event {
+    def description: String = "Lap"
+  }
+
+  trait SegmentTitle {
+    def isPrivate: Boolean
+    def name: String
+    def title = {
+      val segTitle = if (isPrivate) "private segment" else "segment"
+      s"$segTitle $name"
+    }
+
+  }
+  case class StartSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
+    def description: String = s"Start $title"
+  }
+  case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
+    def description: String = s"End $title"
+  }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])])
 
@@ -184,27 +209,26 @@ object Main {
       lapsInSeconds.map(ActivityStreams.stampForTime)
     }
 
-    val segments = {
+    val segments: Iterable[Event] = {
       val segmentList = responseJson.path("segment_efforts").asScala
       segmentList.flatMap {seg =>
         val segStartTime = DateTime.parse(seg.path("start_date").getTextValue)
-        val segName = seg.path("name")
+        val segName = seg.path("name").getTextValue
         val segStart = Seconds.secondsBetween(startTime, segStartTime).getSeconds
         val segDuration = seg.path("elapsed_time").getIntValue
         val segPrivate = seg.path("segment").path("private").getBooleanValue
-        val title = if (segPrivate) "private segment" else "segment"
         Seq(
-          Event(s"Start $title $segName", ActivityStreams.stampForTime(segStart)),
-          Event(s"End $title $segName", ActivityStreams.stampForTime(segStart + segDuration))
+          StartSegEvent(segName, segPrivate, ActivityStreams.stampForTime(segStart)),
+          EndSegEvent(segName, segPrivate, ActivityStreams.stampForTime(segStart + segDuration))
         )
       }
     }
 
+    val stoppedDuration = 20
     val pauses = {
       import ActivityStreams._
 
       // compute speed from a distance stream
-      val stoppedDuration = 20
       val mySpeed = (dist zip dist.drop(stoppedDuration)).map(dd => dd._2 - dd._1)
 
       val stoppedTimes = (mySpeed.headOption, stamps.headOption) match {
@@ -225,7 +249,7 @@ object Main {
       stoppedTimes
     }
 
-    val events = laps.map(Event("Lap", _)) ++ pauses.map(Event("Pause", _)) ++ segments
+    val events = laps.map(LapEvent(_)) ++ pauses.map(PauseEvent(stoppedDuration, _)) ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
