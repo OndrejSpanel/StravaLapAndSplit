@@ -229,27 +229,51 @@ object Main {
       import ActivityStreams._
 
       // compute speed from a distance stream
-      val mySpeed = (dist zip dist.drop(stoppedDuration)).map(dd => dd._2 - dd._1)
-
-      val stoppedTimes = (mySpeed.headOption, stamps.headOption) match {
-        case (Some(_), Some(_)) =>
-          val minMovingSpeed = 0.2 // TODO: adaptive
-          val movingBySpeed = mySpeed.map(_ < minMovingSpeed*stoppedDuration)
-
-          def stopTimesFromMoving(moving: Seq[Boolean]) = {
-            val edges = moving zip moving.drop(1)
-            (edges zip stamps).filter(et => et._1._1 && !et._1._2).map(_._2)
+      val maxPauseSpeed = 0.2
+      def pauseDuration(path: Seq[Double]): Int = {
+        def pauseDurationRecurse(start: Double, duration: Int, path: Seq[Double]): Int = {
+          path match {
+            case head +: tail if head - start <= maxPauseSpeed * duration => pauseDurationRecurse(start, duration + 1, tail)
+            case _ => duration
           }
-
-          stopTimesFromMoving(movingBySpeed)
-        case _ =>
-          Seq()
+        }
+        pauseDurationRecurse(path.head, 0, path)
       }
 
-      stoppedTimes
+      def computePausesReversed(dist: Seq[Double], pauses: Seq[Int]): Seq[Int] = {
+        dist match {
+          case head +: tail =>
+            computePausesReversed(tail, pauseDuration(dist) +: pauses)
+          case _ => pauses
+        }
+      }
+
+      val pauses = computePausesReversed(dist, Seq()).reverse
+
+      // ignore following too close
+      def ignoreTooClose(pause: Int, pauses: Seq[Int], ret: Seq[Int]): Seq[Int] = {
+        pauses match {
+          case head +: tail =>
+            if (head < pause) ignoreTooClose(pause - 1, tail, 1 +: ret)
+            else ignoreTooClose(head, tail, head +: ret)
+          case _ => ret
+        }
+      }
+
+      val cleanedPauses = ignoreTooClose(0, pauses, Nil).reverse
+
+
+      val minPause = 10
+      val longPauses = (cleanedPauses.zipWithIndex zip stamps).filter { case ((p,i), stamp) =>
+        p > minPause
+      }.map {
+        case ((p,i), stamp) => (p, stamp)
+      }
+
+      longPauses
     }
 
-    val events = laps.map(LapEvent) ++ pauses.map(PauseEvent(stoppedDuration, _)) ++ segments
+    val events = laps.map(LapEvent) ++ pauses.map(PauseEvent.tupled) ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
