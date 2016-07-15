@@ -249,7 +249,7 @@ object Main {
       stoppedTimes
     }
 
-    val events = laps.map(LapEvent(_)) ++ pauses.map(PauseEvent(stoppedDuration, _)) ++ segments
+    val events = laps.map(LapEvent) ++ pauses.map(PauseEvent(stoppedDuration, _)) ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
