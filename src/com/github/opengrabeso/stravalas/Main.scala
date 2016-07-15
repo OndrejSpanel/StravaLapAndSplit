@@ -296,11 +296,6 @@ object Main {
     ActivityEvents(actId, eventsByTime.toArray, latlng, Seq(heartrate, cadence, watts, temp))
   }
 
-
-  def process(laps: ActivityEvents): String = {
-    "A file data to download"
-  }
-
   def downloadResult(authToken: String, id: String, op: String): Array[Byte] = {
 
     val events = getEventsFrom(authToken, id)
