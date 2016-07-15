@@ -202,28 +202,27 @@ object Main {
 
     val pauses = {
       import ActivityStreams._
-      val moving = getDataByName("moving", _.asBoolean).toStream
-      val stoppedTimes = (moving.headOption, stamps.headOption) match {
+
+      // compute speed from a distance stream
+      val stoppedDuration = 20
+      val mySpeed = (dist zip dist.drop(stoppedDuration)).map(dd => dd._2 - dd._1)
+
+      val stoppedTimes = (mySpeed.headOption, stamps.headOption) match {
         case (Some(_), Some(_)) =>
-          val edges = moving zip moving.drop(1)
-          (edges zip stamps).filter(et => et._1._1 && !et._1._2).map(_._2)
+          val minMovingSpeed = 0.2 // TODO: adaptive
+          val movingBySpeed = mySpeed.map(_ < minMovingSpeed*stoppedDuration)
+
+          def stopTimesFromMoving(moving: Seq[Boolean]) = {
+            val edges = moving zip moving.drop(1)
+            (edges zip stamps).filter(et => et._1._1 && !et._1._2).map(_._2)
+          }
+
+          stopTimesFromMoving(movingBySpeed)
         case _ =>
           Seq()
       }
 
-      // ignore following too close
-      def ignoreTooClose(prev: Int, times: Seq[Stamp], ret: Seq[Stamp]): Seq[Stamp] = {
-        times match {
-          case head +: tail =>
-            if (head.time < prev + 30) ignoreTooClose(head.time, tail, ret)
-            else ignoreTooClose(head.time, tail, head +: ret)
-          case _ => ret
-        }
-      }
-
-      val ignoredClose = ignoreTooClose(0, stoppedTimes, Nil).reverse
-
-      ignoredClose
+      stoppedTimes
     }
 
     val events = laps.map(Event("Lap", _)) ++ pauses.map(Event("Pause", _)) ++ segments
