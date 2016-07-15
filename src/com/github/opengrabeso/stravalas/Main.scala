@@ -101,12 +101,27 @@ object Main {
 
   case class Stamp(time: Int, dist: Double)
 
+  def niceDuration(duration: Int): String = {
+    def round(x: Int, div: Int) = (x + div / 2) / div * div
+    val minute = 60
+    if (duration < minute) {
+      s"${round(duration, 5)} sec"
+    } else {
+      val minutes = duration / minute
+      val seconds = duration - minutes * minute
+      if (duration < 5 * minute) {
+        f"$minutes:${round(seconds, 10)}%2d min"
+      } else {
+        s"$minutes"
+      }
+    }
+  }
   sealed abstract class Event {
     def stamp: Stamp
     def description: String
   }
   case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
-    def description: String = s"Pause $duration sec"
+    def description: String = s"Pause ${niceDuration(duration)}"
   }
   case class LapEvent(stamp: Stamp) extends Event {
     def description: String = "Lap"
