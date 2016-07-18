@@ -252,7 +252,16 @@ object Main {
   }
 
   def adjustEvents(events: ActivityEvents, eventsInput: Array[String]): ActivityEvents = {
-    events
+    val ee = events.events zip eventsInput
+
+    val lapsAndSplits: Array[Event] = ee.flatMap { case (e, ei) =>
+      (e, ei) match {
+        case (ev, "lap") => Some(LapEvent(ev.stamp))
+        case (ev, "split") => Some(LapEvent(ev.stamp)) // TODO: different split handling
+        case _ => None
+      }
+    }
+    events.copy(events = lapsAndSplits)
   }
 
   def downloadResult(authToken: String, id: String, eventsInput: Array[String]): Array[Byte] = {
