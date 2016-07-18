@@ -6,10 +6,10 @@
 
   <servlet>
     <servlet-class>com.github.opengrabeso.stravalas.Download</servlet-class>
-    <servlet-name>MainServlet</servlet-name>
+    <servlet-name>DownloadServlet</servlet-name>
   </servlet>
   <servlet-mapping>
-    <servlet-name>MainServlet</servlet-name>
-    <url-pattern>/download.fit</url-pattern>
+    <servlet-name>DownloadServlet</servlet-name>
+    <url-pattern>/download</url-pattern>
   </servlet-mapping>
 </web-app>

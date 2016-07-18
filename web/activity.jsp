@@ -19,7 +19,14 @@
 <a href="<%= laps.id().link()%>"><%= laps.id().name()%>
 </a>
 
-<form action="download.fit" method="post">
+<form action ="download" method="post">
+  <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
+  <input type="hidden" name="auth_token" value="<%= authToken%>"/>
+  <input type="hidden" name="operation" value="copy"/>
+  <input type="submit" value="Backup original activity"/>
+</form>
+
+<form action="download" method="post">
   <table border="1">
     <tr>
       <th>Event</th>
@@ -52,7 +59,7 @@
     <% } %>
   </table>
   <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
-  <input type="hidden" name="operation" value="copy"/>
+  <input type="hidden" name="operation" value="process"/>
   <input type="hidden" name="auth_token" value="<%= authToken%>"/>
   <input type="submit" value="Download result"/>
 </form>

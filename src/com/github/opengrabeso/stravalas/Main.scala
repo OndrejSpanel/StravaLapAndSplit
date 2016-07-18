@@ -283,16 +283,30 @@ class Download extends HttpServlet {
 
     val id = req.getParameter("id")
     val op = req.getParameter("operation")
-    val authToken = req.getParameter("auth_token")
 
-    val ret = Main.downloadResult(authToken, id, op)
+    op match {
+      case "process" =>
+        val authToken = req.getParameter("auth_token")
+
+        val events = req.getParameterValues("events")
+
+        val ret = Main.downloadResult(authToken, id, op)
 
 
-    resp.setContentType("application/octet-stream")
-    resp.setStatus(200)
-    resp.setHeader("Content-Disposition", s"attachment;filename=split_$id.fit")
+        resp.setContentType("application/octet-stream")
+        resp.setStatus(200)
+        resp.setHeader("Content-Disposition", s"attachment;filename=split_$id.fit")
 
-    val out = resp.getOutputStream
-    out.write(ret)
+        val out = resp.getOutputStream
+        out.write(ret)
+      case "copy" =>
+        val exportUri = s"https://www.strava.com/activities/$id/export_tcx"
+        /*
+        val dispatcher = req.getRequestDispatcher(exportUri)
+        dispatcher.forward(req, resp)
+        */
+        resp.sendRedirect(exportUri)
+
+    }
   }
 }
