@@ -34,7 +34,7 @@
     Planned (not working yet)
   </h4>
   <ul>
-    <li>Extended activity selectiom</li>
+    <li>Extended activity selection</li>
     <li>Activity type in the result</li>
     <li>Split activity</li>
     <li>Show average speed / temp, autodetect activity type</li>
