@@ -255,9 +255,12 @@ object Main {
     val ee = events.events zip eventsInput
 
     val lapsAndSplits: Array[Event] = ee.flatMap { case (e, ei) =>
-      (e, ei) match {
-        case (ev, "lap") => Some(LapEvent(ev.stamp))
-        case (ev, "split") => Some(LapEvent(ev.stamp)) // TODO: different split handling
+      ei match {
+        case "lap" => Some(LapEvent(e.stamp))
+        case "split" => Some(LapEvent(e.stamp)) // TODO: different split handling
+        case "splitSwim" => Some(LapEvent(e.stamp))
+        case "splitRun" => Some(LapEvent(e.stamp))
+        case "splitRide" => Some(LapEvent(e.stamp))
         case _ => None
       }
     }
