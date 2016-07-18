@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="com.github.opengrabeso.stravalas.*" %>
+<%@ page import="java.util.Objects" %>
 
 <html>
 <head>
@@ -24,8 +25,11 @@
       <th>Event</th>
       <th>Time</th>
       <th>Distance</th>
+      <th>Event</th>
     </tr>
-    <% for (Main.Event t : laps.events()) { %>
+    <% for (Main.Event t : laps.events()) {
+      String split = t.defaultEvent();
+    %>
     <tr>
       <td><%= t.description()%>
       </td>
@@ -33,7 +37,12 @@
       </td>
       <td><%= Main.displayDistance(t.stamp().dist()) %>
       </td>
-      <td><input type="checkbox" name="<%=t.id()%>" <%= t.defaultSplit() ? "checked" : ""%>/>
+      <td>
+        <select name="events">
+          <option value="lap" <%= split.equals("lap") ? "selected" : ""%> >Lap</option>
+          <option value="split" <%= split.equals("split") ? "selected" : ""%> >Split</option>
+          <option value="none" <%= split.equals("") ? "selected" : ""%> > -- </option>
+        </select>
       </td>
     </tr>
     <% } %>

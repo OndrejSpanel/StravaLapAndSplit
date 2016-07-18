@@ -121,15 +121,15 @@ object Main {
     def description: String
 
     def id: String = stamp.time.toString
-    def defaultSplit: Boolean
+    def defaultEvent: String
   }
   case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
     def description = s"Pause ${niceDuration(duration)}"
-    def defaultSplit = duration >= 30
+    def defaultEvent = if (duration >= 30) "split" else if (duration>=15) "lap" else ""
   }
   case class LapEvent(stamp: Stamp) extends Event {
     def description = "Lap"
-    def defaultSplit = false
+    def defaultEvent = "lap"
   }
 
   trait SegmentTitle {
@@ -144,11 +144,11 @@ object Main {
 
   case class StartSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
     def description: String = s"Start $title"
-    def defaultSplit = false
+    def defaultEvent = ""
   }
   case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
     def description: String = s"End $title"
-    def defaultSplit = false
+    def defaultEvent = ""
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])])
