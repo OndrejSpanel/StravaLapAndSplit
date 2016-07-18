@@ -101,7 +101,11 @@ object Main {
   }
 
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])])
+  case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+    def splits: Seq[ActivityEvents] = {
+      Seq(this)
+    }
+  }
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
 
@@ -276,15 +280,6 @@ object Main {
     events.copy(events = lapsAndSplits)
   }
 
-  def downloadResult(authToken: String, id: String, eventsInput: Array[String]): Array[Byte] = {
-
-    val events = getEventsFrom(authToken, id)
-
-    val export = FitExport.export(adjustEvents(events, eventsInput))
-
-    export
-  }
-
   def displaySeconds(duration: Int): String = {
     val myFormat =
       new PeriodFormatterBuilder()
@@ -313,16 +308,38 @@ class Download extends HttpServlet {
       case "process" =>
         val authToken = req.getParameter("auth_token")
 
-        val events = req.getParameterValues("events")
+        val eventsInput = req.getParameterValues("events")
 
-        val ret = Main.downloadResult(authToken, id, events)
+        val events = Main.getEventsFrom(authToken, id)
 
-        resp.setContentType("application/octet-stream")
-        resp.setStatus(200)
-        resp.setHeader("Content-Disposition", s"attachment;filename=split_$id.fit")
+        val adjusted = Main.adjustEvents(events, eventsInput)
 
-        val out = resp.getOutputStream
-        out.write(ret)
+        val splits = adjusted.splits
+
+        if (splits.lengthCompare(1) > 0) {
+
+          val export = FitExport.export(splits.head)
+          // TODO: multipart response
+          // https://javadigest.wordpress.com/2012/02/13/downloading-multiple-files-using-multipart-response/
+
+          resp.setContentType("application/octet-stream")
+          resp.setStatus(200)
+          resp.setHeader("Content-Disposition", s"attachment;filename=split_$id.fit")
+
+          val out = resp.getOutputStream
+          out.write(export)
+        } else {
+
+          val export = FitExport.export(adjusted)
+
+          resp.setContentType("application/octet-stream")
+          resp.setStatus(200)
+          resp.setHeader("Content-Disposition", s"attachment;filename=split_$id.fit")
+
+          val out = resp.getOutputStream
+          out.write(export)
+        }
+
       case "copy" =>
         val exportUri = s"https://www.strava.com/activities/$id/export_tcx"
         /*
