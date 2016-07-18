@@ -103,28 +103,27 @@ object Main {
   case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
     def splits: Seq[ActivityEvents] = {
 
-      val splitIndex = events.indexWhere(_.isSplit)
+      val splitEvents = SplitEvent(Stamp(0, 0)) +: events.filter(_.isSplit).toSeq
 
-      if (splitIndex >= 0) {
-        val (head, tail) = (events.take(splitIndex), events.drop(splitIndex+1))
+      val splitTimes = splitEvents.map(_.stamp.time) :+ gps.size
+      val splitRanges = splitEvents zip splitTimes.tail
 
-        if (head.nonEmpty) {
-          val spanTime = head.head.stamp.time
-          val (headGPS, tailGPS) = gps.splitAt(spanTime)
-          val tailTime = id.startTime.plusSeconds(spanTime)
+      splitRanges.map { case (beg, endTime) =>
+        val begTime = beg.stamp.time
 
-          val (headAttr, tailAttr) = attributes.map { case (name, attr) =>
-            val (h, t) = attr.splitAt(spanTime)
-            ((name, h), (name, t))
-          }.unzip
+        val eventsRange = events.dropWhile(_.stamp.time <= begTime).takeWhile(_.stamp.time < endTime)
+        val gpsRange = gps.slice(begTime, endTime)
 
-          val headAct = ActivityEvents(id, head, headGPS, headAttr)
-          val tailAct = ActivityEvents(id.copy(startTime = tailTime), tail, tailGPS, tailAttr)
+        val attrRange = attributes.map { case (name, attr) =>
+          (name, attr.slice(begTime, endTime))
+        }
 
-          // TODO: optimize: avoid Array for recursion
-          headAct +: tailAct.splits // TODO: consider tail recursion
-        } else tailAct.splits
-      } else Nil
+        val actTime = id.startTime.plusSeconds(begTime)
+
+        val act = ActivityEvents(id.copy(startTime = actTime), eventsRange, gpsRange, attrRange)
+
+        act
+      }
     }
   }
 
@@ -140,9 +139,10 @@ object Main {
     val startTime = DateTime.parse(startDateStr)
 
     object ActivityStreams {
-      private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
+      //private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
+      private val wantStreams = Seq("time", "latlng", "distance", "heartrate", "cadence", "watts", "temp")
 
-      private val streamTypes = allStreams.mkString(",")
+      private val streamTypes = wantStreams.mkString(",")
 
       private val uri = s"https://www.strava.com/api/v3/activities/$id/streams/$streamTypes"
       private val request = buildGetRequest(uri, authToken, "")
