@@ -251,11 +251,15 @@ object Main {
     ActivityEvents(actId, eventsByTime.toArray, latlng, Seq(heartrate, cadence, watts, temp))
   }
 
-  def downloadResult(authToken: String, id: String, op: String): Array[Byte] = {
+  def adjustEvents(events: ActivityEvents, eventsInput: Array[String]): ActivityEvents = {
+    events
+  }
+
+  def downloadResult(authToken: String, id: String, eventsInput: Array[String]): Array[Byte] = {
 
     val events = getEventsFrom(authToken, id)
 
-    val export = FitExport.export(events)
+    val export = FitExport.export(adjustEvents(events, eventsInput))
 
     export
   }
@@ -290,8 +294,7 @@ class Download extends HttpServlet {
 
         val events = req.getParameterValues("events")
 
-        val ret = Main.downloadResult(authToken, id, op)
-
+        val ret = Main.downloadResult(authToken, id, events)
 
         resp.setContentType("application/octet-stream")
         resp.setStatus(200)
