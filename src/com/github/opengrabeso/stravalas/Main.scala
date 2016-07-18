@@ -119,12 +119,17 @@ object Main {
   sealed abstract class Event {
     def stamp: Stamp
     def description: String
+
+    def id: String = stamp.time.toString
+    def defaultSplit: Boolean
   }
   case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
-    def description: String = s"Pause ${niceDuration(duration)}"
+    def description = s"Pause ${niceDuration(duration)}"
+    def defaultSplit = duration >= 30
   }
   case class LapEvent(stamp: Stamp) extends Event {
-    def description: String = "Lap"
+    def description = "Lap"
+    def defaultSplit = false
   }
 
   trait SegmentTitle {
@@ -136,11 +141,14 @@ object Main {
     }
 
   }
+
   case class StartSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
     def description: String = s"Start $title"
+    def defaultSplit = false
   }
   case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
     def description: String = s"End $title"
+    def defaultSplit = false
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])])

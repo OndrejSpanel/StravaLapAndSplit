@@ -33,6 +33,8 @@
       </td>
       <td><%= Main.displayDistance(t.stamp().dist()) %>
       </td>
+      <td><input type="checkbox" name="<%=t.id()%>" <%= t.defaultSplit() ? "checked" : ""%>/>
+      </td>
     </tr>
     <% } %>
   </table>
