@@ -110,9 +110,9 @@ object FitExport {
 
     val minDurationLap = 20
     val lapsAsEvents = events.events.flatMap {
-      case Main.LapEvent(time) =>
+      case LapEvent(time) =>
         Some(new LapEvent(startTime.plusSeconds(time.time)))
-      case Main.PauseEvent(duration, time) if duration >= minDurationLap =>
+      case PauseEvent(duration, time) if duration >= minDurationLap =>
         Some(new LapEvent(startTime.plusSeconds(time.time)))
       case _ =>
         None

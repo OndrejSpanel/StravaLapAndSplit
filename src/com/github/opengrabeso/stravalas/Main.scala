@@ -99,57 +99,6 @@ object Main {
     ActivityId.load(responseJson.get(0))
   }
 
-  case class Stamp(time: Int, dist: Double)
-
-  def niceDuration(duration: Int): String = {
-    def round(x: Int, div: Int) = (x + div / 2) / div * div
-    val minute = 60
-    if (duration < minute) {
-      s"${round(duration, 5)} sec"
-    } else {
-      val minutes = duration / minute
-      val seconds = duration - minutes * minute
-      if (duration < 5 * minute) {
-        f"$minutes:${round(seconds, 10)}%2d min"
-      } else {
-        s"$minutes"
-      }
-    }
-  }
-  sealed abstract class Event {
-    def stamp: Stamp
-    def description: String
-
-    def id: String = stamp.time.toString
-    def defaultEvent: String
-  }
-  case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
-    def description = s"Pause ${niceDuration(duration)}"
-    def defaultEvent = if (duration >= 30) "split" else if (duration>=15) "lap" else ""
-  }
-  case class LapEvent(stamp: Stamp) extends Event {
-    def description = "Lap"
-    def defaultEvent = "lap"
-  }
-
-  trait SegmentTitle {
-    def isPrivate: Boolean
-    def name: String
-    def title = {
-      val segTitle = if (isPrivate) "private segment" else "segment"
-      s"$segTitle $name"
-    }
-
-  }
-
-  case class StartSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
-    def description: String = s"Start $title"
-    def defaultEvent = ""
-  }
-  case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
-    def description: String = s"End $title"
-    def defaultEvent = ""
-  }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])])
 

@@ -27,8 +27,10 @@
       <th>Distance</th>
       <th>Event</th>
     </tr>
-    <% for (Main.Event t : laps.events()) {
-      String split = t.defaultEvent();
+    <%
+      EventKind[] types = Events.listTypes();
+      for (Event t : laps.events()) {
+        String split = t.defaultEvent();
     %>
     <tr>
       <td><%= t.description()%>
@@ -39,9 +41,11 @@
       </td>
       <td>
         <select name="events">
-          <option value="lap" <%= split.equals("lap") ? "selected" : ""%> >Lap</option>
-          <option value="split" <%= split.equals("split") ? "selected" : ""%> >Split</option>
-          <option value="none" <%= split.equals("") ? "selected" : ""%> > -- </option>
+          <%
+            for (EventKind et : types) { %>
+            <option value="<%= et.id()%>" <%= split.equals(et.id()) ? "selected" : ""%> > <%= et.display()%> </option>
+          <% } %>
+
         </select>
       </td>
     </tr>
