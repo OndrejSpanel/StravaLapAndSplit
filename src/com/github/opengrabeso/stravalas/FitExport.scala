@@ -28,6 +28,7 @@ object FitExport {
   }
 
 
+
   def export(events: ActivityEvents): Array[Byte] = {
     val encoder = createEncoder
 
@@ -100,6 +101,15 @@ object FitExport {
       }
     }
 
+    def closeActivity(timeEnd: JodaDateTime): Unit = {
+      val myMsg = new ActivityMesg()
+      myMsg.setTimestamp(toTimestamp(timeEnd))
+      myMsg.setNumSessions(1)
+      myMsg.setType(Activity.MANUAL)
+      myMsg.setEvent(Event.ACTIVITY)
+      myMsg.setEventType(EventType.STOP)
+      encoder.onMesg(myMsg)
+    }
 
 
     class LapEvent(val time: JodaDateTime) extends FitEvent {
@@ -120,6 +130,32 @@ object FitExport {
     LapAutoClose.closeLap(allEvents.head.time)
     allEvents.foreach(_.encode(encoder))
     LapAutoClose.closeLap(allEvents.last.time)
+
+    val timeBeg = events.id.startTime
+    val durationSec = events.gps.size
+    val timeEnd = events.id.startTime.plusSeconds(durationSec)
+
+    val (sport, subsport) = (Sport.CYCLING, SubSport.MOUNTAIN)
+
+    {
+      val myMsg = new SessionMesg()
+      myMsg.setStartTime(toTimestamp(timeBeg))
+      myMsg.setTimestamp(toTimestamp(timeEnd))
+      myMsg.setSport(sport)
+      myMsg.setSubSport(subsport)
+      myMsg.setTotalElapsedTime(durationSec.toFloat)
+      myMsg.setTotalTimerTime(durationSec.toFloat)
+      myMsg.setMessageIndex(0)
+      myMsg.setFirstLapIndex(0)
+      myMsg.setNumLaps(LapAutoClose.lapCounter + 1)
+
+      myMsg.setEvent(Event.SESSION)
+      myMsg.setEventType(EventType.STOP)
+
+      encoder.onMesg(myMsg)
+    }
+
+    closeActivity(timeEnd)
 
     encoder.close
   }
