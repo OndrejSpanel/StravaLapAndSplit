@@ -135,7 +135,12 @@ object FitExport {
     val durationSec = events.gps.size
     val timeEnd = events.id.startTime.plusSeconds(durationSec)
 
-    val (sport, subsport) = (Sport.CYCLING, SubSport.MOUNTAIN)
+    val (sport, subsport) = events.id.sportName.toLowerCase match {
+      case "run" => (Sport.RUNNING, SubSport.STREET)
+      case "ride" => (Sport.CYCLING, SubSport.ROAD)
+      case "swim" => (Sport.SWIMMING, SubSport.LAP_SWIMMING)
+      case _ => (Sport.GENERIC, SubSport.GENERIC)
+    }
 
     {
       val myMsg = new SessionMesg()
