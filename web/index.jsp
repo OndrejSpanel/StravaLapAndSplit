@@ -28,12 +28,13 @@
     It automatically detects places where you have stopped and allows you to create a split or lap there.
   </p>
   <h4>Working</h4>
-    Laps inserted on pauses longer than 20 seconds.
+    <li>Pauses listed, longer pauses automatically used as laps</li>
+    <li>User can select events where laps should be inserted</li>
   <h4>
     Planned (not working yet)
   </h4>
   <ul>
-    <li>User can select laps</li>
+    <li>Extended activity selectiom</li>
     <li>Activity type in the result</li>
     <li>Split activity</li>
     <li>Show average speed / temp, autodetect activity type</li>
