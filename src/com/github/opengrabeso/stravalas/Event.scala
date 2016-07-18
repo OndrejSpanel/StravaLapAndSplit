@@ -14,9 +14,12 @@ sealed abstract class Event {
 
 object Events {
   def listTypes: Array[EventKind] = Array(
+    EventKind("", "--"),
     EventKind("lap", "Lap"),
     EventKind("split", "Split"),
-    EventKind("", "--")
+    EventKind("splitSwim", "Split (Swim)"),
+    EventKind("splitRun", "Split (Run)"),
+    EventKind("splitRide", "Split (Ride)")
   )
 
   def niceDuration(duration: Int): String = {
