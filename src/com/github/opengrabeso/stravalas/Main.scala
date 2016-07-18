@@ -174,11 +174,10 @@ object Main {
         DateTime.parse(lapTimeStr)
       }).toSeq
 
-      // TODO: remove start and end time, cannot edit them in any way
 
       val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
 
-      lapsInSeconds.map(ActivityStreams.stampForTime)
+      lapsInSeconds.filter(_ > 0).map(ActivityStreams.stampForTime)
     }
 
     val segments: Iterable[Event] = {
