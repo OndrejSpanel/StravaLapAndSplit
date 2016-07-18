@@ -4,7 +4,7 @@ import com.garmin.fit._
 import Main.ActivityEvents
 import com.garmin.fit
 import DateTimeOps._
-import org.joda.time.{Duration, Seconds, DateTime => JodaDateTime}
+import org.joda.time.{Seconds, DateTime => JodaDateTime}
 
 object FitExport {
   type Encoder = MesgListener with MesgDefinitionListener
@@ -108,11 +108,8 @@ object FitExport {
       }
     }
 
-    val minDurationLap = 20
     val lapsAsEvents = events.events.flatMap {
       case LapEvent(time) =>
-        Some(new LapEvent(startTime.plusSeconds(time.time)))
-      case PauseEvent(duration, time) if duration >= minDurationLap =>
         Some(new LapEvent(startTime.plusSeconds(time.time)))
       case _ =>
         None
