@@ -239,7 +239,6 @@ object Main {
       }
     }
 
-    val stoppedDuration = 20
     val pauses = {
       import ActivityStreams._
 
