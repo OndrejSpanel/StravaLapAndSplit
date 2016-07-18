@@ -1,6 +1,8 @@
 package com.github.opengrabeso.stravalas
 
-case class Stamp(time: Int, dist: Double)
+case class Stamp(time: Int, dist: Double) {
+  def offset(t: Int, d: Double) = Stamp(time + t, dist + d)
+}
 
 case class EventKind(id: String, display: String)
 
@@ -42,7 +44,11 @@ object Events {
 
 case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
   def description = s"Pause ${Events.niceDuration(duration)}"
-  def defaultEvent = if (duration >= 30) "split" else if (duration>=15) "lap" else ""
+  def defaultEvent = if (duration >= 40) "split" else if (duration>=15) "lap" else ""
+}
+case class PauseEndEvent(duration: Int, stamp: Stamp) extends Event {
+  def description = s"Pause end"
+  def defaultEvent = if (duration >= 30) "lap" else ""
 }
 case class LapEvent(stamp: Stamp) extends Event {
   def description = "Lap"

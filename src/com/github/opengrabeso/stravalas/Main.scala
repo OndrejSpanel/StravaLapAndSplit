@@ -195,19 +195,20 @@ object Main {
       }
     }
 
-    val pauses = {
+    val pauseEvents = {
       import ActivityStreams._
 
       // compute speed from a distance stream
       val maxPauseSpeed = 0.2
+      val maxPauseSpeedImmediate = 0.7
       def pauseDuration(path: Seq[Double]): Int = {
-        def pauseDurationRecurse(start: Double, duration: Int, path: Seq[Double]): Int = {
+        def pauseDurationRecurse(start: Double, prev: Double, duration: Int, path: Seq[Double]): Int = {
           path match {
-            case head +: tail if head - start <= maxPauseSpeed * duration => pauseDurationRecurse(start, duration + 1, tail)
+            case head +: tail if head - start <= maxPauseSpeed * duration && head - prev <= maxPauseSpeedImmediate => pauseDurationRecurse(start, head, duration + 1, tail)
             case _ => duration
           }
         }
-        pauseDurationRecurse(path.head, 0, path)
+        pauseDurationRecurse(path.head, path.head, 0, path)
       }
 
       def computePausesReversed(dist: Seq[Double], pauses: Seq[Int]): Seq[Int] = {
@@ -240,10 +241,17 @@ object Main {
         case ((p,i), stamp) => (p, stamp)
       }
 
-      longPauses
+      longPauses.flatMap { case (p, stamp) =>
+        if (p > 30) {
+          // long pause - insert both start and end
+          Seq(PauseEvent(p, stamp), PauseEndEvent(p, stamp.offset(p, 0)))
+        }
+        else Seq(PauseEvent(p, stamp))
+
+      }
     }
 
-    val events = laps.map(LapEvent) ++ pauses.map(PauseEvent.tupled) ++ segments
+    val events = laps.map(LapEvent) ++ pauseEvents ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
