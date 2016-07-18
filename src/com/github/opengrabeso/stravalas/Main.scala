@@ -100,10 +100,31 @@ object Main {
     ActivityId.load(responseJson.get(0))
   }
 
-
   case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
     def splits: Seq[ActivityEvents] = {
-      Seq(this)
+
+      val splitIndex = events.indexWhere(_.isSplit)
+
+      if (splitIndex >= 0) {
+        val (head, tail) = (events.take(splitIndex), events.drop(splitIndex+1))
+
+        if (head.nonEmpty) {
+          val spanTime = head.head.stamp.time
+          val (headGPS, tailGPS) = gps.splitAt(spanTime)
+          val tailTime = id.startTime.plusSeconds(spanTime)
+
+          val (headAttr, tailAttr) = attributes.map { case (name, attr) =>
+            val (h, t) = attr.splitAt(spanTime)
+            ((name, h), (name, t))
+          }.unzip
+
+          val headAct = ActivityEvents(id, head, headGPS, headAttr)
+          val tailAct = ActivityEvents(id.copy(startTime = tailTime), tail, tailGPS, tailAttr)
+
+          // TODO: optimize: avoid Array for recursion
+          headAct +: tailAct.splits // TODO: consider tail recursion
+        } else tailAct.splits
+      } else Nil
     }
   }
 
@@ -270,7 +291,7 @@ object Main {
     val lapsAndSplits: Array[Event] = ee.flatMap { case (e, ei) =>
       ei match {
         case "lap" => Some(LapEvent(e.stamp))
-        case "split" => Some(LapEvent(e.stamp)) // TODO: different split handling
+        case "split" => Some(SplitEvent(e.stamp)) // TODO: different split handling
         case "splitSwim" => Some(LapEvent(e.stamp))
         case "splitRun" => Some(LapEvent(e.stamp))
         case "splitRide" => Some(LapEvent(e.stamp))

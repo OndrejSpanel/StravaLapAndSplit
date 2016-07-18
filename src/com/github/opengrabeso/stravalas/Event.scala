@@ -9,6 +9,7 @@ case class EventKind(id: String, display: String)
 sealed abstract class Event {
   def stamp: Stamp
   def description: String
+  def isSplit: Boolean
 
   def id: String = stamp.time.toString
   def defaultEvent: String
@@ -45,14 +46,23 @@ object Events {
 case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
   def description = s"Pause ${Events.niceDuration(duration)}"
   def defaultEvent = if (duration >= 40) "split" else if (duration>=15) "lap" else ""
+  def isSplit = false
 }
 case class PauseEndEvent(duration: Int, stamp: Stamp) extends Event {
   def description = s"Pause end"
   def defaultEvent = if (duration >= 30) "lap" else ""
+  def isSplit = false
 }
 case class LapEvent(stamp: Stamp) extends Event {
   def description = "Lap"
   def defaultEvent = "lap"
+  def isSplit = false
+}
+
+case class SplitEvent(stamp: Stamp) extends Event {
+  def description = "Split"
+  def defaultEvent = "split"
+  def isSplit = true
 }
 
 trait SegmentTitle {
@@ -68,8 +78,10 @@ trait SegmentTitle {
 case class StartSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
   def description: String = s"Start $title"
   def defaultEvent = ""
+  def isSplit = false
 }
 case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
   def description: String = s"End $title"
   def defaultEvent = ""
+  def isSplit = false
 }
