@@ -45,6 +45,17 @@
       cleanEvents();
       addEvents();
     }
+
+
+    /**
+     * @param {Element} item
+     * @param {String} newValue
+     * */
+    function changeEvent(item, newValue) {
+      var itemTime = item.id;
+      events.forEach(function(item, i) { if (item[1] == itemTime) events[i][0] = newValue; });
+      updateEvents();
+    }
   </script>
 </head>
 
@@ -83,7 +94,7 @@
           EventKind[] types = t.listTypes();
           if (types.length != 1) {
         %>
-        <select name="events">
+        <select id="<%=t.stamp().time()%>" name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
             <%
               for (EventKind et : types) {
             %> <option value="<%= et.id()%>"<%= split.equals(et.id()) ? "selected" : ""%>><%= et.display()%></option>
