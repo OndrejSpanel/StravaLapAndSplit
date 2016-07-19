@@ -1,5 +1,7 @@
 package com.github.opengrabeso.stravalas
 
+import java.util.Random
+
 import com.garmin.fit._
 import Main.ActivityEvents
 import com.garmin.fit
@@ -26,8 +28,6 @@ object FitExport {
     val dateTime = new DateTime(0, timestamp)
     dateTime
   }
-
-
 
   def export(events: ActivityEvents): Array[Byte] = {
     val encoder = createEncoder

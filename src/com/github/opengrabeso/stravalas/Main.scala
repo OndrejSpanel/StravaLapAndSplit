@@ -319,11 +319,33 @@ object Main {
 
 }
 
+object Download {
+  private def generateBoundary: String = {
+    val MULTIPART_CHARS = "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    val rand = scala.util.Random
+    val count = rand.nextInt(11) + 30
+    (0 until count).map(i => MULTIPART_CHARS(rand.nextInt(MULTIPART_CHARS.length)))(collection.breakOut)
+  }
+}
+
 class Download extends HttpServlet {
+  import Download._
+
   override def doPost(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
 
     val id = req.getParameter("id")
     val op = req.getParameter("operation")
+
+    val contentType = "application/octet-stream"
+
+    def download(export: Array[Byte], filename: String): Unit = {
+      resp.setContentType(contentType)
+      resp.setStatus(200)
+      resp.setHeader("Content-Disposition", filename)
+
+      val out = resp.getOutputStream
+      out.write(export)
+    }
 
     op match {
       case "process" =>
@@ -339,26 +361,39 @@ class Download extends HttpServlet {
 
         if (splits.lengthCompare(1) > 0) {
 
-          val export = FitExport.export(splits.head)
           // TODO: multipart response
           // https://javadigest.wordpress.com/2012/02/13/downloading-multiple-files-using-multipart-response/
 
-          resp.setContentType("application/octet-stream")
+          val boundary = generateBoundary
+          resp.setContentType(s"multipart/x-mixed-replace;boundary=$boundary")
           resp.setStatus(200)
-          resp.setHeader("Content-Disposition", s"attachment;filename=split_$id.fit")
 
           val out = resp.getOutputStream
-          out.write(export)
+
+          def printBoundary(): Unit = {
+            out.println("--" + boundary)
+          }
+
+          printBoundary()
+          for ((split,i) <- splits.zipWithIndex) {
+            out.println(s"Content-type: $contentType")
+            out.println(s"Content-Disposition: attachment; filename=split_${id}_${i+1}.fit")
+            out.println()
+
+            val export = FitExport.export(split)
+            out.write(export)
+
+            printBoundary()
+          }
+
+          out.print("--" + boundary + "--")
+
         } else {
 
           val export = FitExport.export(adjusted)
 
-          resp.setContentType("application/octet-stream")
-          resp.setStatus(200)
-          resp.setHeader("Content-Disposition", s"attachment;filename=split_$id.fit")
+          download(export, s"attachment;filename=split_$id.fit")
 
-          val out = resp.getOutputStream
-          out.write(export)
         }
 
       case "copy" =>
