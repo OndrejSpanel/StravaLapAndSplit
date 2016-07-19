@@ -13,9 +13,31 @@
   <title>Strava Split And Lap</title>
 
   <script type="text/javascript">
+    var id = "<%= actId %>";
+    var authToken = "<%= authToken %>";
     var events = [
       <%for (Event t : laps.events()) {%> ["<%= t.defaultEvent() %>", <%=t.id() %>], <% } %>
     ];
+
+    /**
+     * @param {Number} id
+     * @param {Number} i
+     * @return {String}
+     */
+    function splitLink(id, i) {
+      var splitWithEvents =
+              '  <input type="hidden" name="id" value="' + id + '"/>' +
+              '  <input type="hidden" name="auth_token" value="' + authToken + '"/>' +
+              '  <input type="hidden" name="operation" value="split"/>' +
+              '  <input type="hidden" name="time" value="' + i + '"/>' +
+              '  <input type="submit" value="Download activity at ' + i + '"/>';
+      events.forEach( function(e, i) {
+        splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
+      });
+
+      return '<form action="download" method="post">' + splitWithEvents + '</form>';
+
+    }
 
     function addEvents() {
       var tgt = document.getElementById("output");
@@ -24,9 +46,8 @@
         if (e[0] == "split") {
           var tr = document.createElement('tr');
           var td = document.createElement('td');
-          var text1 = document.createTextNode(e);
+          td.innerHTML = splitLink(id, e[1]);
           tr.appendChild(td);
-          td.appendChild(text1);
           tgt.appendChild(tr);
         }
       });
