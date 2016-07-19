@@ -129,11 +129,12 @@ object FitExport {
 
     LapAutoClose.closeLap(allEvents.head.time)
     allEvents.foreach(_.encode(encoder))
-    LapAutoClose.closeLap(allEvents.last.time)
 
     val timeBeg = events.id.startTime
     val durationSec = events.gps.size
     val timeEnd = events.id.startTime.plusSeconds(durationSec)
+
+    LapAutoClose.closeLap(timeEnd)
 
     val (sport, subsport) = events.id.sportName.toLowerCase match {
       case "run" => (Sport.RUNNING, SubSport.STREET)

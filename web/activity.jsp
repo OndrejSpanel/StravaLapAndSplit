@@ -51,14 +51,15 @@
           EventKind[] types = t.listTypes();
           if (types.length != 1) {
         %>
-        <select name="events">
-          <%
-            for (EventKind et : types) { %>
-            <option value="<%= et.id()%>" <%= split.equals(et.id()) ? "selected" : ""%> > <%= et.display()%> </option>
-          <% } %>
-        </select>
+          <select name="events">
+            <%
+              for (EventKind et : types) { %>
+              <option value="<%= et.id()%>" <%= split.equals(et.id()) ? "selected" : ""%> > <%= et.display()%> </option>
+            <% } %>
+          </select>
         <% } else { %>
           <%= Events.typeToDisplay(types, types[0].id())%>
+          <input type="hidden" name = "events" value = "<%= t.defaultEvent() %>"/>
         <% } %>
       </td>
       <td>

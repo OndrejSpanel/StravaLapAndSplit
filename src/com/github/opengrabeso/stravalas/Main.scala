@@ -296,10 +296,12 @@ object Main {
     val lapsAndSplits: Array[Event] = ee.flatMap { case (e, ei) =>
       ei match {
         case "lap" => Some(LapEvent(e.stamp))
-        case "split" => Some(SplitEvent(e.stamp)) // TODO: different split handling
-        case "splitSwim" => Some(LapEvent(e.stamp))
-        case "splitRun" => Some(LapEvent(e.stamp))
-        case "splitRide" => Some(LapEvent(e.stamp))
+
+        case "split" => Some(SplitEvent(e.stamp))
+        case "end" => Some(EndEvent(e.stamp))
+        case "splitSwim" => Some(SplitEvent(e.stamp))
+        case "splitRun" => Some(SplitEvent(e.stamp))
+        case "splitRide" => Some(SplitEvent(e.stamp))
         case _ => None
       }
     }
@@ -354,7 +356,7 @@ class Download extends HttpServlet {
 
         val splits = adjusted.splits
 
-        val toSave = splits.filter(_.events.head.stamp.time == splitTime)
+        val toSave = splits.filter(_.id.startTime == events.id.startTime.plusSeconds(splitTime))
 
         toSave.headOption.foreach{ save =>
 

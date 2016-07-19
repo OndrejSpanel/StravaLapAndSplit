@@ -68,7 +68,7 @@ case class LapEvent(stamp: Stamp) extends Event {
 
 case class EndEvent(stamp: Stamp) extends Event {
   def description = "End"
-  def defaultEvent = ""
+  def defaultEvent = "end"
   def isSplit = true
 
   override def listTypes: Array[EventKind] = Array(
