@@ -31,41 +31,30 @@
               '  <input type="hidden" name="operation" value="split"/>' +
               '  <input type="hidden" name="time" value="' + time + '"/>' +
               '  <input type="submit" value="Download activity at ' + time + '"/>';
-      events.forEach( function(e) {
-        splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
-      });
 
       return '<form action="download" method="post">' + splitWithEvents + '</form>';
 
     }
 
-    function addEvents() {
-      var tgt = document.getElementById("output");
+    function initEvents() {
       events.forEach(function(e){
         if (e[0] == "split") {
-          var tr = document.createElement('tr');
-          var td = document.createElement('td');
-          td.innerHTML = splitLink(id, e[1]);
-          tr.appendChild(td);
-          tgt.appendChild(tr);
+          addEvent(e[1]);
         }
       });
     }
 
-    function cleanEvents() {
-      var tgt = document.getElementById("output");
-      var chs = Array.prototype.slice.call(tgt.childNodes);
-      chs.forEach(function(ch) {
-        if (ch.firstChild!=null && ch.firstChild.nodeName=="TD") {
-          tgt.removeChild(ch);
-        }
-      });
-    }
-    function updateEvents() {
-      cleanEvents();
-      addEvents();
+    /** @param {String} time */
+    function addEvent(time) {
+      var tableLink = document.getElementById("link" + time);
+      tableLink.innerHTML = splitLink(id, time);
     }
 
+    /** @param {String} time */
+    function removeEvent(time) {
+      var tableLink = document.getElementById("link" + time);
+      tableLink.innerHTML = "";
+    }
 
     /**
      * @param {Element} item
@@ -74,16 +63,18 @@
     function changeEvent(item, newValue) {
       var itemTime = item.id;
       events.forEach(function(item, i) { if (item[1] == itemTime) events[i][0] = newValue; });
-      updateEvents();
+      if (newValue=="split") {
+        addEvent(itemTime);
+      } else {
+        removeEvent(itemTime);
+      }
+      initEvents();
     }
   </script>
 </head>
 
 <body>
 
-
-<a href="<%= laps.id().link()%>"><%= laps.id().name()%>
-</a>
 
 <form action ="download" method="post">
   <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
@@ -129,18 +120,12 @@
     </tr>
     <% } %>
   </table>
-  <table id="output" border="1">
-    <tr>
-      <th>Link</th>
-    </tr>
-  </table>
   <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
   <input type="hidden" name="operation" value="process"/>
   <input type="hidden" name="auth_token" value="<%= authToken%>"/>
   <input type="submit" value="Download result"/>
 
-  <script type="text/javascript">updateEvents()</script>
-  <script type="text/javascript">updateEvents()</script>
+  <script type="text/javascript">initEvents()</script>
 </form>
 
 </body>
