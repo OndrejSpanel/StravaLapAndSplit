@@ -123,12 +123,6 @@
     </tr>
     <% } %>
   </table>
-  <form action="download" method="post">
-  <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
-  <input type="hidden" name="operation" value="process"/>
-  <input type="hidden" name="auth_token" value="<%= authToken%>"/>
-  <input type="submit" value="Download result"/>
-  </form>
 
   <script type="text/javascript">initEvents()</script>
 
