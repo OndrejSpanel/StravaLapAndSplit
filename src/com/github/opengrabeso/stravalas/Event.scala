@@ -14,6 +14,8 @@ sealed abstract class Event {
   def id: String = stamp.time.toString
   def defaultEvent: String
 
+  def link(id: Long, authToken: String): String = ""
+
   def listTypes: Array[EventKind] = Array(
     EventKind("", "--"),
     EventKind("lap", "Lap"),
@@ -25,6 +27,10 @@ sealed abstract class Event {
 }
 
 object Events {
+
+  def typeToDisplay(listTypes: Array[EventKind], name: String): String = {
+    listTypes.find(_.id == name).map(_.display).getOrElse("")
+  }
 
   def niceDuration(duration: Int): String = {
     def round(x: Int, div: Int) = (x + div / 2) / div * div
@@ -71,7 +77,15 @@ case class EndEvent(stamp: Stamp) extends Event {
 }
 
 case class SplitEvent(stamp: Stamp) extends Event {
-  def description = "Split"
+  override def link(id: Long, authToken: String): String = s"""
+    |<form action="download" method="post">
+    |  <input type="hidden" name="id" value="$id"/>
+    |  <input type="hidden" name="auth_token" value="$authToken"/>
+    |  <input type="hidden" name="operation" value="split"/>
+    |  <input type="hidden" name="time" value="${stamp.time}"/>
+    |  <input type="submit" value="Save activity"/>
+    |</form>""".stripMargin
+  def description = "<b>*** Start activity</b>"
   def defaultEvent = "split"
   def isSplit = true
 }

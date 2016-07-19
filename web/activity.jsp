@@ -33,6 +33,7 @@
       <th>Time</th>
       <th>Distance</th>
       <th>Event</th>
+      <th>Link</th>
     </tr>
     <%
       for (Event t : laps.events()) {
@@ -46,14 +47,22 @@
       <td><%= Main.displayDistance(t.stamp().dist()) %>
       </td>
       <td>
+        <%
+          EventKind[] types = t.listTypes();
+          if (types.length != 1) {
+        %>
         <select name="events">
           <%
-            EventKind[] types = t.listTypes();
             for (EventKind et : types) { %>
             <option value="<%= et.id()%>" <%= split.equals(et.id()) ? "selected" : ""%> > <%= et.display()%> </option>
           <% } %>
-
         </select>
+        <% } else { %>
+          <%= Events.typeToDisplay(types, types[0].id())%>
+        <% } %>
+      </td>
+      <td>
+        <%= t.link(laps.id().id(), authToken) %>
       </td>
     </tr>
     <% } %>

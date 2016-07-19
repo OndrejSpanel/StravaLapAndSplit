@@ -106,6 +106,7 @@ object Main {
       val splitEvents = events.filter(_.isSplit).toSeq
 
       val splitTimes = splitEvents.map(_.stamp.time)
+
       assert(splitTimes.contains(0))
       assert(splitTimes.contains(gps.size))
 
@@ -323,22 +324,13 @@ object Main {
 
 }
 
-object Download {
-  private def generateBoundary: String = {
-    val MULTIPART_CHARS = "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    val rand = scala.util.Random
-    val count = rand.nextInt(11) + 30
-    (0 until count).map(i => MULTIPART_CHARS(rand.nextInt(MULTIPART_CHARS.length)))(collection.breakOut)
-  }
-}
-
 class Download extends HttpServlet {
-  import Download._
 
   override def doPost(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
 
     val id = req.getParameter("id")
     val op = req.getParameter("operation")
+    val authToken = req.getParameter("auth_token")
 
     val contentType = "application/octet-stream"
 
@@ -352,10 +344,9 @@ class Download extends HttpServlet {
     }
 
     op match {
-      case "process" =>
-        val authToken = req.getParameter("auth_token")
-
+      case "split" =>
         val eventsInput = req.getParameterValues("events")
+        val splitTime = req.getParameter("time").toInt
 
         val events = Main.getEventsFrom(authToken, id)
 
@@ -363,42 +354,26 @@ class Download extends HttpServlet {
 
         val splits = adjusted.splits
 
-        if (splits.lengthCompare(1) > 0) {
+        val toSave = splits.filter(_.events.head.stamp.time == splitTime)
 
-          // TODO: multipart response
-          // https://javadigest.wordpress.com/2012/02/13/downloading-multiple-files-using-multipart-response/
+        toSave.headOption.foreach{ save =>
 
-          val boundary = generateBoundary
-          resp.setContentType(s"multipart/x-mixed-replace;boundary=$boundary")
-          resp.setStatus(200)
+          val export = FitExport.export(save)
 
-          val out = resp.getOutputStream
-
-          def printBoundary(): Unit = {
-            out.println("--" + boundary)
-          }
-
-          printBoundary()
-          for ((split,i) <- splits.zipWithIndex) {
-            out.println(s"Content-type: $contentType")
-            out.println(s"Content-Disposition: attachment; filename=split_${id}_${i+1}.fit")
-            out.println()
-
-            val export = FitExport.export(split)
-            out.write(export)
-
-            printBoundary()
-          }
-
-          out.print("--" + boundary + "--")
-
-        } else {
-
-          val export = FitExport.export(adjusted)
-
-          download(export, s"attachment;filename=split_$id.fit")
-
+          download(export, s"attachment;filename=split_${id}_$splitTime.fit")
         }
+
+      case "process" =>
+
+        val eventsInput = req.getParameterValues("events")
+
+        val events = Main.getEventsFrom(authToken, id)
+
+        val adjusted = Main.adjustEvents(events, eventsInput)
+
+        val export = FitExport.export(adjusted)
+
+        download(export, s"attachment;filename=split_$id.fit")
 
       case "copy" =>
         val exportUri = s"https://www.strava.com/activities/$id/export_tcx"
