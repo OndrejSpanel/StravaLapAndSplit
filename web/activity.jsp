@@ -14,18 +14,22 @@
 
   <script type="text/javascript">
     var events = [
-      <%for (Event t : laps.events()) {%> "<%= t.defaultEvent() %>", <% } %>
+      <%for (Event t : laps.events()) {%> ["<%= t.defaultEvent() %>", <%=t.id() %>], <% } %>
     ];
 
     function addEvents() {
       var tgt = document.getElementById("output");
-      var tr = document.createElement('tr');
-      var td = document.createElement('td');
-      var text1 = document.createTextNode('Text1');
       // TODO: remove any existing tr
-      tr.appendChild(td);
-      td.appendChild(text1);
-      tgt.appendChild(tr);
+      events.forEach(function(e){
+        if (e[0] == "split") {
+          var tr = document.createElement('tr');
+          var td = document.createElement('td');
+          var text1 = document.createTextNode(e);
+          tr.appendChild(td);
+          td.appendChild(text1);
+          tgt.appendChild(tr);
+        }
+      });
     }
 
     function cleanEvents() {
