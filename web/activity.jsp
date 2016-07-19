@@ -2,18 +2,50 @@
 <%@ page import="com.github.opengrabeso.stravalas.*" %>
 
 <html>
-<head>
-  <title>Strava Split And Lap</title>
-</head>
-
-<body>
 
 <%
   String authToken = (String) session.getAttribute("authToken");
   String actId = request.getParameter("activityId");
   Main.ActivityEvents laps = Main.getEventsFrom(authToken, actId);
-
 %>
+
+<head>
+  <title>Strava Split And Lap</title>
+
+  <script type="text/javascript">
+    var events = [
+      <%for (Event t : laps.events()) {%> "<%= t.defaultEvent() %>", <% } %>
+    ];
+
+    function addEvents() {
+      var tgt = document.getElementById("output");
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      var text1 = document.createTextNode('Text1');
+      // TODO: remove any existing tr
+      tr.appendChild(td);
+      td.appendChild(text1);
+      tgt.appendChild(tr);
+    }
+
+    function cleanEvents() {
+      var tgt = document.getElementById("output");
+      var chs = Array.prototype.slice.call(tgt.childNodes);
+      chs.forEach(function(ch) {
+        if (ch.firstChild!=null && ch.firstChild.nodeName=="TD") {
+          tgt.removeChild(ch);
+        }
+      });
+    }
+    function updateEvents() {
+      cleanEvents();
+      addEvents();
+    }
+  </script>
+</head>
+
+<body>
+
 
 <a href="<%= laps.id().link()%>"><%= laps.id().name()%>
 </a>
@@ -66,16 +98,14 @@
     <tr>
       <th>Link</th>
     </tr>
-    <script type="text/javascript">
-      var events = [
-      <%for (Event t : laps.events()) {%> "<%= t.defaultEvent() %>", <% } %>
-      ]
-    </script>
   </table>
   <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
   <input type="hidden" name="operation" value="process"/>
   <input type="hidden" name="auth_token" value="<%= authToken%>"/>
   <input type="submit" value="Download result"/>
+
+  <script type="text/javascript">updateEvents()</script>
+  <script type="text/javascript">updateEvents()</script>
 </form>
 
 </body>
