@@ -35,7 +35,6 @@
       <th>Event</th>
     </tr>
     <%
-      EventKind[] types = Events.listTypes();
       for (Event t : laps.events()) {
         String split = t.defaultEvent();
     %>
@@ -49,6 +48,7 @@
       <td>
         <select name="events">
           <%
+            EventKind[] types = t.listTypes();
             for (EventKind et : types) { %>
             <option value="<%= et.id()%>" <%= split.equals(et.id()) ? "selected" : ""%> > <%= et.display()%> </option>
           <% } %>

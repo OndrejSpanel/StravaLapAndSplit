@@ -103,9 +103,12 @@ object Main {
   case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
     def splits: Seq[ActivityEvents] = {
 
-      val splitEvents = SplitEvent(Stamp(0, 0)) +: events.filter(_.isSplit).toSeq
+      val splitEvents = events.filter(_.isSplit).toSeq
 
-      val splitTimes = splitEvents.map(_.stamp.time) :+ gps.size
+      val splitTimes = splitEvents.map(_.stamp.time)
+      assert(splitTimes.contains(0))
+      assert(splitTimes.contains(gps.size))
+
       val splitRanges = splitEvents zip splitTimes.tail
 
       splitRanges.map { case (beg, endTime) =>
@@ -277,11 +280,12 @@ object Main {
       }
     }
 
-    val events = laps.map(LapEvent) ++ pauseEvents ++ segments
+    import ActivityStreams._
+    // TODO: provide activity type with the split
+    val events = (SplitEvent(Stamp(0,0)) +: EndEvent(Stamp(dist.size, dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
-    import ActivityStreams._
     ActivityEvents(actId, eventsByTime.toArray, latlng, Seq(heartrate, cadence, watts, temp))
   }
 

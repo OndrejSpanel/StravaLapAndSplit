@@ -13,9 +13,7 @@ sealed abstract class Event {
 
   def id: String = stamp.time.toString
   def defaultEvent: String
-}
 
-object Events {
   def listTypes: Array[EventKind] = Array(
     EventKind("", "--"),
     EventKind("lap", "Lap"),
@@ -24,6 +22,9 @@ object Events {
     EventKind("splitRun", "Split (Run)"),
     EventKind("splitRide", "Split (Ride)")
   )
+}
+
+object Events {
 
   def niceDuration(duration: Int): String = {
     def round(x: Int, div: Int) = (x + div / 2) / div * div
@@ -57,6 +58,16 @@ case class LapEvent(stamp: Stamp) extends Event {
   def description = "Lap"
   def defaultEvent = "lap"
   def isSplit = false
+}
+
+case class EndEvent(stamp: Stamp) extends Event {
+  def description = "End"
+  def defaultEvent = ""
+  def isSplit = true
+
+  override def listTypes: Array[EventKind] = Array(
+    EventKind("", "--")
+  )
 }
 
 case class SplitEvent(stamp: Stamp) extends Event {
