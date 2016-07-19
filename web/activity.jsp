@@ -1,6 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="com.github.opengrabeso.stravalas.*" %>
-<%@ page import="java.util.Objects" %>
 
 <html>
 <head>
@@ -42,31 +41,36 @@
     <tr>
       <td><%= t.description()%>
       </td>
-      <td><%= Main.displaySeconds(t.stamp().time()) %>
-      </td>
-      <td><%= Main.displayDistance(t.stamp().dist()) %>
-      </td>
-      <td>
-        <%
+      <td><%= Main.displaySeconds(t.stamp().time()) %></td>
+      <td><%= Main.displayDistance(t.stamp().dist()) %></td>
+      <td> <%
           EventKind[] types = t.listTypes();
           if (types.length != 1) {
         %>
-          <select name="events">
+        <select name="events">
             <%
-              for (EventKind et : types) { %>
-              <option value="<%= et.id()%>" <%= split.equals(et.id()) ? "selected" : ""%> > <%= et.display()%> </option>
-            <% } %>
-          </select>
+              for (EventKind et : types) {
+            %> <option value="<%= et.id()%>"<%= split.equals(et.id()) ? "selected" : ""%>><%= et.display()%></option>
+            <% }
+          %></select>
         <% } else { %>
           <%= Events.typeToDisplay(types, types[0].id())%>
-          <input type="hidden" name = "events" value = "<%= t.defaultEvent() %>"/>
-        <% } %>
+          <input type="hidden" name = "events" value = "<%= t.defaultEvent() %>"/> <%
+        } %>
       </td>
-      <td>
-        <%= t.link(laps.id().id(), authToken) %>
-      </td>
+      <td></td>
     </tr>
     <% } %>
+  </table>
+  <table id="output" border="1">
+    <tr>
+      <th>Link</th>
+    </tr>
+    <script type="text/javascript">
+      var events = [
+      <%for (Event t : laps.events()) {%> "<%= t.defaultEvent() %>", <% } %>
+      ]
+    </script>
   </table>
   <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
   <input type="hidden" name="operation" value="process"/>
