@@ -20,18 +20,18 @@
     ];
 
     /**
-     * @param {Number} id
-     * @param {Number} i
+     * @param {String} id
+     * @param {String} time
      * @return {String}
      */
-    function splitLink(id, i) {
+    function splitLink(id, time) {
       var splitWithEvents =
               '  <input type="hidden" name="id" value="' + id + '"/>' +
               '  <input type="hidden" name="auth_token" value="' + authToken + '"/>' +
               '  <input type="hidden" name="operation" value="split"/>' +
-              '  <input type="hidden" name="time" value="' + i + '"/>' +
-              '  <input type="submit" value="Download activity at ' + i + '"/>';
-      events.forEach( function(e, i) {
+              '  <input type="hidden" name="time" value="' + time + '"/>' +
+              '  <input type="submit" value="Download activity at ' + time + '"/>';
+      events.forEach( function(e) {
         splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
       });
 
@@ -41,7 +41,6 @@
 
     function addEvents() {
       var tgt = document.getElementById("output");
-      // TODO: remove any existing tr
       events.forEach(function(e){
         if (e[0] == "split") {
           var tr = document.createElement('tr');
@@ -126,7 +125,7 @@
           <input type="hidden" name = "events" value = "<%= t.defaultEvent() %>"/> <%
         } %>
       </td>
-      <td></td>
+      <td id="link<%=t.stamp().time()%>"></td>
     </tr>
     <% } %>
   </table>
