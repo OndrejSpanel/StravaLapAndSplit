@@ -29,7 +29,7 @@
   </p>
   <h4>Working</h4>
   <ul>
-    <li>Pauses listed and used as laps, longer pauses used as splits</li>
+    <li>Pauses listed, suggest laps and splits</li>
     <li>User can select events where laps should be inserted</li>
     <li>User can split activity and download individual parts</li>
   </ul>
@@ -39,7 +39,6 @@
   <ul>
     <li>User can change activity type (Run / Ride / Swim)</li>
     <li>Show average speed / temp, autodetect activity type</li>
-    <li>Extended activity selection</li>
     <li>Delete old activity and upload the new version</li>
   </ul>
   <h4>Considering to add later</h4>
