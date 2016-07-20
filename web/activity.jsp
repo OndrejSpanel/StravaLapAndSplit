@@ -29,7 +29,7 @@
     var id = "<%= actId %>";
     var authToken = "<%= authToken %>";
     var events = [
-      <%for (Event t : laps.events()) {%> ["<%= t.defaultEvent() %>", <%=t.id() %>], <% } %>
+      <%for (EditableEvent t : laps.editableEvents()) {%> [<%= t %>], <% } %>
     ];
 
     /**
@@ -49,22 +49,22 @@
         splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
       });
 
-      return '<form action="download" method="post">' + splitWithEvents + '</form>';
+      var download = '<form action="download" method="post">' + splitWithEvents + '</form>';
+      return download + "";
 
     }
 
     function initEvents() {
       events.forEach(function(e){
-        if (e[0] == "split") {
-          addEvent(e[1]);
+        if (e.action == "split") {
+          addEvent(e);
         }
       });
     }
 
-    /** @param {String} time */
-    function addEvent(time) {
-      var tableLink = document.getElementById("link" + time);
-      tableLink.innerHTML = splitLink(id, time);
+    function addEvent(e) {
+      var tableLink = document.getElementById("link" + e.time);
+      tableLink.innerHTML = splitLink(id, e.time);
     }
 
     /** @param {String} time */

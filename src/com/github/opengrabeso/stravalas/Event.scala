@@ -109,3 +109,16 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends E
   def defaultEvent = ""
   def isSplit = false
 }
+
+
+case class EditableEvent(var action: String, time: Int, km: Double, duration: Int, distance: Double) {
+  override def toString: String = {
+    s"""["$action", $time, $km, $duration, $distance]"""
+  }
+}
+
+object EditableEvent {
+  def diff(e1: Event, e2: Event) = {
+    EditableEvent(e1.defaultEvent, e1.stamp.time, e1.stamp.dist, e2.stamp.time - e1.stamp.time, e2.stamp.dist - e1.stamp.dist)
+  }
+}

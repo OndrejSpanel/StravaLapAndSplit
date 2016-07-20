@@ -105,6 +105,12 @@ object Main {
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+    def editableEvents: Array[EditableEvent] = {
+      (events zip events.drop(1)).map { case (e1, e2) =>
+        EditableEvent.diff(e1, e2)
+      }(collection.breakOut)
+    }
+
     def split(splitTime: Int): Option[ActivityEvents] = {
 
       val splitEvents = events.filter(_.isSplit).toSeq
