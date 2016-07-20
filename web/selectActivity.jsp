@@ -15,14 +15,18 @@
   String code = request.getParameter("code");
   String authToken = Main.stravaAuth(code);
   session.setAttribute("authToken", authToken);
-  Main.ActivityId activity = Main.lastActivity(authToken);
+  Main.ActivityId[] activities = Main.lastActivities(authToken);
 %>
 <form action="activity.jsp" method="get">
   <p>Athlete: <b><%= Main.athlete(authToken)%></b></p>
-  <p>Last activity: <%=activity.id()%> <a href="<%=(activity.link())%>"><%=activity.name()%></a></p>
-  <p>Activity ID: <input type="text" name="activityId" value="<%=activity.id()%>"/>
+  <% for (Main.ActivityId act: activities ) {%>
+  <p> <%=act.id()%> <a href="<%=(act.link())%>"><%=act.name()%></a></p>
+  <% } %>
+  <% if (activities.length>0) { %>
+  <p>Activity ID: <input type="text" name="activityId" value="<%=activities[0].id()%>"/>
     <input type="submit" value="Submit"/>
   </p>
+  <% } %>
 </form>
 </body>
 </html>
