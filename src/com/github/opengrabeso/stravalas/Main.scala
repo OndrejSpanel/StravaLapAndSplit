@@ -97,7 +97,7 @@ object Main {
 
   def lastActivities(authToken: String): Array[ActivityId] = {
     val uri = "https://www.strava.com/api/v3/athlete/activities"
-    val request = buildGetRequest(uri, authToken, "per_page=10")
+    val request = buildGetRequest(uri, authToken, "per_page=15")
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
