@@ -17,16 +17,23 @@
   session.setAttribute("authToken", authToken);
   Main.ActivityId[] activities = Main.lastActivities(authToken);
 %>
+<p>Athlete: <b><%= Main.athlete(authToken)%>
+</b></p>
+<table>
+  <% for (Main.ActivityId act : activities) {%>
+  <tr>
+    <td>
+      <%=act.id()%> <%= act.sportName()%> <a href="<%=(act.link())%>"><%=act.name()%></a>
+    </td>
+  </tr>
+  <% } %>
+</table>
+<% if (activities.length > 0) { %>
 <form action="activity.jsp" method="get">
-  <p>Athlete: <b><%= Main.athlete(authToken)%></b></p>
-  <% for (Main.ActivityId act: activities ) {%>
-  <p> <%=act.id()%> <%= act.sportName()%> <a href="<%=(act.link())%>"><%=act.name()%></a></p>
-  <% } %>
-  <% if (activities.length>0) { %>
-  <p>Activity ID: <input type="text" name="activityId" value="<%=activities[0].id()%>"/>
-    <input type="submit" value="Submit"/>
-  </p>
-  <% } %>
+<p>Activity ID: <input type="text" name="activityId" value="<%=activities[0].id()%>"/>
+  <input type="submit" value="Submit"/>
+</p>
 </form>
+<% } %>
 </body>
 </html>
