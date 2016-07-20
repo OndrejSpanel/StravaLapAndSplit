@@ -46,13 +46,9 @@
               '  <input type="hidden" name="time" value="' + time + '"/>' +
               '  <input type="submit" value="Download"/>';
 
+      var nextSplit = null;
       events.forEach( function(e) {
         splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
-      });
-
-      var nextSplit = null;
-
-      events.forEach( function(e) {
         if (e[0].lastIndexOf("split", 0) == 0 && e[1] > time && nextSplit == null) {
           nextSplit = e;
         }
@@ -78,11 +74,7 @@
 
     function addEvent(e) {
       var tableLink = document.getElementById("link" + e[1]);
-      var linkHtml = splitLink(id, e);
-      console.log("Add event " + e[0] + " " + e[1]);
-      console.log("  link " + linkHtml);
-      console.log("  to " + tableLink + " " + tableLink.id);
-      tableLink.innerHTML = linkHtml;
+      tableLink.innerHTML = splitLink(id, e);
     }
 
     /** @param {String} time */
@@ -103,10 +95,17 @@
         }
       });
       events.forEach(function (e) {
+        if (e[1] == itemTime) {
+          if (e[0].lastIndexOf("split", 0) === 0) {
+            addEvent(e);
+          } else {
+            removeEvent(itemTime);
+          }
+        }
+      });
+      events.forEach(function (e) {
         if (e[0].lastIndexOf("split", 0) === 0) {
           addEvent(e);
-        } else {
-          removeEvent(itemTime);
         }
       });
     }
