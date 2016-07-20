@@ -46,7 +46,7 @@ object Events {
       if (duration < 5 * minute) {
         f"$minutes:${round(seconds, 10)}%2d min"
       } else {
-        s"$minutes"
+        s"$minutes min"
       }
     }
   }

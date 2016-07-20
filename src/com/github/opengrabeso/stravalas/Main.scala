@@ -242,25 +242,26 @@ object Main {
       // compute speed from a distance stream
       val maxPauseSpeed = 0.2
       val maxPauseSpeedImmediate = 0.7
-      def pauseDuration(path: Seq[Double]): Int = {
-        def pauseDurationRecurse(start: Double, prev: Double, duration: Int, path: Seq[Double]): Int = {
+      def pauseDuration(path: Seq[Double], time: Seq[Int]): Int = {
+        def pauseDurationRecurse(start: Double, prev: Double, duration: Int, path: Seq[Double], time: Seq[Int]): Int = {
           path match {
-            case head +: tail if head - start <= maxPauseSpeed * duration && head - prev <= maxPauseSpeedImmediate => pauseDurationRecurse(start, head, duration + 1, tail)
+            case head +: next +: tail if head - start <= maxPauseSpeed * duration && head - prev <= maxPauseSpeedImmediate * (time.tail.head - time.head) =>
+              pauseDurationRecurse(start, head, duration + time.tail.head - time.head, tail, time.tail)
             case _ => duration
           }
         }
-        pauseDurationRecurse(path.head, path.head, 0, path)
+        pauseDurationRecurse(path.head, path.head, 0, path, time)
       }
 
-      def computePausesReversed(dist: Seq[Double], pauses: Seq[Int]): Seq[Int] = {
+      def computePauses(dist: Seq[Double], time: Seq[Int], pauses: Seq[Int]): Seq[Int] = {
         dist match {
           case head +: tail =>
-            computePausesReversed(tail, pauseDuration(dist) +: pauses)
+            computePauses(tail, time.tail, pauseDuration(dist, time) +: pauses)
           case _ => pauses
         }
       }
 
-      val pauses = computePausesReversed(dist, Seq()).reverse
+      val pauses = computePauses(dist, time, Seq()).reverse // reverse to keep concat fast
 
       // ignore following too close
       def ignoreTooClose(pause: Int, pauses: Seq[Int], ret: Seq[Int]): Seq[Int] = {
@@ -273,7 +274,6 @@ object Main {
       }
 
       val cleanedPauses = ignoreTooClose(0, pauses, Nil).reverse
-
 
       val minPause = 10
       val longPauses = (cleanedPauses.zipWithIndex zip stamps).filter { case ((p,i), stamp) =>

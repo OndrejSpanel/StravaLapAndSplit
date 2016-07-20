@@ -105,7 +105,7 @@
     <tr>
       <th>Event</th>
       <th>Time</th>
-      <th>Distance</th>
+      <th>km</th>
       <th>Action</th>
     </tr>
     <%
