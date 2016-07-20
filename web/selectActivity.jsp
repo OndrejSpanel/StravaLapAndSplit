@@ -20,7 +20,7 @@
 <form action="activity.jsp" method="get">
   <p>Athlete: <b><%= Main.athlete(authToken)%></b></p>
   <% for (Main.ActivityId act: activities ) {%>
-  <p> <%=act.id()%> <a href="<%=(act.link())%>"><%=act.name()%></a></p>
+  <p> <%=act.id()%> <%= act.sportName()%> <a href="<%=(act.link())%>"><%=act.name()%></a></p>
   <% } %>
   <% if (activities.length>0) { %>
   <p>Activity ID: <input type="text" name="activityId" value="<%=activities[0].id()%>"/>
