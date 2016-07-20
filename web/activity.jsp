@@ -58,7 +58,7 @@
 
       var description = "";
       if (nextSplit) {
-        description = ((nextSplit[2] - event[2])/1000).toFixed(2);
+        description = ((nextSplit[2] - event[2])/1000).toFixed(2) + " km";
       }
       return '<form action="download" method="post">' + splitWithEvents + description + '</form>';
 
@@ -89,13 +89,10 @@
      * */
     function changeEvent(item, newValue) {
       var itemTime = item.id;
-      events.forEach(function(e, i) {
+      events.forEach(function(e) {
         if (e[1] == itemTime) {
-          events[i][0] = newValue;
-        }
-      });
-      events.forEach(function (e) {
-        if (e[1] == itemTime) {
+          e[0] = newValue;
+          // without changing the active event first it is often not updated at all, no idea why
           if (e[0].lastIndexOf("split", 0) === 0) {
             addEvent(e);
           } else {
