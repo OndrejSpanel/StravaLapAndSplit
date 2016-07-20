@@ -34,10 +34,11 @@
 
     /**
      * @param {String} id
-     * @param {String} time
+     * @param event
      * @return {String}
      */
-    function splitLink(id, time) {
+    function splitLink(id, event) {
+      var time = event[1];
       var splitWithEvents =
               '  <input type="hidden" name="id" value="' + id + '"/>' +
               '  <input type="hidden" name="auth_token" value="' + authToken + '"/>' +
@@ -49,22 +50,39 @@
         splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
       });
 
-      var download = '<form action="download" method="post">' + splitWithEvents + '</form>';
-      return download + "";
+      var nextSplit = null;
+
+      events.forEach( function(e) {
+        if (e[0].lastIndexOf("split", 0) == 0 && e[1] > time && nextSplit == null) {
+          nextSplit = e;
+        }
+      });
+
+      if (nextSplit == null) nextSplit = events[events.length-1];
+
+      var description = "";
+      if (nextSplit) {
+        description = ((nextSplit[2] - event[2])/1000).toFixed(2);
+      }
+      return '<form action="download" method="post">' + splitWithEvents + description + '</form>';
 
     }
 
     function initEvents() {
       events.forEach(function(e){
-        if (e.action == "split") {
+        if (e[0].lastIndexOf("split",0) == 0) {
           addEvent(e);
         }
       });
     }
 
     function addEvent(e) {
-      var tableLink = document.getElementById("link" + e.time);
-      tableLink.innerHTML = splitLink(id, e.time);
+      var tableLink = document.getElementById("link" + e[1]);
+      var linkHtml = splitLink(id, e);
+      console.log("Add event " + e[0] + " " + e[1]);
+      console.log("  link " + linkHtml);
+      console.log("  to " + tableLink + " " + tableLink.id);
+      tableLink.innerHTML = linkHtml;
     }
 
     /** @param {String} time */
@@ -79,13 +97,18 @@
      * */
     function changeEvent(item, newValue) {
       var itemTime = item.id;
-      events.forEach(function(item, i) { if (item[1] == itemTime) events[i][0] = newValue; });
-      if (newValue.lastIndexOf("split", 0) === 0) {
-        addEvent(itemTime);
-      } else {
-        removeEvent(itemTime);
-      }
-      initEvents();
+      events.forEach(function(e, i) {
+        if (e[1] == itemTime) {
+          events[i][0] = newValue;
+        }
+      });
+      events.forEach(function (e) {
+        if (e[0].lastIndexOf("split", 0) === 0) {
+          addEvent(e);
+        } else {
+          removeEvent(itemTime);
+        }
+      });
     }
   </script>
 </head>

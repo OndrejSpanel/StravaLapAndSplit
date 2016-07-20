@@ -113,7 +113,7 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends E
 
 case class EditableEvent(var action: String, time: Int, km: Double, duration: Int, distance: Double) {
   override def toString: String = {
-    s"""["$action", $time, $km, $duration, $distance]"""
+    s""""$action", $time, $km, $duration, $distance"""
   }
 }
 
