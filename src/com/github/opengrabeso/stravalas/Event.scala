@@ -16,14 +16,17 @@ sealed abstract class Event {
 
   def link(id: Long, authToken: String): String = ""
 
-  def listTypes: Array[EventKind] = Array(
-    EventKind("", "--"),
-    EventKind("lap", "Lap"),
+  protected def listSplitTypes: Seq[EventKind] = Seq(
     EventKind("split", "Split"),
     EventKind("splitSwim", "Split (Swim)"),
     EventKind("splitRun", "Split (Run)"),
     EventKind("splitRide", "Split (Ride)")
   )
+
+  def listTypes: Array[EventKind] = (Seq(
+    EventKind("", "--"),
+    EventKind("lap", "Lap")
+  ) ++ listSplitTypes).toArray
 }
 
 object Events {
@@ -50,6 +53,18 @@ object Events {
 
 }
 
+trait SplitLink extends Event {
+  override def link(id: Long, authToken: String): String =
+    s"""
+       |<form action="download" method="post">
+       |  <input type="hidden" name="id" value="$id"/>
+       |  <input type="hidden" name="auth_token" value="$authToken"/>
+       |  <input type="hidden" name="operation" value="split"/>
+       |  <input type="hidden" name="time" value="${stamp.time}"/>
+       |  <input type="submit" value="Save activity"/>
+       |</form>""".stripMargin
+}
+
 case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
   def description = s"Pause ${Events.niceDuration(duration)}"
   def defaultEvent = if (duration >= 40) "split" else if (duration>=15) "lap" else ""
@@ -71,21 +86,19 @@ case class EndEvent(stamp: Stamp) extends Event {
   def defaultEvent = "end"
   def isSplit = true
 
-  override def listTypes: Array[EventKind] = Array(
-    EventKind("", "--")
-  )
+  override def listTypes: Array[EventKind] = Array(EventKind("", "--"))
 }
 
-case class SplitEvent(stamp: Stamp) extends Event {
-  override def link(id: Long, authToken: String): String = s"""
-    |<form action="download" method="post">
-    |  <input type="hidden" name="id" value="$id"/>
-    |  <input type="hidden" name="auth_token" value="$authToken"/>
-    |  <input type="hidden" name="operation" value="split"/>
-    |  <input type="hidden" name="time" value="${stamp.time}"/>
-    |  <input type="submit" value="Save activity"/>
-    |</form>""".stripMargin
+case class BegEvent(stamp: Stamp) extends Event with SplitLink {
   def description = "<b>*** Start activity</b>"
+  def defaultEvent = "split"
+  def isSplit = true
+
+  override def listTypes = listSplitTypes.toArray
+}
+
+case class SplitEvent(stamp: Stamp) extends Event with SplitLink {
+  def description = "Split"
   def defaultEvent = "split"
   def isSplit = true
 }

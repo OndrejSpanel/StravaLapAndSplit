@@ -67,7 +67,7 @@
     function changeEvent(item, newValue) {
       var itemTime = item.id;
       events.forEach(function(item, i) { if (item[1] == itemTime) events[i][0] = newValue; });
-      if (newValue=="split") {
+      if (newValue.startsWith("split")) {
         addEvent(itemTime);
       } else {
         removeEvent(itemTime);

@@ -283,7 +283,7 @@ object Main {
 
     import ActivityStreams._
     // TODO: provide activity type with the split
-    val events = (SplitEvent(Stamp(0,0)) +: EndEvent(Stamp(dist.size, dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
+    val events = (BegEvent(Stamp(0,0)) +: EndEvent(Stamp(dist.size, dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
