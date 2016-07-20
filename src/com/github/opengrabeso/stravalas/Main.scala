@@ -77,18 +77,21 @@ object Main {
     firstname + " " + lastname
   }
 
-  case class ActivityId(id: Long, name: String, startTime: DateTime, sportName: String) {
+  case class ActivityId(id: Long, name: String, startTime: DateTime, sportName: String, duration:Int, distance: Double) {
     def link: String = s"https://www.strava.com/activities/$id"
   }
 
   object ActivityId {
     def load(json: JsonNode): ActivityId = {
+      // https://strava.github.io/api/v3/activities/
       val name = json.path("name").getTextValue
       val id = json.path("id").getLongValue
       val time = DateTime.parse(json.path("start_date").getTextValue)
       val sportName = json.path("type").getTextValue
+      val duration = json.path("elapsed_time").getIntValue
+      val distance = json.path("distance").getDoubleValue
 
-      ActivityId(id, name, time, sportName)
+      ActivityId(id, name, time, sportName, duration, distance)
     }
   }
 
