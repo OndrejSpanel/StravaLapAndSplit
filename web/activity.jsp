@@ -92,6 +92,7 @@
 
 <body>
 
+<a href="<%= laps.id().link()%>"><%= laps.id().name()%></a>
 
 <form action ="download" method="post">
   <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
