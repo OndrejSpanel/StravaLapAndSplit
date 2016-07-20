@@ -238,7 +238,6 @@ object Main {
     }
 
     val pauseEvents = {
-      import ActivityStreams._
 
       // compute speed from a distance stream
       val maxPauseSpeed = 0.2
@@ -247,7 +246,7 @@ object Main {
         def pauseDurationRecurse(start: Double, prev: Double, duration: Int, path: Seq[Double], time: Seq[Int]): Int = {
           path match {
             case head +: next +: tail if head - start <= maxPauseSpeed * duration && head - prev <= maxPauseSpeedImmediate * (time.tail.head - time.head) =>
-              pauseDurationRecurse(start, head, duration + time.tail.head - time.head, tail, time.tail)
+              pauseDurationRecurse(start, head, duration + time.tail.head - time.head, path.tail, time.tail)
             case _ => duration
           }
         }
@@ -262,8 +261,6 @@ object Main {
         }
       }
 
-      val pauses = computePauses(dist, time, Seq()).reverse // reverse to keep concat fast
-
       // ignore following too close
       def ignoreTooClose(pause: Int, pauses: Seq[Int], ret: Seq[Int]): Seq[Int] = {
         pauses match {
@@ -273,6 +270,9 @@ object Main {
           case _ => ret
         }
       }
+
+      import ActivityStreams._
+      val pauses = computePauses(dist, time, Seq()).reverse // reverse to keep concat fast
 
       val cleanedPauses = ignoreTooClose(0, pauses, Nil).reverse
 
