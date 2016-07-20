@@ -9,6 +9,10 @@
 <html>
 <head>
   <title>Strava Split And Lap - select activity</title>
+  <style>
+    tr:nth-child(even) {background-color: #f2f2f2}
+    tr:hover {background-color: #f0f0e0}
+  </style>
 </head>
 <body>
 <%
@@ -22,15 +26,20 @@
 <table>
   <% for (Main.ActivityId act : activities) {%>
   <tr>
-    <td>
-      <%=act.id()%> <%= act.sportName()%> <a href="<%=(act.link())%>"><%=act.name()%></a>
+    <td><%=act.id()%> </td>
+    <td><%= act.sportName()%> </td>
+    <td><a href="<%=(act.link())%>"><%=act.name()%></a></td>
+    <td><form action="activity.jsp" method="get">
+        <input type="hidden" name="activityId" value="<%=act.id()%>"/>
+        <input type="submit" value=">>"/>
+      </form>
     </td>
   </tr>
   <% } %>
 </table>
 <% if (activities.length > 0) { %>
 <form action="activity.jsp" method="get">
-<p>Activity ID: <input type="text" name="activityId" value="<%=activities[0].id()%>"/>
+<p>Other activity Id: <input type="text" name="activityId" value="<%=activities[0].id()%>"/>
   <input type="submit" value="Submit"/>
 </p>
 </form>
