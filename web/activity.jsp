@@ -9,8 +9,21 @@
   Main.ActivityEvents laps = Main.getEventsFrom(authToken, actId);
 %>
 
+
 <head>
   <title>Strava Split And Lap</title>
+  <style>
+    .activityTable {
+      border: 0;
+      border-collapse: collapse;
+    }
+    td, th {
+      border: 1px solid black;
+    }
+    .cellNoBorder {
+      border: 0;
+    }
+  </style>
 
   <script type="text/javascript">
     var id = "<%= actId %>";
@@ -30,7 +43,7 @@
               '  <input type="hidden" name="auth_token" value="' + authToken + '"/>' +
               '  <input type="hidden" name="operation" value="split"/>' +
               '  <input type="hidden" name="time" value="' + time + '"/>' +
-              '  <input type="submit" value="Download activity at ' + time + '"/>';
+              '  <input type="submit" value="Download"/>';
 
       events.forEach( function(e) {
         splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
@@ -67,7 +80,7 @@
     function changeEvent(item, newValue) {
       var itemTime = item.id;
       events.forEach(function(item, i) { if (item[1] == itemTime) events[i][0] = newValue; });
-      if (newValue.startsWith("split")) {
+      if (newValue.lastIndexOf("split", 0) === 0) {
         addEvent(itemTime);
       } else {
         removeEvent(itemTime);
@@ -87,13 +100,12 @@
   <input type="submit" value="Backup original activity"/>
 </form>
 
-  <table border="1">
+  <table class="activityTable">
     <tr>
       <th>Event</th>
       <th>Time</th>
       <th>Distance</th>
-      <th>Event</th>
-      <th>Link</th>
+      <th>Action</th>
     </tr>
     <%
       for (Event t : laps.events()) {
@@ -119,7 +131,7 @@
           <input type="hidden" name = "events" value = "<%= t.defaultEvent() %>"/> <%
         } %>
       </td>
-      <td id="link<%=t.stamp().time()%>"></td>
+      <td class="cellNoBorder" id="link<%=t.stamp().time()%>"></td>
     </tr>
     <% } %>
   </table>
