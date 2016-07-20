@@ -100,31 +100,42 @@ object Main {
     ActivityId.load(responseJson.get(0))
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
-    def splits: Seq[ActivityEvents] = {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+    def split(splitTime: Int): Option[ActivityEvents] = {
 
       val splitEvents = events.filter(_.isSplit).toSeq
 
       val splitTimes = splitEvents.map(_.stamp.time)
 
       assert(splitTimes.contains(0))
-      assert(splitTimes.contains(gps.size))
+      assert(splitTimes.contains(time.last))
 
       val splitRanges = splitEvents zip splitTimes.tail
 
-      splitRanges.map { case (beg, endTime) =>
+      val toSplit = splitRanges.find(_._1.stamp.time == splitTime)
+
+      toSplit.map { case (beg, endTime) =>
         val begTime = beg.stamp.time
 
         val eventsRange = events.dropWhile(_.stamp.time <= begTime).takeWhile(_.stamp.time < endTime)
-        val gpsRange = gps.slice(begTime, endTime)
+        val indexBeg = time.lastIndexWhere(_ <= begTime) max 0
+
+        def safeIndexWhere[T](seq: Seq[T])(pred: T => Boolean) = {
+          val i = seq.indexWhere(pred)
+          if (i < 0) seq.size else i
+        }
+        val indexEnd = safeIndexWhere(time)(_ > endTime) min time.size
+
+        val timeRange = time.slice(indexBeg, indexEnd)
+        val gpsRange = gps.slice(indexBeg, indexEnd)
 
         val attrRange = attributes.map { case (name, attr) =>
-          (name, attr.slice(begTime, endTime))
+          (name, attr.slice(indexBeg, indexEnd))
         }
 
         val actTime = id.startTime.plusSeconds(begTime)
 
-        val act = ActivityEvents(id.copy(startTime = actTime), eventsRange, gpsRange, attrRange)
+        val act = ActivityEvents(id.copy(startTime = actTime), eventsRange, timeRange, gpsRange, attrRange)
 
         act
       }
@@ -283,11 +294,11 @@ object Main {
 
     import ActivityStreams._
     // TODO: provide activity type with the split
-    val events = (BegEvent(Stamp(0,0)) +: EndEvent(Stamp(dist.size, dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
+    val events = (BegEvent(Stamp(0,0)) +: EndEvent(Stamp(time.last, dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
-    ActivityEvents(actId, eventsByTime.toArray, latlng, Seq(heartrate, cadence, watts, temp))
+    ActivityEvents(actId, eventsByTime.toArray, time, latlng, Seq(heartrate, cadence, watts, temp))
   }
 
   def adjustEvents(events: ActivityEvents, eventsInput: Array[String]): ActivityEvents = {
@@ -354,11 +365,9 @@ class Download extends HttpServlet {
 
         val adjusted = Main.adjustEvents(events, eventsInput)
 
-        val splits = adjusted.splits
+        val split = adjusted.split(splitTime)
 
-        val toSave = splits.filter(_.id.startTime == events.id.startTime.plusSeconds(splitTime))
-
-        toSave.headOption.foreach{ save =>
+        split.foreach{ save =>
 
           val export = FitExport.export(save)
 

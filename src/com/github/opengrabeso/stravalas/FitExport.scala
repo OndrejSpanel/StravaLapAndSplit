@@ -60,8 +60,8 @@ object FitExport {
 
     import events.id.startTime
 
-    val gpsAsEvents = events.gps.zipWithIndex.map { case (gps, i) =>
-      new GPSEvent(startTime.plusSeconds(i), gps._1, gps._2)
+    val gpsAsEvents = (events.gps zip events.time).map { case (gps, t) =>
+      new GPSEvent(startTime.plusSeconds(t), gps._1, gps._2)
     }
 
     val attributesAsEvents = events.attributes.flatMap { case (name, attrib) =>
@@ -72,8 +72,8 @@ object FitExport {
           case "cadence" => msg.setCadence(value.toShort)
           case "temp" => msg.setTemperature(value.toByte)
         }
-      attrib.zipWithIndex.map { case (data, i) =>
-        new AttribEvent(startTime.plusSeconds(i), data, createAttribEvent)
+      (attrib zip events.time).map { case (data, t) =>
+        new AttribEvent(startTime.plusSeconds(t), data, createAttribEvent)
       }
     }
 
