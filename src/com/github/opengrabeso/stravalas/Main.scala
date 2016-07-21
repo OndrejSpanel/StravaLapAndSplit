@@ -249,7 +249,7 @@ object Main {
       }
     }
 
-    val pauseEvents = {
+    val pauses: Seq[(Int, Stamp)] = {
 
       // compute speed from a distance stream
       val maxPauseSpeed = 0.2
@@ -295,14 +295,17 @@ object Main {
         case ((p,i), stamp) => (p, stamp)
       }
 
-      longPauses.flatMap { case (p, stamp) =>
-        if (p > 30) {
-          // long pause - insert both start and end
-          Seq(PauseEvent(p, stamp), PauseEndEvent(p, stamp.offset(p, 0)))
-        }
-        else Seq(PauseEvent(p, stamp))
+      longPauses
+    }
 
+    // TODO: clean / merge pauses
+
+    val pauseEvents = pauses.flatMap { case (p, stamp) =>
+      if (p > 30) {
+        // long pause - insert both start and end
+        Seq(PauseEvent(p, stamp), PauseEndEvent(p, stamp.offset(p, 0)))
       }
+      else Seq(PauseEvent(p, stamp))
     }
 
     import ActivityStreams._
@@ -311,6 +314,7 @@ object Main {
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
+    // detect sports between pauses
     val sports = events.map(x => actId.sportName)
 
     ActivityEvents(actId, eventsByTime.toArray, sports.toArray, time, latlng, Seq(heartrate, cadence, watts, temp))
