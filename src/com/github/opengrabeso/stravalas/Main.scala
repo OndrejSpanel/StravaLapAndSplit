@@ -347,12 +347,52 @@ object Main {
     val pauseRanges = pauseTimes zip (pauseTimes.drop(1) :+ pauseTimes.last)
 
     class SpeedStats(beg: Int, end: Int) {
-      // TODO: compute sliding speed average
+      import ActivityStreams._
 
+      class SlidingAverage(wantedDuration: Int) {
+        class Window(begIndex: Int, endIndex: Int) {
+          def distance = dist(endIndex) - dist(begIndex)
+          def duration = time(endIndex) - dist(endIndex)
 
+          def speed = if (duration > 0) distance / duration else 0
 
-      val max10sec = 0
-      val avg = 0
+          def advance: Option[Window] = {
+            if (endIndex >= time.size) None
+            else {
+              val newEnd = endIndex + 1
+              if (newEnd - begIndex > wantedDuration) {
+                val newBeg = begIndex + 1
+                Some(new Window(newBeg, newEnd))
+              } else {
+                new Window(begIndex, newEnd).advance
+              }
+            }
+          }
+        }
+
+        def stream = Stream.iterate(new Window(0, 0).advance) { w =>
+          w
+        }
+        def foreach(f: Double => Unit): Unit = {
+          var now = new Window(0, 0).advance
+          while (now.isDefined) {
+            f(now.get.speed)
+            now = now.get.advance
+          }
+        }
+
+        def map(f: Double => Double): Unit = {
+          var now = new Window(0, 0).advance
+          while (now.isDefined) {
+            f(now.get.speed)
+            now = now.get.advance
+          }
+        }
+      }
+
+      val sliding30 = new SlidingAverage(30)
+      val sliding120 = new SlidingAverage(120)
+
     }
 
     val sportsInRanges = for ((pBeg, pEnd) <- pauseRanges) yield {
