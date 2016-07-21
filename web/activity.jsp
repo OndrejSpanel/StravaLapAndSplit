@@ -130,10 +130,14 @@
       <th>Event</th>
       <th>Time</th>
       <th>km</th>
+      <th>sport</th>
       <th>Action</th>
     </tr>
     <%
-      for (Event t : laps.events()) {
+      EditableEvent[] ees = laps.editableEvents();
+      for (int i = 0; i < laps.events().length; i ++ ) {
+        Event t = laps.events()[i];
+        EditableEvent ee = ees[i];
         String split = t.defaultEvent();
     %>
     <tr>
@@ -141,6 +145,7 @@
       </td>
       <td><%= Main.displaySeconds(t.stamp().time()) %></td>
       <td><%= Main.displayDistance(t.stamp().dist()) %></td>
+      <td><%= ee.sport()%></td>
       <td> <%
           EventKind[] types = t.listTypes();
           if (types.length != 1) {

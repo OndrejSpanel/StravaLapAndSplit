@@ -105,9 +105,13 @@ object Main {
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+    private def detectSport(beg: Event, end: Event): String = {
+      id.sportName
+    }
+
     def editableEvents: Array[EditableEvent] = {
       (events zip (events.drop(1) :+ events.last)).map { case (e1, e2) =>
-        EditableEvent.diff(e1, e2)
+        EditableEvent(e1, detectSport(e1, e2))
       }(collection.breakOut)
     }
 

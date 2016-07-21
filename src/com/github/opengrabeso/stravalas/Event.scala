@@ -111,14 +111,15 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends E
 }
 
 
-case class EditableEvent(var action: String, time: Int, km: Double, duration: Int, distance: Double) {
+case class EditableEvent(var action: String, time: Int, km: Double, sport: String) {
   override def toString: String = {
-    s""""$action", $time, $km, $duration, $distance"""
+    s""""$action", $time, $km, "$sport""""
   }
 }
 
 object EditableEvent {
-  def diff(e1: Event, e2: Event) = {
-    EditableEvent(e1.defaultEvent, e1.stamp.time, e1.stamp.dist, e2.stamp.time - e1.stamp.time, e2.stamp.dist - e1.stamp.dist)
+  def apply(e1: Event, sport: String) = {
+    // autodetect sport
+    new EditableEvent(e1.defaultEvent, e1.stamp.time, e1.stamp.dist, sport)
   }
 }
