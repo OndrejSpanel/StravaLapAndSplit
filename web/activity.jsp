@@ -58,7 +58,12 @@
 
       var description = "";
       if (nextSplit) {
-        description = ((nextSplit[2] - event[2])/1000).toFixed(2) + " km";
+        var km = (nextSplit[2] - event[2])/1000;
+        var duration = nextSplit[1] - event[1];
+        var paceSecKm = km > 0 ? duration / km : 0;
+        var paceMinKm = paceSecKm / 60;
+        var speedKmH = duration > 0 ? km * 3600 / duration : 0;
+        description = km.toFixed(2) + " km / " + paceMinKm.toFixed(2) + " min/km / " + speedKmH.toFixed(1) + " km/h";
       }
       return '<form action="download" method="post">' + splitWithEvents + description + '</form>';
 
