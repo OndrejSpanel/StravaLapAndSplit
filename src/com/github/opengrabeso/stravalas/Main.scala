@@ -107,9 +107,29 @@ object Main {
   case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
     def editableEvents: Array[EditableEvent] = {
 
-      (events, events.drop(1) :+ events.last, sports).zipped.map { case (e1, e2, sport) =>
+      val ees = (events, events.drop(1) :+ events.last, sports).zipped.map { case (e1, e2, sport) =>
         EditableEvent(e1, sport)
-      }(collection.breakOut)
+      }
+
+      // consolidate mutliple events with the same time so that all of them have the same action
+      val merged = ees.groupBy(_.time).map { case (t, es) =>
+        object CmpEvent extends Ordering[String] {
+          def compare(x: String, y: String): Int = {
+            def score(et: String) = et match {
+              case "split" => 1
+              case "splitRun" => 2
+              case "splitRide" => 3
+              case "splitSwim" => 4
+              case _ => 0
+            }
+            score(x) - score(y)
+          }
+        }
+        (t, es.map(_.action).max(CmpEvent))
+      }
+
+      ees.map { e => e.copy(action = merged(e.time))}
+
     }
 
     def split(splitTime: Int): Option[ActivityEvents] = {

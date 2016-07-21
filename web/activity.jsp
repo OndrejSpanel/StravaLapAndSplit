@@ -95,16 +95,18 @@
     function changeEvent(item, newValue) {
       var itemTime = item.id;
       events.forEach(function(e) {
-        if (e[1] == itemTime) {
-          e[0] = newValue;
-          // without changing the active event first it is often not updated at all, no idea why
-          if (e[0].lastIndexOf("split", 0) === 0) {
-            addEvent(e);
-          } else {
-            removeEvent(itemTime);
-          }
+        if (e[1] == itemTime) e[0] = newValue;
+      });
+
+      events.forEach(function(e) {
+        if (e[1] == itemTime && e[0].lastIndexOf("split", 0) === 0){
+          addEvent(e);
+        } else {
+          removeEvent(itemTime);
         }
       });
+
+      // without changing the active event first it is often not updated at all, no idea why
       events.forEach(function (e) {
         if (e[0].lastIndexOf("split", 0) === 0) {
           addEvent(e);
@@ -136,10 +138,11 @@
     <%
       EditableEvent[] ees = laps.editableEvents();
       String lastSport = "";
+      int lastTime = -1;
       for (int i = 0; i < laps.events().length; i ++ ) {
         Event t = laps.events()[i];
         EditableEvent ee = ees[i];
-        String split = t.defaultEvent();
+        String action = ee.action();
         String sport = ee.sport().equals(lastSport) ? "" : ee.sport();
         lastSport = ee.sport();
     %>
@@ -151,12 +154,13 @@
       <td><%= sport %></td>
       <td> <%
           EventKind[] types = t.listTypes();
-          if (types.length != 1) {
+          if (types.length != 1 && lastTime != t.stamp().time()) {
+            lastTime = t.stamp().time();
         %>
         <select id="<%=t.stamp().time()%>" name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
             <%
               for (EventKind et : types) {
-            %> <option value="<%= et.id()%>"<%= split.equals(et.id()) ? "selected" : ""%>><%= et.display()%></option>
+            %> <option value="<%= et.id()%>"<%= action.equals(et.id()) ? "selected" : ""%>><%= et.display()%></option>
             <% }
           %></select>
         <% } else { %>
