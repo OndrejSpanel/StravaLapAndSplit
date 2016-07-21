@@ -342,12 +342,15 @@ object Main {
       else Seq(PauseEvent(p, stamp))
     }
 
-    val pauseTimes = 0 +: pauses.map(_._2.time) :+ ActivityStreams.time.last
+    val pauseTimes = (0 +: pauses.map(_._2.time) :+ ActivityStreams.time.last).distinct
 
     val pauseRanges = pauseTimes zip (pauseTimes.drop(1) :+ pauseTimes.last)
 
     class SpeedStats(beg: Int, end: Int) {
       import ActivityStreams._
+
+      def statDistance = dist(end-1) - dist(beg)
+      def statDuration = time(end-1) - time(beg)
 
       class SlidingAverage(wantedDuration: Int) {
         class Window(begIndex: Int, endIndex: Int) {
@@ -385,6 +388,7 @@ object Main {
 
       val max30 = new SlidingAverage(30).maxSpeed
       val max120 = new SlidingAverage(120).maxSpeed
+      val max600 = new SlidingAverage(600).maxSpeed
 
     }
 
@@ -394,7 +398,7 @@ object Main {
       def paceToMs(pace: Double) = 60 / pace / 3.6
       def kmhToMs(speed: Double) = speed / 3.6
 
-      def detectSport(maxRunSpeed30: Double, maxRunSpeed120: Double): String = {
+      def detectSport(maxRunSpeed30: Double, maxRunSpeed120: Double, maxRunSpeed600: Double): String = {
         if (stats.max30 <= maxRunSpeed30 && stats.max120 <= maxRunSpeed120) "Run"
         else "Ride"
       }
@@ -402,11 +406,12 @@ object Main {
       val sport = actId.sportName.toLowerCase match {
         case "run" =>
           // marked as run, however if clearly contradicting evidence is found, make it ride
-          detectSport(paceToMs(2), paceToMs(3)) // 2 - 3 min/km possible
+          detectSport(paceToMs(2), paceToMs(3), paceToMs(3)) // 2 - 3 min/km possible
         case "ride" =>
-          detectSport(kmhToMs(15), kmhToMs(10)) // 10 - 15 km/h possible
+          detectSport(kmhToMs(25), kmhToMs(22), kmhToMs(20)) // 25 - 18 km/h possible
+          //if (stats.statDuration > 10)
         case _ =>
-          detectSport(paceToMs(3), kmhToMs(4)) // 2 - 4 min/km possible
+          detectSport(paceToMs(3), paceToMs(4), paceToMs(4)) // 3 - 4 min/km possible
         // TODO: handle other sports: swimming, walking, ....
       }
 
