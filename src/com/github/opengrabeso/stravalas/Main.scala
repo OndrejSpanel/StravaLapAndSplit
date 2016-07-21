@@ -346,8 +346,11 @@ object Main {
 
     val pauseRanges = pauseTimes zip (pauseTimes.drop(1) :+ pauseTimes.last)
 
-    class SpeedStats(beg: Int, end: Int) {
+    class SpeedStats(begTime: Int, endTime: Int) {
       import ActivityStreams._
+
+      val beg = time.indexWhere(_ >= begTime)
+      val end = time.indexWhere(_ >= endTime)
 
       def statDistance = dist(end-1) - dist(beg)
       def statDuration = time(end-1) - time(beg)
