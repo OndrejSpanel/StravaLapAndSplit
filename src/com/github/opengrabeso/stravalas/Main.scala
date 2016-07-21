@@ -318,9 +318,23 @@ object Main {
       longPauses
     }
 
-    // TODO: clean / merge pauses
+    def mergePauses(pauses: Seq[(Int, Stamp)], ret: Seq[(Int, Stamp)]): Seq[(Int, Stamp)] = {
+      def merge(head: (Int, Stamp), next: (Int, Stamp)) = {
+        (next._2.time + next._1 - head._2.time, head._2)
+      }
 
-    val pauseEvents = pauses.flatMap { case (p, stamp) =>
+      pauses match {
+        case head +: next +: tail =>
+          val ignoreShortMovement = 15
+          if (next._2.time - head._2.time - head._1 < ignoreShortMovement) mergePauses(merge(head, next) +: tail, ret)
+          else mergePauses(next +: tail, head +: ret)
+        case _ => pauses ++ ret
+      }
+    }
+
+    val mergedPauses = mergePauses(pauses.sortBy(_._2.time), Seq() )
+
+    val pauseEvents = mergedPauses.flatMap { case (p, stamp) =>
       if (p > 30) {
         // long pause - insert both start and end
         Seq(PauseEvent(p, stamp), PauseEndEvent(p, stamp.offset(p, 0)))
