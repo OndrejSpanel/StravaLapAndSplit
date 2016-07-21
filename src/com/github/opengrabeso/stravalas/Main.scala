@@ -246,7 +246,7 @@ object Main {
       val lapTimes = (for (lap <- lapsJson.getElements.asScala) yield {
         val lapTimeStr = lap.path("start_date").getTextValue
         DateTime.parse(lapTimeStr)
-      }).toSeq
+      }).toList
 
 
       val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
@@ -254,8 +254,8 @@ object Main {
       lapsInSeconds.filter(_ > 0).map(ActivityStreams.stampForTime)
     }
 
-    val segments: Iterable[Event] = {
-      val segmentList = responseJson.path("segment_efforts").asScala
+    val segments: Seq[Event] = {
+      val segmentList = responseJson.path("segment_efforts").asScala.toList
       segmentList.flatMap {seg =>
         val segStartTime = DateTime.parse(seg.path("start_date").getTextValue)
         val segName = seg.path("name").getTextValue
@@ -413,17 +413,18 @@ object Main {
       (pBeg, sport)
     }
 
+    val sportsByTime = sportsInRanges.sortBy(-_._1)
     def findSport(time: Int) = {
-      sportsInRanges.find(_._1 <= time).map(_._2).getOrElse(actId.sportName)
+      sportsByTime.find(_._1 <= time).map(_._2).getOrElse(actId.sportName)
     }
     import ActivityStreams._
     // TODO: provide activity type with the split
     val events = (BegEvent(Stamp(0,0)) +: EndEvent(Stamp(time.last, dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
 
-    // detect sports between pauses
-    val sports = events.map(x => findSport(x.stamp.time))
-
     val eventsByTime = events.sortBy(_.stamp.time)
+
+    val sports = eventsByTime.map(x => findSport(x.stamp.time))
+
 
     ActivityEvents(actId, eventsByTime.toArray, sports.toArray, time, latlng, Seq(heartrate, cadence, watts, temp))
   }
