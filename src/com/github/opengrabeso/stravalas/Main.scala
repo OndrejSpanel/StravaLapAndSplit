@@ -308,14 +308,34 @@ object Main {
       else Seq(PauseEvent(p, stamp))
     }
 
+    val pauseTimes = 0 +: pauses.map(_._2.time) :+ ActivityStreams.time.last
+
+    val pauseRanges = pauseTimes zip (pauseTimes.drop(1) :+ pauseTimes.last)
+
+    class SpeedStats(beg: Int, end: Int) {
+      // TODO: compute sliding speed average
+
+
+
+      val max10sec = 0
+      val avg = 0
+    }
+
+    val sportsInRanges = for ((pBeg, pEnd) <- pauseRanges) yield {
+      (pBeg, actId.sportName)
+    }
+
+    def findSport(time: Int) = {
+      sportsInRanges.find(_._1 <= time).map(_._2).getOrElse(actId.sportName)
+    }
     import ActivityStreams._
     // TODO: provide activity type with the split
     val events = (BegEvent(Stamp(0,0)) +: EndEvent(Stamp(time.last, dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
 
-    val eventsByTime = events.sortBy(_.stamp.time)
-
     // detect sports between pauses
-    val sports = events.map(x => actId.sportName)
+    val sports = events.map(x => findSport(x.stamp.time))
+
+    val eventsByTime = events.sortBy(_.stamp.time)
 
     ActivityEvents(actId, eventsByTime.toArray, sports.toArray, time, latlng, Seq(heartrate, cadence, watts, temp))
   }
