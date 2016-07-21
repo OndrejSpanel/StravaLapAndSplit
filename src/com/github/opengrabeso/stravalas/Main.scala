@@ -104,14 +104,11 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
-    private def detectSport(beg: Event, end: Event): String = {
-      id.sportName
-    }
-
+  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
     def editableEvents: Array[EditableEvent] = {
-      (events zip (events.drop(1) :+ events.last)).map { case (e1, e2) =>
-        EditableEvent(e1, detectSport(e1, e2))
+
+      (events, events.drop(1) :+ events.last, sports).zipped.map { case (e1, e2, sport) =>
+        EditableEvent(e1, sport)
       }(collection.breakOut)
     }
 
@@ -131,7 +128,9 @@ object Main {
       toSplit.map { case (beg, endTime) =>
         val begTime = beg.stamp.time
 
-        val eventsRange = events.dropWhile(_.stamp.time <= begTime).takeWhile(_.stamp.time < endTime)
+
+        val eventsRange = (events zip sports).dropWhile(_._1.stamp.time <= begTime).takeWhile(_._1.stamp.time < endTime)
+
         val indexBeg = time.lastIndexWhere(_ <= begTime) max 0
 
         def safeIndexWhere[T](seq: Seq[T])(pred: T => Boolean) = {
@@ -149,7 +148,7 @@ object Main {
 
         val actTime = id.startTime.plusSeconds(begTime)
 
-        val act = ActivityEvents(id.copy(startTime = actTime), eventsRange, timeRange, gpsRange, attrRange)
+        val act = ActivityEvents(id.copy(startTime = actTime), eventsRange.map(_._1), eventsRange.map(_._2), timeRange, gpsRange, attrRange)
 
         act
       }
@@ -312,7 +311,9 @@ object Main {
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
-    ActivityEvents(actId, eventsByTime.toArray, time, latlng, Seq(heartrate, cadence, watts, temp))
+    val sports = events.map(x => actId.sportName)
+
+    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, time, latlng, Seq(heartrate, cadence, watts, temp))
   }
 
   def adjustEvents(events: ActivityEvents, eventsInput: Array[String]): ActivityEvents = {
