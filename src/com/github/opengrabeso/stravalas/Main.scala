@@ -201,16 +201,16 @@ object Main {
 
       val streams = responseJson.getElements.asScala.toIterable
 
-      def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Seq[T] = {
-        if (stream.isEmpty) Nil
-        else stream.head.path("data").asScala.map(get).toSeq
+      def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Vector[T] = {
+        if (stream.isEmpty) Vector()
+        else stream.head.path("data").asScala.map(get).toVector
       }
-      def getDataByName[T](name: String, get: JsonNode => T): Seq[T] = {
+      def getDataByName[T](name: String, get: JsonNode => T): Vector[T] = {
         val stream = streams.filter(_.path("type").getTextValue == name).toStream
         getData(stream, get)
       }
       def getAttribByName(name: String): (String, Seq[Int]) = {
-        name -> getDataByName(name, _.asInt)
+        (name, getDataByName(name, _.asInt))
       }
 
       private def loadGpsPair(gpsItem: JsonNode) = {
@@ -274,8 +274,8 @@ object Main {
       // compute speed from a distance stream
       val maxPauseSpeed = 0.2
       val maxPauseSpeedImmediate = 0.7
-      def pauseDuration(path: Seq[Double], time: Seq[Int]): Int = {
-        def pauseDurationRecurse(start: Double, prev: Double, duration: Int, path: Seq[Double], time: Seq[Int]): Int = {
+      def pauseDuration(path: List[Double], time: List[Int]): Int = {
+        def pauseDurationRecurse(start: Double, prev: Double, duration: Int, path: List[Double], time: List[Int]): Int = {
           path match {
             case head +: next +: tail if head - start <= maxPauseSpeed * duration && head - prev <= maxPauseSpeedImmediate * (time.tail.head - time.head) =>
               pauseDurationRecurse(start, head, duration + time.tail.head - time.head, path.tail, time.tail)
@@ -285,7 +285,7 @@ object Main {
         pauseDurationRecurse(path.head, path.head, 0, path, time)
       }
 
-      def computePauses(dist: Seq[Double], time: Seq[Int], pauses: Seq[Int]): Seq[Int] = {
+      def computePauses(dist: List[Double], time: List[Int], pauses: List[Int]): List[Int] = {
         dist match {
           case head +: tail =>
             computePauses(tail, time.tail, pauseDuration(dist, time) +: pauses)
@@ -294,7 +294,7 @@ object Main {
       }
 
       // ignore following too close
-      def ignoreTooClose(pause: Int, pauses: Seq[Int], ret: Seq[Int]): Seq[Int] = {
+      def ignoreTooClose(pause: Int, pauses: List[Int], ret: List[Int]): List[Int] = {
         pauses match {
           case head +: tail =>
             if (head < pause) ignoreTooClose(pause - 1, tail, 1 +: ret)
@@ -304,7 +304,7 @@ object Main {
       }
 
       import ActivityStreams._
-      val pauses = computePauses(dist, time, Seq()).reverse // reverse to keep concat fast
+      val pauses = computePauses(dist.toList, time.toList, Nil).reverse // reverse to keep concat fast
 
       val cleanedPauses = ignoreTooClose(0, pauses, Nil).reverse
 
@@ -351,13 +351,13 @@ object Main {
 
       class SlidingAverage(wantedDuration: Int) {
         class Window(begIndex: Int, endIndex: Int) {
-          def distance = dist(endIndex) - dist(begIndex)
-          def duration = time(endIndex) - dist(endIndex)
+          def distance = dist(endIndex-1) - dist(begIndex)
+          def duration = time(endIndex-1) - time(begIndex)
 
-          def speed = if (duration > 0) distance / duration else 0
+          def speed: Double = if (duration > 0) distance / duration else 0
 
           def advance: Option[Window] = {
-            if (endIndex >= time.size) None
+            if (endIndex >= end) None
             else {
               val newEnd = endIndex + 1
               if (newEnd - begIndex > wantedDuration) {
@@ -370,33 +370,47 @@ object Main {
           }
         }
 
-        def stream = Stream.iterate(new Window(0, 0).advance) { w =>
-          w
-        }
-        def foreach(f: Double => Unit): Unit = {
-          var now = new Window(0, 0).advance
-          while (now.isDefined) {
-            f(now.get.speed)
-            now = now.get.advance
+        var slide = new Window(beg, beg).advance
+        val maxSpeed = {
+          var maxSpeed = 0.0
+          while (slide.isDefined) {
+            val v = slide.get.speed
+            maxSpeed = maxSpeed max v
+            slide = slide.get.advance
           }
+          maxSpeed
         }
 
-        def map(f: Double => Double): Unit = {
-          var now = new Window(0, 0).advance
-          while (now.isDefined) {
-            f(now.get.speed)
-            now = now.get.advance
-          }
-        }
       }
 
-      val sliding30 = new SlidingAverage(30)
-      val sliding120 = new SlidingAverage(120)
+      val max30 = new SlidingAverage(30).maxSpeed
+      val max120 = new SlidingAverage(120).maxSpeed
 
     }
 
     val sportsInRanges = for ((pBeg, pEnd) <- pauseRanges) yield {
-      (pBeg, actId.sportName)
+      val stats = new SpeedStats(pBeg, pEnd)
+
+      def paceToMs(pace: Double) = 60 / pace / 3.6
+      def kmhToMs(speed: Double) = speed / 3.6
+
+      def detectSport(maxRunSpeed30: Double, maxRunSpeed120: Double): String = {
+        if (stats.max30 <= maxRunSpeed30 && stats.max120 <= maxRunSpeed120) "Run"
+        else "Ride"
+      }
+
+      val sport = actId.sportName.toLowerCase match {
+        case "run" =>
+          // marked as run, however if clearly contradicting evidence is found, make it ride
+          detectSport(paceToMs(2), paceToMs(3)) // 2 - 3 min/km possible
+        case "ride" =>
+          detectSport(kmhToMs(15), kmhToMs(10)) // 10 - 15 km/h possible
+        case _ =>
+          detectSport(paceToMs(3), kmhToMs(4)) // 2 - 4 min/km possible
+        // TODO: handle other sports: swimming, walking, ....
+      }
+
+      (pBeg, sport)
     }
 
     def findSport(time: Int) = {
