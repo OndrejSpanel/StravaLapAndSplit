@@ -344,7 +344,7 @@ object Main {
 
     val pauseTimes = (0 +: pauses.map(_._2.time) :+ ActivityStreams.time.last).distinct
 
-    val pauseRanges = pauseTimes zip (pauseTimes.drop(1) :+ pauseTimes.last)
+    val pauseRanges = pauseTimes zip pauseTimes.drop(1)
 
     class SpeedStats(begTime: Int, endTime: Int) {
       import ActivityStreams._
