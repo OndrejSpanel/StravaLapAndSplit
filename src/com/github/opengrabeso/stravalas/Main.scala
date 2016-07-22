@@ -107,8 +107,12 @@ object Main {
   case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
     def editableEvents: Array[EditableEvent] = {
 
-      val ees = (events, events.drop(1) :+ events.last, sports).zipped.map { case (e1, e2, sport) =>
-        EditableEvent(e1, sport)
+      def neq(a: String, b: String) = a != b
+      val sportChange = (("" +: sports) zip sports).map((neq _). tupled)
+
+      val ees = (events, events.drop(1) :+ events.last, sports zip sportChange).zipped.map { case (e1, e2, (sport,change)) =>
+        val action = if (change) "split" else e1.defaultEvent
+        EditableEvent(action, e1, sport)
       }
 
       // consolidate mutliple events with the same time so that all of them have the same action

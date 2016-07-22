@@ -53,7 +53,7 @@ object Events {
 
 case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
   def description = s"Pause ${Events.niceDuration(duration)}"
-  def defaultEvent = if (duration >= 40) "split" else if (duration>=15) "lap" else ""
+  def defaultEvent = if (duration>=15) "lap" else ""
   def isSplit = false
 }
 case class PauseEndEvent(duration: Int, stamp: Stamp) extends Event {
@@ -118,8 +118,10 @@ case class EditableEvent(var action: String, time: Int, km: Double, sport: Strin
 }
 
 object EditableEvent {
+  def apply(action: String, e1: Event, sport: String) = {
+    new EditableEvent(action, e1.stamp.time, e1.stamp.dist, sport)
+  }
   def apply(e1: Event, sport: String) = {
-    // autodetect sport
     new EditableEvent(e1.defaultEvent, e1.stamp.time, e1.stamp.dist, sport)
   }
 }
