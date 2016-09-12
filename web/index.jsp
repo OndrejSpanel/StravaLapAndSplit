@@ -16,7 +16,7 @@
     String hostname = request.getServerName();
     int port = request.getServerPort();
     String scheme = request.getScheme();
-    String clientId = Main.secret()._1;
+    String clientId = Main.secret().appId();
 
     String serverUri = scheme + "://" + hostname + (port != 80 ? String.format(":%d", port) : "");
     String uri = "https://www.strava.com/oauth/authorize?";

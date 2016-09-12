@@ -32,16 +32,20 @@ object Main {
     request
   }
 
-  def secret: (String, String) = {
+  case class SecretResult(appId: String, appSecret: String, mapboxToken: String)
+
+  def secret: SecretResult = {
     val secretStream = Main.getClass.getResourceAsStream("/secret.txt")
     val lines = scala.io.Source.fromInputStream(secretStream).getLines
-    (lines.next(), lines.next())
+    SecretResult(lines.next(), lines.next(), lines.next())
   }
 
-  def stravaAuth(code: String): String = {
+  case class StravaAuthResult(token: String, mapboxToken: String)
+
+  def stravaAuth(code: String): StravaAuthResult = {
 
     val json = new util.HashMap[String, String]()
-    val (clientId, clientSecret) = secret
+    val SecretResult(clientId, clientSecret, mapboxToken) = secret
 
     json.put("client_id", clientId)
     json.put("client_secret", clientSecret)
@@ -55,7 +59,7 @@ object Main {
     val responseJson = jsonMapper.readTree(response.getContent)
     val token = responseJson.path("access_token").getTextValue
 
-    token
+    StravaAuthResult(token, mapboxToken)
 
   }
 

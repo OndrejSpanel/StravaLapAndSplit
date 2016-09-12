@@ -17,11 +17,12 @@
 <body>
 <%
   String code = request.getParameter("code");
-  String authToken = Main.stravaAuth(code);
-  session.setAttribute("authToken", authToken);
-  Main.ActivityId[] activities = Main.lastActivities(authToken);
+  Main.StravaAuthResult auth = Main.stravaAuth(code);
+  session.setAttribute("authToken", auth.token());
+  session.setAttribute("mapboxToken", auth.mapboxToken());
+  Main.ActivityId[] activities = Main.lastActivities(auth.token());
 %>
-<p>Athlete: <b><%= Main.athlete(authToken)%></b></p>
+<p>Athlete: <b><%= Main.athlete(auth.token())%></b></p>
 <table>
   <% for (Main.ActivityId act : activities) {%>
   <tr>
