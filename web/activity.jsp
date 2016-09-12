@@ -11,7 +11,13 @@
 
 
 <head>
+  <meta charset=utf-8 />
   <title>Strava Split And Lap</title>
+
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
+  <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
+
   <style>
     .activityTable {
       border: 0;
@@ -22,6 +28,11 @@
     }
     .cellNoBorder {
       border: 0;
+    }
+
+    #map {
+      height: 300px;
+      width: 800px;
     }
   </style>
 
@@ -114,6 +125,8 @@
       });
     }
   </script>
+
+
 </head>
 
 <body>
@@ -173,7 +186,17 @@
     <% } %>
   </table>
 
+  <div id='map'></div>
+
   <script type="text/javascript">initEvents()</script>
+
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1Ijoib3NwYW5lbCIsImEiOiJjaXQwMXBqaGcwMDZ4MnpvM21ibzl2aGM5In0.1DeBqAQXvxLPajeeSK4jQQ';
+    var map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v9'
+    });
+  </script>
 
 </body>
 </html>
