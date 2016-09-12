@@ -194,7 +194,7 @@
     mapboxgl.accessToken = 'pk.eyJ1Ijoib3NwYW5lbCIsImEiOiJjaXQwMXBqaGcwMDZ4MnpvM21ibzl2aGM5In0.1DeBqAQXvxLPajeeSK4jQQ';
     var map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/streets-v9'
+      style: 'mapbox://styles/mapbox/outdoors-v9'
     });
   </script>
 
