@@ -81,8 +81,13 @@ object Main {
     firstname + " " + lastname
   }
 
-  case class ActivityId(id: Long, name: String, startTime: DateTime, sportName: String, duration:Int, distance: Double) {
+  case class ActivityId(
+    id: Long, name: String, startTime: DateTime, sportName: String, duration:Int, distance: Double,
+    begLat: Double, begLon: Double, endLat: Double, endLon: Double
+  ) {
     def link: String = s"https://www.strava.com/activities/$id"
+    def lat: Double = (begLat + endLat) * 0.5
+    def lon: Double = (begLon + endLon) * 0.5
   }
 
   object ActivityId {
@@ -94,8 +99,12 @@ object Main {
       val sportName = json.path("type").getTextValue
       val duration = json.path("elapsed_time").getIntValue
       val distance = json.path("distance").getDoubleValue
+      val begLat  = json.path("start_latlng").path(0).getDoubleValue
+      val begLon  = json.path("start_latlng").path(1).getDoubleValue
+      val endLat  = json.path("end_latlng").path(0).getDoubleValue
+      val endLon  = json.path("end_latlng").path(1).getDoubleValue
 
-      ActivityId(id, name, time, sportName, duration, distance)
+      ActivityId(id, name, time, sportName, duration, distance, begLat, begLon, endLat, endLon)
     }
   }
 

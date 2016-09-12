@@ -36,5 +36,6 @@
     <orderEntry type="library" name="org.joda:joda-convert:1.8.1" level="project" />
     <orderEntry type="library" name="com.google.http-client:google-http-client-jackson:1.22.0" level="project" />
     <orderEntry type="library" name="fit" level="project" />
+    <orderEntry type="library" name="mapbox-gl" level="application" />
   </component>
 </module>

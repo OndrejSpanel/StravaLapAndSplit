@@ -5,6 +5,7 @@
 
 <%
   String authToken = (String) session.getAttribute("authToken");
+  String mapBoxToken = (String) session.getAttribute("mapboxToken");
   String actId = request.getParameter("activityId");
   Main.ActivityEvents laps = Main.getEventsFrom(authToken, actId);
 %>
@@ -191,10 +192,14 @@
   <script type="text/javascript">initEvents()</script>
 
   <script>
-    mapboxgl.accessToken = 'pk.eyJ1Ijoib3NwYW5lbCIsImEiOiJjaXQwMXBqaGcwMDZ4MnpvM21ibzl2aGM5In0.1DeBqAQXvxLPajeeSK4jQQ';
+    var lat = <%= laps.id().lat()%>;
+    var lon = <%= laps.id().lon()%>;
+    mapboxgl.accessToken = '<%= mapBoxToken %>';
     var map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/outdoors-v9'
+      style: 'mapbox://styles/mapbox/outdoors-v9',
+      center: [lon, lat],
+      zoom: 12
     });
   </script>
 
