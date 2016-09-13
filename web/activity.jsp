@@ -34,7 +34,7 @@
     }
 
     #map {
-      height: 300px;
+      height: 500px;
       width: 800px;
     }
   </style>
@@ -198,6 +198,33 @@
       var routeLL = route.map(function(i){
         return [i[0], i[1]];
       });
+
+      var lastKm = 0;
+      var kmMarkers = [];
+      route.forEach(function(r){
+        var dist = r[3] / 1000;
+        var currKm = Math.floor(dist);
+        if (currKm > lastKm) {
+
+          var kmMarker = {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [r[0], r[1]]
+            },
+            "properties": {
+              "title": currKm + " km",
+              "icon": "circle",
+              "color": "#2F2",
+              "opacity": 0.5
+            }
+          };
+
+          kmMarkers.push(kmMarker);
+          lastKm = currKm;
+        }
+      });
+
       map.addSource("route", {
         "type": "geojson",
         "data": {
@@ -252,6 +279,28 @@
               "opacity": 0.5
             }
           }]
+        }
+      });
+
+      map.addSource("kms", {
+        "type": "geojson",
+        "data": {
+          "type": "FeatureCollection",
+          "features": kmMarkers
+        }
+      });
+
+      map.addLayer({
+        "id": "kms",
+        "type": "symbol",
+        "source": "kms",
+        "layout": {
+          "icon-image": "{icon}-11",
+          "text-field": "{title}",
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-size": 10,
+          "text-offset": [0, 0.6],
+          "text-anchor": "top"
         }
       });
 
