@@ -195,6 +195,9 @@
 
   <script>
     function renderRoute(route) {
+      var routeLL = route.map(function(i){
+        return [i[0], i[1]];
+      });
       map.addSource("route", {
         "type": "geojson",
         "data": {
@@ -202,7 +205,7 @@
           "properties": {},
           "geometry": {
             "type": "LineString",
-            "coordinates": route
+            "coordinates": routeLL
           }
         }
       });
@@ -228,23 +231,25 @@
             "type": "Feature",
             "geometry": {
               "type": "Point",
-              "coordinates": route[0]
+              "coordinates": routeLL[0]
             },
             "properties": {
               "title": "Begin",
               "icon": "circle",
-              "color": "#F22"
+              "color": "#F22",
+              "opacity": 1
             }
           }, {
             "type": "Feature",
             "geometry": {
               "type": "Point",
-              "coordinates": route[route.length-1]
+              "coordinates": routeLL[routeLL.length-1]
             },
             "properties": {
               "title": "End",
               "icon": "circle",
-              "color": "#2F2"
+              "color": "#2F2",
+              "opacity": 0.5
             }
           }]
         }
@@ -256,6 +261,7 @@
         "source": "points",
         "layout": {
           "icon-image": "{icon}-15",
+          //"icon-opacity": "1",
           //"icon-color": "{color}", // not working at the moment - see https://github.com/mapbox/mapbox-gl-js/issues/2730
           "text-field": "{title}",
           "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],

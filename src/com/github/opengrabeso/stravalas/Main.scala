@@ -117,9 +117,11 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], stamps: Seq[Stamp], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
     def routeJS: String = {
-      gps.map(latLng => s"[${latLng._2},${latLng._1}]").mkString("[\n", ",\n", "]\n")
+      (gps zip stamps).map { case ((lng, lat),t) =>
+        s"[$lat,$lng,${t.time},${t.dist}]"
+      }.mkString("[\n", ",\n", "]\n")
     }
 
     def editableEvents: Array[EditableEvent] = {
@@ -160,7 +162,7 @@ object Main {
       val splitTimes = splitEvents.map(_.stamp.time)
 
       assert(splitTimes.contains(0))
-      assert(splitTimes.contains(time.last))
+      assert(splitTimes.contains(stamps.last.time))
 
       val splitRanges = splitEvents zip splitTimes.tail
 
@@ -172,15 +174,15 @@ object Main {
 
         val eventsRange = (events zip sports).dropWhile(_._1.stamp.time <= begTime).takeWhile(_._1.stamp.time < endTime)
 
-        val indexBeg = time.lastIndexWhere(_ <= begTime) max 0
+        val indexBeg = stamps.map(_.time).lastIndexWhere(_ <= begTime) max 0
 
         def safeIndexWhere[T](seq: Seq[T])(pred: T => Boolean) = {
           val i = seq.indexWhere(pred)
           if (i < 0) seq.size else i
         }
-        val indexEnd = safeIndexWhere(time)(_ > endTime) min time.size
+        val indexEnd = safeIndexWhere(stamps)(_.time > endTime) min stamps.size
 
-        val timeRange = time.slice(indexBeg, indexEnd)
+        val stampsRange = stamps.slice(indexBeg, indexEnd)
         val gpsRange = gps.slice(indexBeg, indexEnd)
 
         val attrRange = attributes.map { case (name, attr) =>
@@ -189,7 +191,7 @@ object Main {
 
         val actTime = id.startTime.plusSeconds(begTime)
 
-        val act = ActivityEvents(id.copy(startTime = actTime), eventsRange.map(_._1), eventsRange.map(_._2), timeRange, gpsRange, attrRange)
+        val act = ActivityEvents(id.copy(startTime = actTime), eventsRange.map(_._1), eventsRange.map(_._2), stampsRange, gpsRange, attrRange)
 
         act
       }
@@ -455,7 +457,7 @@ object Main {
     val sports = eventsByTime.map(x => findSport(x.stamp.time))
 
 
-    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, time, latlng, Seq(heartrate, cadence, watts, temp))
+    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, stamps, latlng, Seq(heartrate, cadence, watts, temp))
   }
 
   def adjustEvents(events: ActivityEvents, eventsInput: Array[String]): ActivityEvents = {
