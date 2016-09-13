@@ -118,6 +118,10 @@ object Main {
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], time: Seq[Int], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+    def routeJS: String = {
+      gps.map(latLng => s"[${latLng._2},${latLng._1}]").mkString("[\n", ",\n", "]\n")
+    }
+
     def editableEvents: Array[EditableEvent] = {
 
       def neq(a: String, b: String) = a != b

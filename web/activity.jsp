@@ -196,6 +196,7 @@
   <script>
     var lat = <%= laps.id().lat()%>;
     var lon = <%= laps.id().lon()%>;
+    var route = <%= laps.routeJS() %>;
     mapboxgl.accessToken = '<%= mapBoxToken %>';
     var map = new mapboxgl.Map({
       container: 'map',
@@ -203,6 +204,35 @@
       center: [lon, lat],
       zoom: 12
     });
+
+    map.on('load', function () {
+      map.addSource("route", {
+        "type": "geojson",
+        "data": {
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "LineString",
+            "coordinates": route
+          }
+        }
+      });
+
+      map.addLayer({
+        "id": "route",
+        "type": "line",
+        "source": "route",
+        "layout": {
+          "line-join": "round",
+          "line-cap": "round"
+        },
+        "paint": {
+          "line-color": "#F44",
+          "line-width": 3
+        }
+      });
+    });
+
   </script>
 
 </body>
