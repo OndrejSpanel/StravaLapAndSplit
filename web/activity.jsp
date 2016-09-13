@@ -194,11 +194,7 @@
   <script type="text/javascript">initEvents()</script>
 
   <script>
-    function renderRoute(route) {
-      var routeLL = route.map(function(i){
-        return [i[0], i[1]];
-      });
-
+    function renderEvents(events, route) {
       var lastKm = 0;
       var kmMarkers = [];
       route.forEach(function(r){
@@ -223,6 +219,35 @@
           kmMarkers.push(kmMarker);
           lastKm = currKm;
         }
+      });
+
+      map.addSource("kms", {
+        "type": "geojson",
+        "data": {
+          "type": "FeatureCollection",
+          "features": kmMarkers
+        }
+      });
+
+      map.addLayer({
+        "id": "kms",
+        "type": "symbol",
+        "source": "kms",
+        "layout": {
+          "icon-image": "{icon}-11",
+          "text-field": "{title}",
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-size": 10,
+          "text-offset": [0, 0.6],
+          "text-anchor": "top"
+        }
+      });
+
+
+    }
+    function renderRoute(route) {
+      var routeLL = route.map(function(i){
+        return [i[0], i[1]];
       });
 
       map.addSource("route", {
@@ -282,28 +307,6 @@
         }
       });
 
-      map.addSource("kms", {
-        "type": "geojson",
-        "data": {
-          "type": "FeatureCollection",
-          "features": kmMarkers
-        }
-      });
-
-      map.addLayer({
-        "id": "kms",
-        "type": "symbol",
-        "source": "kms",
-        "layout": {
-          "icon-image": "{icon}-11",
-          "text-field": "{title}",
-          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-          "text-size": 10,
-          "text-offset": [0, 0.6],
-          "text-anchor": "top"
-        }
-      });
-
       map.addLayer({
         "id": "points",
         "type": "symbol",
@@ -339,6 +342,7 @@
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
           var route = JSON.parse(xmlHttp.responseText);
           renderRoute(route);
+          renderEvents(events, route);
         }
       };
       xmlHttp.open("GET", "route-data?id=" + id + "&auth_token=" + authToken, true); // true for asynchronous
