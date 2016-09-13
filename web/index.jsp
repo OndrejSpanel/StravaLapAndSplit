@@ -32,18 +32,18 @@
     <li>Pauses listed, suggest laps and splits</li>
     <li>User can select events where laps should be inserted</li>
     <li>User can split activity and download individual parts</li>
+    <li>Show average speed / tempo, autodetect activity type</li>
   </ul>
   <h4>
     Planned (not working yet)
   </h4>
   <ul>
     <li>User can change activity type (Run / Ride / Swim)</li>
-    <li>Show average speed / temp, autodetect activity type</li>
-    <li>Delete old activity and upload the new version</li>
+    <li>Map (using MapBox)</li>
   </ul>
   <h4>Considering to add later</h4>
   <ul>
-    <li>Map (using MapBox)</li>
+    <li>Delete old activity and upload the new version</li>
   </ul>
   <p>
     <i>Note: the original activity needs to be deleted in the process, therefore you will lose any comments and kudos you already have on it and your achievements will be recomputed.</i>
