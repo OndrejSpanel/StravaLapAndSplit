@@ -8,6 +8,8 @@
   String mapBoxToken = (String) session.getAttribute("mapboxToken");
   String actId = request.getParameter("activityId");
   Main.ActivityEvents laps = Main.getEventsFrom(authToken, actId);
+
+  session.setAttribute("events", laps);
 %>
 
 

@@ -513,8 +513,9 @@ class Download extends HttpServlet {
       case "split" =>
         val eventsInput = req.getParameterValues("events")
         val splitTime = req.getParameter("time").toInt
+        val session = req.getSession
 
-        val events = Main.getEventsFrom(authToken, id)
+        val events = session.getAttribute("events").asInstanceOf[Main.ActivityEvents]
 
         val adjusted = Main.adjustEvents(events, eventsInput)
 
