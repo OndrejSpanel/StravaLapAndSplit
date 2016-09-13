@@ -194,6 +194,79 @@
   <script type="text/javascript">initEvents()</script>
 
   <script>
+    function renderRoute(route) {
+      map.addSource("route", {
+        "type": "geojson",
+        "data": {
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "LineString",
+            "coordinates": route
+          }
+        }
+      });
+      map.addLayer({
+        "id": "route",
+        "type": "line",
+        "source": "route",
+        "layout": {
+          "line-join": "round",
+          "line-cap": "round"
+        },
+        "paint": {
+          "line-color": "#F44",
+          "line-width": 3
+        }
+      });
+
+      map.addSource("points", {
+        "type": "geojson",
+        "data": {
+          "type": "FeatureCollection",
+          "features": [{
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": route[0]
+            },
+            "properties": {
+              "title": "Begin",
+              "icon": "circle",
+              "color": "#F22"
+            }
+          }, {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": route[route.length-1]
+            },
+            "properties": {
+              "title": "End",
+              "icon": "circle",
+              "color": "#2F2"
+            }
+          }]
+        }
+      });
+
+      map.addLayer({
+        "id": "points",
+        "type": "symbol",
+        "source": "points",
+        "layout": {
+          "icon-image": "{icon}-15",
+          //"icon-color": "{color}", // not working at the moment - see https://github.com/mapbox/mapbox-gl-js/issues/2730
+          "text-field": "{title}",
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-offset": [0, 0.6],
+          "text-anchor": "top"
+        }
+      });
+
+
+    }
+
     var lat = <%= laps.id().lat()%>;
     var lon = <%= laps.id().lon()%>;
     mapboxgl.accessToken = '<%= mapBoxToken %>';
@@ -208,34 +281,9 @@
 
       var xmlHttp = new XMLHttpRequest();
       xmlHttp.onreadystatechange = function() {
-        console.log("data ready " + xmlHttp.status + "/" + xmlHttp.readyState);
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
           var route = JSON.parse(xmlHttp.responseText);
-          console.log("  add source " + route.length);
-          map.addSource("route", {
-            "type": "geojson",
-            "data": {
-              "type": "Feature",
-              "properties": {},
-              "geometry": {
-                "type": "LineString",
-                "coordinates": route
-              }
-            }
-          });
-          map.addLayer({
-            "id": "route",
-            "type": "line",
-            "source": "route",
-            "layout": {
-              "line-join": "round",
-              "line-cap": "round"
-            },
-            "paint": {
-              "line-color": "#F44",
-              "line-width": 3
-            }
-          });
+          renderRoute(route);
         }
       };
       xmlHttp.open("GET", "route-data?id=" + id + "&auth_token=" + authToken, true); // true for asynchronous
