@@ -8,9 +8,17 @@
     <servlet-class>com.github.opengrabeso.stravalas.Download</servlet-class>
     <servlet-name>DownloadServlet</servlet-name>
   </servlet>
+  <servlet>
+    <servlet-class>com.github.opengrabeso.stravalas.RouteData</servlet-class>
+    <servlet-name>RouteDataServlet</servlet-name>
+  </servlet>
   <servlet-mapping>
     <servlet-name>DownloadServlet</servlet-name>
     <url-pattern>/download</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>RouteDataServlet</servlet-name>
+    <url-pattern>/route-data</url-pattern>
   </servlet-mapping>
 
   <jsp-config>

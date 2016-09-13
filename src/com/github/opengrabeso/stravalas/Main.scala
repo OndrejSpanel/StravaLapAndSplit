@@ -519,7 +519,7 @@ class Download extends HttpServlet {
         val splitTime = req.getParameter("time").toInt
         val session = req.getSession
 
-        val events = session.getAttribute("events").asInstanceOf[Main.ActivityEvents]
+        val events = session.getAttribute("events-" + id).asInstanceOf[Main.ActivityEvents]
 
         val adjusted = Main.adjustEvents(events, eventsInput)
 
@@ -553,5 +553,26 @@ class Download extends HttpServlet {
         resp.sendRedirect(exportUri)
 
     }
+  }
+}
+
+class RouteData extends HttpServlet {
+
+  override def doGet(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
+
+    val id = req.getParameter("id")
+    val authToken = req.getParameter("auth_token")
+
+    val contentType = "application/json"
+
+    val session = req.getSession
+
+    val events = session.getAttribute("events-"+id).asInstanceOf[Main.ActivityEvents]
+
+    resp.setContentType(contentType)
+    resp.setStatus(200)
+
+    val out = resp.getWriter
+    out.write(events.routeJS)
   }
 }

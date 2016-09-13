@@ -9,7 +9,7 @@
   String actId = request.getParameter("activityId");
   Main.ActivityEvents laps = Main.getEventsFrom(authToken, actId);
 
-  session.setAttribute("events", laps);
+  session.setAttribute("events-" + actId, laps);
 %>
 
 
@@ -196,7 +196,6 @@
   <script>
     var lat = <%= laps.id().lat()%>;
     var lon = <%= laps.id().lon()%>;
-    var route = <%= laps.routeJS() %>;
     mapboxgl.accessToken = '<%= mapBoxToken %>';
     var map = new mapboxgl.Map({
       container: 'map',
@@ -206,31 +205,42 @@
     });
 
     map.on('load', function () {
-      map.addSource("route", {
-        "type": "geojson",
-        "data": {
-          "type": "Feature",
-          "properties": {},
-          "geometry": {
-            "type": "LineString",
-            "coordinates": route
-          }
-        }
-      });
 
-      map.addLayer({
-        "id": "route",
-        "type": "line",
-        "source": "route",
-        "layout": {
-          "line-join": "round",
-          "line-cap": "round"
-        },
-        "paint": {
-          "line-color": "#F44",
-          "line-width": 3
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() {
+        console.log("data ready " + xmlHttp.status + "/" + xmlHttp.readyState);
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+          var route = JSON.parse(xmlHttp.responseText);
+          console.log("  add source " + route.length);
+          map.addSource("route", {
+            "type": "geojson",
+            "data": {
+              "type": "Feature",
+              "properties": {},
+              "geometry": {
+                "type": "LineString",
+                "coordinates": route
+              }
+            }
+          });
+          map.addLayer({
+            "id": "route",
+            "type": "line",
+            "source": "route",
+            "layout": {
+              "line-join": "round",
+              "line-cap": "round"
+            },
+            "paint": {
+              "line-color": "#F44",
+              "line-width": 3
+            }
+          });
         }
-      });
+      };
+      xmlHttp.open("GET", "route-data?id=" + id + "&auth_token=" + authToken, true); // true for asynchronous
+      xmlHttp.send(null);
+
     });
 
   </script>
