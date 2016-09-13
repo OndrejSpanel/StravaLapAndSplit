@@ -42,6 +42,7 @@
   <script type="text/javascript">
     var id = "<%= actId %>";
     var authToken = "<%= authToken %>";
+    // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
     var events = [
       <%for (EditableEvent t : laps.editableEvents()) {%> [<%= t %>], <% } %>
     ];
@@ -195,6 +196,62 @@
 
   <script>
     function renderEvents(events, route) {
+      var markers = [];
+
+      function findPoint(route, time) {
+        return route.filter(function(r) {
+          return r[2] == time;
+        })[0];
+      }
+
+      var dropStartEnd = events;
+
+      dropStartEnd.splice(0, 1);
+      dropStartEnd.splice(-1, 1);
+
+      dropStartEnd.forEach(function(e) {
+        // ["split", 0, 0.0, "Run"]
+        var r = findPoint(route, e[1]);
+
+        var marker = {
+          "type": "Feature",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [r[0], r[1]]
+          },
+          "properties": {
+            "title": e[0],
+            "icon": "circle",
+            "color": "#444",
+            "opacity": 0.5
+          }
+        };
+
+        markers.push(marker);
+      });
+
+      map.addSource("events", {
+        "type": "geojson",
+        "data": {
+          "type": "FeatureCollection",
+          "features": markers
+        }
+      });
+
+      map.addLayer({
+        "id": "events",
+        "type": "symbol",
+        "source": "events",
+        "layout": {
+          "icon-image": "{icon}-11",
+          "text-field": "{title}",
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-size": 10,
+          "text-offset": [0, 0.6],
+          "text-anchor": "top"
+        }
+      });
+
       var lastKm = 0;
       var kmMarkers = [];
       route.forEach(function(r){
@@ -242,9 +299,8 @@
           "text-anchor": "top"
         }
       });
-
-
     }
+
     function renderRoute(route) {
       var routeLL = route.map(function(i){
         return [i[0], i[1]];
