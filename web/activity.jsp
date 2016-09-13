@@ -214,7 +214,7 @@
             },
             "properties": {
               "title": currKm + " km",
-              "icon": "circle",
+              "icon": "circle-stroked",
               "color": "#2F2",
               "opacity": 0.5
             }
@@ -262,7 +262,7 @@
             },
             "properties": {
               "title": "Begin",
-              "icon": "circle",
+              "icon": "triangle", // star, marker, triangle - see https://github.com/mapbox/mapbox-gl-styles/tree/master/sprites/basic-v9/_svg
               "color": "#F22",
               "opacity": 1
             }
