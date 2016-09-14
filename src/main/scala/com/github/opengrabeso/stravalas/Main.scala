@@ -9,11 +9,11 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
 import com.google.api.client.json.jackson.JacksonFactory
+import org.codehaus.jackson.JsonNode
+import org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.{DateTime, Period, Seconds}
 
 import scala.collection.JavaConverters._
-import com.google.appengine.repackaged.org.codehaus.jackson.JsonNode
-import com.google.appengine.repackaged.org.codehaus.jackson.map.ObjectMapper
 import org.joda.time.format.PeriodFormatterBuilder
 
 object Main {
