@@ -9,8 +9,7 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
 import com.google.api.client.json.jackson.JacksonFactory
-import org.codehaus.jackson.JsonNode
-import org.codehaus.jackson.map.ObjectMapper
+import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import org.joda.time.{DateTime, Period, Seconds}
 
 import scala.collection.JavaConverters._
@@ -57,7 +56,7 @@ object Main {
     val response = request.execute() // TODO: async?
 
     val responseJson = jsonMapper.readTree(response.getContent)
-    val token = responseJson.path("access_token").getTextValue
+    val token = responseJson.path("access_token").textValue
 
     StravaAuthResult(token, mapboxToken)
 
@@ -76,8 +75,8 @@ object Main {
 
     val json = jsonMapper.readTree(response)
 
-    val firstname = json.path("firstname").getTextValue
-    val lastname = json.path("lastname").getTextValue
+    val firstname = json.path("firstname").textValue
+    val lastname = json.path("lastname").textValue
     firstname + " " + lastname
   }
 
@@ -93,16 +92,16 @@ object Main {
   object ActivityId {
     def load(json: JsonNode): ActivityId = {
       // https://strava.github.io/api/v3/activities/
-      val name = json.path("name").getTextValue
-      val id = json.path("id").getLongValue
-      val time = DateTime.parse(json.path("start_date").getTextValue)
-      val sportName = json.path("type").getTextValue
-      val duration = json.path("elapsed_time").getIntValue
-      val distance = json.path("distance").getDoubleValue
-      val begLat  = json.path("start_latlng").path(0).getDoubleValue
-      val begLon  = json.path("start_latlng").path(1).getDoubleValue
-      val endLat  = json.path("end_latlng").path(0).getDoubleValue
-      val endLon  = json.path("end_latlng").path(1).getDoubleValue
+      val name = json.path("name").textValue
+      val id = json.path("id").longValue
+      val time = DateTime.parse(json.path("start_date").textValue)
+      val sportName = json.path("type").textValue
+      val duration = json.path("elapsed_time").intValue
+      val distance = json.path("distance").doubleValue
+      val begLat  = json.path("start_latlng").path(0).doubleValue
+      val begLon  = json.path("start_latlng").path(1).doubleValue
+      val endLat  = json.path("end_latlng").path(0).doubleValue
+      val endLon  = json.path("end_latlng").path(1).doubleValue
 
       ActivityId(id, name, time, sportName, duration, distance, begLat, begLon, endLat, endLon)
     }
@@ -206,7 +205,7 @@ object Main {
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
     val actId = ActivityId.load(responseJson)
-    val startDateStr = responseJson.path("start_date").getTextValue
+    val startDateStr = responseJson.path("start_date").textValue
     val startTime = DateTime.parse(startDateStr)
 
     object ActivityStreams {
@@ -222,14 +221,14 @@ object Main {
 
       private val responseJson = jsonMapper.readTree(response)
 
-      val streams = responseJson.getElements.asScala.toIterable
+      val streams = responseJson.elements.asScala.toIterable
 
       def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Vector[T] = {
         if (stream.isEmpty) Vector()
         else stream.head.path("data").asScala.map(get).toVector
       }
       def getDataByName[T](name: String, get: JsonNode => T): Vector[T] = {
-        val stream = streams.filter(_.path("type").getTextValue == name).toStream
+        val stream = streams.filter(_.path("type").textValue == name).toStream
         getData(stream, get)
       }
       def getAttribByName(name: String): (String, Seq[Int]) = {
@@ -237,7 +236,7 @@ object Main {
       }
 
       private def loadGpsPair(gpsItem: JsonNode) = {
-        val elements = gpsItem.getElements
+        val elements = gpsItem.elements
         val lat = elements.next.asDouble
         val lng = elements.next.asDouble
         (lat, lng)
@@ -266,8 +265,8 @@ object Main {
 
       val lapsJson = jsonMapper.readTree(response)
 
-      val lapTimes = (for (lap <- lapsJson.getElements.asScala) yield {
-        val lapTimeStr = lap.path("start_date").getTextValue
+      val lapTimes = (for (lap <- lapsJson.elements.asScala) yield {
+        val lapTimeStr = lap.path("start_date").textValue
         DateTime.parse(lapTimeStr)
       }).toList
 
@@ -280,11 +279,11 @@ object Main {
     val segments: Seq[Event] = {
       val segmentList = responseJson.path("segment_efforts").asScala.toList
       segmentList.flatMap {seg =>
-        val segStartTime = DateTime.parse(seg.path("start_date").getTextValue)
-        val segName = seg.path("name").getTextValue
+        val segStartTime = DateTime.parse(seg.path("start_date").textValue)
+        val segName = seg.path("name").textValue
         val segStart = Seconds.secondsBetween(startTime, segStartTime).getSeconds
-        val segDuration = seg.path("elapsed_time").getIntValue
-        val segPrivate = seg.path("segment").path("private").getBooleanValue
+        val segDuration = seg.path("elapsed_time").intValue
+        val segPrivate = seg.path("segment").path("private").booleanValue
         Seq(
           StartSegEvent(segName, segPrivate, ActivityStreams.stampForTime(segStart)),
           EndSegEvent(segName, segPrivate, ActivityStreams.stampForTime(segStart + segDuration))
