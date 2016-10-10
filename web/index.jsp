@@ -16,7 +16,8 @@
     String hostname = request.getServerName();
     int port = request.getServerPort();
     String scheme = request.getScheme();
-    String clientId = Main.secret().appId();
+    Main.SecretResult secret = Main.secret();
+    String clientId = secret.appId();
 
     String serverUri = scheme + "://" + hostname + (port != 80 ? String.format(":%d", port) : "");
     String uri = "https://www.strava.com/oauth/authorize?";
@@ -48,7 +49,13 @@
   <p>
     <i>Note: the original activity needs to be deleted in the process, therefore you will lose any comments and kudos you already have on it and your achievements will be recomputed.</i>
   </p>
-  <a href=<%=action%>><img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"/></a>
+  <% if (!clientId.isEmpty()) { %>
+    <a href=<%=action%>><img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"/></a>
+  <% } else {%>
+    <p>
+      Error: <%= secret.error()%>
+    </p>
+  <% } %>
 
 
   </body>

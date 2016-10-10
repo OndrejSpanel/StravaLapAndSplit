@@ -31,12 +31,20 @@ object Main {
     request
   }
 
-  case class SecretResult(appId: String, appSecret: String, mapboxToken: String)
+  case class SecretResult(appId: String, appSecret: String, mapboxToken: String, error: String)
 
   def secret: SecretResult = {
-    val secretStream = Main.getClass.getResourceAsStream("/secret.txt")
-    val lines = scala.io.Source.fromInputStream(secretStream).getLines
-    SecretResult(lines.next(), lines.next(), lines.next())
+    val filename = "/secret.txt"
+    try {
+      val secretStream = Main.getClass.getResourceAsStream(filename)
+      val lines = scala.io.Source.fromInputStream(secretStream).getLines
+      SecretResult(lines.next(), lines.next(), lines.next(), "")
+    } catch {
+      case _: NullPointerException => // no file found
+        SecretResult("", "", "", s"Missing $filename, app developer should check README.md")
+      case _: Exception =>
+        SecretResult("", "", "", s"Bad $filename, app developer should check README.md")
+    }
   }
 
   case class StravaAuthResult(token: String, mapboxToken: String)
@@ -44,7 +52,7 @@ object Main {
   def stravaAuth(code: String): StravaAuthResult = {
 
     val json = new util.HashMap[String, String]()
-    val SecretResult(clientId, clientSecret, mapboxToken) = secret
+    val SecretResult(clientId, clientSecret, mapboxToken, _) = secret
 
     json.put("client_id", clientId)
     json.put("client_secret", clientSecret)
