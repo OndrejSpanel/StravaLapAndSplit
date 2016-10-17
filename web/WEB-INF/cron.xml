@@ -2,6 +2,6 @@
   <cron>
     <url>/_ah/sessioncleanup?clear</url>
     <description>Clean up sessions</description>
-    <schedule>every 15 minutes</schedule>
+    <schedule>every 2 hours</schedule>
   </cron>
 </cronentries>
