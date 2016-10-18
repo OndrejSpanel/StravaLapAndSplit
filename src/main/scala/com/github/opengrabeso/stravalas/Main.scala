@@ -586,12 +586,3 @@ class RouteData extends HttpServlet {
   }
 }
 
-class IndexServlet extends HttpServlet {
-  override def doGet(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
-    resp.setContentType("text/html;charset=utf-8")
-    resp.setStatus(HttpServletResponse.SC_OK)
-    val text = html.index.render(req)
-    resp.getWriter.println(text)
-
-  }
-}
