@@ -26,6 +26,10 @@ class ServletRouting extends SparkApplication {
       IndexHtml(request)
     })
 
+    get(route("/selectActivity") { (request, response) =>
+      SelectActivity(request)
+    })
+
     get(route("/test") { (request, response) =>
       "response goes here"
     })

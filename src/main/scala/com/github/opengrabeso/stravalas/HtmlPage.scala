@@ -14,4 +14,8 @@ trait HtmlPage {
   }
 
   def html(request: Request): NodeSeq
+
+  def cond(boolean: Boolean) (nodes: NodeSeq): NodeSeq = {
+    if (boolean) nodes else Nil
+  }
 }
