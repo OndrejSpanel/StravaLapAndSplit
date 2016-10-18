@@ -41,7 +41,7 @@ object SelectActivity extends HtmlPage {
           {Main.displaySeconds(act.duration)}
         </td>
           <td>
-            <form action="activity.jsp" method="get">
+            <form action="activity" method="get">
               <input type="hidden" name="activityId" value={act.id.toString}/>
               <input type="submit" value=">>"/>
             </form>
@@ -50,7 +50,7 @@ object SelectActivity extends HtmlPage {
       }}
       </table> :+ {
       cond (activities.length > 0) {
-        <form action="activity.jsp" method="get">
+        <form action="activity" method="get">
           <p>Other activity Id:
             <input type="text" name="activityId" value={activities(0).id.toString}/>
             <input type="submit" value="Submit"/>

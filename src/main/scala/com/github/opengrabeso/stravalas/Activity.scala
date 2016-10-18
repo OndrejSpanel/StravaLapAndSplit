@@ -1,51 +1,56 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.github.opengrabeso.stravalas.*" %>
+package com.github.opengrabeso.stravalas
+
+import spark.Request
+
+
+object Activity extends HtmlPage {
+  override def html(request: Request) = {
 
 <html>
+  {
+    val session = request.session()
+    val authToken = session.attribute[String]("authToken")
+    val mapBoxToken = session.attribute[String]("mapboxToken")
+    val actId = request.queryParams("activityId")
+    val laps = Main.getEventsFrom(authToken, actId)
+    session.attribute("events-" + actId, laps)
 
-<%
-  String authToken = (String) session.getAttribute("authToken");
-  String mapBoxToken = (String) session.getAttribute("mapboxToken");
-  String actId = request.getParameter("activityId");
-  Main.ActivityEvents laps = Main.getEventsFrom(authToken, actId);
+  <head>
+    <meta charset="utf-8"/>
+    <title>Strava Split And Lap</title>
 
-  session.setAttribute("events-" + actId, laps);
-%>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
 
-
-<head>
-  <meta charset=utf-8 />
-  <title>Strava Split And Lap</title>
-
-  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-  <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
-  <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
-
-  <style>
-    .activityTable {
+    <style>
+      .activityTable {{
       border: 0;
       border-collapse: collapse;
-    }
-    td, th {
+      }}
+      td, th {{
       border: 1px solid black;
-    }
-    .cellNoBorder {
+      }}
+      .cellNoBorder {{
       border: 0;
-    }
+      }}
 
-    #map {
+      #map {{
       height: 500px;
       width: 800px;
-    }
-  </style>
+      }}
+    </style>
 
-  <script type="text/javascript">
-    var id = "<%= actId %>";
-    var authToken = "<%= authToken %>";
-    // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
-    var events = [
-      <%for (EditableEvent t : laps.editableEvents()) {%> [<%= t %>], <% } %>
-    ];
+    <script type="text/javascript">
+      {
+      //language=JavaScript
+      xml.Unparsed(s"""
+      var id = "$actId";
+      var authToken = "$authToken";
+      // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
+      var events = [
+        ${laps.editableEvents.mkString("[", "],[", "]")}
+      ];
 
     /**
      * @param {String} id
@@ -128,6 +133,8 @@
         }
       });
     }
+    """)
+      }
   </script>
 
 
@@ -135,11 +142,11 @@
 
 <body>
 
-<a href="<%= laps.id().link()%>"><%= laps.id().name()%></a>
+<a href={laps.id.link}> {laps.id.name} </a>
 
 <form action ="download" method="post">
-  <input type="hidden" name="id" value="<%= laps.id().id()%>"/>
-  <input type="hidden" name="auth_token" value="<%= authToken%>"/>
+  <input type="hidden" name="id" value={laps.id.id.toString}/>
+  <input type="hidden" name="auth_token" value={authToken.toString}/>
   <input type="hidden" name="operation" value="copy"/>
   <input type="submit" value="Backup original activity"/>
 </form>
@@ -151,57 +158,55 @@
       <th>km</th>
       <th>Sport</th>
       <th>Action</th>
-    </tr>
-    <%
-      EditableEvent[] ees = laps.editableEvents();
-      String lastSport = "";
-      int lastTime = -1;
-      for (int i = 0; i < laps.events().length; i ++ ) {
-        Event t = laps.events()[i];
-        EditableEvent ee = ees[i];
-        String action = ee.action();
-        String sport = ee.sport().equals(lastSport) ? "" : ee.sport();
-        lastSport = ee.sport();
-    %>
+    </tr>{val ees = laps.editableEvents
+  var lastSport = ""
+  var lastTime = -1
+  for ((t, i) <- laps.events.zipWithIndex) yield {
+    val t = laps.events(i)
+    val ee = ees(i)
+    val action = ee.action
+    val sport = if (ee.sport == lastSport) "" else ee.sport
+    lastSport = ee.sport
     <tr>
-      <td><%= t.description()%>
+      <td> {xml.Unparsed(t.description)} </td>
+      <td> {Main.displaySeconds(t.stamp.time)} </td>
+      <td> {Main.displayDistance(t.stamp.dist)} </td>
+      <td> {sport} </td>
+      <td>
+        {val types = t.listTypes
+        if (types.length != 1 && lastTime != t.stamp.time) {
+          lastTime = t.stamp.time
+          <select id={t.stamp.time.toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
+            {for (et <- types) yield {
+            <option value={et.id} selected={if (action == et.id) "" else null}>
+              {et.display}
+            </option>
+          }}
+          </select>
+        } else {
+          {Events.typeToDisplay(types, types(0).id)}
+          <input type="hidden" name="events" value={t.defaultEvent}/>
+      }}
       </td>
-      <td><%= Main.displaySeconds(t.stamp().time()) %></td>
-      <td><%= Main.displayDistance(t.stamp().dist()) %></td>
-      <td><%= sport %></td>
-      <td> <%
-          EventKind[] types = t.listTypes();
-          if (types.length != 1 && lastTime != t.stamp().time()) {
-            lastTime = t.stamp().time();
-        %>
-        <select id="<%=t.stamp().time()%>" name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
-            <%
-              for (EventKind et : types) {
-            %> <option value="<%= et.id()%>"<%= action.equals(et.id()) ? "selected" : ""%>><%= et.display()%></option>
-            <% }
-          %></select>
-        <% } else { %>
-          <%= Events.typeToDisplay(types, types[0].id())%>
-          <input type="hidden" name = "events" value = "<%= t.defaultEvent() %>"/> <%
-        } %>
-      </td>
-      <td class="cellNoBorder" id="link<%=t.stamp().time()%>"></td>
+      <td class="cellNoBorder" id={s"link${t.stamp.time.toString}"}> </td>
     </tr>
-    <% } %>
+  }}
   </table>
 
   <div id='map'></div>
 
   <script type="text/javascript">initEvents()</script>
 
-  <script>
+  <script>{
+    //language=JavaScript
+    xml.Unparsed(s"""
     function renderEvents(events, route) {
       var markers = [];
 
       function findPoint(route, time) {
         return route.filter(function(r) {
-          return r[2] == time;
-        })[0];
+          return r[2] == time
+        })[0]
       }
 
       var dropStartEnd = events;
@@ -227,7 +232,7 @@
           }
         };
 
-        markers.push(marker);
+        markers.push(marker)
       });
 
       map.addSource("events", {
@@ -254,7 +259,7 @@
 
       var lastKm = 0;
       var kmMarkers = [];
-      route.forEach(function(r){
+    route.forEach(function(r){
         var dist = r[3] / 1000;
         var currKm = Math.floor(dist);
         if (currKm > lastKm) {
@@ -274,11 +279,11 @@
           };
 
           kmMarkers.push(kmMarker);
-          lastKm = currKm;
+          lastKm = currKm
         }
       });
 
-      map.addSource("kms", {
+    map.addSource("kms", {
         "type": "geojson",
         "data": {
           "type": "FeatureCollection",
@@ -286,7 +291,7 @@
         }
       });
 
-      map.addLayer({
+    map.addLayer({
         "id": "kms",
         "type": "symbol",
         "source": "kms",
@@ -303,7 +308,7 @@
 
     function renderRoute(route) {
       var routeLL = route.map(function(i){
-        return [i[0], i[1]];
+        return [i[0], i[1]]
       });
 
       map.addSource("route", {
@@ -381,9 +386,9 @@
 
     }
 
-    var lat = <%= laps.id().lat()%>;
-    var lon = <%= laps.id().lon()%>;
-    mapboxgl.accessToken = '<%= mapBoxToken %>';
+    var lat = ${laps.id.lat};
+    var lon = ${laps.id.lon};
+    mapboxgl.accessToken = "$mapBoxToken";
     var map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/outdoors-v9',
@@ -401,12 +406,14 @@
           renderEvents(events, route);
         }
       };
-      xmlHttp.open("GET", "route-data?id=" + id + "&auth_token=" + authToken, true); // true for asynchronous
-      xmlHttp.send(null);
-
-    });
-
+    xmlHttp.open("GET", "route-data?id=" + id + "&auth_token=" + authToken, true); // true for asynchronous
+      xmlHttp.send(null)});
+    """)}
   </script>
 
 </body>
+    }
 </html>
+
+  }
+}

@@ -30,8 +30,8 @@ class ServletRouting extends SparkApplication {
       SelectActivity(request)
     })
 
-    get(route("/test") { (request, response) =>
-      "response goes here"
+    get(route("/activity") { (request, response) =>
+      Activity(request)
     })
   }
 
