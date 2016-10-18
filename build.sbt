@@ -17,4 +17,6 @@ libraryDependencies ++= Seq(
 
 libraryDependencies += "com.sparkjava" % "spark-core" % "1.1.1"
 
+libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.6.1"
+
 appengineSettings

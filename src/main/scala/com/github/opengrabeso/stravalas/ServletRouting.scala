@@ -18,8 +18,12 @@ class ServletRouting extends SparkApplication {
   import ServletRouting._
 
   def init() {
-    get(route("/index.html") { (request, response) =>
-      IndexHtml()
+    get(route("/") { (request, response) =>
+      IndexHtml(request)
+    })
+
+    get(route("/index") { (request, response) =>
+      IndexHtml(request)
     })
 
     get(route("/test") { (request, response) =>
