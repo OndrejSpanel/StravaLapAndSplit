@@ -1,5 +1,3 @@
-import sbtappengine.Plugin.{AppengineKeys => gae}
-
 name := "StravaLapAndSplit"
 
 scalaVersion := "2.11.8"
@@ -17,16 +15,6 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.2"
 )
 
+libraryDependencies += "com.sparkjava" % "spark-core" % "1.1.1"
+
 appengineSettings
-
-(gae.onStartHooks in gae.devServer in Compile) += { () =>
-  println("hello")
-}
-
-(gae.onStopHooks in gae.devServer in Compile) += { () =>
-  println("bye")
-}
-
-//appengineDataNucleusSettings
-
-//gae.persistenceApi in gae.enhance in Compile := "JDO"
