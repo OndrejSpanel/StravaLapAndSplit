@@ -1,6 +1,5 @@
 package com.github.opengrabeso.stravalas
 
-import org.eclipse.jetty.server.ServletResponseHttpWrapper
 import spark.{Request, Response, Route}
 import spark.servlet.SparkApplication
 import spark.Spark._
@@ -19,8 +18,8 @@ class ServletRouting extends SparkApplication {
   import ServletRouting._
 
   def init() {
-    get(route("*.jsp") { (request, response) =>
-        "JSP response goes here"
+    get(route("/index.html") { (request, response) =>
+      IndexHtml()
     })
 
     get(route("/test") { (request, response) =>
