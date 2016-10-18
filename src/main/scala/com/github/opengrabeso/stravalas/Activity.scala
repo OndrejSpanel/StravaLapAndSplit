@@ -209,10 +209,7 @@ object Activity extends HtmlPage {
         })[0]
       }
 
-      var dropStartEnd = events;
-
-      dropStartEnd.splice(0, 1);
-      dropStartEnd.splice(-1, 1);
+      var dropStartEnd = events.slice(1, -1);
 
       dropStartEnd.forEach(function(e) {
         // ["split", 0, 0.0, "Run"]
