@@ -2,17 +2,6 @@ package com.github.opengrabeso.stravalas
 
 import spark.Request
 
-import scala.xml.NodeSeq
-
-trait HtmlPage {
-  def apply(request: Request): String = {
-    val docType = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd" >"""
-    docType + html(request).toString
-  }
-
-  def html(request: Request): NodeSeq
-}
-
 object IndexHtml extends HtmlPage {
   def html(request: Request) = {
     <html>
@@ -26,7 +15,7 @@ object IndexHtml extends HtmlPage {
       val clientId = secret.appId
       val serverUri = scheme + "://" + hostname // Spark hostname seems to include port if needed
       val uri = "https://www.strava.com/oauth/authorize?"
-      val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/selectActivity.jsp&scope=write,view_private"
+      val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/selectActivity&scope=write,view_private"
       <h3>Work in progress, use at your own risk.</h3>
         <p>
           This tool allows you to split activity or edit lap information for it.
