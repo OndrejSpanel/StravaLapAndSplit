@@ -3,7 +3,7 @@ package requests
 
 import spark.{Request, Response}
 
-@Handle(value = "/download", method = Handle.Method.Post)
+@Handle("/download")
 object Download extends DefineRequest {
 
   override def html(req: Request, resp: Response) = {

@@ -86,7 +86,7 @@ object ActivityPage extends DefineRequest {
         var speedKmH = duration > 0 ? km * 3600 / duration : 0;
         description = km.toFixed(2) + " km / " + paceMinKm.toFixed(2) + " min/km / " + speedKmH.toFixed(1) + " km/h";
       }
-      return '<form action="download" method="post">' + splitWithEvents + description + '</form>';
+      return '<form action="download" method="get">' + splitWithEvents + description + '</form>';
 
     }
 
@@ -145,7 +145,7 @@ object ActivityPage extends DefineRequest {
 
 <a href={laps.id.link}> {laps.id.name} </a>
 
-<form action ="download" method="post">
+<form action ="download" method="get">
   <input type="hidden" name="id" value={laps.id.id.toString}/>
   <input type="hidden" name="auth_token" value={authToken.toString}/>
   <input type="hidden" name="operation" value="copy"/>
