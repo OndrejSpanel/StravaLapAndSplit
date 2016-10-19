@@ -60,6 +60,11 @@ object SelectActivity extends DefineRequest {
           </p>
         </form>
       }
+      <form action="upload" method="post" enctype="multipart/form-data">
+      <p>Select files to upload <input type="file" name="activities" multiple="multiple"/></p>
+        <input type="submit" value="Upload"/>
+      </form>
+
     }}
     </body>
     </html>
