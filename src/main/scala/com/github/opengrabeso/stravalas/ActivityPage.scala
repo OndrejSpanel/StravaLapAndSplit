@@ -4,7 +4,7 @@ import spark.Request
 
 
 @Handle("/activity")
-object ActivityPage extends HtmlPage {
+object ActivityPage extends DefineRequest {
   override def html(request: Request) = {
 
 <html>

@@ -2,7 +2,7 @@ package com.github.opengrabeso.stravalas
 import spark.Request
 
 @Handle("selectActivity")
-object SelectActivity extends HtmlPage {
+object SelectActivity extends DefineRequest {
   override def html(request: Request) = {
     <html>
     <head>

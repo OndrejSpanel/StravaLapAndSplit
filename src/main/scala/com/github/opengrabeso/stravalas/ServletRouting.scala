@@ -27,7 +27,7 @@ class ServletRouting extends SparkApplication {
 
     val annotated = reflections.getTypesAnnotatedWith(classOf[Handle]).asScala.toSet
 
-    def addPage(h: HtmlPage, a: Handle) = {
+    def addPage(h: DefineRequest, a: Handle) = {
       val r = route(a.value) ((request, response) => h.apply(request))
       a.method match {
         case Method.Get => get(r)
@@ -51,7 +51,7 @@ class ServletRouting extends SparkApplication {
     annotated.foreach { t =>
       val a = t.getAnnotation(classOf[Handle])
       try {
-        val h = getInstance[HtmlPage](t.getName)
+        val h = getInstance[DefineRequest](t.getName)
         addPage(h, a)
       } catch {
         case _: ClassCastException =>

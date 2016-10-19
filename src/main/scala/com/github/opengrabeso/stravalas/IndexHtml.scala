@@ -3,7 +3,7 @@ package com.github.opengrabeso.stravalas
 import spark.Request
 
 @Handle("/")
-object IndexHtml extends HtmlPage {
+object IndexHtml extends DefineRequest {
   def html(request: Request) = {
     <html>
       <head>
