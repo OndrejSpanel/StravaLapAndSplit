@@ -2,7 +2,6 @@ package com.github.opengrabeso.stravalas
 
 import java.util
 import java.util.logging.Logger
-import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 
 import com.google.api.client.http.{GenericUrl, HttpRequest, HttpRequestInitializer}
 import com.google.api.client.http.javanet.NetHttpTransport
