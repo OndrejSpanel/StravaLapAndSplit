@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE) //on class level
-@interface Handle {
+public @interface Handle {
 
     enum Method {Get, Put, Post, Delete}
 
