@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravalas
 
 import spark.Request
 
+@Handle("/")
 object IndexHtml extends HtmlPage {
   def html(request: Request) = {
     <html>

@@ -3,7 +3,8 @@ package com.github.opengrabeso.stravalas
 import spark.Request
 
 
-object Activity extends HtmlPage {
+@Handle("/activity")
+object ActivityPage extends HtmlPage {
   override def html(request: Request) = {
 
 <html>
