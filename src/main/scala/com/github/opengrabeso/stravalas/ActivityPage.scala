@@ -1,11 +1,11 @@
 package com.github.opengrabeso.stravalas
 
-import spark.Request
+import spark.{Request, Response}
 
 
 @Handle("/activity")
 object ActivityPage extends DefineRequest {
-  override def html(request: Request) = {
+  override def html(request: Request, resp: Response) = {
 
 <html>
   {

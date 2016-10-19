@@ -1,9 +1,9 @@
 package com.github.opengrabeso.stravalas
-import spark.Request
+import spark.{Request, Response}
 
 @Handle("selectActivity")
 object SelectActivity extends DefineRequest {
-  override def html(request: Request) = {
+  override def html(request: Request, resp: Response) = {
     <html>
     <head>
       <title>Strava Split And Lap - select activity</title>

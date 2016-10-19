@@ -14,6 +14,7 @@ import org.joda.time.{DateTime, Period, Seconds}
 
 import scala.collection.JavaConverters._
 import org.joda.time.format.PeriodFormatterBuilder
+import spark.{Request, Response}
 
 object Main {
   private val transport = new NetHttpTransport()
@@ -503,32 +504,33 @@ object Main {
 
 }
 
-class Download extends HttpServlet {
+@Handle(value = "/download", method = Handle.Method.Post)
+object Download extends DefineRequest {
 
-  override def doPost(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
+  override def html(req: Request, resp: Response) = {
 
-    val id = req.getParameter("id")
-    val op = req.getParameter("operation")
-    val authToken = req.getParameter("auth_token")
+    val id = req.queryParams("id")
+    val op = req.queryParams("operation")
+    val authToken = req.queryParams("auth_token")
 
     val contentType = "application/octet-stream"
 
     def download(export: Array[Byte], filename: String): Unit = {
-      resp.setContentType(contentType)
-      resp.setStatus(200)
-      resp.setHeader("Content-Disposition", filename)
+      resp.status(200)
+      resp.header("Content-Disposition", filename)
+      resp.`type`(contentType)
 
-      val out = resp.getOutputStream
+      val out = resp.raw.getOutputStream
       out.write(export)
     }
 
     op match {
       case "split" =>
-        val eventsInput = req.getParameterValues("events")
-        val splitTime = req.getParameter("time").toInt
-        val session = req.getSession
+        val eventsInput = req.raw.getParameterValues("events")
+        val splitTime = req.queryParams("time").toInt
+        val session = req.session
 
-        val events = session.getAttribute("events-" + id).asInstanceOf[Main.ActivityEvents]
+        val events = session.attribute("events-" + id).asInstanceOf[Main.ActivityEvents]
 
         val adjusted = Main.adjustEvents(events, eventsInput)
 
@@ -541,9 +543,11 @@ class Download extends HttpServlet {
           download(export, s"attachment;filename=split_${id}_$splitTime.fit")
         }
 
+        Nil
+
       case "process" =>
 
-        val eventsInput = req.getParameterValues("events")
+        val eventsInput = req.raw.getParameterValues("events")
 
         val events = Main.getEventsFrom(authToken, id)
 
@@ -553,13 +557,17 @@ class Download extends HttpServlet {
 
         download(export, s"attachment;filename=split_$id.fit")
 
+        Nil
+
       case "copy" =>
         val exportUri = s"https://www.strava.com/activities/$id/export_tcx"
         /*
         val dispatcher = req.getRequestDispatcher(exportUri)
         dispatcher.forward(req, resp)
         */
-        resp.sendRedirect(exportUri)
+        resp.redirect(exportUri)
+
+        Nil
 
     }
   }

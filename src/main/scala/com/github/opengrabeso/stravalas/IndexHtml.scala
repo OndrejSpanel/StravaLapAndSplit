@@ -1,10 +1,10 @@
 package com.github.opengrabeso.stravalas
 
-import spark.Request
+import spark.{Request, Response}
 
 @Handle("/")
 object IndexHtml extends DefineRequest {
-  def html(request: Request) = {
+  def html(request: Request, resp: Response) = {
     <html>
       <head>
         <title>Strava Split And Lap</title>

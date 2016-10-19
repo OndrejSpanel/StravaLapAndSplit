@@ -28,7 +28,7 @@ class ServletRouting extends SparkApplication {
     val annotated = reflections.getTypesAnnotatedWith(classOf[Handle]).asScala.toSet
 
     def addPage(h: DefineRequest, a: Handle) = {
-      val r = route(a.value) ((request, response) => h.apply(request))
+      val r = route(a.value) (h.apply)
       a.method match {
         case Method.Get => get(r)
         case Method.Put => put(r)
