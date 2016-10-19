@@ -573,24 +573,27 @@ object Download extends DefineRequest {
   }
 }
 
-class RouteData extends HttpServlet {
+@Handle("/route-data")
+object RouteData extends DefineRequest {
 
-  override def doGet(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
+  override def html(req: Request, resp: Response) = {
 
-    val id = req.getParameter("id")
-    val authToken = req.getParameter("auth_token")
+    val id = req.queryParams("id")
+    val authToken = req.queryParams("auth_token")
 
     val contentType = "application/json"
 
-    val session = req.getSession
+    val session = req.session
 
-    val events = session.getAttribute("events-"+id).asInstanceOf[Main.ActivityEvents]
+    val events = session.attribute("events-"+id).asInstanceOf[Main.ActivityEvents]
 
-    resp.setContentType(contentType)
-    resp.setStatus(200)
+    resp.`type`(contentType)
+    resp.status(200)
 
-    val out = resp.getWriter
+    val out = resp.raw.getWriter
     out.write(events.routeJS)
+
+    Nil
   }
 }
 
