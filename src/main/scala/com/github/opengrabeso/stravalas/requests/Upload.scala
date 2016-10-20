@@ -1,6 +1,7 @@
 package com.github.opengrabeso.stravalas
 package requests
 
+import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
 import spark.{Request, Response}
@@ -17,26 +18,41 @@ object Upload extends DefineRequest {
 
     val items = upload.getItemIterator(request.raw)
 
-    while (items.hasNext) {
-      val item=items.next()
-      if (!item.isFormField && "activities" == item.getFieldName) {
-        // TODO: get filename
-        val session = request.session()
-        session.attribute("KEY_FILE_NAME", item.getName)
-        // TODO: load stream content (TCX, FIT or GPX file)
-        val stream = item.openStream()
-      }
+    val itemsIterator = new Iterator[FileItemStream] {
+      def hasNext = items.hasNext
+      def next() = items.next
     }
 
-    // Parse the request
+    val results = itemsIterator.flatMap { item =>
+      if (!item.isFormField && "activities" == item.getFieldName) {
+        val session = request.session()
+        val name = item.getName
+        // TODO: load stream content (TCX, FIT or GPX file)
+        val stream = item.openStream()
+
+        val extension = name.split('.').last
+        extension.toLowerCase match {
+          case "fit" =>
+            val act = FitImport(stream)
+            act.map { a =>
+              session.attribute("events_name", name)
+              session.attribute(s"events_$name", a)
+              <p>File {name} uploaded</p>
+            }.orElse(Some(<p>File {name} not uploaded, error while processing</p>))
+          case e =>
+            Some(<p>File {name} not uploaded, file format not supported</p>)
+        }
+      } else None
+    }
 
     <html>
-      <head>
-        <title>File uploaded</title>
-      </head>
-      <body>
-        <p>File uploaded</p>
-      </body>
+    <head>
+      <title>File uploaded</title>
+    </head>
+    <body>
+      {results.toList}
+    </body>
     </html>
+
   }
 }
