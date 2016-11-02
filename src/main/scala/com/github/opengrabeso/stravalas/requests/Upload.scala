@@ -7,7 +7,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload
 import spark.{Request, Response}
 
 @Handle(value = "/upload", method = Handle.Method.Post)
-object Upload extends DefineRequest {
+object Upload extends DefineRequest with ActivityRequestHandler {
   override def html(request: Request, resp: Response) = {
 
     val fif = new DiskFileItemFactory()
@@ -23,35 +23,36 @@ object Upload extends DefineRequest {
       def next() = items.next
     }
 
-    val results = itemsIterator.flatMap { item =>
+    val uploadedName = "uploaded"
+
+    val data = itemsIterator.flatMap { item =>
       if (!item.isFormField && "activities" == item.getFieldName) {
         val session = request.session()
-        val name = item.getName
-        // TODO: load stream content (TCX, FIT or GPX file)
+        val name = uploadedName
         val stream = item.openStream()
 
-        val extension = name.split('.').last
+        val extension = item.getName.split('.').last
         extension.toLowerCase match {
           case "fit" =>
-            val act = FitImport(stream)
-            act.map { a =>
-              session.attribute("events_name", name)
-              session.attribute(s"events_$name", a)
-              <p>File {name} uploaded</p>
-            }.orElse(Some(<p>File {name} not uploaded, error while processing</p>))
+            FitImport(stream)
           case e =>
-            Some(<p>File {name} not uploaded, file format not supported</p>)
+            None
         }
       } else None
     }
 
+    // TODO: handle multiple uploaded files
+    val content = htmlHelper(uploadedName, data.toSeq.head, request.session, resp)
+
     <html>
-    <head>
-      <title>File uploaded</title>
-    </head>
-    <body>
-      {results.toList}
-    </body>
+      <head>
+        <meta charset="utf-8"/>
+        <title>Strava Split And Lap</title>
+        {content.head}
+      </head>
+      <body>
+        {content.body}
+      </body>
     </html>
 
   }

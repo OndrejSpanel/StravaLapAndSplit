@@ -48,7 +48,10 @@ object FitImport {
             val posLong = Option(mesg.getField(RecordMesg.PositionLongFieldNum)).map(_.getIntegerValue)
 
             for (time <- timestamp) {
-              val jTime = fromTimestamp(time)
+              // time may be seconds or miliseconds, how to know?
+              val smartTime: Long = if (time < 1e10) time * 1000 else time
+
+              val jTime = fromTimestamp(smartTime)
               for (lat <- posLat; long <- posLong) {
                 gpsBuffer += jTime -> decodeLatLng(lat, long)
               }
@@ -76,7 +79,7 @@ object FitImport {
       val distances = ((distanceDeltas  + (startTime -> 0d)) zip distanceValues).map { case ((t, _), dist) => t -> dist}
 
       val times = distances.map { case (t, d) =>
-        new JodaDuration(t, startTime).getStandardSeconds.toInt
+        new JodaDuration(startTime, t).getStandardSeconds.toInt
       }
 
       val id = Main.ActivityId(0, "Activity", startTime, "Ride", times.last, distances.last._2)
