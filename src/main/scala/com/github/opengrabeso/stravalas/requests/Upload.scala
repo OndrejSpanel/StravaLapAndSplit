@@ -42,7 +42,11 @@ object Upload extends DefineRequest with ActivityRequestHandler {
     }
 
     // TODO: handle multiple uploaded files
-    val content = htmlHelper(uploadedName, data.toSeq.head, request.session, resp)
+    val d = data.toSeq.head
+
+    // TODO: pass data directly to JS?
+    request.session.attribute("events-" + uploadedName, d)
+    val content = htmlHelper(uploadedName, d, request.session, resp)
 
     <html>
       <head>
