@@ -1,26 +1,51 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import spark.{Request, Response}
+import com.github.opengrabeso.stravalas.Main.ActivityEvents
+import spark.{Request, Response, Session}
+
+import scala.xml.NodeSeq
 
 @Handle("/activity")
 object ActivityPage extends DefineRequest {
-  override def html(request: Request, resp: Response) = {
 
-<html>
-  {
+  protected case class ActivityContent(head: NodeSeq, body: NodeSeq)
+
+  override def html(request: Request, resp: Response) = {
     val session = request.session()
     val authToken = session.attribute[String]("authToken")
-    val mapBoxToken = session.attribute[String]("mapboxToken")
     val actId = request.queryParams("activityId")
     val activityData = Main.getEventsFrom(authToken, actId)
     session.attribute("events-" + actId, activityData)
 
-  <head>
-    <meta charset="utf-8"/>
-    <title>Strava Split And Lap</title>
+    val content = htmlHelper(actId, activityData, session, resp)
 
-    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <html>
+      <head>
+        <meta charset="utf-8"/>
+        <title>Strava Split And Lap</title>
+        {content.head}
+      </head>
+      <body>
+        <a href={activityData.id.link}> {activityData.id.name} </a>
+
+        <form action ="download" method="get">
+          <input type="hidden" name="id" value={activityData.id.id.toString}/>
+          <input type="hidden" name="auth_token" value={authToken.toString}/>
+          <input type="hidden" name="operation" value="copy"/>
+          <input type="submit" value="Backup original activity"/>
+        </form>
+        {content.body}
+      </body>
+    </html>
+  }
+
+
+  protected def htmlHelper(actId: String, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
+    val authToken = session.attribute[String]("authToken")
+    val mapBoxToken = session.attribute[String]("mapboxToken")
+
+    val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
     <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
 
@@ -138,21 +163,7 @@ object ActivityPage extends DefineRequest {
       }
   </script>
 
-
-</head>
-
-<body>
-
-<a href={activityData.id.link}> {activityData.id.name} </a>
-
-<form action ="download" method="get">
-  <input type="hidden" name="id" value={activityData.id.id.toString}/>
-  <input type="hidden" name="auth_token" value={authToken.toString}/>
-  <input type="hidden" name="operation" value="copy"/>
-  <input type="submit" value="Backup original activity"/>
-</form>
-
-  <table class="activityTable">
+  val bodyContent = <table class="activityTable">
     <tr>
       <th>Event</th>
       <th>Time</th>
@@ -409,9 +420,6 @@ object ActivityPage extends DefineRequest {
     """)}
   </script>
 
-</body>
-    }
-</html>
-
+    ActivityContent(headContent, bodyContent)
   }
 }
