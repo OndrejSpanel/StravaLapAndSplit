@@ -23,18 +23,18 @@ object Upload extends DefineRequest with ActivityRequestHandler {
       def next() = items.next
     }
 
-    val uploadedName = "uploaded"
-
+    val session = request.session
     val data = itemsIterator.flatMap { item =>
       if (!item.isFormField && "activities" == item.getFieldName) {
-        val session = request.session()
-        val name = uploadedName
+        val name = "uploaded"
+        // TODO: proper encoding (this only solves space - plus conflict)
+        // val name = item.getName
         val stream = item.openStream()
 
         val extension = item.getName.split('.').last
         extension.toLowerCase match {
           case "fit" =>
-            FitImport(stream)
+            FitImport(stream).map(name -> _)
           case e =>
             None
         }
@@ -45,8 +45,8 @@ object Upload extends DefineRequest with ActivityRequestHandler {
     val d = data.toSeq.head
 
     // TODO: pass data directly to JS?
-    request.session.attribute("events-" + uploadedName, d)
-    val content = htmlHelper(uploadedName, d, request.session, resp)
+    session.attribute("events-" + d._1, d._2)
+    val content = htmlHelper(d._1, d._2, session, resp)
 
     <html>
       <head>
