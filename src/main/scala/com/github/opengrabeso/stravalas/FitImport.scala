@@ -64,8 +64,15 @@ object FitImport {
       val gpsStream = SortedMap[JodaDateTime, (Double, Double)](gpsBuffer:_*)
       val hrStream = SortedMap[JodaDateTime, Int](hrBuffer:_*)
 
+      val distStream = (gpsStream zip gpsStream.drop(1)).map { case ((t1, gps1), (t2, gps2)) =>
+          GPS.distance(gps1._1, gps1._2, gps2._1, gps1._2)
+      }
+
+      val totDist = distStream.sum
+
       println(gpsStream.size)
       println(hrStream.size)
+      println(s"Total distance $totDist")
       // create a common array with stamps and data?
       /*
       val startDateStr = responseJson.path("start_date").textValue
