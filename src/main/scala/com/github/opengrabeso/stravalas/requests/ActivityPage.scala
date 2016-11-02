@@ -384,8 +384,8 @@ object ActivityPage extends DefineRequest {
 
     }
 
-    var lat = ${laps.id.lat};
-    var lon = ${laps.id.lon};
+    var lat = ${laps.lat};
+    var lon = ${laps.lon};
     mapboxgl.accessToken = "$mapBoxToken";
     var map = new mapboxgl.Map({
       container: 'map',
