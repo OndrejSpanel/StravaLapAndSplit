@@ -13,8 +13,8 @@ object ActivityPage extends DefineRequest {
     val authToken = session.attribute[String]("authToken")
     val mapBoxToken = session.attribute[String]("mapboxToken")
     val actId = request.queryParams("activityId")
-    val laps = Main.getEventsFrom(authToken, actId)
-    session.attribute("events-" + actId, laps)
+    val activityData = Main.getEventsFrom(authToken, actId)
+    session.attribute("events-" + actId, activityData)
 
   <head>
     <meta charset="utf-8"/>
@@ -50,7 +50,7 @@ object ActivityPage extends DefineRequest {
       var authToken = "$authToken";
       // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
       var events = [
-        ${laps.editableEvents.mkString("[", "],[", "]")}
+        ${activityData.editableEvents.mkString("[", "],[", "]")}
       ];
 
     /**
@@ -143,10 +143,10 @@ object ActivityPage extends DefineRequest {
 
 <body>
 
-<a href={laps.id.link}> {laps.id.name} </a>
+<a href={activityData.id.link}> {activityData.id.name} </a>
 
 <form action ="download" method="get">
-  <input type="hidden" name="id" value={laps.id.id.toString}/>
+  <input type="hidden" name="id" value={activityData.id.id.toString}/>
   <input type="hidden" name="auth_token" value={authToken.toString}/>
   <input type="hidden" name="operation" value="copy"/>
   <input type="submit" value="Backup original activity"/>
@@ -159,11 +159,11 @@ object ActivityPage extends DefineRequest {
       <th>km</th>
       <th>Sport</th>
       <th>Action</th>
-    </tr>{val ees = laps.editableEvents
+    </tr>{val ees = activityData.editableEvents
   var lastSport = ""
   var lastTime = -1
-  for ((t, i) <- laps.events.zipWithIndex) yield {
-    val t = laps.events(i)
+  for ((t, i) <- activityData.events.zipWithIndex) yield {
+    val t = activityData.events(i)
     val ee = ees(i)
     val action = ee.action
     val sport = if (ee.sport == lastSport) "" else ee.sport
@@ -384,8 +384,8 @@ object ActivityPage extends DefineRequest {
 
     }
 
-    var lat = ${laps.lat};
-    var lon = ${laps.lon};
+    var lat = ${activityData.lat};
+    var lon = ${activityData.lon};
     mapboxgl.accessToken = "$mapBoxToken";
     var map = new mapboxgl.Map({
       container: 'map',
