@@ -23,4 +23,6 @@ libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.6.1"
 
 libraryDependencies += "org.reflections" % "reflections" % "0.9.10"
 
+libraryDependencies += "commons-fileupload" % "commons-fileupload" % "1.3.2"
+
 appengineSettings

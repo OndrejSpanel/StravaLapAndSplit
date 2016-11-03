@@ -1,56 +1,102 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import spark.{Request, Response}
+import com.github.opengrabeso.stravalas.Main.ActivityEvents
+import spark.{Request, Response, Session}
 
-@Handle("/activity")
-object ActivityPage extends DefineRequest {
-  override def html(request: Request, resp: Response) = {
+import scala.xml.NodeSeq
 
-<html>
-  {
-    val session = request.session()
+protected case class ActivityContent(head: NodeSeq, body: NodeSeq)
+
+trait ActivityRequestHandler {
+  protected def htmlHelper(actId: String, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
     val authToken = session.attribute[String]("authToken")
     val mapBoxToken = session.attribute[String]("mapboxToken")
-    val actId = request.queryParams("activityId")
-    val laps = Main.getEventsFrom(authToken, actId)
-    session.attribute("events-" + actId, laps)
 
-  <head>
-    <meta charset="utf-8"/>
-    <title>Strava Split And Lap</title>
+    val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+      <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
+        <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
 
-    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
-    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
+      <style>
+        .activityTable {{
+        border: 0;
+        border-collapse: collapse;
+        }}
+        td, th {{
+        border: 1px solid black;
+        }}
+        .cellNoBorder {{
+        border: 0;
+        }}
 
-    <style>
-      .activityTable {{
-      border: 0;
-      border-collapse: collapse;
+        #map {{
+        height: 500px;
+        width: 800px;
+        }}
+      </style>
+
+      <script type="text/javascript">{activityJS(actId, activityData, authToken)}</script>
+
+    val bodyContent = <table class="activityTable">
+      <tr>
+        <th>Event</th>
+        <th>Time</th>
+        <th>km</th>
+        <th>Sport</th>
+        <th>Action</th>
+      </tr>{val ees = activityData.editableEvents
+      var lastSport = ""
+      var lastTime = -1
+      for ((t, i) <- activityData.events.zipWithIndex) yield {
+        val t = activityData.events(i)
+        val ee = ees(i)
+        val action = ee.action
+        val sport = if (ee.sport == lastSport) "" else ee.sport
+        lastSport = ee.sport
+        <tr>
+          <td> {xml.Unparsed(t.description)} </td>
+          <td> {Main.displaySeconds(t.stamp.time)} </td>
+          <td> {Main.displayDistance(t.stamp.dist)} </td>
+          <td> {sport} </td>
+          <td>
+            {val types = t.listTypes
+          if (types.length != 1 && lastTime != t.stamp.time) {
+            lastTime = t.stamp.time
+            <select id={t.stamp.time.toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
+              {for (et <- types) yield {
+              <option value={et.id} selected={if (action == et.id) "" else null}>
+                {et.display}
+              </option>
+            }}
+            </select>
+          } else {
+            {Events.typeToDisplay(types, types(0).id)}
+              <input type="hidden" name="events" value={t.defaultEvent}/>
+          }}
+          </td>
+          <td class="cellNoBorder" id={s"link${t.stamp.time.toString}"}> </td>
+        </tr>
       }}
-      td, th {{
-      border: 1px solid black;
-      }}
-      .cellNoBorder {{
-      border: 0;
-      }}
+    </table>
 
-      #map {{
-      height: 500px;
-      width: 800px;
-      }}
-    </style>
+      <div id='map'></div>
 
-    <script type="text/javascript">
-      {
-      //language=JavaScript
-      xml.Unparsed(s"""
+      <script type="text/javascript">initEvents()</script>
+
+      <script>{mapJS(activityData, mapBoxToken)}</script>
+
+    ActivityContent(headContent, bodyContent)
+  }
+
+  private def activityJS(actId: String, activityData: ActivityEvents, authToken: String) = {
+    //language=JavaScript
+    xml.Unparsed(
+      s"""
       var id = "$actId";
       var authToken = "$authToken";
       // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
       var events = [
-        ${laps.editableEvents.mkString("[", "],[", "]")}
+        ${activityData.editableEvents.mkString("[", "],[", "]")}
       ];
 
     /**
@@ -135,72 +181,12 @@ object ActivityPage extends DefineRequest {
       });
     }
     """)
-      }
-  </script>
+  }
 
-
-</head>
-
-<body>
-
-<a href={laps.id.link}> {laps.id.name} </a>
-
-<form action ="download" method="get">
-  <input type="hidden" name="id" value={laps.id.id.toString}/>
-  <input type="hidden" name="auth_token" value={authToken.toString}/>
-  <input type="hidden" name="operation" value="copy"/>
-  <input type="submit" value="Backup original activity"/>
-</form>
-
-  <table class="activityTable">
-    <tr>
-      <th>Event</th>
-      <th>Time</th>
-      <th>km</th>
-      <th>Sport</th>
-      <th>Action</th>
-    </tr>{val ees = laps.editableEvents
-  var lastSport = ""
-  var lastTime = -1
-  for ((t, i) <- laps.events.zipWithIndex) yield {
-    val t = laps.events(i)
-    val ee = ees(i)
-    val action = ee.action
-    val sport = if (ee.sport == lastSport) "" else ee.sport
-    lastSport = ee.sport
-    <tr>
-      <td> {xml.Unparsed(t.description)} </td>
-      <td> {Main.displaySeconds(t.stamp.time)} </td>
-      <td> {Main.displayDistance(t.stamp.dist)} </td>
-      <td> {sport} </td>
-      <td>
-        {val types = t.listTypes
-        if (types.length != 1 && lastTime != t.stamp.time) {
-          lastTime = t.stamp.time
-          <select id={t.stamp.time.toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
-            {for (et <- types) yield {
-            <option value={et.id} selected={if (action == et.id) "" else null}>
-              {et.display}
-            </option>
-          }}
-          </select>
-        } else {
-          {Events.typeToDisplay(types, types(0).id)}
-          <input type="hidden" name="events" value={t.defaultEvent}/>
-      }}
-      </td>
-      <td class="cellNoBorder" id={s"link${t.stamp.time.toString}"}> </td>
-    </tr>
-  }}
-  </table>
-
-  <div id='map'></div>
-
-  <script type="text/javascript">initEvents()</script>
-
-  <script>{
+  private def mapJS(activityData: ActivityEvents, mapBoxToken: String) = {
     //language=JavaScript
-    xml.Unparsed(s"""
+    xml.Unparsed(
+      s"""
     function renderEvents(events, route) {
       var markers = [];
 
@@ -384,8 +370,8 @@ object ActivityPage extends DefineRequest {
 
     }
 
-    var lat = ${laps.id.lat};
-    var lon = ${laps.id.lon};
+    var lat = ${activityData.lat};
+    var lon = ${activityData.lon};
     mapboxgl.accessToken = "$mapBoxToken";
     var map = new mapboxgl.Map({
       container: 'map',
@@ -404,14 +390,44 @@ object ActivityPage extends DefineRequest {
           renderEvents(events, route);
         }
       };
-    xmlHttp.open("GET", "route-data?id=" + id + "&auth_token=" + authToken, true); // true for asynchronous
+    xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
       xmlHttp.send(null)});
-    """)}
-  </script>
-
-</body>
-    }
-</html>
-
+    """)
   }
+}
+
+@Handle("/activity")
+object ActivityPage extends DefineRequest with ActivityRequestHandler {
+
+  override def html(request: Request, resp: Response) = {
+    val session = request.session()
+    val authToken = session.attribute[String]("authToken")
+    val actId = request.queryParams("activityId")
+    val activityData = Main.getEventsFrom(authToken, actId)
+    session.attribute("events-" + actId, activityData)
+
+    val content = htmlHelper(actId, activityData, session, resp)
+
+    <html>
+      <head>
+        <title>Strava Split And Lap</title>
+        {headPrefix}
+        {content.head}
+      </head>
+      <body>
+        <a href={activityData.id.link}> {activityData.id.name} </a>
+
+        <form action ="download" method="get">
+          <input type="hidden" name="id" value={activityData.id.id.toString}/>
+          <input type="hidden" name="auth_token" value={authToken.toString}/>
+          <input type="hidden" name="operation" value="copy"/>
+          <input type="submit" value="Backup original activity"/>
+        </form>
+        {content.body}
+        {bodyFooter}
+      </body>
+    </html>
+  }
+
+
 }

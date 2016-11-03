@@ -8,6 +8,7 @@ object IndexHtml extends DefineRequest {
   def html(request: Request, resp: Response) = {
     <html>
       <head>
+        {headPrefix}
         <title>Strava Split And Lap</title>
       </head>
       <body>

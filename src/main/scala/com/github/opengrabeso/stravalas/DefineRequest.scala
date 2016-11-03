@@ -18,4 +18,20 @@ trait DefineRequest {
   def cond(boolean: Boolean) (nodes: NodeSeq): NodeSeq = {
     if (boolean) nodes else Nil
   }
+
+  def headPrefix: NodeSeq = {
+    <meta charset="utf-8"/>
+    <link rel="icon" href="static/favicon.ico"/>
+  }
+
+  def bodyFooter: NodeSeq = {
+    <p></p>
+    <div id="footer" style="background-color:#fca;overflow:auto">
+      <a href="http://labs.strava.com/" id="powered_by_strava" rel="nofollow">
+        <img align="left" src="static/api_logo_pwrdBy_strava_horiz_white.png" style="max-height:46px"/>
+      </a>
+      <p style="color:#fff">© 2016 <a href="https://github.com/OndrejSpanel" style="color:inherit">Ondřej Španěl</a></p>
+      <div/>
+    </div>
+  }
 }

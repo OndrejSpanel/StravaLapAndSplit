@@ -87,13 +87,8 @@ object Main {
     firstname + " " + lastname
   }
 
-  case class ActivityId(
-    id: Long, name: String, startTime: DateTime, sportName: String, duration:Int, distance: Double,
-    begLat: Double, begLon: Double, endLat: Double, endLon: Double
-  ) {
+  case class ActivityId(id: Long, name: String, startTime: DateTime, sportName: String, duration:Int, distance: Double) {
     def link: String = s"https://www.strava.com/activities/$id"
-    def lat: Double = (begLat + endLat) * 0.5
-    def lon: Double = (begLon + endLon) * 0.5
   }
 
   object ActivityId {
@@ -105,12 +100,8 @@ object Main {
       val sportName = json.path("type").textValue
       val duration = json.path("elapsed_time").intValue
       val distance = json.path("distance").doubleValue
-      val begLat  = json.path("start_latlng").path(0).doubleValue
-      val begLon  = json.path("start_latlng").path(1).doubleValue
-      val endLat  = json.path("end_latlng").path(0).doubleValue
-      val endLon  = json.path("end_latlng").path(1).doubleValue
 
-      ActivityId(id, name, time, sportName, duration, distance, begLat, begLon, endLat, endLon)
+      ActivityId(id, name, time, sportName, duration, distance)
     }
   }
 
@@ -124,6 +115,13 @@ object Main {
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], stamps: Seq[Stamp], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+
+    def begPos: (Double, Double) = gps.head
+    def endPos: (Double, Double) = gps.last
+
+    def lat: Double = (begPos._1 + endPos._1) * 0.5
+    def lon: Double = (begPos._2 + endPos._2) * 0.5
+
     def routeJS: String = {
       (gps zip stamps).map { case ((lng, lat),t) =>
         s"[$lat,$lng,${t.time},${t.dist}]"
@@ -204,105 +202,31 @@ object Main {
     }
   }
 
-  def getEventsFrom(authToken: String, id: String): ActivityEvents = {
+  trait ActivityStreams {
+    def time: Vector[Int]
 
-    val uri = s"https://www.strava.com/api/v3/activities/$id"
-    val request = buildGetRequest(uri, authToken, "")
+    def dist: Vector[Double]
 
-    val responseJson = jsonMapper.readTree(request.execute().getContent)
+    def latlng: Vector[(Double, Double)]
 
-    val actId = ActivityId.load(responseJson)
-    val startDateStr = responseJson.path("start_date").textValue
-    val startTime = DateTime.parse(startDateStr)
+    def attributes: Seq[(String, Seq[Int])]
 
-    object ActivityStreams {
-      //private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
-      private val wantStreams = Seq("time", "latlng", "distance", "heartrate", "cadence", "watts", "temp")
+    lazy val stamps: Vector[Stamp] = (time zip dist).map((Stamp.apply _).tupled)
 
-      private val streamTypes = wantStreams.mkString(",")
-
-      private val uri = s"https://www.strava.com/api/v3/activities/$id/streams/$streamTypes"
-      private val request = buildGetRequest(uri, authToken, "")
-
-      private val response = request.execute().getContent
-
-      private val responseJson = jsonMapper.readTree(response)
-
-      val streams = responseJson.elements.asScala.toIterable
-
-      def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Vector[T] = {
-        if (stream.isEmpty) Vector()
-        else stream.head.path("data").asScala.map(get).toVector
-      }
-      def getDataByName[T](name: String, get: JsonNode => T): Vector[T] = {
-        val stream = streams.filter(_.path("type").textValue == name).toStream
-        getData(stream, get)
-      }
-      def getAttribByName(name: String): (String, Seq[Int]) = {
-        (name, getDataByName(name, _.asInt))
-      }
-
-      private def loadGpsPair(gpsItem: JsonNode) = {
-        val elements = gpsItem.elements
-        val lat = elements.next.asDouble
-        val lng = elements.next.asDouble
-        (lat, lng)
-      }
-
-      val time = getDataByName("time", _.asInt)
-      val dist = getDataByName("distance", _.asDouble)
-      val latlng = getDataByName("latlng", loadGpsPair)
-      val heartrate = getAttribByName("heartrate")
-      val cadence = getAttribByName("cadence")
-      val watts = getAttribByName("watts")
-      val temp = getAttribByName("temp")
-
-      val stamps = (time zip dist).map((Stamp.apply _).tupled)
-
-      def stampForTime(time: Int): Stamp = {
-        stamps.filter(_.time >= time).head
-      }
+    def stampForTime(time: Int): Stamp = {
+      stamps.filter(_.time >= time).head
     }
-
-    val laps = {
-
-      val requestLaps = buildGetRequest(s"https://www.strava.com/api/v3/activities/$id/laps", authToken, "")
-
-      val response = requestLaps.execute().getContent
-
-      val lapsJson = jsonMapper.readTree(response)
-
-      val lapTimes = (for (lap <- lapsJson.elements.asScala) yield {
-        val lapTimeStr = lap.path("start_date").textValue
-        DateTime.parse(lapTimeStr)
-      }).toList
+  }
 
 
-      val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
-
-      lapsInSeconds.filter(_ > 0).map(ActivityStreams.stampForTime)
-    }
-
-    val segments: Seq[Event] = {
-      val segmentList = responseJson.path("segment_efforts").asScala.toList
-      segmentList.flatMap {seg =>
-        val segStartTime = DateTime.parse(seg.path("start_date").textValue)
-        val segName = seg.path("name").textValue
-        val segStart = Seconds.secondsBetween(startTime, segStartTime).getSeconds
-        val segDuration = seg.path("elapsed_time").intValue
-        val segPrivate = seg.path("segment").path("private").booleanValue
-        Seq(
-          StartSegEvent(segName, segPrivate, ActivityStreams.stampForTime(segStart)),
-          EndSegEvent(segName, segPrivate, ActivityStreams.stampForTime(segStart + segDuration))
-        )
-      }
-    }
+  def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: List[Stamp], segments: Seq[Event]): ActivityEvents = {
 
     val pauses: Seq[(Int, Stamp)] = {
 
       // compute speed from a distance stream
       val maxPauseSpeed = 0.2
       val maxPauseSpeedImmediate = 0.7
+
       def pauseDuration(path: List[Double], time: List[Int]): Int = {
         def pauseDurationRecurse(start: Double, prev: Double, duration: Int, path: List[Double], time: List[Int]): Int = {
           path match {
@@ -311,6 +235,7 @@ object Main {
             case _ => duration
           }
         }
+
         pauseDurationRecurse(path.head, path.head, 0, path, time)
       }
 
@@ -332,16 +257,15 @@ object Main {
         }
       }
 
-      import ActivityStreams._
-      val pauses = computePauses(dist.toList, time.toList, Nil).reverse // reverse to keep concat fast
+      val pauses = computePauses(act.dist.toList, act.time.toList, Nil).reverse // reverse to keep concat fast
 
       val cleanedPauses = ignoreTooClose(0, pauses, Nil).reverse
 
       val minPause = 10
-      val longPauses = (cleanedPauses.zipWithIndex zip stamps).filter { case ((p,i), stamp) =>
+      val longPauses = (cleanedPauses.zipWithIndex zip act.stamps).filter { case ((p, i), stamp) =>
         p > minPause
       }.map {
-        case ((p,i), stamp) => (p, stamp)
+        case ((p, i), stamp) => (p, stamp)
       }
 
       longPauses
@@ -361,7 +285,7 @@ object Main {
       }
     }
 
-    val mergedPauses = mergePauses(pauses.sortBy(_._2.time), Seq() )
+    val mergedPauses = mergePauses(pauses.sortBy(_._2.time), Seq())
 
     val pauseEvents = mergedPauses.flatMap { case (p, stamp) =>
       if (p > 30) {
@@ -371,23 +295,26 @@ object Main {
       else Seq(PauseEvent(p, stamp))
     }
 
-    val pauseTimes = (0 +: pauses.map(_._2.time) :+ ActivityStreams.time.last).distinct
+    val pauseTimes = (0 +: pauses.map(_._2.time) :+ act.time.last).distinct
 
     val pauseRanges = pauseTimes zip pauseTimes.drop(1)
 
     class SpeedStats(begTime: Int, endTime: Int) {
-      import ActivityStreams._
+      import act._
 
       val beg = time.indexWhere(_ >= begTime)
       val end = time.indexWhere(_ >= endTime)
 
-      def statDistance = dist(end-1) - dist(beg)
-      def statDuration = time(end-1) - time(beg)
+      def statDistance = dist(end - 1) - dist(beg)
+
+      def statDuration = time(end - 1) - time(beg)
 
       class SlidingAverage(wantedDuration: Int) {
+
         class Window(begIndex: Int, endIndex: Int) {
-          def distance = dist(endIndex-1) - dist(begIndex)
-          def duration = time(endIndex-1) - time(begIndex)
+          def distance = dist(endIndex - 1) - dist(begIndex)
+
+          def duration = time(endIndex - 1) - time(begIndex)
 
           def speed: Double = if (duration > 0) distance / duration else 0
 
@@ -428,6 +355,7 @@ object Main {
       val stats = new SpeedStats(pBeg, pEnd)
 
       def paceToMs(pace: Double) = 60 / pace / 3.6
+
       def kmhToMs(speed: Double) = speed / 3.6
 
       def detectSport(maxRunSpeed30: Double, maxRunSpeed120: Double, maxRunSpeed600: Double): String = {
@@ -441,7 +369,7 @@ object Main {
           detectSport(paceToMs(2), paceToMs(3), paceToMs(3)) // 2 - 3 min/km possible
         case "ride" =>
           detectSport(kmhToMs(25), kmhToMs(22), kmhToMs(20)) // 25 - 18 km/h possible
-          //if (stats.statDuration > 10)
+        //if (stats.statDuration > 10)
         case _ =>
           detectSport(paceToMs(3), paceToMs(4), paceToMs(4)) // 3 - 4 min/km possible
         // TODO: handle other sports: swimming, walking, ....
@@ -451,19 +379,121 @@ object Main {
     }
 
     val sportsByTime = sportsInRanges.sortBy(-_._1)
+
     def findSport(time: Int) = {
       sportsByTime.find(_._1 <= time).map(_._2).getOrElse(actId.sportName)
     }
-    import ActivityStreams._
+
     // TODO: provide activity type with the split
-    val events = (BegEvent(Stamp(0,0)) +: EndEvent(Stamp(time.last, dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
+    val events = (BegEvent(Stamp(0, 0)) +: EndEvent(Stamp(act.time.last, act.dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
     val sports = eventsByTime.map(x => findSport(x.stamp.time))
 
+    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, act.stamps, act.latlng, act.attributes)
+  }
 
-    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, stamps, latlng, Seq(heartrate, cadence, watts, temp))
+  def getEventsFrom(authToken: String, id: String): ActivityEvents = {
+
+    val uri = s"https://www.strava.com/api/v3/activities/$id"
+    val request = buildGetRequest(uri, authToken, "")
+
+    val responseJson = jsonMapper.readTree(request.execute().getContent)
+
+    val actId = ActivityId.load(responseJson)
+    val startDateStr = responseJson.path("start_date").textValue
+    val startTime = DateTime.parse(startDateStr)
+
+    object StravaActivityStreams extends ActivityStreams {
+      //private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
+      private val wantStreams = Seq("time", "latlng", "distance", "heartrate", "cadence", "watts", "temp")
+
+      private val streamTypes = wantStreams.mkString(",")
+
+      private val uri = s"https://www.strava.com/api/v3/activities/$id/streams/$streamTypes"
+      private val request = buildGetRequest(uri, authToken, "")
+
+      private val response = request.execute().getContent
+
+      private val responseJson = jsonMapper.readTree(response)
+
+      val streams = responseJson.elements.asScala.toIterable
+
+      def getData[T](stream: Stream[JsonNode], get: JsonNode => T): Vector[T] = {
+        if (stream.isEmpty) Vector()
+        else stream.head.path("data").asScala.map(get).toVector
+      }
+
+      def getDataByName[T](name: String, get: JsonNode => T): Vector[T] = {
+        val stream = streams.filter(_.path("type").textValue == name).toStream
+        getData(stream, get)
+      }
+
+      def getAttribByName(name: String): (String, Seq[Int]) = {
+        (name, getDataByName(name, _.asInt))
+      }
+
+      private def loadGpsPair(gpsItem: JsonNode) = {
+        val elements = gpsItem.elements
+        val lat = elements.next.asDouble
+        val lng = elements.next.asDouble
+        (lat, lng)
+      }
+
+      val time = getDataByName("time", _.asInt)
+      val dist = getDataByName("distance", _.asDouble)
+      val latlng = getDataByName("latlng", loadGpsPair)
+
+      val attributes: Seq[(String, Seq[Int])] = Seq(
+        getAttribByName("heartrate"),
+        getAttribByName("cadence"),
+        getAttribByName("watts"),
+        getAttribByName("temp")
+      )
+
+    }
+
+    val act = StravaActivityStreams
+
+    val laps = {
+
+
+      val requestLaps = buildGetRequest(s"https://www.strava.com/api/v3/activities/$id/laps", authToken, "")
+
+      val response = requestLaps.execute().getContent
+
+      val lapsJson = jsonMapper.readTree(response)
+
+      val lapTimes = (for (lap <- lapsJson.elements.asScala) yield {
+        val lapTimeStr = lap.path("start_date").textValue
+        DateTime.parse(lapTimeStr)
+      }).toList
+
+
+      val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
+
+      lapsInSeconds.filter(_ > 0).map(act.stampForTime)
+    }
+
+    val segments: Seq[Event] = {
+      val segmentList = responseJson.path("segment_efforts").asScala.toList
+      segmentList.flatMap { seg =>
+        val segStartTime = DateTime.parse(seg.path("start_date").textValue)
+        val segName = seg.path("name").textValue
+        val segStart = Seconds.secondsBetween(startTime, segStartTime).getSeconds
+        val segDuration = seg.path("elapsed_time").intValue
+        val segPrivate = seg.path("segment").path("private").booleanValue
+        Seq(
+          StartSegEvent(segName, segPrivate, act.stampForTime(segStart)),
+          EndSegEvent(segName, segPrivate, act.stampForTime(segStart + segDuration))
+        )
+      }
+    }
+
+
+    processActivityStream(actId, StravaActivityStreams, laps, segments)
+
   }
 
   def adjustEvents(events: ActivityEvents, eventsInput: Array[String]): ActivityEvents = {

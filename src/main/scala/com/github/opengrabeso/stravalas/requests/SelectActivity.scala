@@ -8,6 +8,7 @@ object SelectActivity extends DefineRequest {
   override def html(request: Request, resp: Response) = {
     <html>
     <head>
+      {headPrefix}
       <title>Strava Split And Lap - select activity</title>
       <style>
         tr:nth-child(even) {{background-color: #f2f2f2}}
@@ -60,7 +61,13 @@ object SelectActivity extends DefineRequest {
           </p>
         </form>
       }
+      <form action="upload" method="post" enctype="multipart/form-data">
+      <p>Select files to upload <input type="file" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/></p>
+        <input type="submit" value="Upload"/>
+      </form>
+
     }}
+    {bodyFooter}
     </body>
     </html>
   }
