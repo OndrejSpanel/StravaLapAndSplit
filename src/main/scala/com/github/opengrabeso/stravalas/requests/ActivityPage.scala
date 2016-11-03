@@ -35,10 +35,63 @@ trait ActivityRequestHandler {
         }}
       </style>
 
-      <script type="text/javascript">
-        {
-        //language=JavaScript
-        xml.Unparsed(s"""
+      <script type="text/javascript">{activityJS(actId, activityData, authToken)}</script>
+
+    val bodyContent = <table class="activityTable">
+      <tr>
+        <th>Event</th>
+        <th>Time</th>
+        <th>km</th>
+        <th>Sport</th>
+        <th>Action</th>
+      </tr>{val ees = activityData.editableEvents
+      var lastSport = ""
+      var lastTime = -1
+      for ((t, i) <- activityData.events.zipWithIndex) yield {
+        val t = activityData.events(i)
+        val ee = ees(i)
+        val action = ee.action
+        val sport = if (ee.sport == lastSport) "" else ee.sport
+        lastSport = ee.sport
+        <tr>
+          <td> {xml.Unparsed(t.description)} </td>
+          <td> {Main.displaySeconds(t.stamp.time)} </td>
+          <td> {Main.displayDistance(t.stamp.dist)} </td>
+          <td> {sport} </td>
+          <td>
+            {val types = t.listTypes
+          if (types.length != 1 && lastTime != t.stamp.time) {
+            lastTime = t.stamp.time
+            <select id={t.stamp.time.toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
+              {for (et <- types) yield {
+              <option value={et.id} selected={if (action == et.id) "" else null}>
+                {et.display}
+              </option>
+            }}
+            </select>
+          } else {
+            {Events.typeToDisplay(types, types(0).id)}
+              <input type="hidden" name="events" value={t.defaultEvent}/>
+          }}
+          </td>
+          <td class="cellNoBorder" id={s"link${t.stamp.time.toString}"}> </td>
+        </tr>
+      }}
+    </table>
+
+      <div id='map'></div>
+
+      <script type="text/javascript">initEvents()</script>
+
+      <script>{mapJS(activityData, mapBoxToken)}</script>
+
+    ActivityContent(headContent, bodyContent)
+  }
+
+  private def activityJS(actId: String, activityData: ActivityEvents, authToken: String) = {
+    //language=JavaScript
+    xml.Unparsed(
+      s"""
       var id = "$actId";
       var authToken = "$authToken";
       // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
@@ -128,58 +181,12 @@ trait ActivityRequestHandler {
       });
     }
     """)
-        }
-      </script>
+  }
 
-    val bodyContent = <table class="activityTable">
-      <tr>
-        <th>Event</th>
-        <th>Time</th>
-        <th>km</th>
-        <th>Sport</th>
-        <th>Action</th>
-      </tr>{val ees = activityData.editableEvents
-      var lastSport = ""
-      var lastTime = -1
-      for ((t, i) <- activityData.events.zipWithIndex) yield {
-        val t = activityData.events(i)
-        val ee = ees(i)
-        val action = ee.action
-        val sport = if (ee.sport == lastSport) "" else ee.sport
-        lastSport = ee.sport
-        <tr>
-          <td> {xml.Unparsed(t.description)} </td>
-          <td> {Main.displaySeconds(t.stamp.time)} </td>
-          <td> {Main.displayDistance(t.stamp.dist)} </td>
-          <td> {sport} </td>
-          <td>
-            {val types = t.listTypes
-          if (types.length != 1 && lastTime != t.stamp.time) {
-            lastTime = t.stamp.time
-            <select id={t.stamp.time.toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
-              {for (et <- types) yield {
-              <option value={et.id} selected={if (action == et.id) "" else null}>
-                {et.display}
-              </option>
-            }}
-            </select>
-          } else {
-            {Events.typeToDisplay(types, types(0).id)}
-              <input type="hidden" name="events" value={t.defaultEvent}/>
-          }}
-          </td>
-          <td class="cellNoBorder" id={s"link${t.stamp.time.toString}"}> </td>
-        </tr>
-      }}
-    </table>
-
-      <div id='map'></div>
-
-      <script type="text/javascript">initEvents()</script>
-
-      <script>{
-        //language=JavaScript
-        xml.Unparsed(s"""
+  private def mapJS(activityData: ActivityEvents, mapBoxToken: String) = {
+    //language=JavaScript
+    xml.Unparsed(
+      s"""
     function renderEvents(events, route) {
       var markers = [];
 
@@ -385,12 +392,8 @@ trait ActivityRequestHandler {
       };
     xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
       xmlHttp.send(null)});
-    """)}
-      </script>
-
-    ActivityContent(headContent, bodyContent)
+    """)
   }
-
 }
 
 @Handle("/activity")
