@@ -4,7 +4,20 @@ import spark.{Request, Response}
 
 import scala.xml.NodeSeq
 
+sealed trait Method
+object Method {
+  case object Get extends Method
+  case object Put extends Method
+  case object Post extends Method
+  case object Delete extends Method
+
+}
+
+case class Handle(value: String, method: Method = Method.Get)
+
 trait DefineRequest {
+  def handle: Handle
+
   def apply(request: Request, resp: Response): AnyRef = {
     val nodes = html(request, resp)
     if (nodes.nonEmpty) {

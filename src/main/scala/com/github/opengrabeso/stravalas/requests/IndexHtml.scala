@@ -3,8 +3,9 @@ package requests
 
 import spark.{Request, Response}
 
-@Handle("/")
 object IndexHtml extends DefineRequest {
+  def handle = Handle("/")
+
   def html(request: Request, resp: Response) = {
     <html>
       <head>

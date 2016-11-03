@@ -13,16 +13,14 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.2"
 )
 
-libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
-
 libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
 
 libraryDependencies += "com.sparkjava" % "spark-core" % "1.1.1"
 
 libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.6.1"
 
-libraryDependencies += "org.reflections" % "reflections" % "0.9.10"
-
 libraryDependencies += "commons-fileupload" % "commons-fileupload" % "1.3.2"
+
+libraryDependencies += "org.javassist" % "javassist" % "3.18.2-GA"
 
 appengineSettings

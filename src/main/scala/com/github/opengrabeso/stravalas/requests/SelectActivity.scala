@@ -3,8 +3,9 @@ package requests
 
 import spark.{Request, Response}
 
-@Handle("selectActivity")
 object SelectActivity extends DefineRequest {
+  def handle = Handle("selectActivity")
+
   override def html(request: Request, resp: Response) = {
     <html>
     <head>

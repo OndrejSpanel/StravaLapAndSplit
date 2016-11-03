@@ -6,9 +6,11 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
 import spark.{Request, Response}
 
-@Handle(value = "/upload", method = Handle.Method.Post)
 object Upload extends DefineRequest with ActivityRequestHandler {
+  def handle = Handle("/upload", method = Method.Post)
+
   override def html(request: Request, resp: Response) = {
+
 
     val fif = new DiskFileItemFactory()
     val maxMB = 32
