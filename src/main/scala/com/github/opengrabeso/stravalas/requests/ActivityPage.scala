@@ -410,8 +410,8 @@ object ActivityPage extends DefineRequest with ActivityRequestHandler {
 
     <html>
       <head>
-        <meta charset="utf-8"/>
         <title>Strava Split And Lap</title>
+        {headPrefix}
         {content.head}
       </head>
       <body>

@@ -8,6 +8,7 @@ object SelectActivity extends DefineRequest {
   override def html(request: Request, resp: Response) = {
     <html>
     <head>
+      {headPrefix}
       <title>Strava Split And Lap - select activity</title>
       <style>
         tr:nth-child(even) {{background-color: #f2f2f2}}

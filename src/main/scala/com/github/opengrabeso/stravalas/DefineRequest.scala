@@ -18,4 +18,9 @@ trait DefineRequest {
   def cond(boolean: Boolean) (nodes: NodeSeq): NodeSeq = {
     if (boolean) nodes else Nil
   }
+
+  def headPrefix: NodeSeq = {
+    <meta charset="utf-8"/>
+    <link rel="icon" href="static/favicon.ico"/>
+  }
 }

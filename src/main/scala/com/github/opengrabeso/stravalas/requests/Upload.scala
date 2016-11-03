@@ -48,7 +48,7 @@ object Upload extends DefineRequest with ActivityRequestHandler {
 
     <html>
       <head>
-        <meta charset="utf-8"/>
+        {headPrefix}
         <title>Strava Split And Lap</title>
         {content.head}
       </head>
