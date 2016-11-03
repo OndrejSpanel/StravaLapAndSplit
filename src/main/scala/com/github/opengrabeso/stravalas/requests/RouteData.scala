@@ -17,11 +17,15 @@ object RouteData extends DefineRequest {
 
     val events = session.attribute("events-"+id).asInstanceOf[Main.ActivityEvents]
 
-    resp.`type`(contentType)
-    resp.status(200)
+    if (events != null) {
+      resp.`type`(contentType)
+      resp.status(200)
 
-    val out = resp.raw.getWriter
-    out.write(events.routeJS)
+      val out = resp.raw.getWriter
+      out.write(events.routeJS)
+    } else {
+      resp.status(404)
+    }
 
     Nil
   }

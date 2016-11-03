@@ -383,7 +383,7 @@ trait ActivityRequestHandler {
           renderEvents(events, route);
         }
       };
-    xmlHttp.open("GET", "route-data?id=" + id + "&auth_token=" + authToken, true); // true for asynchronous
+    xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
       xmlHttp.send(null)});
     """)}
       </script>

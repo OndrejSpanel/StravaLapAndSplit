@@ -26,9 +26,7 @@ object Upload extends DefineRequest with ActivityRequestHandler {
     val session = request.session
     val data = itemsIterator.flatMap { item =>
       if (!item.isFormField && "activities" == item.getFieldName) {
-        val name = "uploaded"
-        // TODO: proper encoding (this only solves space - plus conflict)
-        // val name = item.getName
+        val name = item.getName
         val stream = item.openStream()
 
         val extension = item.getName.split('.').last
