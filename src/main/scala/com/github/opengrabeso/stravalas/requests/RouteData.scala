@@ -10,14 +10,11 @@ object RouteData extends DefineRequest {
   def handle = Handle("/route-data")
 
   override def html(req: Request, resp: Response) = {
-
-    val id = req.queryParams("id")
-    val authToken = req.queryParams("auth_token")
-
-    val contentType = "application/json"
-
     val session = req.session
 
+    val id = req.queryParams("id")
+
+    val contentType = "application/json"
     val events = session.attribute("events-"+id).asInstanceOf[Main.ActivityEvents]
 
     if (events != null) {
