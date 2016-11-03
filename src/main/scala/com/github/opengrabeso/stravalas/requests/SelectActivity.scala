@@ -67,6 +67,7 @@ object SelectActivity extends DefineRequest {
       </form>
 
     }}
+    {bodyFooter}
     </body>
     </html>
   }

@@ -54,6 +54,7 @@ object Upload extends DefineRequest with ActivityRequestHandler {
       </head>
       <body>
         {content.body}
+        {bodyFooter}
       </body>
     </html>
 

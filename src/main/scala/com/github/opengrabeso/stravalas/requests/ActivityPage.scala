@@ -424,6 +424,7 @@ object ActivityPage extends DefineRequest with ActivityRequestHandler {
           <input type="submit" value="Backup original activity"/>
         </form>
         {content.body}
+        {bodyFooter}
       </body>
     </html>
   }
