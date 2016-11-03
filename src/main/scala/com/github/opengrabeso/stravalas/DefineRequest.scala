@@ -26,7 +26,7 @@ trait DefineRequest {
 
   def bodyFooter: NodeSeq = {
     <p></p>
-    <div style="background-color:#f51;overflow:auto">
+    <div id="footer" style="background-color:#fa8;overflow:auto">
       <a href="http://labs.strava.com/" id="powered_by_strava" rel="nofollow">
         <img align="left" src="static/api_logo_pwrdBy_strava_horiz_white.png" style="max-height:46px"/>
       </a>
