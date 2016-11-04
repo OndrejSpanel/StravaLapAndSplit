@@ -74,7 +74,7 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  def athlete(authToken: String): String = {
+  def athlete(authToken: String): (String, String) = {
     val uri = s"https://www.strava.com/api/v3/athlete"
     val request = buildGetRequest(uri, authToken, "")
 
@@ -84,7 +84,9 @@ object Main {
 
     val firstname = json.path("firstname").textValue
     val lastname = json.path("lastname").textValue
-    firstname + " " + lastname
+    val id = json.path("id").numberValue.toString
+
+    (firstname + " " + lastname, id)
   }
 
   case class ActivityId(id: Long, name: String, startTime: DateTime, sportName: String, duration:Int, distance: Double) {
