@@ -5,8 +5,6 @@ import java.net.URLEncoder
 
 import spark.{Request, Response}
 
-import scala.util.Try
-
 object IndexHtml extends DefineRequest {
   def handle = Handle("/")
 

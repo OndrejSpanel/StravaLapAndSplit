@@ -24,14 +24,14 @@ object SelectActivity extends DefineRequest {
         <head>
           {headPrefix}<title>Strava Split And Lap - select activity</title>
           <style>
-            tr:nth-child(even) {{background-color: #f2f2f2}}
-            tr:hover {{background-color: #f0f0e0}}
+            tr.activities:nth-child(even) {{background-color: #f2f2f2}}
+            tr.activities:hover {{background-color: #f0f0e0}}
           </style>
         </head>
         <body>
           {bodyHeader(auth)}
 
-          <table>
+          <table class="activities">
             {for (act <- activities) yield {
             <tr>
               <td>

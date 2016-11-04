@@ -38,11 +38,22 @@ trait DefineRequest {
   }
 
   def bodyHeader(auth: Main.StravaAuthResult): NodeSeq = {
-    <p>Athlete:
+    <div id="header" style="background-color:#fca;overflow:auto">
+    <table>
+      <tr><td>
+      Athlete:
       <a href={s"https://www.strava.com/athletes/${auth.id}"}>
         {auth.name}
       </a>
-    </p>
+      </td>
+      <td>
+      <form action="logout">
+        <input type="submit" value ="Log Out"/>
+      </form>
+      </td></tr>
+    </table>
+    </div>
+    <p></p>
   }
 
   def bodyFooter: NodeSeq = {

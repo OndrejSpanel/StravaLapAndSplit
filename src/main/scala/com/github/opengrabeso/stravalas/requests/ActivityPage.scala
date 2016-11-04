@@ -21,7 +21,7 @@ trait ActivityRequestHandler {
         border: 0;
         border-collapse: collapse;
         }}
-        td, th {{
+        .activityTable td, .activityTable th {{
         border: 1px solid black;
         }}
         .cellNoBorder {{
