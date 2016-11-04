@@ -1,12 +1,27 @@
 package com.github.opengrabeso.stravalas
 package requests
 
+import java.net.URLEncoder
+
 import spark.{Request, Response}
+
+import scala.util.Try
 
 object IndexHtml extends DefineRequest {
   def handle = Handle("/")
 
   def html(request: Request, resp: Response) = {
+    val session = request.session()
+    val code = Option(request.cookie("authCode"))
+    if (code.exists(_.nonEmpty)) {
+      resp.redirect(s"/selectActivity?code=${URLEncoder.encode(code.get, "UTF-8")}")
+      Nil
+    } else {
+      loginHtml(request, resp)
+    }
+  }
+
+  def loginHtml(request: Request, resp: Response) = {
     <html>
       <head>
         {headPrefix}
