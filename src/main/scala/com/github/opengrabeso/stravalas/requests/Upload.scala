@@ -10,7 +10,8 @@ object Upload extends DefineRequest with ActivityRequestHandler {
   def handle = Handle("/upload", method = Method.Post)
 
   override def html(request: Request, resp: Response) = {
-
+    val session = request.session
+    val authToken = session.attribute[String]("authToken")
 
     val fif = new DiskFileItemFactory()
     val maxMB = 32
@@ -25,7 +26,7 @@ object Upload extends DefineRequest with ActivityRequestHandler {
       def next() = items.next
     }
 
-    val session = request.session
+
     val data = itemsIterator.flatMap { item =>
       if (!item.isFormField && "activities" == item.getFieldName) {
         val name = item.getName
@@ -55,6 +56,7 @@ object Upload extends DefineRequest with ActivityRequestHandler {
         {content.head}
       </head>
       <body>
+        {bodyHeader(authToken)}
         {content.body}
         {bodyFooter}
       </body>

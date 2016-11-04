@@ -30,11 +30,8 @@ object SelectActivity extends DefineRequest {
           </style>
         </head>
         <body>
-          <p>Athlete:
-            <b>
-              {Main.athlete(auth.token)}
-            </b>
-          </p>
+          {bodyHeader(auth.token)}
+
           <table>
             {for (act <- activities) yield {
             <tr>

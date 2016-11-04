@@ -37,6 +37,14 @@ trait DefineRequest {
     <link rel="icon" href="static/favicon.ico"/>
   }
 
+  def bodyHeader(authToken: String): NodeSeq = {
+    <p>Athlete:
+      <b>
+        {Main.athlete(authToken)}
+      </b>
+    </p>
+  }
+
   def bodyFooter: NodeSeq = {
     <p></p>
     <div id="footer" style="background-color:#fca;overflow:auto">

@@ -415,6 +415,7 @@ object ActivityPage extends DefineRequest with ActivityRequestHandler {
         {content.head}
       </head>
       <body>
+        {bodyHeader(authToken)}
         <a href={activityData.id.link}> {activityData.id.name} </a>
 
         <form action ="download" method="get">
