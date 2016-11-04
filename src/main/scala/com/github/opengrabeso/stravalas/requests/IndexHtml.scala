@@ -56,6 +56,7 @@ object IndexHtml extends DefineRequest {
           </p>
         }
       }}
+        {bodyFooter}
       </body>
     </html>
   }
