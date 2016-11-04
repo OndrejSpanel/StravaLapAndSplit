@@ -61,16 +61,17 @@ object IndexHtml extends DefineRequest {
             Note: the original activity needs to be deleted in the process, therefore you will lose any comments and kudos you already have on it and your achievements will be recomputed.
           </i>
         </p> :+ {
-        if (!clientId.isEmpty) {
-          <a href={action}>
-            <img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"></img>
-          </a>
-        } else {
-          <p>Error:
-            {secret.error}
-          </p>
+          if (!clientId.isEmpty) {
+            <a href={action}>
+              <img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"></img>
+            </a>
+          } else {
+            <p>Error:
+              {secret.error}
+            </p>
+          }
         }
-      }}
+        }
         {bodyFooter}
       </body>
     </html>

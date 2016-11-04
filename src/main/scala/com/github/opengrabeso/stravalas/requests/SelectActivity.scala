@@ -57,7 +57,6 @@ object SelectActivity extends DefineRequest {
             </tr>
           }}
           </table>
-          :+
           {cond(activities.length > 0) {
           <form action="activity" method="get">
             <p>Other activity Id:
