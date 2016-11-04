@@ -32,7 +32,7 @@ object IndexHtml extends DefineRequest {
       val clientId = secret.appId
       val serverUri = scheme + "://" + hostname // Spark hostname seems to include port if needed
       val uri = "https://www.strava.com/oauth/authorize?"
-      val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/selectActivity&scope=write,view_private"
+      val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/selectActivity&scope=write,view_private&approval_prompt=force"
       <h3>Work in progress, use at your own risk.</h3>
         <p>
           This tool allows you to split activity or edit lap information for it.
