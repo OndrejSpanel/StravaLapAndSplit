@@ -46,7 +46,7 @@ object Main {
     }
   }
 
-  case class StravaAuthResult(token: String, mapboxToken: String)
+  case class StravaAuthResult(token: String, mapboxToken: String, id: String, name: String)
 
   def stravaAuth(code: String): StravaAuthResult = {
 
@@ -65,28 +65,17 @@ object Main {
     val responseJson = jsonMapper.readTree(response.getContent)
     val token = responseJson.path("access_token").textValue
 
-    StravaAuthResult(token, mapboxToken)
+    val athleteJson = responseJson.path("athlete")
+    val id = athleteJson.path("id").numberValue.toString
+    val name = athleteJson.path("firstname").textValue + " " + athleteJson.path("lastname").textValue
+
+    StravaAuthResult(token, mapboxToken, id, name)
 
   }
 
   def authorizeHeaders(request: HttpRequest, authToken: String) = {
     val headers = request.getHeaders
     headers.put("Authorization:", s"Bearer $authToken")
-  }
-
-  def athlete(authToken: String): (String, String) = {
-    val uri = s"https://www.strava.com/api/v3/athlete"
-    val request = buildGetRequest(uri, authToken, "")
-
-    val response = request.execute().getContent
-
-    val json = jsonMapper.readTree(response)
-
-    val firstname = json.path("firstname").textValue
-    val lastname = json.path("lastname").textValue
-    val id = json.path("id").numberValue.toString
-
-    (firstname + " " + lastname, id)
   }
 
   case class ActivityId(id: Long, name: String, startTime: DateTime, sportName: String, duration:Int, distance: Double) {

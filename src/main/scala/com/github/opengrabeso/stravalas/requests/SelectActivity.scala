@@ -18,8 +18,7 @@ object SelectActivity extends DefineRequest {
     }
     authResult.map { auth =>
       resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
-      session.attribute("authToken", auth.token)
-      session.attribute("mapboxToken", auth.mapboxToken)
+      session.attribute("auth", auth)
       val activities = Main.lastActivities(auth.token)
       <html>
         <head>
@@ -30,7 +29,7 @@ object SelectActivity extends DefineRequest {
           </style>
         </head>
         <body>
-          {bodyHeader(auth.token)}
+          {bodyHeader(auth)}
 
           <table>
             {for (act <- activities) yield {

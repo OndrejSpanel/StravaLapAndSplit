@@ -11,7 +11,7 @@ object Upload extends DefineRequest with ActivityRequestHandler {
 
   override def html(request: Request, resp: Response) = {
     val session = request.session
-    val authToken = session.attribute[String]("authToken")
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val fif = new DiskFileItemFactory()
     val maxMB = 32
@@ -56,7 +56,7 @@ object Upload extends DefineRequest with ActivityRequestHandler {
         {content.head}
       </head>
       <body>
-        {bodyHeader(authToken)}
+        {bodyHeader(auth)}
         {content.body}
         {bodyFooter}
       </body>

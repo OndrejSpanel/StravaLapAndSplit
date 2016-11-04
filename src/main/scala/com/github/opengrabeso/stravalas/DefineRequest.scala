@@ -37,11 +37,10 @@ trait DefineRequest {
     <link rel="icon" href="static/favicon.ico"/>
   }
 
-  def bodyHeader(authToken: String): NodeSeq = {
-    val (name, id) = Main.athlete(authToken)
+  def bodyHeader(auth: Main.StravaAuthResult): NodeSeq = {
     <p>Athlete:
-      <a href={s"https://www.strava.com/athletes/$id"}>
-        {name}
+      <a href={s"https://www.strava.com/athletes/${auth.id}"}>
+        {auth.name}
       </a>
     </p>
   }

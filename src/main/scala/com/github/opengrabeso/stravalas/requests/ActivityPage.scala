@@ -10,8 +10,7 @@ protected case class ActivityContent(head: NodeSeq, body: NodeSeq)
 
 trait ActivityRequestHandler {
   protected def htmlHelper(actId: String, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
-    val authToken = session.attribute[String]("authToken")
-    val mapBoxToken = session.attribute[String]("mapboxToken")
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
       <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
@@ -35,7 +34,7 @@ trait ActivityRequestHandler {
         }}
       </style>
 
-      <script type="text/javascript">{activityJS(actId, activityData, authToken)}</script>
+      <script type="text/javascript">{activityJS(actId, activityData, auth.token)}</script>
 
     val bodyContent = <table class="activityTable">
       <tr>
@@ -83,7 +82,7 @@ trait ActivityRequestHandler {
 
       <script type="text/javascript">initEvents()</script>
 
-      <script>{mapJS(activityData, mapBoxToken)}</script>
+      <script>{mapJS(activityData, auth.mapboxToken)}</script>
 
     ActivityContent(headContent, bodyContent)
   }
@@ -401,9 +400,9 @@ object ActivityPage extends DefineRequest with ActivityRequestHandler {
 
   override def html(request: Request, resp: Response) = {
     val session = request.session()
-    val authToken = session.attribute[String]("authToken")
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
     val actId = request.queryParams("activityId")
-    val activityData = Main.getEventsFrom(authToken, actId)
+    val activityData = Main.getEventsFrom(auth.token, actId)
     session.attribute("events-" + actId, activityData)
 
     val content = htmlHelper(actId, activityData, session, resp)
@@ -415,12 +414,12 @@ object ActivityPage extends DefineRequest with ActivityRequestHandler {
         {content.head}
       </head>
       <body>
-        {bodyHeader(authToken)}
+        {bodyHeader(auth)}
         <a href={activityData.id.link}> {activityData.id.name} </a>
 
         <form action ="download" method="get">
           <input type="hidden" name="id" value={activityData.id.id.toString}/>
-          <input type="hidden" name="auth_token" value={authToken.toString}/>
+          <input type="hidden" name="auth_token" value={auth.token.toString}/>
           <input type="hidden" name="operation" value="copy"/>
           <input type="submit" value="Backup original activity"/>
         </form>
