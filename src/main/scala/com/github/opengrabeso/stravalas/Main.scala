@@ -106,7 +106,6 @@ object Main {
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], stamps: Seq[Stamp], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
-
     def begPos: (Double, Double) = gps.head
     def endPos: (Double, Double) = gps.last
 
@@ -118,6 +117,8 @@ object Main {
         s"[$lat,$lng,${t.time},${t.dist}]"
       }.mkString("[\n", ",\n", "]\n")
     }
+
+    def merge(that: ActivityEvents): ActivityEvents = ???
 
     def editableEvents: Array[EditableEvent] = {
 

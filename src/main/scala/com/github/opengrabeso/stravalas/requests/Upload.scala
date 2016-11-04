@@ -42,8 +42,10 @@ object Upload extends DefineRequest with ActivityRequestHandler {
       } else None
     }
 
-    // TODO: handle multiple uploaded files
-    val d = data.toSeq.head
+    val d = data.foldLeft(data.next) {
+      (total,d) =>
+        total._1 -> total._2.merge(d._2)
+    }
 
     // TODO: pass data directly to JS?
     session.attribute("events-" + d._1, d._2)
