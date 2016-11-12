@@ -259,7 +259,7 @@ object StravaAPIThisApp {
 
     val appId = 8138
     val callbackPort = 8080
-    val code = StravaAuth(appId,callbackPort, "view_private,write")
+    val code = ???
 
     // now wait until the auth is done
 
