@@ -23,4 +23,17 @@ libraryDependencies += "commons-fileupload" % "commons-fileupload" % "1.3.2"
 
 libraryDependencies += "org.javassist" % "javassist" % "3.18.2-GA"
 
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+
+libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
+
+val log4jVersion = "2.5"
+
+libraryDependencies += "org.apache.logging.log4j" % "log4j-core" % log4jVersion
+
+libraryDependencies += "org.apache.logging.log4j" % "log4j-api" % log4jVersion
+
+libraryDependencies += "org.apache.logging.log4j" % "log4j-1.2-api" % log4jVersion
+
+
 appengineSettings
