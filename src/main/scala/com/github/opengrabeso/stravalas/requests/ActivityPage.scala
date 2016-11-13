@@ -102,29 +102,44 @@ trait ActivityRequestHandler {
 
     /**
      * @param {String} id
-     * @param event
+     * @param {String} time
+     * @param {String} action
+     * @param {String} value
      * @return {String}
      */
-    function splitLink(id, event) {
-      var time = event[1];
+    function linkWithEvents(id, time, action, value) {
       var splitWithEvents =
               '  <input type="hidden" name="id" value="' + id + '"/>' +
               '  <input type="hidden" name="auth_token" value="' + authToken + '"/>' +
               '  <input type="hidden" name="operation" value="split"/>' +
               '  <input type="hidden" name="time" value="' + time + '"/>' +
-              '  <input type="submit" value="Download"/>';
+              '  <input type="submit" value="' + value + '"/>';
+
+      events.forEach( function(e) {
+        splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
+      });
+
+      return '<form action="' + action + '" method="get" style="display:inline-block">' + splitWithEvents  + '</form>';
+    }
+    /**
+     * @param {String} id
+     * @param event
+     * @return {String}
+     */
+    function splitLink(id, event) {
+      var time = event[1];
+      var downloadButton = linkWithEvents(id, time, "download", "Download");
+      var uploadButton = linkWithEvents(id, time, "upload-strava", "Upload to Strava");
 
       var nextSplit = null;
       events.forEach( function(e) {
-        splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
         if (e[0].lastIndexOf("split", 0) == 0 && e[1] > time && nextSplit == null) {
           nextSplit = e;
         }
       });
-
       if (nextSplit == null) nextSplit = events[events.length-1];
 
-      var description = "";
+      var description = "???";
       if (nextSplit) {
         var km = (nextSplit[2] - event[2])/1000;
         var duration = nextSplit[1] - event[1];
@@ -133,7 +148,7 @@ trait ActivityRequestHandler {
         var speedKmH = duration > 0 ? km * 3600 / duration : 0;
         description = km.toFixed(2) + " km / " + paceMinKm.toFixed(2) + " min/km / " + speedKmH.toFixed(1) + " km/h";
       }
-      return '<form action="download" method="get">' + splitWithEvents + description + '</form>';
+      return downloadButton  + uploadButton + description;
 
     }
 
