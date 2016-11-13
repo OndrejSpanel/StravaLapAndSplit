@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravalas
 package requests
 
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
+import org.joda.time.{DateTime => ZonedDateTime, Seconds}
 import spark.{Request, Response, Session}
 
 import scala.xml.NodeSeq
@@ -45,7 +46,8 @@ trait ActivityRequestHandler {
         <th>Action</th>
       </tr>{val ees = activityData.editableEvents
       var lastSport = ""
-      var lastTime = -1
+      var lastTime: Option[ZonedDateTime] = None
+      val startTime = activityData.id.startTime
       for ((t, i) <- activityData.events.zipWithIndex) yield {
         val t = activityData.events(i)
         val ee = ees(i)
@@ -54,14 +56,14 @@ trait ActivityRequestHandler {
         lastSport = ee.sport
         <tr>
           <td> {xml.Unparsed(t.description)} </td>
-          <td> {Main.displaySeconds(t.stamp.time)} </td>
-          <td> {Main.displayDistance(activityData.distanceForTime(t.stamp.time))} </td>
+          <td> {Main.displaySeconds(t.stamp.secondsFrom(startTime))} </td>
+          <td> {Main.displayDistance(activityData.distanceForTime(t.stamp.aTime))} </td>
           <td> {sport} </td>
           <td>
             {val types = t.listTypes
-          if (types.length != 1 && lastTime != t.stamp.time) {
-            lastTime = t.stamp.time
-            <select id={t.stamp.time.toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
+          if (types.length != 1 && !lastTime.contains(t.stamp.aTime)) {
+            lastTime = Some(t.stamp.aTime)
+            <select id={t.stamp.secondsFrom(startTime).toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
               {for (et <- types) yield {
               <option value={et.id} selected={if (action == et.id) "" else null}>
                 {et.display}
@@ -73,7 +75,7 @@ trait ActivityRequestHandler {
               <input type="hidden" name="events" value={t.defaultEvent}/>
           }}
           </td>
-          <td class="cellNoBorder" id={s"link${t.stamp.time.toString}"}> </td>
+          <td class="cellNoBorder" id={s"link${t.stamp.secondsFrom(startTime).toString}"}> </td>
         </tr>
       }}
     </table>

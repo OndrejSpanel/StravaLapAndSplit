@@ -1,7 +1,5 @@
 package com.github.opengrabeso.stravalas
 
-import java.util.Random
-
 import com.garmin.fit._
 import Main.ActivityEvents
 import com.garmin.fit
@@ -120,7 +118,7 @@ object FitExport {
 
     val lapsAsEvents = events.events.flatMap {
       case LapEvent(time) =>
-        Some(new LapEvent(startTime.plusSeconds(time.time)))
+        Some(new LapEvent(time.aTime))
       case _ =>
         None
     }

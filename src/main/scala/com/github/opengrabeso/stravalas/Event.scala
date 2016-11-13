@@ -1,9 +1,12 @@
 package com.github.opengrabeso.stravalas
+import org.joda.time.{DateTime => ZonedDateTime, Period, Seconds}
 
 case class StampDisplay(time: Int, dist: Double)
 
-case class Stamp(time: Int) {
-  def offset(t: Int) = Stamp(time + t)
+case class Stamp(aTime: ZonedDateTime) {
+  def offset(t: Int) = Stamp(aTime.withDurationAdded(t, 1000))
+
+  def secondsFrom(beg: ZonedDateTime): Int = Seconds.secondsBetween(beg, aTime).getSeconds
 }
 
 case class EventKind(id: String, display: String)
@@ -13,7 +16,7 @@ sealed abstract class Event {
   def description: String
   def isSplit: Boolean
 
-  def id: String = stamp.time.toString
+  def id: String = stamp.aTime.toString
   def defaultEvent: String
 
   protected def listSplitTypes: Seq[EventKind] = Seq(
@@ -116,14 +119,5 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends E
 case class EditableEvent(var action: String, time: Int, km: Double, sport: String) {
   override def toString: String = {
     s""""$action", $time, $km, "$sport""""
-  }
-}
-
-object EditableEvent {
-  def apply(action: String, e1: Event, dist: Double, sport: String) = {
-    new EditableEvent(action, e1.stamp.time, dist, sport)
-  }
-  def apply(e1: Event, dist: Double, sport: String) = {
-    new EditableEvent(e1.defaultEvent, e1.stamp.time, dist, sport)
   }
 }
