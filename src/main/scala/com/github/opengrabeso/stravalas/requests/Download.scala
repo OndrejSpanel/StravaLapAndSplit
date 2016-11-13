@@ -3,9 +3,7 @@ package requests
 
 import spark.{Request, Response}
 
-object Download extends ProcessFile {
-  def handle = Handle("/download")
-
+object Download extends ProcessFile("/download") {
   def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit = {
     val contentType = "application/octet-stream"
 

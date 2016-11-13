@@ -6,9 +6,7 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
 import spark.{Request, Response}
 
-object Upload extends DefineRequest with ActivityRequestHandler {
-  def handle = Handle("/upload", method = Method.Post)
-
+object Upload extends DefineRequest("/upload", method = Method.Post) with ActivityRequestHandler {
   override def html(request: Request, resp: Response) = {
     val session = request.session
     val auth = session.attribute[Main.StravaAuthResult]("auth")

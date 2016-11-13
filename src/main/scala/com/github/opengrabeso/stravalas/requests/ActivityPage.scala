@@ -412,8 +412,7 @@ trait ActivityRequestHandler {
   }
 }
 
-object ActivityPage extends DefineRequest with ActivityRequestHandler {
-  def handle = Handle("/activity")
+object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandler {
 
   override def html(request: Request, resp: Response) = {
     val session = request.session()

@@ -7,9 +7,7 @@ import spark.{Request, Response}
 
 import scala.util.Try
 
-object SelectActivity extends DefineRequest {
-  def handle = Handle("selectActivity")
-
+object SelectActivity extends DefineRequest("/selectActivity") {
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val code = request.queryParams("code")

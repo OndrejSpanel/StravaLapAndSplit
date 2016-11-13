@@ -5,9 +5,7 @@ import java.io.OutputStreamWriter
 
 import spark.{Request, Response}
 
-object RouteData extends DefineRequest {
-
-  def handle = Handle("/route-data")
+object RouteData extends DefineRequest("/route-data") {
 
   override def html(req: Request, resp: Response) = {
     val session = req.session

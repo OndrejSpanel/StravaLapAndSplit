@@ -4,9 +4,7 @@ package requests
 import net.suunto3rdparty.strava.StravaAPI
 import spark.{Request, Response}
 
-object UploadToStrava extends ProcessFile {
-  def handle = Handle("/upload-strava")
-
+object UploadToStrava extends ProcessFile("/upload-strava") {
   def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit = {
     val authToken = req.queryParams("auth_token")
 

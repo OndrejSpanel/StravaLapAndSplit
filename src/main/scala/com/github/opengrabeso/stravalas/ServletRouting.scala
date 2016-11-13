@@ -29,8 +29,8 @@ class ServletRouting extends SparkApplication {
     )
 
     def addPage(h: DefineRequest) = {
-      val r = route(h.handle.value) (h.apply)
-      h.handle.method match {
+      val r = route(h.handleUri) (h.apply)
+      h.method match {
         case Method.Get => get(r)
         case Method.Put => put(r)
         case Method.Post => post(r)

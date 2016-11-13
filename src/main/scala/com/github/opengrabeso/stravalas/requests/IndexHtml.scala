@@ -5,8 +5,7 @@ import java.net.URLEncoder
 
 import spark.{Request, Response}
 
-object IndexHtml extends DefineRequest {
-  def handle = Handle("/")
+object IndexHtml extends DefineRequest("/") {
 
   def html(request: Request, resp: Response) = {
     val session = request.session()
