@@ -55,7 +55,7 @@ trait ActivityRequestHandler {
         <tr>
           <td> {xml.Unparsed(t.description)} </td>
           <td> {Main.displaySeconds(t.stamp.time)} </td>
-          <td> {Main.displayDistance(t.stamp.dist)} </td>
+          <td> {Main.displayDistance(activityData.distanceForTime(t.stamp.time))} </td>
           <td> {sport} </td>
           <td>
             {val types = t.listTypes

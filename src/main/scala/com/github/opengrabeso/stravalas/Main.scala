@@ -105,15 +105,19 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], stamps: Seq[Stamp], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], stamps: Seq[StampDisplay], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
     def begPos: (Double, Double) = gps.head
     def endPos: (Double, Double) = gps.last
 
     def lat: Double = (begPos._1 + endPos._1) * 0.5
     def lon: Double = (begPos._2 + endPos._2) * 0.5
 
+    // TODO: optimize: Map[Int, Double] instead
+    def distanceForTime(time: Int): Double = stamps.filter(_.time >= time).head.dist
+
     def routeJS: String = {
       (gps zip stamps).map { case ((lng, lat),t) =>
+
         s"[$lat,$lng,${t.time},${t.dist}]"
       }.mkString("[\n", ",\n", "]\n")
     }
@@ -127,7 +131,7 @@ object Main {
 
       val ees = (events, events.drop(1) :+ events.last, sports zip sportChange).zipped.map { case (e1, e2, (sport,change)) =>
         val action = if (change) "split" else e1.defaultEvent
-        EditableEvent(action, e1, sport)
+        EditableEvent(action, e1, distanceForTime(e1.stamp.time), sport)
       }
 
       // consolidate mutliple events with the same time so that all of them have the same action
@@ -203,11 +207,9 @@ object Main {
 
     def attributes: Seq[(String, Seq[Int])]
 
-    lazy val stamps: Vector[Stamp] = (time zip dist).map((Stamp.apply _).tupled)
+    lazy val stamps: Vector[StampDisplay] = (time zip dist).map((StampDisplay.apply _).tupled)
 
-    def stampForTime(time: Int): Stamp = {
-      stamps.filter(_.time >= time).head
-    }
+    def stampForTime(time: Int): StampDisplay = stamps.filter(_.time >= time).head
   }
 
 
@@ -254,10 +256,10 @@ object Main {
       val cleanedPauses = ignoreTooClose(0, pauses, Nil).reverse
 
       val minPause = 10
-      val longPauses = (cleanedPauses.zipWithIndex zip act.stamps).filter { case ((p, i), stamp) =>
+      val longPauses = (cleanedPauses.zipWithIndex zip act.time).filter { case ((p, i), stamp) =>
         p > minPause
       }.map {
-        case ((p, i), stamp) => (p, stamp)
+        case ((p, i), stamp) => (p, Stamp(stamp))
       }
 
       longPauses
@@ -282,7 +284,7 @@ object Main {
     val pauseEvents = mergedPauses.flatMap { case (p, stamp) =>
       if (p > 30) {
         // long pause - insert both start and end
-        Seq(PauseEvent(p, stamp), PauseEndEvent(p, stamp.offset(p, 0)))
+        Seq(PauseEvent(p, stamp), PauseEndEvent(p, stamp.offset(p)))
       }
       else Seq(PauseEvent(p, stamp))
     }
@@ -377,7 +379,7 @@ object Main {
     }
 
     // TODO: provide activity type with the split
-    val events = (BegEvent(Stamp(0, 0)) +: EndEvent(Stamp(act.time.last, act.dist.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
+    val events = (BegEvent(Stamp(0)) +: EndEvent(Stamp(act.time.last)) +: laps.map(LapEvent)) ++ pauseEvents ++ segments
 
     val eventsByTime = events.sortBy(_.stamp.time)
 
@@ -465,7 +467,7 @@ object Main {
 
       val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
 
-      lapsInSeconds.filter(_ > 0).map(act.stampForTime)
+      lapsInSeconds.filter(_ > 0).map(Stamp.apply)
     }
 
     val segments: Seq[Event] = {
@@ -477,8 +479,8 @@ object Main {
         val segDuration = seg.path("elapsed_time").intValue
         val segPrivate = seg.path("segment").path("private").booleanValue
         Seq(
-          StartSegEvent(segName, segPrivate, act.stampForTime(segStart)),
-          EndSegEvent(segName, segPrivate, act.stampForTime(segStart + segDuration))
+          StartSegEvent(segName, segPrivate, Stamp(segStart)),
+          EndSegEvent(segName, segPrivate, Stamp(segStart + segDuration))
         )
       }
     }
@@ -521,6 +523,11 @@ object Main {
   }
 
   def displayDistance(dist: Double): String = "%.2f".format(dist*0.001)
+
+  def displayDistanceForTime(act: ActivityEvents, time: Int): String = {
+    val dist = act.distanceForTime(time)
+    "%.2f".format(dist*0.001)
+  }
 
 }
 

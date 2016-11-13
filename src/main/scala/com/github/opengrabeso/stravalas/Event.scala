@@ -1,7 +1,9 @@
 package com.github.opengrabeso.stravalas
 
-case class Stamp(time: Int, dist: Double) {
-  def offset(t: Int, d: Double) = Stamp(time + t, dist + d)
+case class StampDisplay(time: Int, dist: Double)
+
+case class Stamp(time: Int) {
+  def offset(t: Int) = Stamp(time + t)
 }
 
 case class EventKind(id: String, display: String)
@@ -118,10 +120,10 @@ case class EditableEvent(var action: String, time: Int, km: Double, sport: Strin
 }
 
 object EditableEvent {
-  def apply(action: String, e1: Event, sport: String) = {
-    new EditableEvent(action, e1.stamp.time, e1.stamp.dist, sport)
+  def apply(action: String, e1: Event, dist: Double, sport: String) = {
+    new EditableEvent(action, e1.stamp.time, dist, sport)
   }
-  def apply(e1: Event, sport: String) = {
-    new EditableEvent(e1.defaultEvent, e1.stamp.time, e1.stamp.dist, sport)
+  def apply(e1: Event, dist: Double, sport: String) = {
+    new EditableEvent(e1.defaultEvent, e1.stamp.time, dist, sport)
   }
 }
