@@ -116,10 +116,31 @@ object Main {
     def lat: Double = (begPos._1 + endPos._1) * 0.5
     def lon: Double = (begPos._2 + endPos._2) * 0.5
 
-    // TODO: optimize: Map[Int, Double] instead
+
+    lazy val mapTimeToDist: Map[Int, Double] = {
+      def scanTime(now: Int, timeDist: Seq[(Int, Double)], ret: Seq[(Int, Double)]): Seq[(Int, Double)] = {
+        timeDist match {
+          case head +: tail =>
+            if (now >= head._1) {
+              scanTime(now + 1, tail, head +: ret)
+            } else {
+              scanTime(now + 1, timeDist, (now -> head._2) +: ret)
+            }
+          case Seq() =>
+            ret
+        }
+      }
+
+      val timeRelStamps = stamps.map(t => t.time -> t.dist)
+
+      val filledTime = scanTime(0, timeRelStamps, Nil)
+
+      filledTime.toMap
+    }
+
     def distanceForTime(time: ZonedDateTime): Double = {
       val relTime = Seconds.secondsBetween(id.startTime, time).getSeconds
-      stamps.filter(_.time >= relTime).head.dist
+      mapTimeToDist(relTime)
     }
 
     def routeJS: String = {
