@@ -187,24 +187,13 @@ class StravaAPI(authString: String) {
       request.getHeaders.setAccept("*/*")
 
       val response = request.execute()
-      val resultString = response.parseAsString
+      val resultString = response.getContent
 
       // we expect to receive 201
 
-      val resultJson = JSON.parseFull(resultString)
-      val uploadId = Option(resultJson).flatMap {
-        case M(map) =>
-          map.get("id") match {
-            case D(id) =>
-              println(s"  upload id ${id.toLong}")
-              Some(id.toLong)
-            case _ =>
-              None
-          }
-        case _ => None
-      }
-      uploadId
-
+      val resultJson = jsonMapper.readTree(resultString)
+      val id = Option(resultJson.path("id").numberValue)
+      id.map(_.longValue)
     } catch {
       case ex: HttpResponseException =>
         // we expect to receive error 400 - duplicate activity
