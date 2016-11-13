@@ -12,7 +12,6 @@ import Util._
 import com.github.opengrabeso.stravalas.RequestUtils
 
 import scala.util.Try
-import scala.util.parsing.json.{JSON, JSONArray, JSONObject}
 
 case class StravaAPIParams(appId: Int, clientSecret: String, code: Option[String])
 
@@ -28,20 +27,6 @@ object StravaAPI {
     else "http://localhost/JavaEE-war/webresources/generic/"
   }
 
-  class CC[T] {
-    def unapply(a: Option[Any]): Option[T] = a.map(_.asInstanceOf[T])
-  }
-
-  object M extends CC[Map[String, Any]]
-
-  object L extends CC[List[Any]]
-
-  object S extends CC[String]
-
-  object D extends CC[Double]
-
-  object B extends CC[Boolean]
-
   def buildPostData(params: (String, String)*) = {
     params.map(p => s"${p._1}=${p._2}").mkString("&")
   }
@@ -55,7 +40,7 @@ class StravaAPI(authString: String) {
   // see https://strava.github.io/api/
 
   def athlete: String = {
-    val request = buildGetRequest("https://www.strava.com/api/v3/athlete", authString, "")
+    val request = buildGetRequest(buildURI("athlete"), authString, "")
 
     val result = request.execute().parseAsString
     result
@@ -63,21 +48,23 @@ class StravaAPI(authString: String) {
 
   def mostRecentActivityTime: Option[ZonedDateTime] = {
     // we might want to add parameters page=0, per_page=1
-    val request = buildGetRequest("https://www.strava.com/api/v3/athlete/activities", authString, "")
+    val request = buildGetRequest(buildURI("athlete/activities"), authString, "")
 
-    val result = request.execute().parseAsString
+    val result = request.execute().getContent
 
-    val json = JSON.parseRaw(result)
+    val json = jsonMapper.readTree(result)
 
-    val times: Seq[ZonedDateTime] = json match {
-      case Some(a: JSONArray) =>
-        a.list.collect { case o: JSONObject =>
-          val timeString = o.obj("start_date").toString
-          val time = Try { ZonedDateTime.parse(timeString) }
+    val times = (0 until json.size).flatMap { i =>
+      val start_date = Option(json.get(i).path("start_date").textValue)
+      start_date match {
+        case Some(timeString) =>
+          val time = Try {
+            ZonedDateTime.parse(timeString)
+          }
           time.toOption
-        }.flatten
-      case _ =>
-        Nil
+        case _ =>
+          Nil
+      }
     }
 
     val mostRecentTime = if (times.nonEmpty) Some(times.max) else None
@@ -101,7 +88,7 @@ class StravaAPI(authString: String) {
   }
 
   def deleteActivity(id: Long): Unit = {
-    val request = buildDeleteRequest(s"https://www.strava.com/api/v3/activities/$id", authString, "")
+    val request = buildDeleteRequest(buildURI(s"activities/$id"), authString, "")
 
     request.execute()
   }
@@ -119,35 +106,22 @@ class StravaAPI(authString: String) {
     */
   def activityIdFromUploadId(id: Long): Either[Long, Boolean] = {
     try {
-      val request = buildGetRequest(s"https://www.strava.com/api/v3/uploads/$id", authString, "")
+      val request = buildGetRequest(buildURI(s"uploads/$id"), authString, "")
       request.getHeaders.set("Expect",Array("100-continue"))
       request.getHeaders.setAccept("*/*")
 
       val response = request.execute()
-      val resultString = response.parseAsString
-      val resultJson = JSON.parseFull(resultString)
+      val resultJson = jsonMapper.readTree(response.getContent)
 
-      val activityId = Option(resultJson).map {
-        case M(map) =>
-          map.get("status") match {
-            case S(status) if status == "Your activity is still being processed." =>
-              Right(true)
-            case _ =>
-              map.get("activity_id") match {
-                case D(actId) if actId.toLong != 0 =>
-                  Left(actId.toLong)
-                case _ =>
-                  Right(false)
-              }
-          }
-        case _ => Right(false)
+      val activityId = (Option(resultJson.path("status").textValue), Option(resultJson.path("activity_id").numberValue)) match {
+        case (Some(status), _) if status == "Your activity is still being processed." =>
+          Right(true)
+        case (_, Some(actId)) if actId.longValue != 0 =>
+          Left(actId.longValue)
+        case _ =>
+          Right(false)
       }
-      val a = activityId
-      try {
-        a.get
-      } catch {
-        case x: NoSuchElementException => Right(false)
-      }
+      activityId
     } catch {
       case ex: HttpResponseException if ex.getStatusCode == 404 =>
         Right(false)
