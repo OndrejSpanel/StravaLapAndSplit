@@ -9,7 +9,7 @@ import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
 import com.google.api.client.json.jackson.JacksonFactory
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
-import org.joda.time.{DateTime, Period, Seconds}
+import org.joda.time.{DateTime => ZonedDateTime, Period, Seconds}
 
 import scala.collection.JavaConverters._
 import org.joda.time.format.PeriodFormatterBuilder
@@ -78,7 +78,7 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  case class ActivityId(id: Long, name: String, startTime: DateTime, sportName: String, duration:Int, distance: Double) {
+  case class ActivityId(id: Long, name: String, startTime: ZonedDateTime, sportName: String, duration:Int, distance: Double) {
     def link: String = s"https://www.strava.com/activities/$id"
   }
 
@@ -87,7 +87,7 @@ object Main {
       // https://strava.github.io/api/v3/activities/
       val name = json.path("name").textValue
       val id = json.path("id").longValue
-      val time = DateTime.parse(json.path("start_date").textValue)
+      val time = ZonedDateTime.parse(json.path("start_date").textValue)
       val sportName = json.path("type").textValue
       val duration = json.path("elapsed_time").intValue
       val distance = json.path("distance").doubleValue
@@ -397,7 +397,7 @@ object Main {
 
     val actId = ActivityId.load(responseJson)
     val startDateStr = responseJson.path("start_date").textValue
-    val startTime = DateTime.parse(startDateStr)
+    val startTime = ZonedDateTime.parse(startDateStr)
 
     object StravaActivityStreams extends ActivityStreams {
       //private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
@@ -461,7 +461,7 @@ object Main {
 
       val lapTimes = (for (lap <- lapsJson.elements.asScala) yield {
         val lapTimeStr = lap.path("start_date").textValue
-        DateTime.parse(lapTimeStr)
+        ZonedDateTime.parse(lapTimeStr)
       }).toList
 
 
@@ -473,7 +473,7 @@ object Main {
     val segments: Seq[Event] = {
       val segmentList = responseJson.path("segment_efforts").asScala.toList
       segmentList.flatMap { seg =>
-        val segStartTime = DateTime.parse(seg.path("start_date").textValue)
+        val segStartTime = ZonedDateTime.parse(seg.path("start_date").textValue)
         val segName = seg.path("name").textValue
         val segStart = Seconds.secondsBetween(startTime, segStartTime).getSeconds
         val segDuration = seg.path("elapsed_time").intValue
