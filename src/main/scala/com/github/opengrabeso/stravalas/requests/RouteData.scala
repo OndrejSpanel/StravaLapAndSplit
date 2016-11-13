@@ -27,7 +27,7 @@ object RouteData extends DefineRequest("/route-data") {
         writer.close()
       }
     } else {
-      resp.status(404)
+      resp.status(404) // TODO: other errors possible, forward them
     }
 
     Nil

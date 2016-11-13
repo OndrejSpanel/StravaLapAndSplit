@@ -2,17 +2,16 @@ package net.suunto3rdparty
 package strava
 
 import java.io._
-import org.joda.time.{DateTime=>ZonedDateTime}
+
+import org.joda.time.{DateTime => ZonedDateTime}
 import java.util.zip.GZIPOutputStream
 
-import org.apache.http.client.HttpResponseException
-import org.apache.http.client.fluent.Request
-import org.apache.http.entity.ContentType
-import org.apache.http.entity.mime.MultipartEntityBuilder
+import com.google.api.client.http._
 import resource._
 import Util._
+import com.github.opengrabeso.stravalas.RequestUtils
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 import scala.util.parsing.json.{JSON, JSONArray, JSONObject}
 
 case class StravaAPIParams(appId: Int, clientSecret: String, code: Option[String])
@@ -50,26 +49,25 @@ object StravaAPI {
 
 class StravaAPI(authString: String) {
 
+  import RequestUtils._
   import StravaAPI._
 
   // see https://strava.github.io/api/
 
-  private def authHeader = "Bearer " + authString
-
   def athlete: String = {
-    val request = Request.Get(buildURI("athlete")).addHeader("Authorization", authHeader)
+    val request = buildGetRequest("https://www.strava.com/api/v3/athlete", authString, "")
 
-    val result = request.execute().returnContent()
-    result.asString()
+    val result = request.execute().parseAsString
+    result
   }
 
   def mostRecentActivityTime: Option[ZonedDateTime] = {
     // we might want to add parameters page=0, per_page=1
-    val request = Request.Get(buildURI("athlete/activities")).addHeader("Authorization", authHeader)
+    val request = buildGetRequest("https://www.strava.com/api/v3/athlete/activities", authString, "")
 
-    val result = request.execute().returnContent()
+    val result = request.execute().parseAsString
 
-    val json = JSON.parseRaw(result.asString())
+    val json = JSON.parseRaw(result)
 
     val times: Seq[ZonedDateTime] = json match {
       case Some(a: JSONArray) =>
@@ -103,10 +101,7 @@ class StravaAPI(authString: String) {
   }
 
   def deleteActivity(id: Long): Unit = {
-    val request = Request.Delete(buildURI(s"activities/$id"))
-      .useExpectContinue()
-      .addHeader("Authorization", authHeader)
-      .addHeader("Accept", "*/*")
+    val request = buildDeleteRequest(s"https://www.strava.com/api/v3/activities/$id", authString, "")
 
     request.execute()
   }
@@ -124,14 +119,12 @@ class StravaAPI(authString: String) {
     */
   def activityIdFromUploadId(id: Long): Either[Long, Boolean] = {
     try {
-      val request = Request.Get(buildURI(s"uploads/$id"))
-        .useExpectContinue()
-        .addHeader("Authorization", authHeader)
-        .addHeader("Accept", "*/*")
+      val request = buildGetRequest(s"https://www.strava.com/api/v3/uploads/$id", authString, "")
+      request.getHeaders.set("Expect",Array("100-continue"))
+      request.getHeaders.setAccept("*/*")
 
       val response = request.execute()
-      val content = response.returnContent()
-      val resultString = content.asString()
+      val resultString = response.parseAsString
       val resultJson = JSON.parseFull(resultString)
 
       val activityId = Option(resultJson).map {
@@ -169,22 +162,32 @@ class StravaAPI(authString: String) {
 
     try {
       // see https://strava.github.io/api/v3/uploads/ -
-      val body = MultipartEntityBuilder.create()
-        .addTextBody("data_type", fileType) // case insensitive - possible values: fit, fit.gz, tcx, tcx.gz, gpx, gpx.gz
-        .addTextBody("private", "1")
-        .addBinaryBody("file", sendBytes, ContentType.APPLICATION_OCTET_STREAM, "file.fit.gz")
-        .build()
+      val body = new MultipartContent()
 
-      val request = Request.Post(buildURI("uploads"))
-        .useExpectContinue()
-        .addHeader("Authorization", authHeader)
-        .addHeader("Accept", "*/*")
-        .body(body)
+      def textPart(name: String, value: String) = {
+        new MultipartContent.Part(
+          new HttpHeaders().set("Content-Disposition", s"""name="$name""""),
+          ByteArrayContent.fromString("text/plain", value)
+        )
+      }
+      def binaryPart(name: String, filename: String) = {
+        new MultipartContent.Part(
+          new HttpHeaders().set("Content-Disposition", s"""attachment; name="$name"; filename="$filename""""),
+          new ByteArrayContent("application/octet-stream", sendBytes)
+        )
+      }
+
+      body.addPart(textPart("data_type", fileType))
+      body.addPart(textPart("private", "1"))
+
+      body.addPart(binaryPart("file", "file.fit.gz"))
+
+      val request = buildPostRequest(buildURI("uploads"), authString, "", body)
+      request.getHeaders.set("Expect",Array("100-continue"))
+      request.getHeaders.setAccept("*/*")
 
       val response = request.execute()
-      val content = response.returnContent()
-
-      val resultString = content.asString()
+      val resultString = response.parseAsString
 
       // we expect to receive 201
 

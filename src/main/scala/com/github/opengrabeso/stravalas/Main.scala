@@ -17,20 +17,8 @@ import org.joda.time.format.PeriodFormatterBuilder
 import DateTimeOps._
 
 object Main {
-  private val transport = new NetHttpTransport()
-  private val jsonFactory = new JacksonFactory()
-  private val jsonMapper = new ObjectMapper()
 
-  private val logger = Logger.getLogger(Main.getClass.getName)
-
-  private val requestFactory = transport.createRequestFactory(new HttpRequestInitializer() {
-    override def initialize(request: HttpRequest) = request.setParser(new JsonObjectParser(jsonFactory))
-  })
-
-  def buildGetRequest(uri: String, authToken: String, parameters: String): HttpRequest = {
-    val request = requestFactory.buildGetRequest(new GenericUrl(uri + "?access_token=" + authToken + "&" + parameters))
-    request
-  }
+  import RequestUtils._
 
   case class SecretResult(appId: String, appSecret: String, mapboxToken: String, error: String)
 
