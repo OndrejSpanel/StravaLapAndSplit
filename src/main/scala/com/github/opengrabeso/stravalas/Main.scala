@@ -68,6 +68,9 @@ object Main {
   }
 
   case class ActivityId(id: Long, name: String, startTime: ZonedDateTime, sportName: String, duration:Int, distance: Double) {
+
+    def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
+
     def endTime: ZonedDateTime = startTime.withDurationAdded(duration, 1000)
 
     def link: String = s"https://www.strava.com/activities/$id"
@@ -96,13 +99,17 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], stamps: Seq[StampDisplay], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], dist: Seq[Double], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+
+    def secondsInActivity(time: ZonedDateTime): Int  = id.secondsInActivity(time)
+
     def begPos: (Double, Double) = gps.head
     def endPos: (Double, Double) = gps.last
 
     def lat: Double = (begPos._1 + endPos._1) * 0.5
     def lon: Double = (begPos._2 + endPos._2) * 0.5
 
+    lazy val relTimes = times.map(secondsInActivity)
 
     lazy val mapTimeToDist: Map[Int, Double] = {
       def scanTime(now: Int, timeDist: Seq[(Int, Double)], ret: Seq[(Int, Double)]): Seq[(Int, Double)] = {
@@ -118,7 +125,7 @@ object Main {
         }
       }
 
-      val timeRelStamps = stamps.map(t => t.time -> t.dist)
+      val timeRelStamps = relTimes zip dist
 
       val filledTime = scanTime(0, timeRelStamps, Nil)
 
@@ -131,9 +138,10 @@ object Main {
     }
 
     def routeJS: String = {
-      (gps zip stamps).map { case ((lng, lat),t) =>
 
-        s"[$lat,$lng,${t.time},${t.dist}]"
+      (gps zip relTimes zip dist).map { case (((lng, lat),t), d) =>
+
+        s"[$lat,$lng,$t,$d]"
       }.mkString("[\n", ",\n", "]\n")
     }
 
@@ -200,14 +208,14 @@ object Main {
         val indexEnd = safeIndexWhere(times)(_ > endTime)
 
         val timesRange = times.slice(indexBeg, indexEnd)
-        val stampsRange = stamps.slice(indexBeg, indexEnd)
+        val distRange = dist.slice(indexBeg, indexEnd)
         val gpsRange = gps.slice(indexBeg, indexEnd)
 
         val attrRange = attributes.map { case (name, attr) =>
           (name, attr.slice(indexBeg, indexEnd))
         }
 
-        val act = ActivityEvents(id.copy(startTime = begTime), eventsRange.map(_._1), eventsRange.map(_._2), timesRange, stampsRange, gpsRange, attrRange)
+        val act = ActivityEvents(id.copy(startTime = begTime), eventsRange.map(_._1), eventsRange.map(_._2), timesRange, distRange, gpsRange, attrRange)
 
         act
       }
@@ -222,10 +230,6 @@ object Main {
     def latlng: Vector[(Double, Double)]
 
     def attributes: Seq[(String, Seq[Int])]
-
-    lazy val stamps: Vector[StampDisplay] = (time zip dist).map((StampDisplay.apply _).tupled)
-
-    def stampForTime(time: Int): StampDisplay = stamps.filter(_.time >= time).head
   }
 
 
@@ -242,7 +246,7 @@ object Main {
 
     val times = act.time.map(t => actId.startTime.withDurationAdded(t, 1000))
 
-    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, act.stamps, act.latlng, act.attributes)
+    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, act.dist, act.latlng, act.attributes)
   }
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {

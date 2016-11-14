@@ -1,8 +1,6 @@
 package com.github.opengrabeso.stravalas
 import org.joda.time.{DateTime => ZonedDateTime, Period, Seconds}
 
-case class StampDisplay(time: Int, dist: Double)
-
 case class Stamp(aTime: ZonedDateTime) {
   def offset(t: Int) = Stamp(aTime.withDurationAdded(t, 1000))
 
