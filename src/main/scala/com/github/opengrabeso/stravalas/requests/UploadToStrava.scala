@@ -1,12 +1,10 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import java.io.OutputStreamWriter
-
+import scala.collection.JavaConverters._
 import net.suunto3rdparty.strava.StravaAPI
 import spark.{Request, Response}
-
-import scala.util.parsing.json.JSONObject
+import RequestUtils._
 
 object UploadToStrava extends ProcessFile("/upload-strava") {
   def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit = {
@@ -20,15 +18,9 @@ object UploadToStrava extends ProcessFile("/upload-strava") {
       val contentType = "application/json"
       resp.status(200)
 
-      val json = JSONObject(Map("id" -> ret.get))
+      val output = Map("id" -> ret.get)
 
-      val out = resp.raw.getOutputStream
-      val writer = new OutputStreamWriter(out)
-      try {
-        writer.write(json.toString())
-      } finally {
-        writer.close()
-      }
+      jsonMapper.writeValue(resp.raw.getOutputStream, output.asJava)
 
       resp.`type`(contentType)
     } else {

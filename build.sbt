@@ -21,15 +21,11 @@ libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.6.1"
 
 libraryDependencies += "commons-fileupload" % "commons-fileupload" % "1.3.2"
 
-libraryDependencies += "org.javassist" % "javassist" % "3.18.2-GA"
-
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
 
 libraryDependencies += "org.apache.commons" % "commons-math" % "2.1"
-
-libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 
 val log4jVersion = "2.5"
 
@@ -38,13 +34,5 @@ libraryDependencies += "org.apache.logging.log4j" % "log4j-core" % log4jVersion
 libraryDependencies += "org.apache.logging.log4j" % "log4j-api" % log4jVersion
 
 libraryDependencies += "org.apache.logging.log4j" % "log4j-1.2-api" % log4jVersion
-
-libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.2"
-
-libraryDependencies += "org.apache.httpcomponents" % "fluent-hc" % "4.3.6"
-
-libraryDependencies += "org.apache.httpcomponents" % "httpmime" % "4.3.6"
-
-
 
 appengineSettings
