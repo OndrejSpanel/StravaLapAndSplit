@@ -11,7 +11,7 @@ import scala.collection.JavaConverters._
 import org.joda.time.format.PeriodFormatterBuilder
 import DateTimeOps._
 import com.google.api.client.json.jackson2.JacksonFactory
-import net.suunto3rdparty.{DataStreamDist, DataStreamGPS, GPSPoint}
+import net.suunto3rdparty._
 
 import scala.collection.immutable.SortedMap
 
@@ -99,7 +99,7 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[(String, Seq[Int])]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
     def secondsInActivity(time: ZonedDateTime): Int  = id.secondsInActivity(time)
 
@@ -216,8 +216,8 @@ object Main {
         val distRange = dist.pickData(dist.slice(indexBeg, indexEnd).stream)
         val gpsRange = gps.pickData(gps.slice(indexBeg, indexEnd).stream)
 
-        val attrRange = attributes.map { case (name, attr) =>
-          (name, attr.slice(indexBeg, indexEnd))
+        val attrRange = attributes.map { attr =>
+          attr.slice(indexBeg, indexEnd)
         }
 
         val act = ActivityEvents(id.copy(startTime = begTime), eventsRange.map(_._1), eventsRange.map(_._2), timesRange, distRange, gpsRange, attrRange)
@@ -252,7 +252,11 @@ object Main {
     val dist = new DataStreamDist(SortedMap(times zip act.dist:_*))
     val latlng = new DataStreamGPS(SortedMap(times zip act.latlng.map(ll => GPSPoint(ll._1, ll._2, None)):_*))
 
-    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, dist, latlng, act.attributes)
+    val attr = act.attributes.collect { case (name, aa) if name == "heartrate" =>
+      new DataStreamHR(SortedMap(times zip aa:_*))
+    }
+
+    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, dist, latlng, attr)
   }
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {

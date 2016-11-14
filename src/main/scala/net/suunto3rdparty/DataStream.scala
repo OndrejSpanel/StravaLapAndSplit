@@ -461,7 +461,7 @@ class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint
 
 }
 
-class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream[Int] {
+case class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream[Int] {
   def typeToLog = "HR"
 
   override def pickData(data: DataMap) = new DataStreamHR(data)

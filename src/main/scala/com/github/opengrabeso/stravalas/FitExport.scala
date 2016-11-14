@@ -4,6 +4,7 @@ import com.garmin.fit._
 import Main.ActivityEvents
 import com.garmin.fit
 import DateTimeOps._
+import net.suunto3rdparty.{DataStream, DataStreamHR}
 import org.joda.time.{Seconds, DateTime => JodaDateTime}
 
 object FitExport {
@@ -60,16 +61,17 @@ object FitExport {
       new GPSEvent(t, gps.latitude, gps.longitude)
     }
 
-    val attributesAsEvents = events.attributes.flatMap { case (name, attrib) =>
+    val attributesAsEvents = events.attributes.flatMap { attrib =>
       val createAttribEvent: (RecordMesg, Int) => Unit = (msg, value) =>
-        name match {
-          case "heartrate" => msg.setHeartRate(value.toShort)
-          case "watts" => msg.setPower(value)
-          case "cadence" => msg.setCadence(value.toShort)
-          case "temp" => msg.setTemperature(value.toByte)
+        attrib match {
+          case x: DataStreamHR => msg.setHeartRate(value.toShort)
+          //case "watts" => msg.setPower(value)
+          //case "cadence" => msg.setCadence(value.toShort)
+          //case "temp" => msg.setTemperature(value.toByte)
+          case _ => ???
         }
-      (attrib zip events.times).map { case (data, t) =>
-        new AttribEvent(t, data, createAttribEvent)
+      attrib.stream.map { case (t, data) =>
+        new AttribEvent(t, data.asInstanceOf[Int], createAttribEvent)
       }
     }
 
