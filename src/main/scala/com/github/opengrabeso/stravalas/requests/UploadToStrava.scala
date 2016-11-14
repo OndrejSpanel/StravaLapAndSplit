@@ -24,7 +24,14 @@ object UploadToStrava extends ProcessFile("/upload-strava") {
 
       resp.`type`(contentType)
     } else {
+      val contentType = "application/json"
+      resp.status(400)
 
+      val output = Map("error" -> "error")
+
+      jsonMapper.writeValue(resp.raw.getOutputStream, output.asJava)
+
+      resp.`type`(contentType)
     }
 
 
