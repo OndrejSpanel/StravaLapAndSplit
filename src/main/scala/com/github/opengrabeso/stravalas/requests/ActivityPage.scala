@@ -46,7 +46,7 @@ trait ActivityRequestHandler {
         <th>Action</th>
       </tr>{val ees = activityData.editableEvents
       var lastSport = ""
-      var lastTime: Option[ZonedDateTime] = None
+      var lastTime = Option.empty[ZonedDateTime]
       val startTime = activityData.id.startTime
       for ((t, i) <- activityData.events.zipWithIndex) yield {
         val t = activityData.events(i)
