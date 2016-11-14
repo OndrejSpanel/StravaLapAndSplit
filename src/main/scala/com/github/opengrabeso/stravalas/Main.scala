@@ -7,14 +7,13 @@ import com.google.api.client.http.{GenericUrl, HttpRequest, HttpRequestInitializ
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.json.JsonHttpContent
 import com.google.api.client.json.JsonObjectParser
-import com.google.api.client.json.jackson.JacksonFactory
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
-import org.joda.time.{DateTime => ZonedDateTime, Period, Seconds}
+import org.joda.time.{Period, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.JavaConverters._
 import org.joda.time.format.PeriodFormatterBuilder
-
 import DateTimeOps._
+import com.google.api.client.json.jackson2.JacksonFactory
 
 object Main {
 

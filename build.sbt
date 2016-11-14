@@ -7,7 +7,7 @@ val jacksonVersion = "2.8.3"
 
 libraryDependencies ++= Seq(
   "com.google.http-client" % "google-http-client-appengine" % "1.22.0",
-  "com.google.http-client" % "google-http-client-jackson" % "1.22.0",
+  "com.google.http-client" % "google-http-client-jackson2" % "1.22.0",
   "javax.servlet" % "servlet-api" % "2.5" % "provided",
   "org.mortbay.jetty" % "jetty" % "6.1.22" % "container",
   "joda-time" % "joda-time" % "2.9.4",
