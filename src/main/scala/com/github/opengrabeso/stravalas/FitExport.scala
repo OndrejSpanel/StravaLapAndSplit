@@ -56,10 +56,8 @@ object FitExport {
 
     class AttribEvent(val time: JodaDateTime, data: Int, set: (RecordMesg, Int) => Unit) extends DataEvent(time, set(_, data))
 
-    import events.id.startTime
-
-    val gpsAsEvents = (events.gps zip events.times).map { case (gps, t) =>
-      new GPSEvent(t, gps._1, gps._2)
+    val gpsAsEvents = events.gps.stream map { case (t, gps) =>
+      new GPSEvent(t, gps.latitude, gps.longitude)
     }
 
     val attributesAsEvents = events.attributes.flatMap { case (name, attrib) =>
@@ -129,7 +127,7 @@ object FitExport {
     allEvents.foreach(_.encode(encoder))
 
     val timeBeg = events.id.startTime
-    val durationSec = events.gps.size
+    val durationSec = events.id.duration
     val timeEnd = events.id.startTime.plusSeconds(durationSec)
 
     LapAutoClose.closeLap(timeEnd)

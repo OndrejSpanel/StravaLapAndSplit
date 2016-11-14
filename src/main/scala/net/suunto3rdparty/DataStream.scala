@@ -178,7 +178,7 @@ object DataStreamGPS {
 
 }
 
-class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream[GPSPoint] {
+case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream[GPSPoint] {
 
   import DataStreamGPS._
 

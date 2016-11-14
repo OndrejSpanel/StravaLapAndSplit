@@ -11,7 +11,8 @@ import scala.collection.JavaConverters._
 import org.joda.time.format.PeriodFormatterBuilder
 import DateTimeOps._
 import com.google.api.client.json.jackson2.JacksonFactory
-import net.suunto3rdparty.DataStreamDist
+import net.suunto3rdparty.{DataStreamDist, DataStreamGPS, GPSPoint}
+
 import scala.collection.immutable.SortedMap
 
 object Main {
@@ -98,12 +99,14 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], dist: DataStreamDist, gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[(String, Seq[Int])]) {
 
     def secondsInActivity(time: ZonedDateTime): Int  = id.secondsInActivity(time)
 
-    def begPos: (Double, Double) = gps.head
-    def endPos: (Double, Double) = gps.last
+    private def convertGPSToPair(gps: GPSPoint) = (gps.latitude, gps.longitude)
+
+    def begPos: (Double, Double) = convertGPSToPair(gps.stream.head._2)
+    def endPos: (Double, Double) = convertGPSToPair(gps.stream.last._2)
 
     def lat: Double = (begPos._1 + endPos._1) * 0.5
     def lon: Double = (begPos._2 + endPos._2) * 0.5
@@ -132,6 +135,7 @@ object Main {
     }
 
     private def distWithRelTimes = dist.stream.toList.map(t => secondsInActivity(t._1) -> t._2)
+    private def gpsWithRelTimes = gps.stream.toList.map(t => secondsInActivity(t._1) -> t._2)
 
     def distanceForTime(time: ZonedDateTime): Double = {
       val relTime = Seconds.secondsBetween(id.startTime, time).getSeconds
@@ -139,8 +143,8 @@ object Main {
     }
 
     def routeJS: String = {
-
-      (gps zip distWithRelTimes).map { case ((lng, lat),(t, d)) =>
+      // TODO: distances may have different times than GPS
+      (gps.stream.values zip distWithRelTimes).map { case (GPSPoint(lng, lat, _),(t, d)) =>
 
         s"[$lat,$lng,$t,$d]"
       }.mkString("[\n", ",\n", "]\n")
@@ -210,7 +214,7 @@ object Main {
 
         val timesRange = times.slice(indexBeg, indexEnd)
         val distRange = dist.pickData(dist.slice(indexBeg, indexEnd).stream)
-        val gpsRange = gps.slice(indexBeg, indexEnd)
+        val gpsRange = gps.pickData(gps.slice(indexBeg, indexEnd).stream)
 
         val attrRange = attributes.map { case (name, attr) =>
           (name, attr.slice(indexBeg, indexEnd))
@@ -246,8 +250,9 @@ object Main {
     val times = act.time.map(t => actId.startTime.withDurationAdded(t, 1000))
 
     val dist = new DataStreamDist(SortedMap(times zip act.dist:_*))
+    val latlng = new DataStreamGPS(SortedMap(times zip act.latlng.map(ll => GPSPoint(ll._1, ll._2, None)):_*))
 
-    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, dist, act.latlng, act.attributes)
+    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, dist, latlng, act.attributes)
   }
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
