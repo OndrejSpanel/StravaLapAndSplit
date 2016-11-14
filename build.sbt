@@ -19,7 +19,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-simple" % "1.6.1",
   "commons-fileupload" % "commons-fileupload" % "1.3.2",
   "org.scalatest" %% "scalatest" % "3.0.0" % "test",
-  "com.jsuereth" %% "scala-arm" % "1.4" exclude("org.scala-lang.plugins", "scala-continuations-library_" + scalaVersion.value.split('.').dropRight(1).mkString(".")),
+  "com.jsuereth" %% "scala-arm" % "1.4" exclude("org.scala-lang.plugins", "scala-continuations-library_" + scalaBinaryVersion.value),
   "org.apache.commons" % "commons-math" % "2.1",
   "org.apache.logging.log4j" % "log4j-core" % log4jVersion,
   "org.apache.logging.log4j" % "log4j-api" % log4jVersion,
