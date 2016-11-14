@@ -11,6 +11,8 @@ import scala.collection.JavaConverters._
 import org.joda.time.format.PeriodFormatterBuilder
 import DateTimeOps._
 import com.google.api.client.json.jackson2.JacksonFactory
+import net.suunto3rdparty.DataStreamDist
+import scala.collection.immutable.SortedMap
 
 object Main {
 
@@ -96,7 +98,7 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], dist: Seq[Double], gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], dist: DataStreamDist, gps: Seq[(Double, Double)], attributes: Seq[(String, Seq[Int])]) {
 
     def secondsInActivity(time: ZonedDateTime): Int  = id.secondsInActivity(time)
 
@@ -122,12 +124,14 @@ object Main {
         }
       }
 
-      val timeRelStamps = relTimes zip dist
+      val timeRelStamps = distWithRelTimes
 
       val filledTime = scanTime(0, timeRelStamps, Nil)
 
       filledTime.toMap
     }
+
+    private def distWithRelTimes = dist.stream.toList.map(t => secondsInActivity(t._1) -> t._2)
 
     def distanceForTime(time: ZonedDateTime): Double = {
       val relTime = Seconds.secondsBetween(id.startTime, time).getSeconds
@@ -136,7 +140,7 @@ object Main {
 
     def routeJS: String = {
 
-      (gps zip relTimes zip dist).map { case (((lng, lat),t), d) =>
+      (gps zip distWithRelTimes).map { case ((lng, lat),(t, d)) =>
 
         s"[$lat,$lng,$t,$d]"
       }.mkString("[\n", ",\n", "]\n")
@@ -205,7 +209,7 @@ object Main {
         val indexEnd = safeIndexWhere(times)(_ > endTime)
 
         val timesRange = times.slice(indexBeg, indexEnd)
-        val distRange = dist.slice(indexBeg, indexEnd)
+        val distRange = dist.pickData(dist.slice(indexBeg, indexEnd).stream)
         val gpsRange = gps.slice(indexBeg, indexEnd)
 
         val attrRange = attributes.map { case (name, attr) =>
@@ -241,7 +245,9 @@ object Main {
 
     val times = act.time.map(t => actId.startTime.withDurationAdded(t, 1000))
 
-    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, act.dist, act.latlng, act.attributes)
+    val dist = new DataStreamDist(SortedMap(times zip act.dist:_*))
+
+    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, dist, act.latlng, act.attributes)
   }
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {

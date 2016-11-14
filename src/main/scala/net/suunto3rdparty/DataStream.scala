@@ -19,18 +19,17 @@ object DataStream {
 
   }
 }
-sealed abstract class DataStream {
+sealed abstract class DataStream[Item] {
 
   def typeToLog: String
-  def streamType: Class[_ <: DataStream] = this.getClass
+  def streamType: Class[_] = this.getClass
 
-  type Item
-
+  type DataItem = Item
   type DataMap = SortedMap[ZonedDateTime, Item]
 
   def stream: DataMap
 
-  def pickData(data: DataMap): DataStream
+  def pickData(data: DataMap): DataStream[Item]
 
   val startTime: Option[ZonedDateTime] = stream.headOption.map(_._1)
   val endTime: Option[ZonedDateTime] = stream.lastOption.map(_._1)
@@ -41,12 +40,17 @@ sealed abstract class DataStream {
   // must not be discarded
   def isNeeded: Boolean
 
-  def span(time: ZonedDateTime): (DataStream, DataStream) = {
+  def span(time: ZonedDateTime): (DataStream[Item], DataStream[Item]) = {
     val (take, left) = stream.span(_._1 < time)
     (pickData(take), pickData(left))
   }
 
-  def timeOffset(bestOffset: Int): DataStream = {
+  // TODO: replace with safer absolute time stamp
+  def slice(indexBeg: Int, indexEnd: Int): DataStream[Item] = {
+    pickData(stream.slice(indexBeg, indexEnd))
+  }
+
+  def timeOffset(bestOffset: Int): DataStream[Item] = {
     val adjusted = stream.map{
       case (k,v) =>
         k.plus(bestOffset*1000) -> v
@@ -174,11 +178,9 @@ object DataStreamGPS {
 
 }
 
-class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream {
+class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream[GPSPoint] {
 
   import DataStreamGPS._
-
-  type Item = GPSPoint
 
   def typeToLog: String = "GPS"
 
@@ -431,9 +433,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
 }
 
-class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream {
-  type Item = String
-
+class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream[String] {
   def typeToLog: String = "Laps"
 
   override def pickData(data: DataMap) = new DataStreamLap(data)
@@ -442,12 +442,10 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
   def dropAlmostEmpty: DataStreamLap = this
 }
 
-class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream {
-  type Item = HRPoint
-
+class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream[HRPoint] {
   def typeToLog = "HRDist"
 
-  def rebase: DataStream = {
+  def rebase: DataStream[HRPoint] = {
     if (stream.isEmpty) this
     else {
       val base = stream.head._2.dist
@@ -463,9 +461,7 @@ class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint
 
 }
 
-class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream {
-  type Item = Int
-
+class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream[Int] {
   def typeToLog = "HR"
 
   override def pickData(data: DataMap) = new DataStreamHR(data)
@@ -474,24 +470,22 @@ class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends D
   def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 }
 
-class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream {
+case class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream[Double] {
 
   def typeToLog = "Dist"
 
-  type Item = Double
-
-  def rebase: DataStream = {
+  def rebase: DataStreamDist = {
     if (stream.isEmpty) this
     else {
       val base = stream.head._2
-      new DataStreamDist(stream.mapValues(_ - base))
+      DataStreamDist(stream.mapValues(_ - base))
     }
   }
 
   override def isAlmostEmpty = stream.isEmpty || DataStream.distanceIsAlmostEmpty(stream.head._2, stream.last._2, stream.head._1, stream.last._1)
   override def isNeeded = false
 
-  override def pickData(data: DataMap) = new DataStreamDist(data).rebase
+  override def pickData(data: DataMap): DataStreamDist = DataStreamDist(data).rebase
   def dropAlmostEmpty: DataStreamDist = this // TODO: drop
 }
 
