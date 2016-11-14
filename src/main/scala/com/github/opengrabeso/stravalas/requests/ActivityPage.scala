@@ -56,14 +56,14 @@ trait ActivityRequestHandler {
         lastSport = ee.sport
         <tr>
           <td> {xml.Unparsed(t.description)} </td>
-          <td> {Main.displaySeconds(t.stamp.secondsFrom(startTime))} </td>
-          <td> {Main.displayDistance(activityData.distanceForTime(t.stamp.aTime))} </td>
+          <td> {Main.displaySeconds(activityData.secondsInActivity(t.stamp))} </td>
+          <td> {Main.displayDistance(activityData.distanceForTime(t.stamp))} </td>
           <td> {sport} </td>
           <td>
             {val types = t.listTypes
-          if (types.length != 1 && !lastTime.contains(t.stamp.aTime)) {
-            lastTime = Some(t.stamp.aTime)
-            <select id={t.stamp.secondsFrom(startTime).toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
+          if (types.length != 1 && !lastTime.contains(t.stamp)) {
+            lastTime = Some(t.stamp)
+            <select id={activityData.secondsInActivity(t.stamp).toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
               {for (et <- types) yield {
               <option value={et.id} selected={if (action == et.id) "" else null}>
                 {et.display}
@@ -75,7 +75,7 @@ trait ActivityRequestHandler {
               <input type="hidden" name="events" value={t.defaultEvent}/>
           }}
           </td>
-          <td class="cellNoBorder" id={s"link${t.stamp.secondsFrom(startTime).toString}"}> </td>
+          <td class="cellNoBorder" id={s"link${activityData.secondsInActivity(t.stamp).toString}"}> </td>
         </tr>
       }}
     </table>

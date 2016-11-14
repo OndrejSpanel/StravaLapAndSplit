@@ -151,7 +151,7 @@ object Main {
 
       val ees = (events, events.drop(1) :+ events.last, sports zip sportChange).zipped.map { case (e1, e2, (sport,change)) =>
         val action = if (change) "split" else e1.defaultEvent
-        EditableEvent(action, e1.stamp.secondsFrom(id.startTime), distanceForTime(e1.stamp.aTime), sport)
+        EditableEvent(action, id.secondsInActivity(e1.stamp), distanceForTime(e1.stamp), sport)
       }
 
       // consolidate mutliple events with the same time so that all of them have the same action
@@ -179,22 +179,22 @@ object Main {
 
       val splitEvents = events.filter(_.isSplit).toSeq
 
-      val splitTimes = splitEvents.map(e => e.stamp.aTime)
+      val splitTimes = splitEvents.map(e => e.stamp)
 
       assert(splitTimes.contains(id.startTime))
       assert(splitTimes.contains(id.endTime))
 
       val splitRanges = splitEvents zip splitTimes.tail
 
-      val toSplit = splitRanges.find(_._1.stamp.secondsFrom(id.startTime) == splitTime)
+      val toSplit = splitRanges.find(t => secondsInActivity(t._2) == splitTime)
 
       toSplit.map { case (beg, endTime) =>
 
 
-        val begTime = beg.stamp.aTime
+        val begTime = beg.stamp
 
 
-        val eventsRange = (events zip sports).dropWhile(_._1.stamp.aTime <= begTime).takeWhile(_._1.stamp.aTime < endTime)
+        val eventsRange = (events zip sports).dropWhile(_._1.stamp <= begTime).takeWhile(_._1.stamp < endTime)
 
         val indexBeg = times.lastIndexWhere(_ <= begTime) max 0
 
@@ -230,14 +230,12 @@ object Main {
   }
 
 
-  def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: List[Stamp], segments: Seq[Event]): ActivityEvents = {
-
-    val pauses: Seq[(Int, Stamp)] = Nil
+  def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: List[ZonedDateTime], segments: Seq[Event]): ActivityEvents = {
 
     // TODO: provide activity type with the split
-    val events = (BegEvent(Stamp(actId.startTime)) +: EndEvent(Stamp(actId.endTime)) +: laps.map(LapEvent)) ++ segments
+    val events = (BegEvent(actId.startTime) +: EndEvent(actId.endTime) +: laps.map(LapEvent)) ++ segments
 
-    val eventsByTime = events.sortBy(_.stamp.aTime)
+    val eventsByTime = events.sortBy(_.stamp)
 
     val sports = eventsByTime.map(x => actId.sportName)
 
@@ -306,8 +304,6 @@ object Main {
 
     }
 
-    val act = StravaActivityStreams
-
     val laps = {
 
 
@@ -323,9 +319,7 @@ object Main {
       }).toList
 
 
-      val lapsInSeconds = lapTimes.map(lap => Seconds.secondsBetween(startTime, lap).getSeconds)
-
-      lapTimes.filter(_ > actId.startTime).map(Stamp.apply)
+      lapTimes.filter(_ > actId.startTime)
     }
 
     val segments: Seq[Event] = {
@@ -336,8 +330,8 @@ object Main {
         val segDuration = seg.path("elapsed_time").intValue
         val segPrivate = seg.path("segment").path("private").booleanValue
         Seq(
-          StartSegEvent(segName, segPrivate, Stamp(segStartTime)),
-          EndSegEvent(segName, segPrivate, Stamp(segStartTime).offset(segDuration))
+          StartSegEvent(segName, segPrivate, segStartTime),
+          EndSegEvent(segName, segPrivate, segStartTime.withDurationAdded(segDuration, 1000))
         )
       }
     }
