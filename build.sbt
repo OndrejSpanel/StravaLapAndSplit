@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
 
-libraryDependencies += "com.sparkjava" % "spark-core" % "1.1.1"
+libraryDependencies += "com.sparkjava" % "spark-core" % "1.1.1" excludeAll ExclusionRule(organization = "org.eclipse.jetty")
 
 libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.6.1"
 
@@ -23,7 +23,7 @@ libraryDependencies += "commons-fileupload" % "commons-fileupload" % "1.3.2"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 
-libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
+libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4" exclude("org.scala-lang.plugins", "scala-continuations-library_" + scalaVersion.value.split('.').dropRight(1).mkString("."))
 
 libraryDependencies += "org.apache.commons" % "commons-math" % "2.1"
 
