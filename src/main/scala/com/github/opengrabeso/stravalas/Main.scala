@@ -1,13 +1,10 @@
 package com.github.opengrabeso.stravalas
 
 import java.util
-import java.util.logging.Logger
 
-import com.google.api.client.http.{GenericUrl, HttpRequest, HttpRequestInitializer}
-import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
-import com.google.api.client.json.JsonObjectParser
-import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import com.fasterxml.jackson.databind.JsonNode
 import org.joda.time.{Period, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.JavaConverters._
