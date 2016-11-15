@@ -21,13 +21,13 @@ object Export {
     val timeFormat = ISODateTimeFormat.dateTimeNoMillis
     val timeBegText = timeFormat.print(timeBeg)
 
-    type MultiSamples = SortedMap[ZonedDateTime, Seq[DataStream#Item]]
+    type MultiSamples = SortedMap[ZonedDateTime, Seq[DataStream[_]#DataItem]]
 
-    def toMultiSamples(data: DataStream#DataMap): MultiSamples = {
+    def toMultiSamples[Item](data: DataStream[Item]#DataMap): MultiSamples = {
       data.mapValues(Seq(_))
     }
 
-    def mergeMultiSamples(m: MultiSamples, d: DataStream#DataMap): MultiSamples = {
+    def mergeMultiSamples[Item](m: MultiSamples, d: DataStream[Item]#DataMap): MultiSamples = {
       val updateExisting = m.map { case (k, v) =>
         k -> (v ++ d.get(k))
       }
@@ -40,7 +40,7 @@ object Export {
       mergeMultiSamples(comb, str._2.stream)
     }
 
-    def writeEvent(ev: DataStream#Item): NodeSeq = {
+    def writeEvent[Item](ev: DataStream[Item]#DataItem): NodeSeq = {
       ev match {
         case gps: GPSPoint =>
             <Position>
@@ -58,7 +58,7 @@ object Export {
           NodeSeq.Empty
       }
     }
-    def writeEventGroup(evGroup: (ZonedDateTime, Seq[DataStream#Item])): NodeSeq = {
+    def writeEventGroup(evGroup: (ZonedDateTime, Seq[DataStream[_]#DataItem])): NodeSeq = {
       val events = <Time>{timeFormat.print(evGroup._1)}</Time> +: evGroup._2.map(writeEvent)
       if (events.nonEmpty) {
         <Trackpoint>

@@ -5,7 +5,7 @@ import com.garmin.fit
 import com.garmin.fit._
 import java.io.File
 
-import org.joda.time.{Duration, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 import Util._
 import net.suunto3rdparty.MoveHeader.ActivityType._
 
@@ -61,13 +61,13 @@ object Export {
 
     // write all data, sorted by time
 
-    type MultiSamples = SortedMap[ZonedDateTime, Seq[DataStream#Item]]
+    type MultiSamples = SortedMap[ZonedDateTime, Seq[DataStream[_]#DataItem]]
 
-    def toMultiSamples(data: DataStream#DataMap): MultiSamples = {
+    def toMultiSamples[Item](data: DataStream[Item]#DataMap): MultiSamples = {
       data.mapValues(Seq(_))
     }
 
-    def mergeMultiSamples(m: MultiSamples, d: DataStream#DataMap): MultiSamples = {
+    def mergeMultiSamples[Item](m: MultiSamples, d: DataStream[Item]#DataMap): MultiSamples = {
       val updateExisting = m.map { case (k, v) =>
         k -> (v ++ d.get(k))
       }

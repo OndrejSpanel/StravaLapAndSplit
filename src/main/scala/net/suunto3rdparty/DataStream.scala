@@ -16,24 +16,32 @@ object DataStream {
     val duration = timeDifference(begTime, endTime)
     val maxSpeed = 0.1
     dist < duration * maxSpeed
-
   }
+
+  def mapStreamValues[Item, T](stream: SortedMap[ZonedDateTime, Item], f: Item => T): SortedMap[ZonedDateTime, T] = stream.map(kv => kv.copy(_2 = f(kv._2)))
 }
-sealed abstract class DataStream {
+sealed abstract class DataStream[Item] {
 
   def typeToLog: String
-  def streamType: Class[_ <: DataStream] = this.getClass
+  def streamType: Class[_ <: DataStream[_]] = this.getClass
 
-  type Item
-
-  type DataMap = SortedMap[ZonedDateTime, Item]
+  type DataItem = Item
+  type DataMap = SortedMap[ZonedDateTime, DataItem]
 
   def stream: DataMap
 
-  def pickData(data: DataMap): DataStream
+  assert(stream.isEmpty || stream.head._1 <= stream.last._1)
+
+  def mapStreamValues[T](f: Item => T): SortedMap[ZonedDateTime, T] = DataStream.mapStreamValues(stream, f)
+
+  def pickData(data: DataMap): DataStream[Item]
 
   val startTime: Option[ZonedDateTime] = stream.headOption.map(_._1)
   val endTime: Option[ZonedDateTime] = stream.lastOption.map(_._1)
+
+  def inTimeRange(b: ZonedDateTime, e: ZonedDateTime): Boolean = {
+    startTime.forall(_ >= b) && endTime.forall(_ <= e)
+  }
 
   // should be discarded
   def isAlmostEmpty: Boolean
@@ -41,12 +49,19 @@ sealed abstract class DataStream {
   // must not be discarded
   def isNeeded: Boolean
 
-  def span(time: ZonedDateTime): (DataStream, DataStream) = {
+  def span(time: ZonedDateTime): (DataStream[Item], DataStream[Item]) = {
     val (take, left) = stream.span(_._1 < time)
     (pickData(take), pickData(left))
   }
 
-  def timeOffset(bestOffset: Int): DataStream = {
+  def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStream[Item] = {
+
+    val subData = stream.filter(i => i._1 >= timeBeg && i._1 <= timeEnd)
+
+    pickData(subData)
+  }
+
+  def timeOffset(bestOffset: Int): DataStream[Item] = {
     val adjusted = stream.map{
       case (k,v) =>
         k.plus(bestOffset*1000) -> v
@@ -168,17 +183,15 @@ object DataStreamGPS {
 
   def distStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): SortedMap[ZonedDateTime, Double] = {
     val gpsPairs = SortedMap((gps.keys zip (gps.values zip gps.values.tail)).toSeq: _*)
-    val gpsDistances = gpsPairs.mapValues(pairToDist)
+    val gpsDistances = DataStream.mapStreamValues(gpsPairs, pairToDist)
     gpsDistances
   }
 
 }
 
-class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream {
+case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream[GPSPoint] {
 
   import DataStreamGPS._
-
-  type Item = GPSPoint
 
   def typeToLog: String = "GPS"
 
@@ -406,7 +419,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   def adjustHrd(hrdMove: Move): Move = {
     val hrWithDistStream = hrdMove.streamGet[DataStreamHRWithDist]
     hrWithDistStream.map { dist =>
-      val distanceSums = dist.stream.mapValues(_.dist)
+      val distanceSums = dist.mapStreamValues(_.dist)
       val distances = (dist.stream.values.tail zip dist.stream.values).map(ab => ab._1.dist - ab._2.dist)
 
       def smoothDistances(todo: Iterable[Double], window: Vector[Double], done: List[Double]): List[Double] = {
@@ -431,9 +444,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
 }
 
-class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream {
-  type Item = String
-
+case class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream[String] {
   def typeToLog: String = "Laps"
 
   override def pickData(data: DataMap) = new DataStreamLap(data)
@@ -442,16 +453,14 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
   def dropAlmostEmpty: DataStreamLap = this
 }
 
-class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream {
-  type Item = HRPoint
-
+case class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream[HRPoint] {
   def typeToLog = "HRDist"
 
-  def rebase: DataStream = {
+  def rebase: DataStream[HRPoint] = {
     if (stream.isEmpty) this
     else {
       val base = stream.head._2.dist
-      new DataStreamHRWithDist(stream.mapValues(v => v.copy(dist = v.dist  - base)))
+      new DataStreamHRWithDist(mapStreamValues(v => v.copy(dist = v.dist  - base)))
     }
   }
 
@@ -463,9 +472,7 @@ class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint
 
 }
 
-class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream {
-  type Item = Int
-
+case class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream[Int] {
   def typeToLog = "HR"
 
   override def pickData(data: DataMap) = new DataStreamHR(data)
@@ -474,24 +481,23 @@ class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends D
   def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 }
 
-class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream {
+case class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream[Double] {
+
+  assert(stream.isEmpty || stream.head._2 <= stream.last._2)
 
   def typeToLog = "Dist"
 
-  type Item = Double
+  def offsetDist(dist: Double): DataStreamDist = DataStreamDist(mapStreamValues(_ + dist))
 
-  def rebase: DataStream = {
+  private def rebase = {
     if (stream.isEmpty) this
-    else {
-      val base = stream.head._2
-      new DataStreamDist(stream.mapValues(_ - base))
-    }
+    else offsetDist(- stream.head._2)
   }
 
   override def isAlmostEmpty = stream.isEmpty || DataStream.distanceIsAlmostEmpty(stream.head._2, stream.last._2, stream.head._1, stream.last._1)
   override def isNeeded = false
 
-  override def pickData(data: DataMap) = new DataStreamDist(data).rebase
+  override def pickData(data: DataMap): DataStreamDist = DataStreamDist(data).rebase
   def dropAlmostEmpty: DataStreamDist = this // TODO: drop
 }
 
