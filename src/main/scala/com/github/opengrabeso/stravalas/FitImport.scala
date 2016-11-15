@@ -85,34 +85,24 @@ object FitImport {
       val startTime = gpsStream.head._1
       val duration = Seconds.secondsBetween(startTime, gpsStream.last._1).getSeconds
 
-      val distanceToUse = if (distanceBuffer.nonEmpty) {
+      val gpsDataStream = new DataStreamGPS(gpsStream)
+      val distData = if (distanceBuffer.nonEmpty) {
         SortedMap(distanceBuffer:_*)
       } else {
-
-        val gpsSeq = gpsStream.toSeq
-        val m = (gpsSeq zip gpsSeq.drop(1)).map { case ((_, gps1), (t2, gps2)) =>
-          t2 -> GPS.distance(gps1.latitude, gps1.longitude, gps2.latitude, gps1.longitude)
-        }
-        val distanceDeltas = SortedMap(m:_*)
-
-        val distanceValues = distanceDeltas.scanLeft(0d) { case (dist, (t, d)) => dist + d }
-
-        val distances = ((distanceDeltas + (startTime -> 0d)) zip distanceValues).map { case ((t, _), dist) => t -> dist }
-
-        distances
+        gpsDataStream.distStream
       }
 
-      val id = Main.ActivityId(0, "Activity", startTime, "Ride", duration, distanceToUse.last._2)
+      val id = Main.ActivityId(0, "Activity", startTime, "Ride", duration, distData.last._2)
 
       object ImportedStreams extends Main.ActivityStreams {
 
-        val dist = new DataStreamDist(distanceToUse)
+        val dist = DataStreamDist(distData)
 
-        val latlng = new DataStreamGPS(gpsStream)
+        val latlng = gpsDataStream
 
         def attributes = Seq(
           // TODO: cadence, temperature and other attributes
-          new DataStreamHR(hrStream)
+          DataStreamHR(hrStream)
         )
 
       }

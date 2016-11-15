@@ -182,7 +182,7 @@ object DataStreamGPS {
   }
 
   def distStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): SortedMap[ZonedDateTime, Double] = {
-    val gpsPairs = SortedMap((gps.keys zip (gps.values zip gps.values.tail)).toSeq: _*)
+    val gpsPairs = SortedMap((gps.keys zip (gps.values zip gps.values.drop(1))).toSeq: _*)
     val gpsDistances = DataStream.mapStreamValues(gpsPairs, pairToDist)
     gpsDistances
   }
@@ -270,6 +270,7 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
     smoothedSpeed
   }
 
+  def distStream: DistStream = distStreamFromGPS(stream)
 
   private def distStreamToCSV(ds: DistStream): String = {
     ds.map(kv => s"${kv._1},${kv._2}").mkString("\n")
