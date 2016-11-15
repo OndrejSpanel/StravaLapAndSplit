@@ -77,7 +77,6 @@ object FitImport {
       val startTime = gpsStream.head._1
       val duration = Seconds.secondsBetween(startTime, gpsStream.last._1).getSeconds
 
-      // TODO: use provided distance when available instead of computing it again
       val distanceToUse = if (distanceBuffer.nonEmpty) {
         SortedMap(distanceBuffer:_*)
       } else {
