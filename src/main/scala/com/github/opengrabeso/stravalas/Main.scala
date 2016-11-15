@@ -169,11 +169,12 @@ object Main {
       // keep only first start Event, change other to Split only
 
       val (begs, others) = eventsAndSports.partition(_._1.isInstanceOf[BegEvent])
+      val (ends, rest) = others.partition(_._1.isInstanceOf[EndEvent])
 
       val begsSorted = begs.sortBy(_._1.stamp)
       val begsAdjusted = begsSorted.take(1) ++ begsSorted.drop(1).map(e => SplitEvent(e._1.stamp) -> e._2)
 
-      val eventsAndSportsSorted = (begsAdjusted ++ others).sortBy(_._1.stamp)
+      val eventsAndSportsSorted = (begsAdjusted ++ rest :+ ends.maxBy(_._1.stamp)).sortBy(_._1.stamp)
 
       val mergedGPS = gps.pickData(gps.stream ++ that.gps.stream)
 
