@@ -83,13 +83,20 @@ object FitImport {
       val hrStream = SortedMap(hrBuffer:_*)
 
       val startTime = gpsStream.head._1
+      val endTime = gpsStream.last._1
+
       val duration = Seconds.secondsBetween(startTime, gpsStream.last._1).getSeconds
 
       val gpsDataStream = new DataStreamGPS(gpsStream)
       val distData = if (distanceBuffer.nonEmpty) {
         SortedMap(distanceBuffer:_*)
       } else {
-        gpsDataStream.distStream
+        val distanceDeltas = gpsDataStream.distStream
+
+        val distanceValues = distanceDeltas.scanLeft(0d) { case (dist, (t, d)) => dist + d }
+
+        val distances = SortedMap((distanceDeltas.keys.toSeq :+ endTime) zip distanceValues:_*)
+        distances
       }
 
       val id = Main.ActivityId(0, "Activity", startTime, "Ride", duration, distData.last._2)

@@ -88,7 +88,7 @@ object Export {
       case Cycling => (Sport.CYCLING, SubSport.ROAD)
       case Unknown =>
         move.streamGet[DataStreamGPS].map { gps =>
-          val stats = gps.speedStats
+          val stats = DataStreamGPS.speedStats(DataStreamGPS.computeSpeedStream(gps.distStream))
           // autodetect based on a speed
           if (stats._3 >= 30 || stats._2 >= 15) (Sport.CYCLING, SubSport.MOUNTAIN)
           else (Sport.GENERIC, SubSport.GENERIC) // will be most likely handled as run by Strava
