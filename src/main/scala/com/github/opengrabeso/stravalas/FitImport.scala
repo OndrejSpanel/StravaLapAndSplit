@@ -57,7 +57,7 @@ object FitImport {
               for (lat <- posLat; long <- posLong) {
                 gpsBuffer += jTime -> decodeLatLng(lat, long, elev)
               }
-              // TODO: process elevation if possible
+
               for (hr <- heartrate) {
                 hrBuffer += jTime -> hr
               }
