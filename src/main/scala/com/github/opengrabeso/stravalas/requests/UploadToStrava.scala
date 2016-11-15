@@ -34,7 +34,7 @@ object UploadToStrava extends ProcessFile("/upload-strava") {
       resp.`type`(contentType)
     }
 
-
+    Nil
   }
 
 

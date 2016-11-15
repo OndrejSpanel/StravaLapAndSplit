@@ -191,7 +191,7 @@ object Main {
 
       val splitRanges = splitEvents zip splitTimes.tail
 
-      val toSplit = splitRanges.find(t => secondsInActivity(t._2) == splitTime)
+      val toSplit = splitRanges.find(t => secondsInActivity(t._1.stamp) == splitTime)
 
       toSplit.map { case (beg, endTime) =>
 
