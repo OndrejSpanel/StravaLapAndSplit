@@ -16,17 +16,17 @@ import scala.collection.mutable.ArrayBuffer
   */
 object FitImport {
 
-  def fromTimestamp(dateTime: DateTime): JodaDateTime = {
+  private def fromTimestamp(dateTime: DateTime): JodaDateTime = {
     new JodaDateTime(dateTime.getDate.getTime)
   }
 
-  def fromTimestamp(timeMs: Long): JodaDateTime = {
+  private def fromTimestamp(timeMs: Long): JodaDateTime = {
     new JodaDateTime(timeMs + DateTime.OFFSET)
   }
 
-  def decodeLatLng(latlng: (Int, Int)): GPSPoint = {
+  private def decodeLatLng(lat: Int, lng: Int, elev: Option[java.lang.Float]): GPSPoint = {
     val longLatScale = (1L << 31).toDouble / 180
-    GPSPoint(latlng._1 / longLatScale, latlng._2 / longLatScale, None)
+    GPSPoint(lat / longLatScale, lng / longLatScale, elev.map(_.toInt))
   }
 
 
@@ -47,6 +47,7 @@ object FitImport {
             val distance = Option(mesg.getField(RecordMesg.DistanceFieldNum)).map(_.getFloatValue)
             val posLat = Option(mesg.getField(RecordMesg.PositionLatFieldNum)).map(_.getIntegerValue)
             val posLong = Option(mesg.getField(RecordMesg.PositionLongFieldNum)).map(_.getIntegerValue)
+            val elev = Option(mesg.getField(RecordMesg.AltitudeFieldNum)).map(_.getFloatValue)
 
             for (time <- timestamp) {
               // time may be seconds or miliseconds, how to know?
@@ -54,7 +55,7 @@ object FitImport {
 
               val jTime = fromTimestamp(smartTime)
               for (lat <- posLat; long <- posLong) {
-                gpsBuffer += jTime -> decodeLatLng(lat, long)
+                gpsBuffer += jTime -> decodeLatLng(lat, long, elev)
               }
               // TODO: process elevation if possible
               for (hr <- heartrate) {

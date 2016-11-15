@@ -247,8 +247,9 @@ object Main {
     val startTime = ZonedDateTime.parse(startDateStr)
 
     object StravaActivityStreams extends ActivityStreams {
+      // https://strava.github.io/api/v3/streams/
       //private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
-      private val wantStreams = Seq("time", "latlng", "distance", "heartrate" /*, "cadence", "watts", "temp"*/)
+      private val wantStreams = Seq("time", "latlng", "distance", "altitude", "heartrate" /*, "cadence", "watts", "temp"*/)
 
       private val streamTypes = wantStreams.mkString(",")
 
@@ -285,6 +286,13 @@ object Main {
       val timeRelValues = getDataByName("time", _.asInt)
       val distValues = getDataByName("distance", _.asDouble)
       val latlngValues = getDataByName("latlng", loadGpsPair)
+      val altValues = getDataByName("altitude", _.asDouble)
+
+      val latLngAltValues = if (altValues.isEmpty) latlngValues else {
+        (latlngValues zip altValues).map { case (gps,alt) =>
+            gps.copy(elevation = Some(alt.toInt))
+        }
+      }
 
       val timeValues = timeRelValues.map ( t => startTime.withDurationAdded(t, 1000))
 
@@ -296,7 +304,7 @@ object Main {
       )
 
       val dist = DataStreamDist(SortedMap(timeValues zip distValues:_*))
-      val latlng = DataStreamGPS(SortedMap(timeValues zip latlngValues:_*))
+      val latlng = DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
       val attributes =  attributeValues.flatMap { case (name, values) =>
           name match {
             case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
