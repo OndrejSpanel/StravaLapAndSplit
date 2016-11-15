@@ -16,8 +16,9 @@ object DataStream {
     val duration = timeDifference(begTime, endTime)
     val maxSpeed = 0.1
     dist < duration * maxSpeed
-
   }
+
+  def mapStreamValues[Item, T](stream: SortedMap[ZonedDateTime, Item], f: Item => T): SortedMap[ZonedDateTime, T] = stream.map(kv => kv.copy(_2 = f(kv._2)))
 }
 sealed abstract class DataStream[Item] {
 
@@ -29,10 +30,18 @@ sealed abstract class DataStream[Item] {
 
   def stream: DataMap
 
+  assert(stream.isEmpty || stream.head._1 <= stream.last._1)
+
+  def mapStreamValues[T](f: Item => T): SortedMap[ZonedDateTime, T] = DataStream.mapStreamValues(stream, f)
+
   def pickData(data: DataMap): DataStream[Item]
 
   val startTime: Option[ZonedDateTime] = stream.headOption.map(_._1)
   val endTime: Option[ZonedDateTime] = stream.lastOption.map(_._1)
+
+  def inTimeRange(b: ZonedDateTime, e: ZonedDateTime): Boolean = {
+    startTime.forall(_ >= b) && endTime.forall(_ <= e)
+  }
 
   // should be discarded
   def isAlmostEmpty: Boolean
@@ -174,7 +183,7 @@ object DataStreamGPS {
 
   def distStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): SortedMap[ZonedDateTime, Double] = {
     val gpsPairs = SortedMap((gps.keys zip (gps.values zip gps.values.tail)).toSeq: _*)
-    val gpsDistances = gpsPairs.mapValues(pairToDist)
+    val gpsDistances = DataStream.mapStreamValues(gpsPairs, pairToDist)
     gpsDistances
   }
 
@@ -410,7 +419,7 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
   def adjustHrd(hrdMove: Move): Move = {
     val hrWithDistStream = hrdMove.streamGet[DataStreamHRWithDist]
     hrWithDistStream.map { dist =>
-      val distanceSums = dist.stream.mapValues(_.dist)
+      val distanceSums = dist.mapStreamValues(_.dist)
       val distances = (dist.stream.values.tail zip dist.stream.values).map(ab => ab._1.dist - ab._2.dist)
 
       def smoothDistances(todo: Iterable[Double], window: Vector[Double], done: List[Double]): List[Double] = {
@@ -435,7 +444,7 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
 
 }
 
-class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream[String] {
+case class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream[String] {
   def typeToLog: String = "Laps"
 
   override def pickData(data: DataMap) = new DataStreamLap(data)
@@ -444,14 +453,14 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
   def dropAlmostEmpty: DataStreamLap = this
 }
 
-class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream[HRPoint] {
+case class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream[HRPoint] {
   def typeToLog = "HRDist"
 
   def rebase: DataStream[HRPoint] = {
     if (stream.isEmpty) this
     else {
       val base = stream.head._2.dist
-      new DataStreamHRWithDist(stream.mapValues(v => v.copy(dist = v.dist  - base)))
+      new DataStreamHRWithDist(mapStreamValues(v => v.copy(dist = v.dist  - base)))
     }
   }
 
@@ -474,14 +483,15 @@ case class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) exte
 
 case class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream[Double] {
 
+  assert(stream.isEmpty || stream.head._2 <= stream.last._2)
+
   def typeToLog = "Dist"
 
-  def rebase: DataStreamDist = {
+  def offsetDist(dist: Double): DataStreamDist = DataStreamDist(mapStreamValues(_ + dist))
+
+  private def rebase = {
     if (stream.isEmpty) this
-    else {
-      val base = stream.head._2
-      DataStreamDist(stream.mapValues(_ - base))
-    }
+    else offsetDist(- stream.head._2)
   }
 
   override def isAlmostEmpty = stream.isEmpty || DataStream.distanceIsAlmostEmpty(stream.head._2, stream.last._2, stream.head._1, stream.last._1)

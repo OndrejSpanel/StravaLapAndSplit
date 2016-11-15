@@ -101,6 +101,15 @@ object Main {
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
+    assert(events.forall(_.stamp >= id.startTime))
+    assert(events.forall(_.stamp <= id.endTime))
+
+    assert(events.forall(_.stamp <= id.endTime))
+
+    assert(gps.inTimeRange(id.startTime, id.endTime))
+    assert(dist.inTimeRange(id.startTime, id.endTime))
+    assert(attributes.forall(_.inTimeRange(id.startTime, id.endTime)))
+
     def secondsInActivity(time: ZonedDateTime): Int  = id.secondsInActivity(time)
 
     private def convertGPSToPair(gps: GPSPoint) = (gps.latitude, gps.longitude)
@@ -147,7 +156,42 @@ object Main {
       }.mkString("[\n", ",\n", "]\n")
     }
 
-    def merge(that: ActivityEvents): ActivityEvents = ???
+    def merge(that: ActivityEvents): ActivityEvents = {
+      // select some id (name, sport ...)
+      val begTime = Seq(id.startTime, that.id.startTime).min
+      val endTime = Seq(id.endTime, that.id.endTime).max
+      val duration = Seconds.secondsBetween(begTime, endTime).getSeconds
+
+      val mergedId = ActivityId(id.id, id.name, begTime, id.sportName, duration, id.distance + that.id.distance)
+
+      // TODO: merge events properly
+      val eventsAndSports = (events zip sports) ++ (that.events zip that.sports)
+      // keep only first start Event, change other to Split only
+
+      val (begs, others) = eventsAndSports.partition(_._1.isInstanceOf[BegEvent])
+
+      val begsSorted = begs.sortBy(_._1.stamp)
+      val begsAdjusted = begsSorted.take(1) ++ begsSorted.drop(1).map(e => SplitEvent(e._1.stamp) -> e._2)
+
+      val eventsAndSportsSorted = (begsAdjusted ++ others).sortBy(_._1.stamp)
+
+      val mergedGPS = gps.pickData(gps.stream ++ that.gps.stream)
+
+      val (distFirst, distSecond) = if (dist.stream.head._1 < that.dist.stream.head._1) (dist, that.dist) else (that.dist, dist)
+
+      val offsetSecond = distFirst.stream.lastOption.map(last => distSecond.offsetDist(last._2)).getOrElse(distSecond)
+
+      val mergedDist = dist.pickData(distFirst.stream ++ offsetSecond.stream)
+      val mergedAttr = attributes.map { a =>
+        val aThat = that.attributes.find(_.streamType == a.streamType)
+        val aStream = aThat.map(a.stream ++ _.stream).getOrElse(a.stream)
+        a.pickData(aStream.asInstanceOf[a.DataMap])
+      }
+      val notMergedFromThat = that.attributes.find(ta => !attributes.exists(_.streamType == ta.streamType))
+      // if something was not merged,
+
+      ActivityEvents(mergedId, eventsAndSportsSorted.map(_._1), eventsAndSportsSorted.map(_._2), mergedDist, mergedGPS, mergedAttr ++ notMergedFromThat)
+    }
 
     def editableEvents: Array[EditableEvent] = {
 
