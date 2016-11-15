@@ -45,9 +45,11 @@ sealed abstract class DataStream[Item] {
     (pickData(take), pickData(left))
   }
 
-  // TODO: replace with safer absolute time stamp
-  def slice(indexBeg: Int, indexEnd: Int): DataStream[Item] = {
-    pickData(stream.slice(indexBeg, indexEnd))
+  def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStream[Item] = {
+
+    val subData = stream.filter(i => i._1 >= timeBeg && i._1 <= timeEnd)
+
+    pickData(subData)
   }
 
   def timeOffset(bestOffset: Int): DataStream[Item] = {

@@ -4,8 +4,9 @@ import java.io.InputStream
 
 import com.garmin.fit._
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
-import org.joda.time.{DateTime => JodaDateTime, Duration => JodaDuration}
+import org.joda.time.{Seconds, DateTime => JodaDateTime, Duration => JodaDuration}
 import DateTimeOps._
+import net.suunto3rdparty.{DataStreamDist, DataStreamGPS, DataStreamHR, GPSPoint}
 
 import scala.collection.immutable.SortedMap
 import scala.collection.mutable.ArrayBuffer
@@ -23,9 +24,9 @@ object FitImport {
     new JodaDateTime(timeMs + DateTime.OFFSET)
   }
 
-  def decodeLatLng(latlng: (Int, Int)): (Double, Double) = {
+  def decodeLatLng(latlng: (Int, Int)): GPSPoint = {
     val longLatScale = (1L << 31).toDouble / 180
-    (latlng._1 / longLatScale, latlng._2 / longLatScale)
+    GPSPoint(latlng._1 / longLatScale, latlng._2 / longLatScale, None)
   }
 
 
@@ -33,10 +34,10 @@ object FitImport {
     val decode = new Decode
     try {
 
-      val gpsBuffer =  ArrayBuffer[(JodaDateTime, (Double, Double))]() // Time -> Lat / Long
+      val gpsBuffer =  ArrayBuffer[(JodaDateTime, GPSPoint)]() // Time -> Lat / Long
       val hrBuffer =  ArrayBuffer[(JodaDateTime, Int)]()
+      val distanceBuffer = ArrayBuffer[(JodaDateTime, Double)]()
 
-      // TODO: use provided distance when available instead of computing it again
       val listener = new MesgListener {
 
         override def onMesg(mesg: Mesg): Unit = {
@@ -55,8 +56,12 @@ object FitImport {
               for (lat <- posLat; long <- posLong) {
                 gpsBuffer += jTime -> decodeLatLng(lat, long)
               }
+              // TODO: process elevation if possible
               for (hr <- heartrate) {
                 hrBuffer += jTime -> hr
+              }
+              for (d <- distance) {
+                distanceBuffer += jTime -> d.toDouble
               }
             }
           }
@@ -65,35 +70,40 @@ object FitImport {
 
       decode.read(in, listener)
 
-      val gpsStream = SortedMap[JodaDateTime, (Double, Double)](gpsBuffer:_*)
-      val hrStream = SortedMap[JodaDateTime, Int](hrBuffer:_*)
+      val gpsStream = SortedMap(gpsBuffer:_*)
+      val hrStream = SortedMap(hrBuffer:_*)
 
       val startTime = gpsStream.head._1
+      val duration = Seconds.secondsBetween(startTime, gpsStream.last._1).getSeconds
 
-      val distanceDeltas = (gpsStream zip gpsStream.drop(1)).map { case ((t1, gps1), (t2, gps2)) =>
-          t2 -> GPS.distance(gps1._1, gps1._2, gps2._1, gps1._2)
+      // TODO: use provided distance when available instead of computing it again
+      val distanceToUse = if (distanceBuffer.nonEmpty) {
+        SortedMap(distanceBuffer:_*)
+      } else {
+
+        val m = (gpsStream.toSeq zip gpsStream.drop(1).toSeq).map { case ((_, gps1), (t2, gps2)) =>
+          t2 -> GPS.distance(gps1.latitude, gps1.longitude, gps2.latitude, gps1.longitude)
+        }
+        val distanceDeltas = SortedMap(m:_*)
+
+        val distanceValues = distanceDeltas.scanLeft(0d) { case (dist, (t, d)) => dist + d }
+
+        val distances = ((distanceDeltas + (startTime -> 0d)) zip distanceValues).map { case ((t, _), dist) => t -> dist }
+
+        distances
       }
 
-      val distanceValues = distanceDeltas.scanLeft(0d) { case (dist, (t, d)) => dist + d}
-
-      val distances = ((distanceDeltas  + (startTime -> 0d)) zip distanceValues).map { case ((t, _), dist) => t -> dist}
-
-      val times = distances.map { case (t, d) =>
-        new JodaDuration(startTime, t).getStandardSeconds.toInt
-      }
-
-      val id = Main.ActivityId(0, "Activity", startTime, "Ride", times.last, distances.last._2)
+      val id = Main.ActivityId(0, "Activity", startTime, "Ride", duration, distanceToUse.last._2)
 
       object ImportedStreams extends Main.ActivityStreams {
-        val time = times.toVector
 
-        val dist = distances.values.toVector
+        val dist = new DataStreamDist(distanceToUse)
 
-        val latlng = gpsStream.values.toVector
+        val latlng = new DataStreamGPS(gpsStream)
 
         def attributes = Seq(
           // TODO: cadence, temperature and other attributes
-          ("heartrate", hrStream.values.toVector)
+          new DataStreamHR(hrStream)
         )
 
       }

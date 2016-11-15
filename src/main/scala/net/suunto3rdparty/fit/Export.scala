@@ -5,7 +5,7 @@ import com.garmin.fit
 import com.garmin.fit._
 import java.io.File
 
-import org.joda.time.{Duration, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 import Util._
 import net.suunto3rdparty.MoveHeader.ActivityType._
 

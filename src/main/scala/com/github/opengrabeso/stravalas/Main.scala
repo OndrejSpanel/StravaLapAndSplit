@@ -99,7 +99,7 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], times: Seq[ZonedDateTime], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
     def secondsInActivity(time: ZonedDateTime): Int  = id.secondsInActivity(time)
 
@@ -110,8 +110,6 @@ object Main {
 
     def lat: Double = (begPos._1 + endPos._1) * 0.5
     def lon: Double = (begPos._2 + endPos._2) * 0.5
-
-    lazy val relTimes = times.map(secondsInActivity)
 
     lazy val mapTimeToDist: Map[Int, Double] = {
       def scanTime(now: Int, timeDist: Seq[(Int, Double)], ret: Seq[(Int, Double)]): Seq[(Int, Double)] = {
@@ -135,7 +133,6 @@ object Main {
     }
 
     private def distWithRelTimes = dist.stream.toList.map(t => secondsInActivity(t._1) -> t._2)
-    private def gpsWithRelTimes = gps.stream.toList.map(t => secondsInActivity(t._1) -> t._2)
 
     def distanceForTime(time: ZonedDateTime): Double = {
       val relTime = Seconds.secondsBetween(id.startTime, time).getSeconds
@@ -204,23 +201,14 @@ object Main {
 
         val eventsRange = (events zip sports).dropWhile(_._1.stamp <= begTime).takeWhile(_._1.stamp < endTime)
 
-        val indexBeg = times.lastIndexWhere(_ <= begTime) max 0
-
-        def safeIndexWhere[T](seq: Seq[T])(pred: T => Boolean) = {
-          val i = seq.indexWhere(pred)
-          if (i < 0) seq.size else i
-        }
-        val indexEnd = safeIndexWhere(times)(_ > endTime)
-
-        val timesRange = times.slice(indexBeg, indexEnd)
-        val distRange = dist.pickData(dist.slice(indexBeg, indexEnd).stream)
-        val gpsRange = gps.pickData(gps.slice(indexBeg, indexEnd).stream)
+        val distRange = dist.pickData(dist.slice(begTime, endTime).stream)
+        val gpsRange = gps.pickData(gps.slice(begTime, endTime).stream)
 
         val attrRange = attributes.map { attr =>
-          attr.slice(indexBeg, indexEnd)
+          attr.slice(begTime, endTime)
         }
 
-        val act = ActivityEvents(id.copy(startTime = begTime), eventsRange.map(_._1), eventsRange.map(_._2), timesRange, distRange, gpsRange, attrRange)
+        val act = ActivityEvents(id.copy(startTime = begTime), eventsRange.map(_._1), eventsRange.map(_._2), distRange, gpsRange, attrRange)
 
         act
       }
@@ -228,35 +216,23 @@ object Main {
   }
 
   trait ActivityStreams {
-    def time: Vector[Int]
+    def dist: DataStreamDist
 
-    def dist: Vector[Double]
+    def latlng: DataStreamGPS
 
-    def latlng: Vector[(Double, Double)]
-
-    def attributes: Seq[(String, Seq[Int])]
+    def attributes: Seq[DataStream[_]]
   }
 
 
   def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: List[ZonedDateTime], segments: Seq[Event]): ActivityEvents = {
 
-    // TODO: provide activity type with the split
     val events = (BegEvent(actId.startTime) +: EndEvent(actId.endTime) +: laps.map(LapEvent)) ++ segments
 
     val eventsByTime = events.sortBy(_.stamp)
 
     val sports = eventsByTime.map(x => actId.sportName)
 
-    val times = act.time.map(t => actId.startTime.withDurationAdded(t, 1000))
-
-    val dist = new DataStreamDist(SortedMap(times zip act.dist:_*))
-    val latlng = new DataStreamGPS(SortedMap(times zip act.latlng.map(ll => GPSPoint(ll._1, ll._2, None)):_*))
-
-    val attr = act.attributes.collect { case (name, aa) if name == "heartrate" =>
-      new DataStreamHR(SortedMap(times zip aa:_*))
-    }
-
-    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, times, dist, latlng, attr)
+    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, act.dist, act.latlng, act.attributes)
   }
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
@@ -272,7 +248,7 @@ object Main {
 
     object StravaActivityStreams extends ActivityStreams {
       //private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
-      private val wantStreams = Seq("time", "latlng", "distance", "heartrate", "cadence", "watts", "temp")
+      private val wantStreams = Seq("time", "latlng", "distance", "heartrate" /*, "cadence", "watts", "temp"*/)
 
       private val streamTypes = wantStreams.mkString(",")
 
@@ -303,19 +279,30 @@ object Main {
         val elements = gpsItem.elements
         val lat = elements.next.asDouble
         val lng = elements.next.asDouble
-        (lat, lng)
+        GPSPoint(lat, lng, None) // TODO: elevation
       }
 
-      val time = getDataByName("time", _.asInt)
-      val dist = getDataByName("distance", _.asDouble)
-      val latlng = getDataByName("latlng", loadGpsPair)
+      val timeRelValues = getDataByName("time", _.asInt)
+      val distValues = getDataByName("distance", _.asDouble)
+      val latlngValues = getDataByName("latlng", loadGpsPair)
 
-      val attributes: Seq[(String, Seq[Int])] = Seq(
-        getAttribByName("heartrate"),
+      val timeValues = timeRelValues.map ( t => startTime.withDurationAdded(t, 1000))
+
+      val attributeValues: Seq[(String, Seq[Int])] = Seq(
         getAttribByName("cadence"),
         getAttribByName("watts"),
-        getAttribByName("temp")
+        getAttribByName("temp"),
+        getAttribByName("heartrate")
       )
+
+      val dist = DataStreamDist(SortedMap(timeValues zip distValues:_*))
+      val latlng = DataStreamGPS(SortedMap(timeValues zip latlngValues:_*))
+      val attributes =  attributeValues.flatMap { case (name, values) =>
+          name match {
+            case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
+            case _ => None
+          }
+      }
 
     }
 
