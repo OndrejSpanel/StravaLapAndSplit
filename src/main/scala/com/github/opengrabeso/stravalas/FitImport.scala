@@ -4,7 +4,7 @@ import java.io.InputStream
 
 import com.garmin.fit._
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
-import org.joda.time.{Seconds, DateTime => JodaDateTime, Duration => JodaDuration}
+import org.joda.time.{Seconds, DateTime => JodaDateTime}
 import DateTimeOps._
 import net.suunto3rdparty.{DataStreamDist, DataStreamGPS, DataStreamHR, GPSPoint}
 
@@ -34,8 +34,8 @@ object FitImport {
     val decode = new Decode
     try {
 
-      val gpsBuffer =  ArrayBuffer[(JodaDateTime, GPSPoint)]() // Time -> Lat / Long
-      val hrBuffer =  ArrayBuffer[(JodaDateTime, Int)]()
+      val gpsBuffer = ArrayBuffer[(JodaDateTime, GPSPoint)]() // Time -> Lat / Long
+      val hrBuffer = ArrayBuffer[(JodaDateTime, Int)]()
       val distanceBuffer = ArrayBuffer[(JodaDateTime, Double)]()
 
       val listener = new MesgListener {
@@ -81,7 +81,8 @@ object FitImport {
         SortedMap(distanceBuffer:_*)
       } else {
 
-        val m = (gpsStream.toSeq zip gpsStream.drop(1).toSeq).map { case ((_, gps1), (t2, gps2)) =>
+        val gpsSeq = gpsStream.toSeq
+        val m = (gpsSeq zip gpsSeq.drop(1)).map { case ((_, gps1), (t2, gps2)) =>
           t2 -> GPS.distance(gps1.latitude, gps1.longitude, gps2.latitude, gps1.longitude)
         }
         val distanceDeltas = SortedMap(m:_*)
