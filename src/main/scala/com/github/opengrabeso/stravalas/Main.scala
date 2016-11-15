@@ -329,7 +329,7 @@ object Main {
         val elements = gpsItem.elements
         val lat = elements.next.asDouble
         val lng = elements.next.asDouble
-        GPSPoint(lat, lng, None) // TODO: elevation
+        GPSPoint(lat, lng, None)
       }
 
       val timeRelValues = getDataByName("time", _.asInt)
