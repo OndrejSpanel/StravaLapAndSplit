@@ -4,7 +4,7 @@ import java.io.InputStream
 
 import com.garmin.fit._
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
-import org.joda.time.{Seconds, DateTime => JodaDateTime}
+import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 import DateTimeOps._
 import net.suunto3rdparty.{DataStreamDist, DataStreamGPS, DataStreamHR, GPSPoint}
 
@@ -16,12 +16,13 @@ import scala.collection.mutable.ArrayBuffer
   */
 object FitImport {
 
-  private def fromTimestamp(dateTime: DateTime): JodaDateTime = {
-    new JodaDateTime(dateTime.getDate.getTime)
+  private def fromTimestamp(dateTime: DateTime): ZonedDateTime = {
+    new ZonedDateTime(dateTime.getDate.getTime)
   }
 
-  private def fromTimestamp(timeMs: Long): JodaDateTime = {
-    new JodaDateTime(timeMs + DateTime.OFFSET)
+  private def fromTimestamp(timeMs: Long): ZonedDateTime = {
+    val smartTime = if (timeMs < 1e10) timeMs * 1000 else timeMs
+    new ZonedDateTime(smartTime + DateTime.OFFSET)
   }
 
   private def decodeLatLng(lat: Int, lng: Int, elev: Option[java.lang.Float]): GPSPoint = {
@@ -34,37 +35,44 @@ object FitImport {
     val decode = new Decode
     try {
 
-      val gpsBuffer = ArrayBuffer[(JodaDateTime, GPSPoint)]() // Time -> Lat / Long
-      val hrBuffer = ArrayBuffer[(JodaDateTime, Int)]()
-      val distanceBuffer = ArrayBuffer[(JodaDateTime, Double)]()
+      val gpsBuffer = ArrayBuffer[(ZonedDateTime, GPSPoint)]() // Time -> Lat / Long
+      val hrBuffer = ArrayBuffer[(ZonedDateTime, Int)]()
+      val distanceBuffer = ArrayBuffer[(ZonedDateTime, Double)]()
+      val lapBuffer=ArrayBuffer[ZonedDateTime]()
 
       val listener = new MesgListener {
 
         override def onMesg(mesg: Mesg): Unit = {
-          if (mesg.getNum == MesgNum.RECORD) {
-            val timestamp = Option(mesg.getField(RecordMesg.TimestampFieldNum)).map(_.getLongValue)
-            val heartrate = Option(mesg.getField(RecordMesg.HeartRateFieldNum)).map(_.getIntegerValue)
-            val distance = Option(mesg.getField(RecordMesg.DistanceFieldNum)).map(_.getFloatValue)
-            val posLat = Option(mesg.getField(RecordMesg.PositionLatFieldNum)).map(_.getIntegerValue)
-            val posLong = Option(mesg.getField(RecordMesg.PositionLongFieldNum)).map(_.getIntegerValue)
-            val elev = Option(mesg.getField(RecordMesg.AltitudeFieldNum)).map(_.getFloatValue)
+          mesg.getNum match {
+            case MesgNum.RECORD =>
+              val timestamp = Option(mesg.getField(RecordMesg.TimestampFieldNum)).map(_.getLongValue)
+              val heartrate = Option(mesg.getField(RecordMesg.HeartRateFieldNum)).map(_.getIntegerValue)
+              val distance = Option(mesg.getField(RecordMesg.DistanceFieldNum)).map(_.getFloatValue)
+              val posLat = Option(mesg.getField(RecordMesg.PositionLatFieldNum)).map(_.getIntegerValue)
+              val posLong = Option(mesg.getField(RecordMesg.PositionLongFieldNum)).map(_.getIntegerValue)
+              val elev = Option(mesg.getField(RecordMesg.AltitudeFieldNum)).map(_.getFloatValue)
 
-            for (time <- timestamp) {
-              // time may be seconds or miliseconds, how to know?
-              val smartTime: Long = if (time < 1e10) time * 1000 else time
+              for (time <- timestamp) {
+                // time may be seconds or miliseconds, how to know?
+                val jTime = fromTimestamp(time)
+                for (lat <- posLat; long <- posLong) {
+                  gpsBuffer += jTime -> decodeLatLng(lat, long, elev)
+                }
 
-              val jTime = fromTimestamp(smartTime)
-              for (lat <- posLat; long <- posLong) {
-                gpsBuffer += jTime -> decodeLatLng(lat, long, elev)
+                for (hr <- heartrate) {
+                  hrBuffer += jTime -> hr
+                }
+                for (d <- distance) {
+                  distanceBuffer += jTime -> d.toDouble
+                }
               }
+            case MesgNum.LAP =>
+              val timestamp = Option(mesg.getField(RecordMesg.TimestampFieldNum)).map(_.getLongValue)
+              for (time <- timestamp) {
+                lapBuffer += fromTimestamp(time)
+              }
+            case _ =>
 
-              for (hr <- heartrate) {
-                hrBuffer += jTime -> hr
-              }
-              for (d <- distance) {
-                distanceBuffer += jTime -> d.toDouble
-              }
-            }
           }
         }
       }
@@ -109,8 +117,7 @@ object FitImport {
 
       }
 
-      // TODO: laps
-      Some(Main.processActivityStream(id, ImportedStreams, Nil, Nil))
+      Some(Main.processActivityStream(id, ImportedStreams, lapBuffer, Nil))
 
     } catch {
       case ex: Exception =>
