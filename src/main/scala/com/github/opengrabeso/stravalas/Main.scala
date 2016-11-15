@@ -13,7 +13,7 @@ import DateTimeOps._
 import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
 
-import scala.collection.immutable.SortedMap
+import scala.collection.immutable.{Queue, SortedMap}
 
 object Main {
 
@@ -277,13 +277,62 @@ object Main {
 
     val eventsByTime = events.sortBy(_.stamp)
 
-    val speedStream = DataStreamGPS.computeSpeedStream(act.latlng.distStream)
+    val distStream = act.latlng.distStream
+    val distTimes = distStream.keys.toList
+
+    val timeDeltas = (distTimes zip distTimes.drop(1)).map(tt => Seconds.secondsBetween(tt._1, tt._2).getSeconds)
+
+    val distDeltas = (timeDeltas zip distStream).map {case (dt, (t, d)) => (dt, d, t)}
+
+    type DistList = List[(Int, Double, ZonedDateTime)]
+
+    def findFirstPause(deltas: DistList): Option[ZonedDateTime] = {
+      class History(duration: Int) {
+        var tSum = 0
+        var dSum = 0.0
+        var samples = Queue[(Int, Double)]()
+
+        def addSample(t: Int, d: Double): Unit = {
+          tSum += t
+          dSum += d
+          samples = samples :+ (t, d)
+          while (tSum > duration) {
+            val pop = samples.head
+            samples = samples.tail
+            tSum -= pop._1
+            dSum -= pop._2
+          }
+        }
+
+        def avgSpeed: Double = dSum / tSum
+      }
+
+      val historyShort = new History(10)
+      val historyMiddle = new History(30)
+      val histories = Seq(historyShort, historyMiddle)
+
+      for (d <- deltas) {
+        val maxPauseSpeed = 0.2
+        val maxPauseSpeedImmediate = 0.7
+
+        for (h <- histories) h.addSample(d._1, d._2)
+
+        if (historyShort.avgSpeed < maxPauseSpeedImmediate && historyMiddle.avgSpeed < maxPauseSpeed) {
+          return Some(d._3)
+        }
+      }
+
+      None
+    }
+
+    val fp = findFirstPause(distDeltas)
+
+
+    val speedStream = DataStreamGPS.computeSpeedStream(distStream)
 
     def speedDuringInterval(beg: ZonedDateTime, end: ZonedDateTime) = {
       speedStream.filterKeys(k => k >= beg && k <= end)
     }
-
-    val stats = DataStreamGPS.speedStats(speedStream)
 
     val intervalTimes = eventsByTime.map(_.stamp).distinct
 
