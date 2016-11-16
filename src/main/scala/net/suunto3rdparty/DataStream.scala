@@ -100,7 +100,7 @@ object DataStreamGPS {
   }
 
 
-  private type DistStream  = SortedMap[ZonedDateTime, Double]
+  private type DistStream  = Seq[(ZonedDateTime, Double)]
 
   /**
     * Experiments have shown smoothingInterval = 60 gives most accurate results.
@@ -187,7 +187,7 @@ object DataStreamGPS {
       h.avgSpeed
     }
 
-    SortedMap(distTimes zip smoothed:_*)
+    distTimes zip smoothed
   }
 
   private def pairToDist(ab: (GPSPoint, GPSPoint)) = {
@@ -201,9 +201,11 @@ object DataStreamGPS {
     gpsDistances
   }
 
-  def distStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): SortedMap[ZonedDateTime, Double] = {
-    val gpsPairs = SortedMap((gps.keys zip (gps.values zip gps.values.drop(1))).toSeq: _*)
-    val gpsDistances = DataStream.mapStreamValues(gpsPairs, pairToDist)
+  def distStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): DistStream = {
+    val gpsKeys = gps.keys.toSeq // toSeq needed to preserve order
+    val gpsValues = gps.values.toSeq
+    val gpsPairs = gpsKeys zip (gpsValues zip gpsValues.drop(1))
+    val gpsDistances = gpsPairs.map { case (t, p) => t -> pairToDist(p) }
     gpsDistances
   }
 
@@ -224,7 +226,7 @@ object DataStreamGPS {
     }
 
     val toKmh = 3.6
-    val speeds = speedStream.values.toSeq.map(_ * toKmh)
+    val speeds = speedStream.map(_._2 * toKmh)
 
     val max = speeds.max
     val min = speeds.min
@@ -366,7 +368,7 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
       val begMatch = maxTime(offsetStream.head._1, startTime.get)
       val endMatch = minTime(offsetStream.last._1, endTime.get)
       // ignore non-matching parts (prefix, postfix)
-      def selectInner[T](data: SortedMap[ZonedDateTime, T]) = data.dropWhile(_._1 < begMatch).takeWhile(_._1 < endMatch)
+      def selectInner[T](data: Seq[(ZonedDateTime, T)]) = data.dropWhile(_._1 < begMatch).takeWhile(_._1 < endMatch)
       val distToMatch = selectInner(offsetStream)
 
       val distPairs = distToMatch zip distToMatch.drop(1) // drop(1), not tail, because distToMatch may be empty
@@ -454,7 +456,7 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
       val distancesSmooth = smoothDistances(distances, Vector(), Nil)
 
       //val distances10x = distancesSmooth.flatMap(d => List.fill(10)(d/10)).mkString("\n")
-      val distancesWithTimes = SortedMap((distanceSums.keys zip distancesSmooth).toSeq:_*)
+      val distancesWithTimes = (distanceSums.keys zip distancesSmooth).toSeq
       val (bestOffset, confidence) = findOffset(distancesWithTimes)
       println(s"Quest offset $bestOffset from distance ${distanceSums.last._2}, confidence $confidence")
       //hrdMove.timeOffset(bestOffset)

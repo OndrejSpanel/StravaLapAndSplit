@@ -93,9 +93,9 @@ object FitImport {
       } else {
         val distanceDeltas = gpsDataStream.distStream
 
-        val distanceValues = distanceDeltas.scanLeft(0d) { case (dist, (t, d)) => dist + d }
+        val distanceValues = distanceDeltas.scanLeft(0d) { case (dist, (_, d)) => dist + d }
 
-        val distances = SortedMap((distanceDeltas.keys.toSeq :+ endTime) zip distanceValues:_*)
+        val distances = SortedMap((distanceDeltas.map(_._1) :+ endTime) zip distanceValues:_*)
         distances
       }
 

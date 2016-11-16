@@ -278,7 +278,7 @@ object Main {
     val eventsByTime = events.sortBy(_.stamp)
 
     val distStream = act.latlng.distStream
-    val distTimes = distStream.keys.toList
+    val distTimes = distStream.map(_._1).toList
 
     val timeDeltas = (distTimes zip distTimes.drop(1)).map(tt => Seconds.secondsBetween(tt._1, tt._2).getSeconds)
 
@@ -331,7 +331,7 @@ object Main {
     val speedStream = DataStreamGPS.computeSpeedStream(distStream)
 
     def speedDuringInterval(beg: ZonedDateTime, end: ZonedDateTime) = {
-      speedStream.filterKeys(k => k >= beg && k <= end)
+      speedStream.filter(k => k._1 >= beg && k._1 <= end)
     }
 
     val intervalTimes = eventsByTime.map(_.stamp).distinct
