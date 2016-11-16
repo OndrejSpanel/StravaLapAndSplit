@@ -120,6 +120,9 @@ object DataStreamGPS {
     * 2016-04-13T09:47:02Z	10.5000627924
     * 2016-04-13T09:47:04Z	5.2888359044
     */
+  /**
+    * Currently unused, previous example was wrong, it was result of bad handling of time deltas between GPS samples.
+    * */
   def fixSpeed(input: DistList): DistList = {
     def fixSpeedRecurse(input: DistList, done: DistList): DistList = {
       if (input.isEmpty) done
@@ -157,7 +160,7 @@ object DataStreamGPS {
   }
 
   private def smoothSpeed(rawInput: DistStream, durationSec: Int): DistStream = {
-    val input = fixSpeed(rawInput.toList)
+    val input = rawInput.toList
 
     class History(duration: Int) {
       var tSum = 0
@@ -176,22 +179,26 @@ object DataStreamGPS {
         }
       }
 
-      def avgSpeed: Double = dSum / tSum
+      def avgSpeed: Double = if (tSum > 0) dSum / tSum else 0
     }
 
     val distTimes = input.map(_._1)
-    val timeDeltas = (distTimes zip distTimes.drop(1)).map(tt => Seconds.secondsBetween(tt._1, tt._2).getSeconds)
+    // duplicate first sample to provide a zero time for it
+
+    val timeDeltas = (distTimes.head +: distTimes zip distTimes).map(tt => Seconds.secondsBetween(tt._1, tt._2).getSeconds)
 
     val distDeltas = timeDeltas zip input.map(_._2)
 
     val h = new History(durationSec)
 
-    val smoothed = for ((td, dd) <- distDeltas) yield {
+    val speeds = for ((td, dd) <- distDeltas) yield {
       h.addSample(td, dd)
       h.avgSpeed
     }
 
-    distTimes zip smoothed
+    //val speeds = for ((td, dd) <- distDeltas) yield if (td > 0) dd / td else 0
+
+    distTimes zip speeds
   }
 
   private def pairToDist(ab: (GPSPoint, GPSPoint)) = {
@@ -208,9 +215,9 @@ object DataStreamGPS {
   def distStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): DistStream = {
     val gpsKeys = gps.keys.toSeq // toSeq needed to preserve order
     val gpsValues = gps.values.toSeq
-    val gpsPairs = gpsKeys zip (gpsValues zip gpsValues.drop(1))
+    val gpsPairs = gpsKeys.drop(1) zip (gpsValues zip gpsValues.drop(1))
     val gpsDistances = gpsPairs.map { case (t, p) => t -> pairToDist(p) }
-    gpsDistances
+    (gpsKeys.head -> 0.0) +: gpsDistances
   }
 
 

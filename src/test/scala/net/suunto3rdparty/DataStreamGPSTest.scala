@@ -33,22 +33,6 @@ class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
       distStream.get(relTime(t, time + 1)) should be(None)
       distStream.get(relTime(t, time + 2)) shouldNot be(None)
 
-      // check fixSpeed fixes the issue
-      val fixedDist = DataStreamGPS.fixSpeed(gps.distStream.toList)
-      val fixedDistMap = SortedMap(fixedDist:_*)
-
-      fixedDistMap.get(relTime(t, time + 0)) shouldNot be(None)
-      fixedDistMap.get(relTime(t, time + 1)) shouldNot be(None)
-      fixedDistMap.get(relTime(t, time + 2)) shouldNot be(None)
-
-      // check computeSpeedStream fixes the issue - it should call fixSpeed internally
-      val speedStream = DataStreamGPS.computeSpeedStream(gps.distStream)
-      val speedStreamMap = SortedMap(speedStream:_*)
-
-      speedStreamMap.get(relTime(t, time + 0)) shouldNot be(None)
-      speedStreamMap.get(relTime(t, time + 1)) shouldNot be(None)
-      speedStreamMap.get(relTime(t, time + 2)) shouldNot be(None)
-
     }
 
   }
