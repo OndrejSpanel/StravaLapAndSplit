@@ -3,26 +3,8 @@ package net.suunto3rdparty
 import org.joda.time.format.ISODateTimeFormat
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.xml._
-
-class SuuntoMergeTest extends FlatSpec with Matchers {
+class SuuntoMergeTest extends FlatSpec with Matchers with SuuntoData {
   behavior of "SuuntoMerge"
-
-  private def gpsPodMove = {
-    val res = getClass.getResourceAsStream("/suuntoMerge/Moveslink2/gps.sml")
-
-    val doc = moveslink2.XMLParser.getDeviceLog(XML.load(res))
-    val move = moveslink2.XMLParser.parseXML("gps.sml", doc)
-    move
-  }
-
-  private def questMove = {
-    val res = getClass.getResourceAsStream("/suuntoMerge/Moveslink/quest.xml")
-    val doc = XML.load(res)
-
-    val move = moveslink.XMLParser.parseXML("quest.xml", doc)
-    move
-  }
 
   it should "load Quest file" in {
     val move = questMove
