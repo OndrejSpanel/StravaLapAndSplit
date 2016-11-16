@@ -115,7 +115,7 @@ object DataStreamGPS {
 
   private type DistList = List[(ZonedDateTime, Double)]
   /**
-    * Quest records sometimes miss one sample, the missing sample is added the a neighboring sample, like:
+    * GPS records sometimes miss one sample, the missing sample is added the a neighboring sample, like:
     * 2016-04-13T09:47:01Z	4.9468178241
     * 2016-04-13T09:47:02Z	10.5000627924
     * 2016-04-13T09:47:04Z	5.2888359044
