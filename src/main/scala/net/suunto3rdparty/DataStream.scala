@@ -21,7 +21,7 @@ object DataStream {
   def mapStreamValues[Item, T](stream: SortedMap[ZonedDateTime, Item], f: Item => T): SortedMap[ZonedDateTime, T] = {
     // note: not very fast, rebuilds the SortedMap
     // mapValues however creates a copy which is not serializable
-    stream.map(kv => kv.copy(_2 = f(kv._2)))
+    stream.transform((_, v) => f(v))
   }
 }
 sealed abstract class DataStream[Item] {
