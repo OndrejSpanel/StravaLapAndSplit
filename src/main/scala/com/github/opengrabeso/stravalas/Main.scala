@@ -14,6 +14,7 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
 
 import scala.collection.immutable.{Queue, SortedMap}
+import scala.collection.mutable.ArrayBuffer
 
 object Main {
 
@@ -278,60 +279,56 @@ object Main {
     val eventsByTime = events.sortBy(_.stamp)
 
     val distStream = act.latlng.distStream
-    val distTimes = distStream.map(_._1).toList
+    val routeDistance = SortedMap(DataStreamGPS.routeStreamFromDistStream(distStream):_*)
 
-    val timeDeltas = (distTimes zip distTimes.drop(1)).map(tt => Seconds.secondsBetween(tt._1, tt._2).getSeconds)
+    val smoothingSec = 10
+    val speedStream = DataStreamGPS.computeSpeedStream(distStream, smoothingSec)
+    val speedMap = SortedMap(speedStream:_*)
 
-    val distDeltas = (timeDeltas zip distStream).map {case (dt, (t, d)) => (dt, d, t)}
+    // find pause candidates: times when smoothed speed is very low
+    val speedPauseMax = 0.7
 
-    type DistList = List[(Int, Double, ZonedDateTime)]
+    val pauseTimes = speedStream.filter(dt => dt._2 < speedPauseMax)
 
-    def findFirstPause(deltas: DistList): Option[ZonedDateTime] = {
-      class History(duration: Int) {
-        var tSum = 0
-        var dSum = 0.0
-        var samples = Queue[(Int, Double)]()
+    val begTime = distStream.head._1
+    val endTime = distStream.last._1
 
-        def addSample(t: Int, d: Double): Unit = {
-          tSum += t
-          dSum += d
-          samples = samples :+ (t, d)
-          while (tSum > duration) {
-            val pop = samples.head
-            samples = samples.tail
-            tSum -= pop._1
-            dSum -= pop._2
-          }
-        }
-
-        def avgSpeed: Double = dSum / tSum
+    def tryPause(b: ZonedDateTime, e: ZonedDateTime): Option[(ZonedDateTime, ZonedDateTime)] = {
+      // try to extend as much as possible
+      if (b > begTime) {
+        val t = tryPause(b.minusSeconds(1), e)
+        t.getOrElse((b, e))
       }
-
-      val historyShort = new History(10)
-      val historyMiddle = new History(30)
-      val histories = Seq(historyShort, historyMiddle)
-
-      for (d <- deltas) {
-        val maxPauseSpeed = 0.2
-        val maxPauseSpeedImmediate = 0.7
-
-        for (h <- histories) h.addSample(d._1, d._2)
-
-        if (historyShort.avgSpeed < maxPauseSpeedImmediate && historyMiddle.avgSpeed < maxPauseSpeed) {
-          return Some(d._3)
-        }
-      }
-
-      None
+      ???
     }
 
-    val fp = findFirstPause(distDeltas)
+    val pauses = ArrayBuffer[(ZonedDateTime, ZonedDateTime)]()
+    var toProcess = pauseTimes.map(_._1)
+
+    while (toProcess.nonEmpty) {
+      val t = toProcess.head
+      toProcess = toProcess.tail
+      val pause = tryPause(t, t)
+      pauses ++= pause
+      for (p <- pause) {
+        toProcess = toProcess.filter(_ >= p._2)
+      }
+    }
 
 
-    val speedStream = DataStreamGPS.computeSpeedStream(distStream)
+    // now aggregate - detect continuous pause intervals
+    def avgSpeedDuring(beg: ZonedDateTime, end: ZonedDateTime): Double = {
+      val findBeg = routeDistance.to(beg).lastOption
+      val findEnd = routeDistance.from(end).headOption
+      val avgSpeed = for (b <- findBeg; e <- findEnd) yield {
+        val duration = Seconds.secondsBetween(b._1, e._1).getSeconds
+        if (duration > 0) (e._2 - b._2) / duration else 0
+      }
+      avgSpeed.getOrElse(0)
+    }
 
     def speedDuringInterval(beg: ZonedDateTime, end: ZonedDateTime) = {
-      speedStream.filter(k => k._1 >= beg && k._1 <= end)
+      speedMap.from(beg).to(end)
     }
 
     val intervalTimes = eventsByTime.map(_.stamp).distinct
@@ -341,7 +338,7 @@ object Main {
     val sportsInRanges = for ((pBeg, pEnd) <- intervals) yield {
       val spd = speedDuringInterval(pBeg, pEnd)
 
-      val (avg, fast, max) = DataStreamGPS.speedStats(spd)
+      val (avg, fast, max) = DataStreamGPS.speedStats(spd.toSeq)
 
       def paceToKmh(pace: Double) = 60 / pace
 

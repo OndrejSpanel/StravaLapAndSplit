@@ -220,9 +220,15 @@ object DataStreamGPS {
     (gpsKeys.head -> 0.0) +: gpsDistances
   }
 
+  def routeStreamFromDistStream(distDeltas: DistStream): DistStream = {
+    val route = distDeltas.scanLeft(0d) { case (sum, (_, d)) => sum + d }
+    // scanLeft adds initial value as a first element - use tail to drop it
+    distDeltas.map(_._1) zip route.tail
+  }
 
-  def computeSpeedStream(dist: DistStream): DistStream = {
-    val smoothedSpeed = smoothSpeed(dist, smoothingInterval)
+
+  def computeSpeedStream(dist: DistStream, smoothing: Int = smoothingInterval): DistStream = {
+    val smoothedSpeed = smoothSpeed(dist, smoothing)
     smoothedSpeed
   }
 
