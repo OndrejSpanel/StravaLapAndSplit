@@ -376,7 +376,6 @@ object Main {
 
     val sports = eventsByTime.map(x => findSport(x.stamp))
 
-    // TODO: pause detection
     ActivityEvents(actId, eventsByTime.toArray, sports.toArray, act.dist, act.latlng, act.attributes)
   }
 

@@ -2,7 +2,7 @@ package net.suunto3rdparty
 
 import org.joda.time.{Period, ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
-import scala.collection.immutable.SortedMap
+import scala.collection.immutable.{Queue, SortedMap}
 import Util._
 
 import scala.annotation.tailrec
@@ -108,17 +108,19 @@ object DataStreamGPS {
     */
   private val smoothingInterval = 60
 
+
+  private type DistList = List[(ZonedDateTime, Double)]
   /**
     * Quest records sometimes miss one sample, the missing sample is added the a neighboring sample, like:
     * 2016-04-13T09:47:01Z	4.9468178241
     * 2016-04-13T09:47:02Z	10.5000627924
     * 2016-04-13T09:47:04Z	5.2888359044
     */
-  private def fixSpeed(input: DistStream): DistStream = {
-    def fixSpeedRecurse(input: DistStream, done: DistStream): DistStream = {
+  private def fixSpeed(input: DistList): DistList = {
+    def fixSpeedRecurse(input: DistList, done: DistList): DistList = {
       if (input.isEmpty) done
       else {
-        if (input.tail.isEmpty) fixSpeedRecurse(input.tail, done + input.head)
+        if (input.tail.isEmpty) fixSpeedRecurse(input.tail, input.head +: done)
         else {
           val item0 = input.head
           val item1 = input.tail.head
@@ -131,43 +133,61 @@ object DataStreamGPS {
             if (value0 >= value1) {
               // 0 large, 1 missing, 2 small
               val fixed0 = item0.copy(_2 = value0 / duration)
-              val addMissing = for (s <- 1 to missingCount.toInt) yield fixed0.copy(_1 = item0._1.plusSeconds(s))
-              fixSpeedRecurse(input.tail, done + fixed0 ++ addMissing)
+              val addMissing = for (s <- (1 to missingCount.toInt).toList) yield fixed0.copy(_1 = item0._1.plusSeconds(s))
+              fixSpeedRecurse(input.tail, addMissing ++ (fixed0 +: done))
             } else {
               // 0 small, 1 missing, 2 large
               val fixed2 = item1.copy(_2 = value0 / duration)
-              val addMissing = for (s <- 1 to missingCount.toInt) yield fixed2.copy(_1 = item0._1.plusSeconds(s))
-              fixSpeedRecurse(input.tail.tail, done + item0 ++ addMissing + fixed2)
+              val addMissing = for (s <- (1 to missingCount.toInt).toList) yield fixed2.copy(_1 = item0._1.plusSeconds(s))
+              fixSpeedRecurse(input.tail.tail, (fixed2 +: addMissing) ++ (item0 +: done))
             }
           } else {
-            fixSpeedRecurse(input.tail, done + input.head)
+            fixSpeedRecurse(input.tail, input.head +: done)
           }
 
         }
       }
     }
 
-    fixSpeedRecurse(input, SortedMap())
+    fixSpeedRecurse(input, Nil).reverse
   }
 
-  private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
-    def smoothingRecurse(done: DistStream, prev: DistStream, todo: DistStream): DistStream = {
-      if (todo.isEmpty) done
-      else if (prev.isEmpty) {
-        smoothingRecurse(done + todo.head, prev + todo.head, todo.tail)
-      } else {
-        def durationWindow(win: DistStream) = Seconds.secondsBetween(win.keys.head, win.keys.last).getSeconds
-        def keepWindow(win: DistStream): DistStream = if (durationWindow(win) <= durationSec) win else keepWindow(win.tail)
-        val newWindow = keepWindow(prev + todo.head)
-        val duration = durationWindow(newWindow)
-        val windowSpeed = if (duration > 0) prev.values.sum / duration else 0.0
-        val interval = Seconds.secondsBetween(prev.last._1, todo.head._1).getSeconds
-        val smoothDist = (windowSpeed * duration + todo.head._2) / ( duration + interval)
-        smoothingRecurse(done + (todo.head._1 -> smoothDist), newWindow, todo.tail)
+  private def smoothSpeed(rawInput: DistStream, durationSec: Int): DistStream = {
+    val input = fixSpeed(rawInput.toList)
+
+    class History(duration: Int) {
+      var tSum = 0
+      var dSum = 0.0
+      var samples = Queue[(Int, Double)]()
+
+      def addSample(t: Int, d: Double): Unit = {
+        tSum += t
+        dSum += d
+        samples = samples :+ (t, d)
+        while (tSum > duration) {
+          val pop = samples.head
+          samples = samples.tail
+          tSum -= pop._1
+          dSum -= pop._2
+        }
       }
+
+      def avgSpeed: Double = dSum / tSum
     }
 
-    smoothingRecurse(SortedMap(), SortedMap(), fixSpeed(input))
+    val distTimes = input.map(_._1)
+    val timeDeltas = (distTimes zip distTimes.drop(1)).map(tt => Seconds.secondsBetween(tt._1, tt._2).getSeconds)
+
+    val distDeltas = timeDeltas zip input.map(_._2)
+
+    val h = new History(durationSec)
+
+    val smoothed = for ((td, dd) <- distDeltas) yield {
+      h.addSample(td, dd)
+      h.avgSpeed
+    }
+
+    SortedMap(distTimes zip smoothed:_*)
   }
 
   private def pairToDist(ab: (GPSPoint, GPSPoint)) = {
