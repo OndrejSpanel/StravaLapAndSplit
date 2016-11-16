@@ -120,7 +120,7 @@ object DataStreamGPS {
     * 2016-04-13T09:47:02Z	10.5000627924
     * 2016-04-13T09:47:04Z	5.2888359044
     */
-  private def fixSpeed(input: DistList): DistList = {
+  def fixSpeed(input: DistList): DistList = {
     def fixSpeedRecurse(input: DistList, done: DistList): DistList = {
       if (input.isEmpty) done
       else {

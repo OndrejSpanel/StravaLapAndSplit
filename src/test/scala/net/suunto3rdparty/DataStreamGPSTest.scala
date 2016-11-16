@@ -3,6 +3,9 @@ package net.suunto3rdparty
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.collection.immutable.SortedMap
+import Util._
+
 class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
   behavior of "DataStreamGPS"
 
@@ -23,6 +26,27 @@ class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
       gps.stream.get(relTime(t, time + 0)) shouldNot be(None)
       gps.stream.get(relTime(t, time + 1)) should be(None)
       gps.stream.get(relTime(t, time + 2)) shouldNot be(None)
+
+      // verify even the dist stream is still missing the data
+      val distStream = SortedMap(gps.distStream:_*)
+      distStream.get(relTime(t, time + 0)) shouldNot be(None)
+      distStream.get(relTime(t, time + 1)) should be(None)
+      distStream.get(relTime(t, time + 2)) shouldNot be(None)
+
+      val fixedDist = DataStreamGPS.fixSpeed(gps.distStream.toList)
+      val fixedDistMap = SortedMap(fixedDist:_*)
+
+      fixedDistMap.get(relTime(t, time + 0)) shouldNot be(None)
+      fixedDistMap.get(relTime(t, time + 1)) shouldNot be(None)
+      fixedDistMap.get(relTime(t, time + 2)) shouldNot be(None)
+
+      val speedStream = DataStreamGPS.computeSpeedStream(gps.distStream)
+      val speedStreamMap = SortedMap(speedStream:_*)
+
+      speedStreamMap.get(relTime(t, time + 0)) shouldNot be(None)
+      speedStreamMap.get(relTime(t, time + 1)) shouldNot be(None)
+      speedStreamMap.get(relTime(t, time + 2)) shouldNot be(None)
+
     }
 
   }
