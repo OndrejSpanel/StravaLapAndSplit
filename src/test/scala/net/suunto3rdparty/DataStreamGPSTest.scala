@@ -1,9 +1,29 @@
 package net.suunto3rdparty
 
+import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 
-class DataStreamGPSTest extends FlatSpec with Matchers {
+class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
   behavior of "DataStreamGPS"
 
 
+  it should "Handle missing samples correctly" in {
+    val move = gpsPodMove
+    for (m <- move) {
+      val gps = m.stream[DataStreamGPS]
+      val dist = m.stream[DataStreamDist]
+
+      val t = gps.startTime.get
+      // sample 271 missing in the GPS stream
+      val time = 270 - 1 // <Time>270</Time>
+
+      def relTime(t: DateTime, r: Int) = t.withDurationAdded(r, 1000)
+
+      // verify the test data demonstrate the problem
+      gps.stream.get(relTime(t, time + 0)) shouldNot be(None)
+      gps.stream.get(relTime(t, time + 1)) should be(None)
+      gps.stream.get(relTime(t, time + 2)) shouldNot be(None)
+    }
+
+  }
 }
