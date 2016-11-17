@@ -53,7 +53,7 @@ case class PauseEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def isSplit = false
 }
 case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
-  def description = s"Pause end"
+  def description = "Pause end"
   def defaultEvent = if (duration >= 50) "lap" else ""
   def isSplit = false
 }
