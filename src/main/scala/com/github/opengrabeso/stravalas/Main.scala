@@ -338,20 +338,30 @@ object Main {
       }
     }
 
-    val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2))
+    val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2)).map {case (b, e) =>
+      val duration = Seconds.secondsBetween(b, e).getSeconds
+      (b, e, duration)
+    }
 
-    val pauseEvents = extractedPauses.flatMap { case (tBeg, tEnd) =>
-      val duration = Seconds.secondsBetween(tBeg, tEnd).getSeconds
-      val minPause = 15
-      val minSplitPause = 50
-      if (duration > minSplitPause) {
+    val minPause = 10
+    val minLongPause = 20
+    val minSportChangePause = 50
+
+    val pauseEvents = extractedPauses.flatMap { case (tBeg, tEnd, duration) =>
+      if (duration > minLongPause) {
         Seq(PauseEvent(duration, tBeg), PauseEndEvent(duration, tEnd))
       } else if (duration > minPause) {
         Seq(PauseEvent(duration, tBeg))
       } else Seq()
     }
 
-    val intervalTimes = (actId.startTime +: pauseEvents.map(_.stamp) :+ actId.endTime).distinct
+    val sportChangePauses = extractedPauses.collect {
+      case (tBeg, tEnd, duration) if duration > minSportChangePause => (tBeg, tEnd)
+    }
+
+    val sportChangeTimes = extractedPauses.flatMap(p => Seq(p._1, p._2))
+
+    val intervalTimes = (actId.startTime +: sportChangeTimes :+ actId.endTime).distinct
 
     def speedDuringInterval(beg: ZonedDateTime, end: ZonedDateTime) = {
       speedMap.from(beg).to(end)
