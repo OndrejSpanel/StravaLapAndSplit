@@ -369,42 +369,44 @@ object Main {
 
     val intervals = intervalTimes zip intervalTimes.drop(1)
 
-    val sportsInRanges = for ((pBeg, pEnd) <- intervals) yield {
+    val sportsInRanges = intervals.flatMap { case (pBeg, pEnd) =>
 
-      assert (pEnd > pBeg)
+      assert(pEnd > pBeg)
+      if (extractedPauses.exists(_._1 == pBeg)) {
+        None // no sport detection during pauses (would always detect as something slow, like Run
+      } else {
 
-      val spd = speedDuringInterval(pBeg, pEnd)
+        val spd = speedDuringInterval(pBeg, pEnd)
 
-      val (avg, fast, max) = DataStreamGPS.speedStats(spd.toSeq)
+        val (avg, fast, max) = DataStreamGPS.speedStats(spd.toSeq)
 
-      def paceToKmh(pace: Double) = 60 / pace
+        def paceToKmh(pace: Double) = 60 / pace
 
-      def kmh(speed: Double) = speed
+        def kmh(speed: Double) = speed
 
-      def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): String = {
-        if (avg <= avgRun && fast <= fastRun && max <= maxRun) "Run"
-        else "Ride"
+        def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): String = {
+          if (avg <= avgRun && fast <= fastRun && max <= maxRun) "Run"
+          else "Ride"
+        }
+
+        val sport = actId.sportName.toLowerCase match {
+          case "run" =>
+            // marked as run, however if clearly contradicting evidence is found, make it ride
+            detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
+          case "ride" =>
+            detectSport(kmh(25), kmh(22), kmh(20)) // 25 - 18 km/h possible
+          //if (stats.statDuration > 10)
+          case _ =>
+            detectSport(paceToKmh(3), paceToKmh(4), paceToKmh(4)) // 3 - 4 min/km possible
+          // TODO: handle other sports: swimming, walking, ....
+        }
+        Some(pBeg, sport)
       }
-
-      val sport = actId.sportName.toLowerCase match {
-        case "run" =>
-          // marked as run, however if clearly contradicting evidence is found, make it ride
-          detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
-        case "ride" =>
-          detectSport(kmh(25), kmh(22), kmh(20)) // 25 - 18 km/h possible
-        //if (stats.statDuration > 10)
-        case _ =>
-          detectSport(paceToKmh(3), paceToKmh(4), paceToKmh(4)) // 3 - 4 min/km possible
-        // TODO: handle other sports: swimming, walking, ....
-      }
-
-      (pBeg, sport)
     }
 
     // reversed, as we will be searching for last lower than
     val sportsByTime = sportsInRanges.sortBy(_._1)(Ordering[ZonedDateTime].reverse)
 
-    // TODO: no sport detection during pauses (would never detect as Ride)
     def findSport(time: ZonedDateTime) = {
       sportsByTime.find(_._1 <= time).map(_._2).getOrElse(actId.sportName)
     }
