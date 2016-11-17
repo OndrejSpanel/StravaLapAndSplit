@@ -367,12 +367,18 @@ object Main {
       speedMap.from(beg).to(end)
     }
 
+    def intervalTooShort(beg: ZonedDateTime, end: ZonedDateTime) = {
+      val duration = Seconds.secondsBetween(beg, end).getSeconds
+      val distance = avgSpeedDuring(beg, end) * duration
+      duration < 60 && distance < 100
+    }
+
     val intervals = intervalTimes zip intervalTimes.drop(1)
 
     val sportsInRanges = intervals.flatMap { case (pBeg, pEnd) =>
 
       assert(pEnd > pBeg)
-      if (sportChangePauses.exists(_._1 == pBeg)) {
+      if (sportChangePauses.exists(_._1 == pBeg) || intervalTooShort(pBeg, pEnd)) {
         None // no sport detection during pauses (would always detect as something slow, like Run
       } else {
 
