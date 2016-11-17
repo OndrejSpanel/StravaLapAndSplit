@@ -13,8 +13,7 @@ import DateTimeOps._
 import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
 
-import scala.collection.immutable.{Queue, SortedMap}
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.immutable.SortedMap
 
 object Main {
 
@@ -274,10 +273,6 @@ object Main {
 
     val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
-    val events = (BegEvent(actId.startTime) +: EndEvent(actId.endTime) +: cleanLaps.map(LapEvent)) ++ segments
-
-    val eventsByTime = events.sortBy(_.stamp)
-
     val distStream = act.latlng.distStream
     val routeDistance = SortedMap(DataStreamGPS.routeStreamFromDistStream(distStream):_*)
 
@@ -288,33 +283,27 @@ object Main {
     // find pause candidates: times when smoothed speed is very low
     val speedPauseMax = 0.7
 
-    val pauseTimes = speedStream.filter(dt => dt._2 < speedPauseMax)
-
-    val begTime = distStream.head._1
-    val endTime = distStream.last._1
-
-    def tryPause(b: ZonedDateTime, e: ZonedDateTime): Option[(ZonedDateTime, ZonedDateTime)] = {
-      // try to extend as much as possible
-      if (b > begTime) {
-        val t = tryPause(b.minusSeconds(1), e)
-        t.getOrElse((b, e))
-      }
-      ???
+    // select samples which are slow and the following is also slow (can be in the middle of the pause)
+    type PauseStream = Seq[(ZonedDateTime, ZonedDateTime, Double)]
+    val pauseSpeeds: PauseStream = (speedStream zip speedStream.drop(1)).collect {
+      case ((t1, s1), (t2, s2)) if s1 < speedPauseMax && s2< speedPauseMax => (t1, t2, s1)
     }
-
-    val pauses = ArrayBuffer[(ZonedDateTime, ZonedDateTime)]()
-    var toProcess = pauseTimes.map(_._1)
-
-    while (toProcess.nonEmpty) {
-      val t = toProcess.head
-      toProcess = toProcess.tail
-      val pause = tryPause(t, t)
-      pauses ++= pause
-      for (p <- pause) {
-        toProcess = toProcess.filter(_ >= p._2)
+    // aggregate pause intervals - merge all
+    def mergePauses(pauses: PauseStream, done: PauseStream): PauseStream = {
+      pauses match {
+        case head +: next +: tail =>
+          if (head._2 == next._1) { // extend head with next and repeat
+            mergePauses(head.copy(_2 = next._2) +: tail, done)
+          } else { // head can no longer be extended, use it, continue processing
+            mergePauses(next +: tail, head +: done)
+          }
+        case _ => pauses ++ done
       }
     }
 
+    val mergedPauses = mergePauses(pauseSpeeds, Nil).reverse
+
+    // TODO: we have a list of pause candidates, confirm them
 
     // now aggregate - detect continuous pause intervals
     def avgSpeedDuring(beg: ZonedDateTime, end: ZonedDateTime): Double = {
@@ -327,15 +316,29 @@ object Main {
       avgSpeed.getOrElse(0)
     }
 
+    val pauseEvents = mergedPauses.flatMap { case (tBeg, tEnd, _) =>
+      val duration = Seconds.secondsBetween(tBeg, tEnd).getSeconds
+      val minPause = 15
+      val minSplitPause = 50
+      if (duration > minSplitPause) {
+        Seq(PauseEvent(duration, tBeg), PauseEndEvent(duration, tEnd))
+      } else if (duration > minPause) {
+        Seq(PauseEvent(duration, tBeg))
+      } else Seq()
+    }
+
+    val intervalTimes = (actId.startTime +: pauseEvents.map(_.stamp) :+ actId.endTime).distinct
+
     def speedDuringInterval(beg: ZonedDateTime, end: ZonedDateTime) = {
       speedMap.from(beg).to(end)
     }
 
-    val intervalTimes = eventsByTime.map(_.stamp).distinct
-
     val intervals = intervalTimes zip intervalTimes.drop(1)
 
     val sportsInRanges = for ((pBeg, pEnd) <- intervals) yield {
+
+      assert (pEnd > pBeg)
+
       val spd = speedDuringInterval(pBeg, pEnd)
 
       val (avg, fast, max) = DataStreamGPS.speedStats(spd.toSeq)
@@ -367,9 +370,13 @@ object Main {
     // reversed, as we will be searching for last lower than
     val sportsByTime = sportsInRanges.sortBy(_._1)(Ordering[ZonedDateTime].reverse)
 
+    // TODO: no sport detection during pauses (would never detect as Ride)
     def findSport(time: ZonedDateTime) = {
       sportsByTime.find(_._1 <= time).map(_._2).getOrElse(actId.sportName)
     }
+
+    val events = (BegEvent(actId.startTime) +: EndEvent(actId.endTime) +: cleanLaps.map(LapEvent)) ++ segments ++ pauseEvents
+    val eventsByTime = events.sortBy(_.stamp)
 
     val sports = eventsByTime.map(x => findSport(x.stamp))
 
