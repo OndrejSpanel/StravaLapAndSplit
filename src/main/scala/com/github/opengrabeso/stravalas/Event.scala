@@ -6,7 +6,7 @@ case class EventKind(id: String, display: String)
 sealed abstract class Event {
   def stamp: ZonedDateTime
   def description: String
-  def isSplit: Boolean
+  def isSplit: Boolean // splits need to be known when exporting
 
   def defaultEvent: String
 
