@@ -226,6 +226,17 @@ object DataStreamGPS {
     distDeltas.map(_._1) zip route.tail
   }
 
+  def routeStreamFromSpeedStream(distDeltas: DistStream): DistStream = {
+    if (distDeltas.isEmpty) Seq()
+    else {
+      assert(distDeltas.head._2 == 0)
+      val route = distDeltas.tail.scanLeft(distDeltas.head) { case ((tSum, dSum), (t, d)) =>
+        val dt = Seconds.secondsBetween(tSum, t).getSeconds
+        t -> (dSum + d * dt)
+      }
+      route
+    }
+  }
 
   def computeSpeedStream(dist: DistStream, smoothing: Int = smoothingInterval): DistStream = {
     val smoothedSpeed = smoothSpeed(dist, smoothing)

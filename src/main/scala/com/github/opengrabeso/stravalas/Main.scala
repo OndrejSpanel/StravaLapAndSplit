@@ -274,14 +274,17 @@ object Main {
     val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
     val distStream = act.latlng.distStream
-    val routeDistance = SortedMap(DataStreamGPS.routeStreamFromDistStream(distStream):_*)
 
     val smoothingSec = 10
     val speedStream = DataStreamGPS.computeSpeedStream(distStream, smoothingSec)
     val speedMap = SortedMap(speedStream:_*)
 
+    // integrate route distance back from smoothed speed stream so that we are processing consistent data
+    val routeDistance = SortedMap(DataStreamGPS.routeStreamFromSpeedStream(speedStream):_*)
+
     // find pause candidates: times when smoothed speed is very low
     val speedPauseMax = 0.7
+    val speedPauseAvg = 0.2
 
     // select samples which are slow and the following is also slow (can be in the middle of the pause)
     type PauseStream = Seq[(ZonedDateTime, ZonedDateTime, Double)]
@@ -303,9 +306,6 @@ object Main {
 
     val mergedPauses = mergePauses(pauseSpeeds, Nil).reverse
 
-    // TODO: we have a list of pause candidates, confirm them
-
-    // now aggregate - detect continuous pause intervals
     def avgSpeedDuring(beg: ZonedDateTime, end: ZonedDateTime): Double = {
       val findBeg = routeDistance.to(beg).lastOption
       val findEnd = routeDistance.from(end).headOption
@@ -316,7 +316,31 @@ object Main {
       avgSpeed.getOrElse(0)
     }
 
-    val pauseEvents = mergedPauses.flatMap { case (tBeg, tEnd, _) =>
+    // take a pause candidate and reduce its size until we get a real pause (or nothing)
+    def extractPause(beg: ZonedDateTime, end: ZonedDateTime): Option[(ZonedDateTime, ZonedDateTime)] = {
+      if (beg >= end) {
+        None
+      } else {
+        val spd = avgSpeedDuring(beg, end)
+        if (spd < speedPauseAvg) Some((beg, end))
+        else {
+          val spdBeg = speedMap(beg)
+          val spdEnd = speedMap(end)
+          // heuristic approach: remove a border sample with greater speed
+          if (spdBeg > spdEnd) {
+            val afterBeg = speedMap.from(beg).tail.head._1
+            extractPause(afterBeg, end)
+          } else {
+            val beforeEnd = speedMap.until(end).last._1
+            extractPause(beg, beforeEnd)
+          }
+        }
+      }
+    }
+
+    val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2))
+
+    val pauseEvents = extractedPauses.flatMap { case (tBeg, tEnd) =>
       val duration = Seconds.secondsBetween(tBeg, tEnd).getSeconds
       val minPause = 15
       val minSplitPause = 50
