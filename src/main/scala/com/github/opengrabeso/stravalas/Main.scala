@@ -359,7 +359,7 @@ object Main {
       case (tBeg, tEnd, duration) if duration > minSportChangePause => (tBeg, tEnd)
     }
 
-    val sportChangeTimes = extractedPauses.flatMap(p => Seq(p._1, p._2))
+    val sportChangeTimes = sportChangePauses.flatMap(p => Seq(p._1, p._2))
 
     val intervalTimes = (actId.startTime +: sportChangeTimes :+ actId.endTime).distinct
 
@@ -372,7 +372,7 @@ object Main {
     val sportsInRanges = intervals.flatMap { case (pBeg, pEnd) =>
 
       assert(pEnd > pBeg)
-      if (extractedPauses.exists(_._1 == pBeg)) {
+      if (sportChangePauses.exists(_._1 == pBeg)) {
         None // no sport detection during pauses (would always detect as something slow, like Run
       } else {
 
@@ -394,8 +394,7 @@ object Main {
             // marked as run, however if clearly contradicting evidence is found, make it ride
             detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
           case "ride" =>
-            detectSport(kmh(25), kmh(22), kmh(20)) // 25 - 18 km/h possible
-          //if (stats.statDuration > 10)
+            detectSport(kmh(20), kmh(17), kmh(15)) // 25 - 18 km/h possible
           case _ =>
             detectSport(paceToKmh(3), paceToKmh(4), paceToKmh(4)) // 3 - 4 min/km possible
           // TODO: handle other sports: swimming, walking, ....
