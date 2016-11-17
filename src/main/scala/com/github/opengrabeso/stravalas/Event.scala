@@ -49,12 +49,12 @@ object Events {
 
 case class PauseEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def description = s"Pause ${Events.niceDuration(duration)}"
-  def defaultEvent = if (duration>=15) "lap" else ""
+  def defaultEvent = if (duration>=30) "lap" else ""
   def isSplit = false
 }
 case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def description = s"Pause end"
-  def defaultEvent = if (duration >= 30) "lap" else ""
+  def defaultEvent = if (duration >= 50) "lap" else ""
   def isSplit = false
 }
 case class LapEvent(stamp: ZonedDateTime) extends Event {
