@@ -261,7 +261,7 @@ object DataStreamGPS {
 
     val num_bins = 10
 
-    val hist = speeds
+    val histogram = speeds
       .map(x => (((x - min) / (max - min)) * num_bins).floor.toInt)
       .groupBy(identity)
       .map(x => x._1 -> x._2.size)
@@ -276,7 +276,7 @@ object DataStreamGPS {
         if (histLeft.isEmpty || histLeft.head >= countLeft) ret
         else percentileRecurse(countLeft - histLeft.head, histLeft.tail, ret + 1)
       }
-      val slot = percentileRecurse(countUnder, hist, 0)
+      val slot = percentileRecurse(countUnder, histogram, 0)
       slot.toDouble / num_bins * (max - min) + min
     }
 
