@@ -52,3 +52,5 @@ class SuuntoMergeTest extends FlatSpec with Matchers with SuuntoData {
   }
 
 }
+
+

@@ -539,6 +539,12 @@ case class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double])
 
   def offsetDist(dist: Double): DataStreamDist = DataStreamDist(mapStreamValues(_ + dist))
 
+  def distanceForTime(time: ZonedDateTime): Double = {
+    stream.from(time).headOption.map(_._2).getOrElse(stream.last._2)
+  }
+
+
+
   private def rebase = {
     if (stream.isEmpty) this
     else offsetDist(- stream.head._2)

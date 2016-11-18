@@ -125,7 +125,7 @@ object Main {
     private def distWithRelTimes = dist.stream.map(t => secondsInActivity(t._1) -> t._2)
 
    def distanceForTime(time: ZonedDateTime): Double = {
-      dist.stream.from(time).headOption.map(_._2).getOrElse(id.distance)
+      dist.distanceForTime(time)
     }
 
     def routeJS: String = {
@@ -144,10 +144,9 @@ object Main {
 
       val mergedId = ActivityId(id.id, id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
 
-      // TODO: merge events properly
-      val eventsAndSports = (events zip sports) ++ (that.events zip that.sports)
-      // keep only first start Event, change other to Split only
+      val eventsAndSports = ((events zip sports) ++ (that.events zip that.sports)).sortBy(_._1.stamp)
 
+      // keep only first start Event, change other to Split only
       val (begs, others) = eventsAndSports.partition(_._1.isInstanceOf[BegEvent])
       val (ends, rest) = others.partition(_._1.isInstanceOf[EndEvent])
 
@@ -160,7 +159,12 @@ object Main {
 
       val (distFirst, distSecond) = if (dist.stream.head._1 < that.dist.stream.head._1) (dist, that.dist) else (that.dist, dist)
 
-      val offsetSecond = distFirst.stream.lastOption.map(last => distSecond.offsetDist(last._2)).getOrElse(distSecond)
+      val offsetSecond = if (distSecond.stream.nonEmpty && distFirst.stream.nonEmpty) {
+        val offset = distFirst.distanceForTime(distSecond.stream.head._1)
+        distSecond.offsetDist(offset)
+      } else {
+        distSecond
+      }
 
       val mergedDist = dist.pickData(distFirst.stream ++ offsetSecond.stream)
       val mergedAttr = attributes.map { a =>
