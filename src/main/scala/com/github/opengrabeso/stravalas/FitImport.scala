@@ -4,7 +4,7 @@ import java.io.InputStream
 
 import com.garmin.fit._
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
-import org.joda.time.{Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{DateTime => ZonedDateTime}
 import DateTimeOps._
 import net.suunto3rdparty.{DataStreamDist, DataStreamGPS, DataStreamHR, GPSPoint}
 
@@ -40,9 +40,9 @@ object FitImport {
       val distanceBuffer = ArrayBuffer[(ZonedDateTime, Double)]()
       val lapBuffer=ArrayBuffer[ZonedDateTime]()
 
-      case class FitHeader(sport: String)
+      case class FitHeader(sport: Option[String] = None)
 
-      var header = Option.empty[FitHeader]
+      var header = FitHeader()
 
       val listener = new MesgListener {
 
@@ -80,16 +80,22 @@ object FitImport {
               val prodName = Option(mesg.getField(FileIdMesg.ProductNameFieldNum))
 
             case MesgNum.SESSION =>
-              val sport = Option(mesg.getField(SessionMesg.SportFieldNum))
-                .map(_.getIntegerValue.toInt)
-                .map {
-                  case Sport.CYCLING.getValue => "Ride"
-                  case Sport.RUNNING.getValue => "Run"
-                  //case Sport.CROSS_COUNTRY_SKIING => "Ride"
-                  case _ => "Ride" // TODO: clean fallback
-                }
+              // https://strava.github.io/api/v3/uploads/
+              // ride, run, swim, workout, hike, walk, nordicski, alpineski, backcountryski, iceskate, inlineskate, kitesurf,
+              // rollerski, windsurf, workout, snowboard, snowshoe, ebikeride, virtualride
+              val sport = Option(Sport.getByValue(mesg.getField(SessionMesg.SportFieldNum).getShortValue)).map {
+                case Sport.CYCLING => "Ride"
+                case Sport.RUNNING => "Run"
+                case Sport.HIKING => "Hike"
+                case Sport.WALKING => "Walk"
+                case Sport.CROSS_COUNTRY_SKIING => "nordicski"
+                case Sport.GENERIC => "Workout"
+                case _ => "Workout"
+              }
 
-              println(sport)
+              if (sport.isDefined) {
+                header = header.copy(sport = sport)
+              }
 
             case _ =>
 
@@ -102,11 +108,6 @@ object FitImport {
       val gpsStream = SortedMap(gpsBuffer:_*)
       val hrStream = SortedMap(hrBuffer:_*)
 
-      val startTime = gpsStream.head._1
-      val endTime = gpsStream.last._1
-
-      val duration = Seconds.secondsBetween(startTime, endTime).getSeconds
-
       val gpsDataStream = new DataStreamGPS(gpsStream)
       val distData = if (distanceBuffer.nonEmpty) {
         SortedMap(distanceBuffer:_*)
@@ -118,7 +119,11 @@ object FitImport {
         SortedMap(distances:_*)
       }
 
-      val id = Main.ActivityId(0, "Activity", startTime, "Ride", duration, distData.last._2)
+      val allStreams = Seq(gpsStream, distData)
+      val startTime = allStreams.map(_.head._1).min
+      val endTime = allStreams.map(_.last._1).max
+
+      val id = Main.ActivityId(0, "Activity", startTime, endTime, header.sport.getOrElse("Workout"), distData.last._2)
 
       object ImportedStreams extends Main.ActivityStreams {
 

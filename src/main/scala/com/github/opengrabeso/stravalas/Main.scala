@@ -67,11 +67,11 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  case class ActivityId(id: Long, name: String, startTime: ZonedDateTime, sportName: String, duration:Int, distance: Double) {
+  case class ActivityId(id: Long, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: String, distance: Double) {
 
     def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
 
-    def endTime: ZonedDateTime = startTime.withDurationAdded(duration, 1000)
+    val duration: Int = Seconds.secondsBetween(startTime, endTime).getSeconds
 
     def link: String = s"https://www.strava.com/activities/$id"
   }
@@ -86,7 +86,7 @@ object Main {
       val duration = json.path("elapsed_time").intValue
       val distance = json.path("distance").doubleValue
 
-      ActivityId(id, name, time, sportName, duration, distance)
+      ActivityId(id, name, time, time.plusSeconds(duration), sportName, distance)
     }
   }
 
@@ -120,39 +120,17 @@ object Main {
     def lat: Double = (begPos._1 + endPos._1) * 0.5
     def lon: Double = (begPos._2 + endPos._2) * 0.5
 
-    lazy val mapTimeToDist: Map[Int, Double] = {
-      def scanTime(now: Int, timeDist: Seq[(Int, Double)], ret: Seq[(Int, Double)]): Seq[(Int, Double)] = {
-        timeDist match {
-          case head +: tail =>
-            if (now >= head._1) {
-              scanTime(now + 1, tail, head +: ret)
-            } else {
-              scanTime(now + 1, timeDist, (now -> head._2) +: ret)
-            }
-          case Seq() =>
-            ret
-        }
-      }
+    private def distWithRelTimes = dist.stream.map(t => secondsInActivity(t._1) -> t._2)
 
-      val timeRelStamps = distWithRelTimes
-
-      val filledTime = scanTime(0, timeRelStamps, Nil)
-
-      filledTime.toMap
-    }
-
-    private def distWithRelTimes = dist.stream.toList.map(t => secondsInActivity(t._1) -> t._2)
-
-    def distanceForTime(time: ZonedDateTime): Double = {
-      val relTime = Seconds.secondsBetween(id.startTime, time).getSeconds
-      mapTimeToDist(relTime)
+   def distanceForTime(time: ZonedDateTime): Double = {
+      dist.stream.from(time).headOption.map(_._2).getOrElse(id.distance)
     }
 
     def routeJS: String = {
-      // TODO: distances may have different times than GPS
-      (gps.stream.values zip distWithRelTimes).map { case (GPSPoint(lng, lat, _),(t, d)) =>
-
-        s"[$lat,$lng,$t,$d]"
+      gps.stream.map { case (time,g) =>
+        val t = id.secondsInActivity(time)
+        val d = distanceForTime(time)
+        s"[${g.longitude},${g.latitude},$t,$d]"
       }.mkString("[\n", ",\n", "]\n")
     }
 
@@ -162,7 +140,7 @@ object Main {
       val endTime = Seq(id.endTime, that.id.endTime).max
       val duration = Seconds.secondsBetween(begTime, endTime).getSeconds
 
-      val mergedId = ActivityId(id.id, id.name, begTime, id.sportName, duration, id.distance + that.id.distance)
+      val mergedId = ActivityId(id.id, id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
 
       // TODO: merge events properly
       val eventsAndSports = (events zip sports) ++ (that.events zip that.sports)
