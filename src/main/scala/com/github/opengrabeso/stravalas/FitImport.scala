@@ -40,6 +40,10 @@ object FitImport {
       val distanceBuffer = ArrayBuffer[(ZonedDateTime, Double)]()
       val lapBuffer=ArrayBuffer[ZonedDateTime]()
 
+      case class FitHeader(sport: String)
+
+      var header = Option.empty[FitHeader]
+
       val listener = new MesgListener {
 
         override def onMesg(mesg: Mesg): Unit = {
@@ -71,6 +75,22 @@ object FitImport {
               for (time <- timestamp) {
                 lapBuffer += fromTimestamp(time)
               }
+            case MesgNum.FILE_ID =>
+              val prod = Option(mesg.getField(FileIdMesg.ProductFieldNum))
+              val prodName = Option(mesg.getField(FileIdMesg.ProductNameFieldNum))
+
+            case MesgNum.SESSION =>
+              val sport = Option(mesg.getField(SessionMesg.SportFieldNum))
+                .map(_.getIntegerValue.toInt)
+                .map {
+                  case Sport.CYCLING.getValue => "Ride"
+                  case Sport.RUNNING.getValue => "Run"
+                  //case Sport.CROSS_COUNTRY_SKIING => "Ride"
+                  case _ => "Ride" // TODO: clean fallback
+                }
+
+              println(sport)
+
             case _ =>
 
           }
