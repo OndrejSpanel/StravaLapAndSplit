@@ -1,11 +1,10 @@
 package com.github.opengrabeso.stravalas
 
-import java.util.Random
-
 import com.garmin.fit._
 import Main.ActivityEvents
 import com.garmin.fit
 import DateTimeOps._
+import net.suunto3rdparty.{DataStream, DataStreamHR, GPSPoint}
 import org.joda.time.{Seconds, DateTime => JodaDateTime}
 
 object FitExport {
@@ -47,33 +46,33 @@ object FitExport {
       }
     }
 
-    def encodeLatLng(msg: RecordMesg, latlng: (Double, Double)) = {
+    def encodeGPS(msg: RecordMesg, gps: GPSPoint) = {
       val longLatScale = (1L << 31).toDouble / 180
-      msg.setPositionLat((latlng._1 * longLatScale).toInt)
-      msg.setPositionLong((latlng._2 * longLatScale).toInt)
+      msg.setPositionLat((gps.latitude * longLatScale).toInt)
+      msg.setPositionLong((gps.longitude * longLatScale).toInt)
+      gps.elevation.foreach(e => msg.setAltitude(e.toFloat))
 
     }
 
-    class GPSEvent(val time: JodaDateTime, val lat: Double, val lng: Double) extends DataEvent(time, encodeLatLng(_, (lat, lng)))
+    class GPSEvent(val time: JodaDateTime, val gps: GPSPoint) extends DataEvent(time, encodeGPS(_, gps))
 
     class AttribEvent(val time: JodaDateTime, data: Int, set: (RecordMesg, Int) => Unit) extends DataEvent(time, set(_, data))
 
-    import events.id.startTime
-
-    val gpsAsEvents = (events.gps zip events.stamps).map { case (gps, stamp) =>
-      new GPSEvent(startTime.plusSeconds(stamp.time), gps._1, gps._2)
+    val gpsAsEvents = events.gps.stream map { case (t, gps) =>
+      new GPSEvent(t, gps)
     }
 
-    val attributesAsEvents = events.attributes.flatMap { case (name, attrib) =>
+    val attributesAsEvents = events.attributes.flatMap { attrib =>
       val createAttribEvent: (RecordMesg, Int) => Unit = (msg, value) =>
-        name match {
-          case "heartrate" => msg.setHeartRate(value.toShort)
-          case "watts" => msg.setPower(value)
-          case "cadence" => msg.setCadence(value.toShort)
-          case "temp" => msg.setTemperature(value.toByte)
+        attrib match {
+          case x: DataStreamHR => msg.setHeartRate(value.toShort)
+          //case "watts" => msg.setPower(value)
+          //case "cadence" => msg.setCadence(value.toShort)
+          //case "temp" => msg.setTemperature(value.toByte)
+          case _ => ???
         }
-      (attrib zip events.stamps).map { case (data, stamp) =>
-        new AttribEvent(startTime.plusSeconds(stamp.time), data, createAttribEvent)
+      attrib.stream.map { case (t, data) =>
+        new AttribEvent(t, data.asInstanceOf[Int], createAttribEvent)
       }
     }
 
@@ -120,19 +119,20 @@ object FitExport {
 
     val lapsAsEvents = events.events.flatMap {
       case LapEvent(time) =>
-        Some(new LapEvent(startTime.plusSeconds(time.time)))
+        Some(new LapEvent(time))
       case _ =>
         None
     }
 
     val allEvents = (gpsAsEvents ++ attributesAsEvents ++ lapsAsEvents).toVector.sortBy(_.time)
 
-    LapAutoClose.closeLap(allEvents.head.time)
+    val timeBeg = allEvents.head.time
+    val timeEnd = allEvents.last.time
+
+    LapAutoClose.closeLap(timeBeg)
     allEvents.foreach(_.encode(encoder))
 
-    val timeBeg = events.id.startTime
-    val durationSec = events.gps.size
-    val timeEnd = events.id.startTime.plusSeconds(durationSec)
+    val durationSec = Seconds.secondsBetween(timeBeg, timeEnd).getSeconds
 
     LapAutoClose.closeLap(timeEnd)
 

@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravalas
 package requests
 
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
+import org.joda.time.{DateTime => ZonedDateTime, Seconds}
 import spark.{Request, Response, Session}
 
 import scala.xml.NodeSeq
@@ -45,7 +46,8 @@ trait ActivityRequestHandler {
         <th>Action</th>
       </tr>{val ees = activityData.editableEvents
       var lastSport = ""
-      var lastTime = -1
+      var lastTime = Option.empty[ZonedDateTime]
+      val startTime = activityData.id.startTime
       for ((t, i) <- activityData.events.zipWithIndex) yield {
         val t = activityData.events(i)
         val ee = ees(i)
@@ -54,14 +56,14 @@ trait ActivityRequestHandler {
         lastSport = ee.sport
         <tr>
           <td> {xml.Unparsed(t.description)} </td>
-          <td> {Main.displaySeconds(t.stamp.time)} </td>
-          <td> {Main.displayDistance(t.stamp.dist)} </td>
+          <td> {Main.displaySeconds(activityData.secondsInActivity(t.stamp))} </td>
+          <td> {Main.displayDistance(activityData.distanceForTime(t.stamp))} </td>
           <td> {sport} </td>
           <td>
             {val types = t.listTypes
-          if (types.length != 1 && lastTime != t.stamp.time) {
-            lastTime = t.stamp.time
-            <select id={t.stamp.time.toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
+          if (types.length != 1 && !lastTime.contains(t.stamp)) {
+            lastTime = Some(t.stamp)
+            <select id={activityData.secondsInActivity(t.stamp).toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
               {for (et <- types) yield {
               <option value={et.id} selected={if (action == et.id) "" else null}>
                 {et.display}
@@ -73,16 +75,17 @@ trait ActivityRequestHandler {
               <input type="hidden" name="events" value={t.defaultEvent}/>
           }}
           </td>
-          <td class="cellNoBorder" id={s"link${t.stamp.time.toString}"}> </td>
+          <td class="cellNoBorder" id={s"link${activityData.secondsInActivity(t.stamp).toString}"}> </td>
         </tr>
       }}
-    </table>
-
-      <div id='map'></div>
-
-      <script type="text/javascript">initEvents()</script>
-
-      <script>{mapJS(activityData, auth.mapboxToken)}</script>
+    </table> ++ {
+      if (activityData.hasGPS) {
+        <div id='map'></div>
+          <script>
+            {mapJS(activityData, auth.mapboxToken)}
+          </script>
+      } else <div></div>
+    } :+ <script type="text/javascript">initEvents()</script>
 
     ActivityContent(headContent, bodyContent)
   }
@@ -100,29 +103,44 @@ trait ActivityRequestHandler {
 
     /**
      * @param {String} id
-     * @param event
+     * @param {String} time
+     * @param {String} action
+     * @param {String} value
      * @return {String}
      */
-    function splitLink(id, event) {
-      var time = event[1];
+    function linkWithEvents(id, time, action, value) {
       var splitWithEvents =
               '  <input type="hidden" name="id" value="' + id + '"/>' +
               '  <input type="hidden" name="auth_token" value="' + authToken + '"/>' +
               '  <input type="hidden" name="operation" value="split"/>' +
               '  <input type="hidden" name="time" value="' + time + '"/>' +
-              '  <input type="submit" value="Download"/>';
+              '  <input type="submit" value="' + value + '"/>';
+
+      events.forEach( function(e) {
+        splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
+      });
+
+      return '<form action="' + action + '" method="get" style="display:inline-block">' + splitWithEvents  + '</form>';
+    }
+    /**
+     * @param {String} id
+     * @param event
+     * @return {String}
+     */
+    function splitLink(id, event) {
+      var time = event[1];
+      var downloadButton = linkWithEvents(id, time, "download", "Download");
+      var uploadButton = linkWithEvents(id, time, "upload-strava", "Upload to Strava");
 
       var nextSplit = null;
       events.forEach( function(e) {
-        splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
         if (e[0].lastIndexOf("split", 0) == 0 && e[1] > time && nextSplit == null) {
           nextSplit = e;
         }
       });
-
       if (nextSplit == null) nextSplit = events[events.length-1];
 
-      var description = "";
+      var description = "???";
       if (nextSplit) {
         var km = (nextSplit[2] - event[2])/1000;
         var duration = nextSplit[1] - event[1];
@@ -131,7 +149,7 @@ trait ActivityRequestHandler {
         var speedKmH = duration > 0 ? km * 3600 / duration : 0;
         description = km.toFixed(2) + " km / " + paceMinKm.toFixed(2) + " min/km / " + speedKmH.toFixed(1) + " km/h";
       }
-      return '<form action="download" method="get">' + splitWithEvents + description + '</form>';
+      return downloadButton  + uploadButton + description;
 
     }
 
@@ -369,34 +387,35 @@ trait ActivityRequestHandler {
 
     }
 
-    var lat = ${activityData.lat};
-    var lon = ${activityData.lon};
-    mapboxgl.accessToken = "$mapBoxToken";
-    var map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/outdoors-v9',
-      center: [lon, lat],
-      zoom: 12
-    });
+    if (${activityData.hasGPS}) {
+      var lat = ${activityData.lat};
+      var lon = ${activityData.lon};
+      mapboxgl.accessToken = "$mapBoxToken";
+      var map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/outdoors-v9',
+        center: [lon, lat],
+        zoom: 12
+      });
 
-    map.on('load', function () {
+      map.on('load', function () {
 
-      var xmlHttp = new XMLHttpRequest();
-      xmlHttp.onreadystatechange = function() {
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-          var route = JSON.parse(xmlHttp.responseText);
-          renderRoute(route);
-          renderEvents(events, route);
-        }
-      };
-    xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
-      xmlHttp.send(null)});
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function() {
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+            var route = JSON.parse(xmlHttp.responseText);
+            renderRoute(route);
+            renderEvents(events, route);
+          }
+        };
+      xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
+        xmlHttp.send(null)});
+    }
     """)
   }
 }
 
-object ActivityPage extends DefineRequest with ActivityRequestHandler {
-  def handle = Handle("/activity")
+object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandler {
 
   override def html(request: Request, resp: Response) = {
     val session = request.session()

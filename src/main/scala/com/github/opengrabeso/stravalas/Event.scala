@@ -1,17 +1,13 @@
 package com.github.opengrabeso.stravalas
-
-case class Stamp(time: Int, dist: Double) {
-  def offset(t: Int, d: Double) = Stamp(time + t, dist + d)
-}
+import org.joda.time.{DateTime => ZonedDateTime}
 
 case class EventKind(id: String, display: String)
 
 sealed abstract class Event {
-  def stamp: Stamp
+  def stamp: ZonedDateTime
   def description: String
-  def isSplit: Boolean
+  def isSplit: Boolean // splits need to be known when exporting
 
-  def id: String = stamp.time.toString
   def defaultEvent: String
 
   protected def listSplitTypes: Seq[EventKind] = Seq(
@@ -51,23 +47,23 @@ object Events {
 
 }
 
-case class PauseEvent(duration: Int, stamp: Stamp) extends Event {
+case class PauseEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def description = s"Pause ${Events.niceDuration(duration)}"
-  def defaultEvent = if (duration>=15) "lap" else ""
+  def defaultEvent = if (duration>=30) "lap" else ""
   def isSplit = false
 }
-case class PauseEndEvent(duration: Int, stamp: Stamp) extends Event {
-  def description = s"Pause end"
-  def defaultEvent = if (duration >= 30) "lap" else ""
+case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
+  def description = "Pause end"
+  def defaultEvent = if (duration >= 50) "lap" else ""
   def isSplit = false
 }
-case class LapEvent(stamp: Stamp) extends Event {
+case class LapEvent(stamp: ZonedDateTime) extends Event {
   def description = "Lap"
   def defaultEvent = "lap"
   def isSplit = false
 }
 
-case class EndEvent(stamp: Stamp) extends Event {
+case class EndEvent(stamp: ZonedDateTime) extends Event {
   def description = "End"
   def defaultEvent = "end"
   def isSplit = true
@@ -75,7 +71,7 @@ case class EndEvent(stamp: Stamp) extends Event {
   override def listTypes: Array[EventKind] = Array(EventKind("", "--"))
 }
 
-case class BegEvent(stamp: Stamp) extends Event {
+case class BegEvent(stamp: ZonedDateTime) extends Event {
   def description = "<b>*** Start activity</b>"
   def defaultEvent = "split"
   def isSplit = true
@@ -83,7 +79,7 @@ case class BegEvent(stamp: Stamp) extends Event {
   override def listTypes = listSplitTypes.toArray
 }
 
-case class SplitEvent(stamp: Stamp) extends Event {
+case class SplitEvent(stamp: ZonedDateTime) extends Event {
   def description = "Split"
   def defaultEvent = "split"
   def isSplit = true
@@ -99,12 +95,12 @@ trait SegmentTitle {
 
 }
 
-case class StartSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
+case class StartSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
   def description: String = s"Start $title"
   def defaultEvent = ""
   def isSplit = false
 }
-case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends Event with SegmentTitle {
+case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
   def description: String = s"End $title"
   def defaultEvent = ""
   def isSplit = false
@@ -114,14 +110,5 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: Stamp) extends E
 case class EditableEvent(var action: String, time: Int, km: Double, sport: String) {
   override def toString: String = {
     s""""$action", $time, $km, "$sport""""
-  }
-}
-
-object EditableEvent {
-  def apply(action: String, e1: Event, sport: String) = {
-    new EditableEvent(action, e1.stamp.time, e1.stamp.dist, sport)
-  }
-  def apply(e1: Event, sport: String) = {
-    new EditableEvent(e1.defaultEvent, e1.stamp.time, e1.stamp.dist, sport)
   }
 }

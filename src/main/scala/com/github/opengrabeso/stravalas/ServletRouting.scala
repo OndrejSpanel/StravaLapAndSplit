@@ -22,12 +22,15 @@ class ServletRouting extends SparkApplication {
     // solution with reflection is elegant, but overcomplicated (and hard to get working with Google App Engine) and slow
     import requests._
     val handlers: Seq[DefineRequest] = Seq(
-      ActivityPage, Download, IndexHtml, RouteData, SelectActivity, Upload, LogOut
+      IndexHtml, LogOut,
+      SelectActivity, Upload,
+      ActivityPage, Download, UploadToStrava,
+      RouteData
     )
 
     def addPage(h: DefineRequest) = {
-      val r = route(h.handle.value) (h.apply)
-      h.handle.method match {
+      val r = route(h.handleUri) (h.apply)
+      h.method match {
         case Method.Get => get(r)
         case Method.Put => put(r)
         case Method.Post => post(r)

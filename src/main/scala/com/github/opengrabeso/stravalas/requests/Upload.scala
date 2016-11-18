@@ -6,9 +6,7 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
 import spark.{Request, Response}
 
-object Upload extends DefineRequest with ActivityRequestHandler {
-  def handle = Handle("/upload", method = Method.Post)
-
+object Upload extends DefineRequest("/upload", method = Method.Post) with ActivityRequestHandler {
   override def html(request: Request, resp: Response) = {
     val session = request.session
     val auth = session.attribute[Main.StravaAuthResult]("auth")
@@ -42,27 +40,43 @@ object Upload extends DefineRequest with ActivityRequestHandler {
       } else None
     }
 
-    val d = data.foldLeft(data.next) {
-      (total,d) =>
-        total._1 -> total._2.merge(d._2)
+    if (data.hasNext) {
+      val d = data.foldLeft(data.next) {
+        (total, d) =>
+          total._1 -> total._2.merge(d._2)
+      }
+
+      // TODO: pass data directly to JS?
+      session.attribute("events-" + d._1, d._2)
+      val content = htmlHelper(d._1, d._2, session, resp)
+
+      <html>
+        <head>
+          {headPrefix}
+          <title>Strava Split And Lap</title>
+          {content.head}
+        </head>
+        <body>
+          {bodyHeader(auth)}
+          {content.body}
+          {bodyFooter}
+        </body>
+      </html>
+
+    } else {
+      <html>
+        <head>
+          {headPrefix}
+          <title>Strava Split And Lap</title>
+        </head>
+        <body>
+          {bodyHeader(auth)}
+          <p>Empty activity</p>
+          {bodyFooter}
+        </body>
+      </html>
     }
 
-    // TODO: pass data directly to JS?
-    session.attribute("events-" + d._1, d._2)
-    val content = htmlHelper(d._1, d._2, session, resp)
-
-    <html>
-      <head>
-        {headPrefix}
-        <title>Strava Split And Lap</title>
-        {content.head}
-      </head>
-      <body>
-        {bodyHeader(auth)}
-        {content.body}
-        {bodyFooter}
-      </body>
-    </html>
 
   }
 }

@@ -15,8 +15,7 @@ object Method {
 
 case class Handle(value: String, method: Method = Method.Get)
 
-trait DefineRequest {
-  def handle: Handle
+abstract class DefineRequest(val handleUri: String, val method: Method = Method.Get) {
 
   def apply(request: Request, resp: Response): AnyRef = {
     val nodes = html(request, resp)

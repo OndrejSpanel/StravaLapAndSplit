@@ -7,9 +7,7 @@ import spark.{Request, Response}
 
 import scala.util.Try
 
-object SelectActivity extends DefineRequest {
-  def handle = Handle("selectActivity")
-
+object SelectActivity extends DefineRequest("/selectActivity") {
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val code = request.queryParams("code")
@@ -65,12 +63,18 @@ object SelectActivity extends DefineRequest {
             </p>
           </form>
         }
-        <form action="upload" method="post" enctype="multipart/form-data">
-          <p>Select files to upload
-            <input type="file" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/>
+          <form action="upload" method="post" enctype="multipart/form-data">
+            <p>Select files to upload
+              <input type="file" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/>
+            </p>
+            <input type="submit" value="Upload"/>
+          </form>}
+          <p>Strava activity Id:
+            <form action="activity" method="get">
+              <input type="text" name="activityId" value=""/>
+              <input type="submit" value="Submit"/>
+            </form>
           </p>
-          <input type="submit" value="Upload"/>
-        </form>}
           {bodyFooter}
         </body>
       </html>
