@@ -78,13 +78,14 @@ trait ActivityRequestHandler {
           <td class="cellNoBorder" id={s"link${activityData.secondsInActivity(t.stamp).toString}"}> </td>
         </tr>
       }}
-    </table>
-
-      <div id='map'></div>
-
-      <script type="text/javascript">initEvents()</script>
-
-      <script>{mapJS(activityData, auth.mapboxToken)}</script>
+    </table> ++ {
+      if (activityData.hasGPS) {
+        <div id='map'></div>
+          <script>
+            {mapJS(activityData, auth.mapboxToken)}
+          </script>
+      } else <div></div>
+    } :+ <script type="text/javascript">initEvents()</script>
 
     ActivityContent(headContent, bodyContent)
   }
@@ -386,28 +387,30 @@ trait ActivityRequestHandler {
 
     }
 
-    var lat = ${activityData.lat};
-    var lon = ${activityData.lon};
-    mapboxgl.accessToken = "$mapBoxToken";
-    var map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/outdoors-v9',
-      center: [lon, lat],
-      zoom: 12
-    });
+    if (${activityData.hasGPS}) {
+      var lat = ${activityData.lat};
+      var lon = ${activityData.lon};
+      mapboxgl.accessToken = "$mapBoxToken";
+      var map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/outdoors-v9',
+        center: [lon, lat],
+        zoom: 12
+      });
 
-    map.on('load', function () {
+      map.on('load', function () {
 
-      var xmlHttp = new XMLHttpRequest();
-      xmlHttp.onreadystatechange = function() {
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-          var route = JSON.parse(xmlHttp.responseText);
-          renderRoute(route);
-          renderEvents(events, route);
-        }
-      };
-    xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
-      xmlHttp.send(null)});
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function() {
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+            var route = JSON.parse(xmlHttp.responseText);
+            renderRoute(route);
+            renderEvents(events, route);
+          }
+        };
+      xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
+        xmlHttp.send(null)});
+    }
     """)
   }
 }

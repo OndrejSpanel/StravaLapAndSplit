@@ -117,8 +117,10 @@ object Main {
     def begPos: (Double, Double) = convertGPSToPair(gps.stream.head._2)
     def endPos: (Double, Double) = convertGPSToPair(gps.stream.last._2)
 
-    def lat: Double = (begPos._1 + endPos._1) * 0.5
-    def lon: Double = (begPos._2 + endPos._2) * 0.5
+    def lat: Double = if (hasGPS) (begPos._1 + endPos._1) * 0.5 else 0.0
+    def lon: Double = if (hasGPS) (begPos._2 + endPos._2) * 0.5 else 0.0
+
+    def hasGPS: Boolean = gps.stream.nonEmpty
 
     private def distWithRelTimes = dist.stream.map(t => secondsInActivity(t._1) -> t._2)
 
@@ -251,7 +253,7 @@ object Main {
 
     val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
-    val distStream = act.latlng.distStream
+    val distStream = if (act.latlng.stream.nonEmpty) act.latlng.distStream else act.dist.stream.toSeq
 
     val smoothingSec = 10
     val speedStream = DataStreamGPS.computeSpeedStream(distStream, smoothingSec)

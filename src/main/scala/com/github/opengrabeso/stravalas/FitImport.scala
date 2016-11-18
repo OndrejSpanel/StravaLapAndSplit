@@ -119,7 +119,7 @@ object FitImport {
         SortedMap(distances:_*)
       }
 
-      val allStreams = Seq(gpsStream, distData)
+      val allStreams = Seq(gpsStream, distData, hrStream).filter(_.nonEmpty)
       val startTime = allStreams.map(_.head._1).min
       val endTime = allStreams.map(_.last._1).max
 
