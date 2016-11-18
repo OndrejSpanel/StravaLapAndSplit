@@ -85,7 +85,7 @@ object FitImport {
       val startTime = gpsStream.head._1
       val endTime = gpsStream.last._1
 
-      val duration = Seconds.secondsBetween(startTime, gpsStream.last._1).getSeconds
+      val duration = Seconds.secondsBetween(startTime, endTime).getSeconds
 
       val gpsDataStream = new DataStreamGPS(gpsStream)
       val distData = if (distanceBuffer.nonEmpty) {
