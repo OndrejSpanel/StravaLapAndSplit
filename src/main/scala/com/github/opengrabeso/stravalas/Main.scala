@@ -257,7 +257,11 @@ object Main {
 
     val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
-    val distStream = if (act.latlng.stream.nonEmpty) act.latlng.distStream else act.dist.stream.toSeq
+    val distStream = if (act.latlng.stream.nonEmpty) {
+      act.latlng.distStream
+    } else {
+      DataStreamGPS.distStreamFromRouteStream(act.dist.stream.toSeq)
+    }
 
     val smoothingSec = 10
     val speedStream = DataStreamGPS.computeSpeedStream(distStream, smoothingSec)

@@ -183,7 +183,6 @@ object DataStreamGPS {
     }
 
     val distTimes = input.map(_._1)
-    // duplicate first sample to provide a zero time for it
 
     val timeDeltas = (distTimes.head +: distTimes zip distTimes).map(tt => Seconds.secondsBetween(tt._1, tt._2).getSeconds)
 
@@ -224,6 +223,13 @@ object DataStreamGPS {
     val route = distDeltas.scanLeft(0d) { case (sum, (_, d)) => sum + d }
     // scanLeft adds initial value as a first element - use tail to drop it
     distDeltas.map(_._1) zip route.tail
+  }
+
+  def distStreamFromRouteStream(dist: DistStream): DistStream = {
+    val times = dist.map(_._1)
+    val routeValues = dist.map(_._2)
+    val distValues = 0.0 +: (routeValues zip routeValues.drop(1)).map(p => p._2 - p._1)
+    times zip distValues
   }
 
   def routeStreamFromSpeedStream(distDeltas: DistStream): DistStream = {
