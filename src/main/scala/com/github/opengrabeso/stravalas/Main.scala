@@ -123,11 +123,7 @@ object Main {
 
     def hasGPS: Boolean = gps.stream.nonEmpty
 
-    private def distWithRelTimes = dist.stream.map(t => secondsInActivity(t._1) -> t._2)
-
-   def distanceForTime(time: ZonedDateTime): Double = {
-      dist.distanceForTime(time)
-    }
+    def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
     def routeJS: String = {
       gps.stream.map { case (time,g) =>
@@ -141,7 +137,6 @@ object Main {
       // select some id (name, sport ...)
       val begTime = Seq(id.startTime, that.id.startTime).min
       val endTime = Seq(id.endTime, that.id.endTime).max
-      val duration = Seconds.secondsBetween(begTime, endTime).getSeconds
 
       val mergedId = ActivityId(id.id, id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
 
