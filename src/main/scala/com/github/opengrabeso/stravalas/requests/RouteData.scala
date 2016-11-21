@@ -13,7 +13,7 @@ object RouteData extends DefineRequest("/route-data") {
     val id = req.queryParams("id")
 
     val contentType = "application/json"
-    val events = session.attribute("events-"+id).asInstanceOf[Main.ActivityEvents]
+    val events = Storage.load[Main.ActivityEvents]("events-"+id)
 
     if (events != null) {
       resp.`type`(contentType)

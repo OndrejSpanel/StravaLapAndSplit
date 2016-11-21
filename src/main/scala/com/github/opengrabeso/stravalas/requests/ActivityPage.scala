@@ -418,7 +418,8 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
     val auth = session.attribute[Main.StravaAuthResult]("auth")
     val actId = request.queryParams("activityId")
     val activityData = Main.getEventsFrom(auth.token, actId)
-    session.attribute("events-" + actId, activityData)
+
+    Storage.store("events-" + actId, activityData)
 
     val content = htmlHelper(actId, activityData, session, resp)
 

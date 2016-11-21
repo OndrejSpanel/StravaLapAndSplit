@@ -19,7 +19,7 @@ abstract class ProcessFile(value: String, method: Method = Method.Get) extends D
         val splitTime = req.queryParams("time").toInt
         val session = req.session
 
-        val events = session.attribute("events-" + id).asInstanceOf[Main.ActivityEvents]
+        val events = Storage.load[Main.ActivityEvents]("events-" + id)
 
         val adjusted = Main.adjustEvents(events, eventsInput)
 
@@ -31,20 +31,6 @@ abstract class ProcessFile(value: String, method: Method = Method.Get) extends D
 
           process(req, resp, export, s"attachment;filename=split_${id}_$splitTime.fit")
         }
-
-        Nil
-
-      case "process" =>
-
-        val eventsInput = req.raw.getParameterValues("events")
-
-        val events = Main.getEventsFrom(authToken, id)
-
-        val adjusted = Main.adjustEvents(events, eventsInput)
-
-        val export = FitExport.export(adjusted)
-
-        process(req, resp, export, s"attachment;filename=split_$id.fit")
 
         Nil
 

@@ -34,14 +34,15 @@ sealed abstract class DataStream[Item] {
 
   def stream: DataMap
 
-  assert(stream.isEmpty || stream.head._1 <= stream.last._1)
+  // stream may be null during serialization
+  assert(stream == null || stream.isEmpty || stream.head._1 <= stream.last._1)
 
   def mapStreamValues[T](f: Item => T): SortedMap[ZonedDateTime, T] = DataStream.mapStreamValues(stream, f)
 
   def pickData(data: DataMap): DataStream[Item]
 
-  val startTime: Option[ZonedDateTime] = stream.headOption.map(_._1)
-  val endTime: Option[ZonedDateTime] = stream.lastOption.map(_._1)
+  def startTime: Option[ZonedDateTime] = stream.headOption.map(_._1)
+  def endTime: Option[ZonedDateTime] = stream.lastOption.map(_._1)
 
   def inTimeRange(b: ZonedDateTime, e: ZonedDateTime): Boolean = {
     startTime.forall(_ >= b) && endTime.forall(_ <= e)
@@ -529,6 +530,7 @@ case class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HR
 }
 
 case class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream[Int] {
+
   def typeToLog = "HR"
 
   override def pickData(data: DataMap) = new DataStreamHR(data)
