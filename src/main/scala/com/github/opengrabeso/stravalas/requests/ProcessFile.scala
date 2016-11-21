@@ -11,15 +11,15 @@ abstract class ProcessFile(value: String, method: Method = Method.Get) extends D
 
     val id = req.queryParams("id")
     val op = req.queryParams("operation")
-    val authToken = req.queryParams("auth_token")
+    val session = req.session
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     op match {
       case "split" =>
         val eventsInput = req.raw.getParameterValues("events")
         val splitTime = req.queryParams("time").toInt
-        val session = req.session
 
-        val events = Storage.load[Main.ActivityEvents]("events-" + id)
+        val events = Storage.load[Main.ActivityEvents]("events-" + id, auth.userId)
 
         val adjusted = Main.adjustEvents(events, eventsInput)
 

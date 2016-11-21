@@ -18,6 +18,11 @@ object Storage {
 
   private def fileId(filename: String) = new GcsFilename(bucket, filename)
 
+  // user id needed so that files from different users are not conflicting
+  private def userFilename(filename: String, userId: String) = {
+    userId + "/" + filename
+  }
+
   private final val gcsService = GcsServiceFactory.createGcsService(
     new RetryParams.Builder()
     .initialRetryDelayMillis(10)
@@ -39,15 +44,15 @@ object Storage {
     Channels.newInputStream(readChannel)
   }
 
-  def store(filename: String, obj: AnyRef) = {
-    val os = output(filename)
+  def store(filename: String, userId: String, obj: AnyRef) = {
+    val os = output(userFilename(filename, userId))
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj)
     oos.close()
   }
 
-  def load[T : ClassTag](filename: String) = {
-    val is = input(filename)
+  def load[T : ClassTag](filename: String, userId: String) = {
+    val is = input(userFilename(filename, userId))
     val ois = new ObjectInputStream(is)
     ois.readObject().asInstanceOf[T]
   }

@@ -8,7 +8,6 @@ import spark.{Request, Response}
 object IndexHtml extends DefineRequest("/") {
 
   def html(request: Request, resp: Response) = {
-    val session = request.session()
     val code = Option(request.cookie("authCode"))
     if (code.exists(_.nonEmpty)) {
       resp.redirect(s"/selectActivity?code=${URLEncoder.encode(code.get, "UTF-8")}")

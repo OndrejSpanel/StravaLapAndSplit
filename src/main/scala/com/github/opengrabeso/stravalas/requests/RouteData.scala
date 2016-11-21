@@ -11,9 +11,10 @@ object RouteData extends DefineRequest("/route-data") {
     val session = req.session
 
     val id = req.queryParams("id")
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val contentType = "application/json"
-    val events = Storage.load[Main.ActivityEvents]("events-"+id)
+    val events = Storage.load[Main.ActivityEvents]("events-"+id, auth.userId)
 
     if (events != null) {
       resp.`type`(contentType)
