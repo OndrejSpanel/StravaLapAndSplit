@@ -3,19 +3,32 @@ import org.joda.time.{DateTime => ZonedDateTime}
 
 case class EventKind(id: String, display: String)
 
+object Event {
+  object Sport extends Enumeration {
+    // https://strava.github.io/api/v3/uploads/
+    // ride, run, swim, workout, hike, walk, nordicski, alpineski, backcountryski, iceskate, inlineskate, kitesurf,
+    // rollerski, windsurf, workout, snowboard, snowshoe, ebikeride, virtualride
+    val Ride, Run, Swim, Hike, NordicSki, Workout, Walk, AlpineSki, IceSkate, InlineSkate, KiteSurf,
+    RollerSki, WindSurf, Snowboard, Snowshoe, EbikeRide, VirtualRide = Value
+  }
+  type Sport = Sport.Value
+}
+
 sealed abstract class Event {
+  import Event._
+
   def stamp: ZonedDateTime
   def description: String
   def isSplit: Boolean // splits need to be known when exporting
 
   def defaultEvent: String
 
-  protected def listSplitTypes: Seq[EventKind] = Seq(
-    EventKind("split", "Split"),
-    EventKind("splitSwim", "Split (Swim)"),
-    EventKind("splitRun", "Split (Run)"),
-    EventKind("splitRide", "Split (Ride)")
-  )
+  protected def listSplitTypes: Seq[EventKind] = {
+    Sport.values.map { s =>
+      val sport = s.toString
+      EventKind(s"split$sport", s"Activity: $sport")
+    }(collection.breakOut)
+  }
 
   def listTypes: Array[EventKind] = (Seq(
     EventKind("", "--"),
@@ -71,17 +84,17 @@ case class EndEvent(stamp: ZonedDateTime) extends Event {
   override def listTypes: Array[EventKind] = Array(EventKind("", "--"))
 }
 
-case class BegEvent(stamp: ZonedDateTime) extends Event {
+case class BegEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
   def description = "<b>*** Start activity</b>"
-  def defaultEvent = "split"
+  def defaultEvent = s"split${sport.toString}"
   def isSplit = true
 
   override def listTypes = listSplitTypes.toArray
 }
 
-case class SplitEvent(stamp: ZonedDateTime) extends Event {
+case class SplitEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
   def description = "Split"
-  def defaultEvent = "split"
+  def defaultEvent = s"split${sport.toString}"
   def isSplit = true
 }
 
@@ -107,8 +120,8 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) e
 }
 
 
-case class EditableEvent(var action: String, time: Int, km: Double, sport: String) {
+case class EditableEvent(var action: String, time: Int, km: Double) {
   override def toString: String = {
-    s""""$action", $time, $km, "$sport""""
+    s""""$action", $time, $km"""
   }
 }

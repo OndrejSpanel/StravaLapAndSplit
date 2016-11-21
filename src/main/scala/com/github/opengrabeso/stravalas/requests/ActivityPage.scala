@@ -42,7 +42,6 @@ trait ActivityRequestHandler {
         <th>Event</th>
         <th>Time</th>
         <th>km</th>
-        <th>Sport</th>
         <th>Action</th>
       </tr>{val ees = activityData.editableEvents
       var lastSport = ""
@@ -52,13 +51,10 @@ trait ActivityRequestHandler {
         val t = activityData.events(i)
         val ee = ees(i)
         val action = ee.action
-        val sport = if (ee.sport == lastSport) "" else ee.sport
-        lastSport = ee.sport
         <tr>
           <td> {xml.Unparsed(t.description)} </td>
           <td> {Main.displaySeconds(activityData.secondsInActivity(t.stamp))} </td>
           <td> {Main.displayDistance(activityData.distanceForTime(t.stamp))} </td>
-          <td> {sport} </td>
           <td>
             {val types = t.listTypes
           if (types.length != 1 && !lastTime.contains(t.stamp)) {

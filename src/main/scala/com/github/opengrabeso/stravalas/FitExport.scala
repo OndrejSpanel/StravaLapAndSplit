@@ -1,10 +1,10 @@
 package com.github.opengrabeso.stravalas
 
-import com.garmin.fit._
+import com.garmin.fit.{Event => FitEvent, _}
 import Main.ActivityEvents
 import com.garmin.fit
 import DateTimeOps._
-import net.suunto3rdparty.{DataStream, DataStreamHR, GPSPoint}
+import net.suunto3rdparty.{DataStreamHR, GPSPoint}
 import org.joda.time.{Seconds, DateTime => JodaDateTime}
 
 object FitExport {
@@ -84,7 +84,7 @@ object FitExport {
       def closeLap(time: JodaDateTime): Unit = {
         if (openLap && time > lastLapStart) {
           val myMsg = new LapMesg()
-          myMsg.setEvent(Event.LAP)
+          myMsg.setEvent(FitEvent.LAP)
           myMsg.setEventType(EventType.STOP)
           myMsg.setStartTime(toTimestamp(lastLapStart))
           myMsg.setTimestamp(toTimestamp(time))
@@ -105,7 +105,7 @@ object FitExport {
       myMsg.setTimestamp(toTimestamp(timeEnd))
       myMsg.setNumSessions(1)
       myMsg.setType(Activity.MANUAL)
-      myMsg.setEvent(Event.ACTIVITY)
+      myMsg.setEvent(FitEvent.ACTIVITY)
       myMsg.setEventType(EventType.STOP)
       encoder.onMesg(myMsg)
     }
@@ -136,10 +136,14 @@ object FitExport {
 
     LapAutoClose.closeLap(timeEnd)
 
-    val (sport, subsport) = events.id.sportName.toLowerCase match {
-      case "run" => (Sport.RUNNING, SubSport.STREET)
-      case "ride" => (Sport.CYCLING, SubSport.ROAD)
-      case "swim" => (Sport.SWIMMING, SubSport.LAP_SWIMMING)
+    val (sport, subsport) = events.id.sportName match {
+      // TODO: handle other sports
+      case Event.Sport.Run => (Sport.RUNNING, SubSport.STREET)
+      case Event.Sport.Ride => (Sport.CYCLING, SubSport.ROAD)
+      case Event.Sport.Swim => (Sport.SWIMMING, SubSport.GENERIC)
+      case Event.Sport.Hike => (Sport.HIKING, SubSport.GENERIC)
+      case Event.Sport.Walk => (Sport.WALKING, SubSport.GENERIC)
+      case Event.Sport.NordicSki => (Sport.CROSS_COUNTRY_SKIING, SubSport.GENERIC)
       case _ => (Sport.GENERIC, SubSport.GENERIC)
     }
 
@@ -155,7 +159,7 @@ object FitExport {
       myMsg.setFirstLapIndex(0)
       myMsg.setNumLaps(LapAutoClose.lapCounter + 1)
 
-      myMsg.setEvent(Event.SESSION)
+      myMsg.setEvent(FitEvent.SESSION)
       myMsg.setEventType(EventType.STOP)
 
       encoder.onMesg(myMsg)

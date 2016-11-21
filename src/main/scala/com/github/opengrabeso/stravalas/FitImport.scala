@@ -40,7 +40,7 @@ object FitImport {
       val distanceBuffer = ArrayBuffer[(ZonedDateTime, Double)]()
       val lapBuffer=ArrayBuffer[ZonedDateTime]()
 
-      case class FitHeader(sport: Option[String] = None)
+      case class FitHeader(sport: Option[Event.Sport] = None)
 
       var header = FitHeader()
 
@@ -84,13 +84,15 @@ object FitImport {
               // ride, run, swim, workout, hike, walk, nordicski, alpineski, backcountryski, iceskate, inlineskate, kitesurf,
               // rollerski, windsurf, workout, snowboard, snowshoe, ebikeride, virtualride
               val sport = Option(Sport.getByValue(mesg.getField(SessionMesg.SportFieldNum).getShortValue)).map {
-                case Sport.CYCLING => "Ride"
-                case Sport.RUNNING => "Run"
-                case Sport.HIKING => "Hike"
-                case Sport.WALKING => "Walk"
-                case Sport.CROSS_COUNTRY_SKIING => "nordicski"
-                case Sport.GENERIC => "Workout"
-                case _ => "Workout"
+                // TODO: handle other sports
+                case Sport.CYCLING => Event.Sport.Ride
+                case Sport.RUNNING => Event.Sport.Run
+                case Sport.HIKING => Event.Sport.Hike
+                case Sport.WALKING => Event.Sport.Walk
+                case Sport.CROSS_COUNTRY_SKIING => Event.Sport.NordicSki
+                case Sport.GENERIC => Event.Sport.Workout
+                case Sport.SWIMMING => Event.Sport.Swim
+                case _ => Event.Sport.Workout
               }
 
               if (sport.isDefined) {
@@ -123,7 +125,7 @@ object FitImport {
       val startTime = allStreams.map(_.head._1).min
       val endTime = allStreams.map(_.last._1).max
 
-      val id = Main.ActivityId(0, "Activity", startTime, endTime, header.sport.getOrElse("Workout"), distData.last._2)
+      val id = Main.ActivityId(0, "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
 
       object ImportedStreams extends Main.ActivityStreams {
 

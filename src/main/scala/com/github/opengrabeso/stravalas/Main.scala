@@ -67,7 +67,7 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  case class ActivityId(id: Long, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: String, distance: Double) {
+  case class ActivityId(id: Long, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
 
     def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
 
@@ -86,7 +86,7 @@ object Main {
       val duration = json.path("elapsed_time").intValue
       val distance = json.path("distance").doubleValue
 
-      ActivityId(id, name, time, time.plusSeconds(duration), sportName, distance)
+      ActivityId(id, name, time, time.plusSeconds(duration), Event.Sport.withName(sportName), distance)
     }
   }
 
@@ -99,7 +99,7 @@ object Main {
     (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
   }
 
-  case class ActivityEvents(id: ActivityId, events: Array[Event], sports: Array[String], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
     assert(events.forall(_.stamp >= id.startTime))
     assert(events.forall(_.stamp <= id.endTime))
@@ -145,16 +145,16 @@ object Main {
 
       val mergedId = ActivityId(id.id, id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
 
-      val eventsAndSports = ((events zip sports) ++ (that.events zip that.sports)).sortBy(_._1.stamp)
+      val eventsAndSports = (events ++ that.events).sortBy(_.stamp)
 
       // keep only first start Event, change other to Split only
-      val (begs, others) = eventsAndSports.partition(_._1.isInstanceOf[BegEvent])
-      val (ends, rest) = others.partition(_._1.isInstanceOf[EndEvent])
+      val (begs, others) = eventsAndSports.partition(_.isInstanceOf[BegEvent])
+      val (ends, rest) = others.partition(_.isInstanceOf[EndEvent])
 
-      val begsSorted = begs.sortBy(_._1.stamp)
-      val begsAdjusted = begsSorted.take(1) ++ begsSorted.drop(1).map(e => SplitEvent(e._1.stamp) -> e._2)
+      val begsSorted = begs.sortBy(_.stamp).map(_.asInstanceOf[BegEvent])
+      val begsAdjusted = begsSorted.take(1) ++ begsSorted.drop(1).map(e => SplitEvent(e.stamp, e.sport))
 
-      val eventsAndSportsSorted = (begsAdjusted ++ rest :+ ends.maxBy(_._1.stamp)).sortBy(_._1.stamp)
+      val eventsAndSportsSorted = (begsAdjusted ++ rest :+ ends.maxBy(_.stamp)).sortBy(_.stamp)
 
       val mergedGPS = gps.pickData(gps.stream ++ that.gps.stream)
 
@@ -176,29 +176,25 @@ object Main {
       val notMergedFromThat = that.attributes.find(ta => !attributes.exists(_.streamType == ta.streamType))
       // if something was not merged,
 
-      ActivityEvents(mergedId, eventsAndSportsSorted.map(_._1), eventsAndSportsSorted.map(_._2), mergedDist, mergedGPS, mergedAttr ++ notMergedFromThat)
+      ActivityEvents(mergedId, eventsAndSportsSorted, mergedDist, mergedGPS, mergedAttr ++ notMergedFromThat)
     }
 
     def editableEvents: Array[EditableEvent] = {
 
-      def neq(a: String, b: String) = a != b
-      val sportChange = (("" +: sports) zip sports).map((neq _). tupled)
-
-      val ees = (events, events.drop(1) :+ events.last, sports zip sportChange).zipped.map { case (e1, e2, (sport,change)) =>
-        val action = if (change) "split" else e1.defaultEvent
-        EditableEvent(action, id.secondsInActivity(e1.stamp), distanceForTime(e1.stamp), sport)
+      val ees = events.map { e1 =>
+        val action = e1.defaultEvent
+        EditableEvent(action, id.secondsInActivity(e1.stamp), distanceForTime(e1.stamp))
       }
 
       // consolidate mutliple events with the same time so that all of them have the same action
       val merged = ees.groupBy(_.time).map { case (t, es) =>
         object CmpEvent extends Ordering[String] {
           def compare(x: String, y: String): Int = {
-            def score(et: String) = et match {
-              case "split" => 1
-              case "splitRun" => 2
-              case "splitRide" => 3
-              case "splitSwim" => 4
-              case _ => 0
+            def score(et: String) = {
+              if (et == "lap") 1
+              else if (et.startsWith("split")) 2
+              else if (et == "end") -1
+              else 0
             }
             score(x) - score(y)
           }
@@ -228,8 +224,7 @@ object Main {
 
         val begTime = beg.stamp
 
-
-        val eventsRange = (events zip sports).dropWhile(_._1.stamp <= begTime).takeWhile(_._1.stamp < endTime)
+        val eventsRange = events.dropWhile(_.stamp <= begTime).takeWhile(_.stamp < endTime)
 
         val distRange = dist.pickData(dist.slice(begTime, endTime).stream)
         val gpsRange = gps.pickData(gps.slice(begTime, endTime).stream)
@@ -238,7 +233,7 @@ object Main {
           attr.slice(begTime, endTime)
         }
 
-        val act = ActivityEvents(id.copy(startTime = begTime), eventsRange.map(_._1), eventsRange.map(_._2), distRange, gpsRange, attrRange)
+        val act = ActivityEvents(id.copy(startTime = begTime), eventsRange, distRange, gpsRange, attrRange)
 
         act
       }
@@ -357,9 +352,12 @@ object Main {
     }
 
     def intervalTooShort(beg: ZonedDateTime, end: ZonedDateTime) = {
+      false
+      /*
       val duration = Seconds.secondsBetween(beg, end).getSeconds
       val distance = avgSpeedDuring(beg, end) * duration
       duration < 60 && distance < 100
+      */
     }
 
     val intervals = intervalTimes zip intervalTimes.drop(1)
@@ -379,20 +377,20 @@ object Main {
 
         def kmh(speed: Double) = speed
 
-        def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): String = {
-          if (avg <= avgRun && fast <= fastRun && max <= maxRun) "Run"
-          else "Ride"
+        def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): Event.Sport = {
+          if (avg <= avgRun && fast <= fastRun && max <= maxRun) Event.Sport.Run
+          else Event.Sport.Ride
         }
 
-        val sport = actId.sportName.toLowerCase match {
-          case "run" =>
+        val sport = actId.sportName match {
+          case Event.Sport.Run =>
             // marked as run, however if clearly contradicting evidence is found, make it ride
             detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
-          case "ride" =>
+          case Event.Sport.Ride =>
             detectSport(kmh(20), kmh(17), kmh(15)) // 25 - 18 km/h possible
-          case _ =>
+          case Event.Sport.Workout =>
             detectSport(paceToKmh(3), paceToKmh(4), paceToKmh(4)) // 3 - 4 min/km possible
-          // TODO: handle other sports: swimming, walking, ....
+          case s => s
         }
         Some(pBeg, sport)
       }
@@ -405,12 +403,20 @@ object Main {
       sportsByTime.find(_._1 <= time).map(_._2).getOrElse(actId.sportName)
     }
 
-    val events = (BegEvent(actId.startTime) +: EndEvent(actId.endTime) +: cleanLaps.map(LapEvent)) ++ segments ++ pauseEvents
+    val events = (BegEvent(actId.startTime, findSport(actId.startTime)) +: EndEvent(actId.endTime) +: cleanLaps.map(LapEvent)) ++ segments ++ pauseEvents
     val eventsByTime = events.sortBy(_.stamp)
 
     val sports = eventsByTime.map(x => findSport(x.stamp))
 
-    ActivityEvents(actId, eventsByTime.toArray, sports.toArray, act.dist, act.latlng, act.attributes)
+    // insert / modify splits on edges
+    val sportChange = (("" +: sports) zip sports).map(ab => ab._1 != ab._2)
+    val ees = (eventsByTime, sports, sportChange).zipped.map { case (e1, sport,change) =>
+      // TODO: handle multiple events at the same time
+      if (change) SplitEvent(e1.stamp, sport)
+      else e1
+    }
+
+    ActivityEvents(actId, ees.toArray, act.dist, act.latlng, act.attributes)
   }
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
@@ -533,15 +539,17 @@ object Main {
     val ee = events.events zip eventsInput
 
     val lapsAndSplits: Array[Event] = ee.flatMap { case (e, ei) =>
-      ei match {
-        case "lap" => Some(LapEvent(e.stamp))
-
-        case "split" => Some(SplitEvent(e.stamp))
-        case "end" => Some(EndEvent(e.stamp))
-        case "splitSwim" => Some(SplitEvent(e.stamp))
-        case "splitRun" => Some(SplitEvent(e.stamp))
-        case "splitRide" => Some(SplitEvent(e.stamp))
-        case _ => None
+      e match {
+        case ev@EndEvent(_) => Some(ev)
+        case _ =>
+          if (ei.startsWith("split")) {
+            val sportName = ei.substring("split".length)
+            Some(SplitEvent(e.stamp, Event.Sport.withName(sportName)))
+          } else ei match {
+            case "lap" => Some(LapEvent(e.stamp))
+            case "end" => Some(EndEvent(e.stamp))
+            case _ => None
+          }
       }
     }
     events.copy(events = lapsAndSplits)
