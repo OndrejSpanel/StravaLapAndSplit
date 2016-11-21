@@ -53,7 +53,7 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
       <html>
         <head>
           {headPrefix}
-          <title>Strava Split And Lap</title>
+          <title>Stravamat</title>
           {content.head}
         </head>
         <body>
@@ -67,7 +67,7 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
       <html>
         <head>
           {headPrefix}
-          <title>Strava Split And Lap</title>
+          <title>Stravamat</title>
         </head>
         <body>
           {bodyHeader(auth)}

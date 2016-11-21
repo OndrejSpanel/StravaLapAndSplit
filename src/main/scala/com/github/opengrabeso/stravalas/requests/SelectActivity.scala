@@ -20,7 +20,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
       val activities = Main.lastActivities(auth.token)
       <html>
         <head>
-          {headPrefix}<title>Strava Split And Lap - select activity</title>
+          {headPrefix}<title>Stravamat - select activity</title>
           <style>
             tr.activities:nth-child(even) {{background-color: #f2f2f2}}
             tr.activities:hover {{background-color: #f0f0e0}}

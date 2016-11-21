@@ -1,4 +1,4 @@
-name := "StravaLapAndSplit"
+name := "Stravamat"
 
 scalaVersion := "2.11.8"
 

@@ -424,7 +424,7 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
 
     <html>
       <head>
-        <title>Strava Split And Lap</title>
+        <title>Stravamat</title>
         {headPrefix}
         {content.head}
       </head>

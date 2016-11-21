@@ -22,7 +22,7 @@ object IndexHtml extends DefineRequest("/") {
     <html>
       <head>
         {headPrefix}
-        <title>Strava Split And Lap</title>
+        <title>Stravamat</title>
       </head>
       <body>
         {val hostname = request.host()
@@ -43,11 +43,14 @@ object IndexHtml extends DefineRequest("/") {
           <li>User can select events where laps should be inserted</li>
           <li>User can split activity and download individual parts</li>
           <li>Show average speed / tempo, autodetect activity type</li>
+          <li>Map (using MapBox)</li>
+          <li>User can change activity type (Run / Ride / Swim)</li>
         </ul>
         <h4>Planned (not working yet)</h4>
         <ul>
-          <li>User can change activity type (Run / Ride / Swim)</li>
-          <li>Map (using MapBox)</li>
+          <li>Single-click upload of multiple activities</li>
+          <li>Merge heartrate and GPS data</li>
+          <li>More upload automation</li>
         </ul>
         <h4>Considering to add later</h4>
         <ul>
