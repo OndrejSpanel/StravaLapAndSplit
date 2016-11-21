@@ -1,8 +1,10 @@
-Strava Lap And Split
-====================
+Stravamat
+=========
 
-The application should allow spliting Strava activities and editing lap information in them. One particular use
-is to simplify handling of multisport activities like triathlon or duathlon.
+The application allows spliting Strava activities and editing lap information in them. One particular use
+is to simplify handling of multisport activities like triathlon or duathlon. The application should eventually
+become an easy to use Strava uploader, especially for Suunto Quest users who need to merge heartrate and GPS data.
+
 
 Developer notes
 ---------------
