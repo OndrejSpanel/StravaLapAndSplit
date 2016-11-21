@@ -1,5 +1,6 @@
 package com.github.opengrabeso.stravalas
 
+import java.security.MessageDigest
 import java.util
 
 import com.google.api.client.http.{GenericUrl, HttpRequest}
@@ -19,6 +20,8 @@ object Main {
 
   import RequestUtils._
 
+  private val md = MessageDigest.getInstance("SHA-256")
+
   case class SecretResult(appId: String, appSecret: String, mapboxToken: String, error: String)
 
   def secret: SecretResult = {
@@ -35,7 +38,13 @@ object Main {
     }
   }
 
-  case class StravaAuthResult(token: String, mapboxToken: String, id: String, name: String)
+  case class StravaAuthResult(token: String, mapboxToken: String, id: String, name: String) {
+    // used to prove user is authenticated, but we do not want to store token in plain text to avoid security leaks
+    val userId: String = {
+      val digestBytes = md.digest(token.getBytes)
+      BigInt(digestBytes).toString(16)
+    }
+  }
 
   def stravaAuth(code: String): StravaAuthResult = {
 
