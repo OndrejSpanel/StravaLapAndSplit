@@ -352,12 +352,9 @@ object Main {
     }
 
     def intervalTooShort(beg: ZonedDateTime, end: ZonedDateTime) = {
-      false
-      /*
       val duration = Seconds.secondsBetween(beg, end).getSeconds
       val distance = avgSpeedDuring(beg, end) * duration
       duration < 60 && distance < 100
-      */
     }
 
     val intervals = intervalTimes zip intervalTimes.drop(1)
