@@ -117,6 +117,7 @@ object Main {
     def begPos: (Double, Double) = convertGPSToPair(gps.stream.head._2)
     def endPos: (Double, Double) = convertGPSToPair(gps.stream.last._2)
 
+    // must call hasGPS because it is called while composing the JS, even when hasGPS is false
     def lat: Double = if (hasGPS) (begPos._1 + endPos._1) * 0.5 else 0.0
     def lon: Double = if (hasGPS) (begPos._2 + endPos._2) * 0.5 else 0.0
 
