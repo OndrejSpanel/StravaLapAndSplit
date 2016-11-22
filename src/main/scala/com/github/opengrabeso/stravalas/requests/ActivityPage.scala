@@ -256,7 +256,7 @@ trait ActivityRequestHandler {
 
       var lastKm = 0;
       var kmMarkers = [];
-    route.forEach(function(r){
+      route.forEach(function(r){
         var dist = r[3] / 1000;
         var currKm = Math.floor(dist);
         if (currKm > lastKm) {
@@ -280,7 +280,7 @@ trait ActivityRequestHandler {
         }
       });
 
-    map.addSource("kms", {
+      map.addSource("kms", {
         "type": "geojson",
         "data": {
           "type": "FeatureCollection",
@@ -288,7 +288,7 @@ trait ActivityRequestHandler {
         }
       });
 
-    map.addLayer({
+      map.addLayer({
         "id": "kms",
         "type": "symbol",
         "source": "kms",
@@ -404,7 +404,7 @@ trait ActivityRequestHandler {
             renderEvents(events, route);
           }
         };
-      xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
+        xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
         xmlHttp.send(null)});
     }
     """)
