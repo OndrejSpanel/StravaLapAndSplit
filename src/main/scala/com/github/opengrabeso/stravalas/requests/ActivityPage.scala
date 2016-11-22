@@ -97,6 +97,9 @@ trait ActivityRequestHandler {
         ${activityData.editableEvents.mkString("[", "],[", "]")}
       ];
 
+      // callback, should update the map when events are changed
+      var onEventsChanged = function() {};
+
     /**
      * @param {String} id
      * @param {String} time
@@ -192,6 +195,9 @@ trait ActivityRequestHandler {
           addEvent(e);
         }
       });
+
+      // execute the callback
+      onEventsChanged();
     }
     """)
   }
@@ -409,10 +415,24 @@ trait ActivityRequestHandler {
             var route = JSON.parse(xmlHttp.responseText);
             renderRoute(route);
             renderEvents(events, route);
+
+            onEventsChanged = function() {
+              console.log("Events changed " + events.length.toString);
+              var eventsData = mapEventData(events, route);
+
+              var geojson = {
+                "type": "FeatureCollection",
+                "features": eventsData
+              };
+
+              map.getSource("events").setData(geojson);
+            }
+
           }
         };
         xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
         xmlHttp.send(null)});
+
     }
     """)
   }
