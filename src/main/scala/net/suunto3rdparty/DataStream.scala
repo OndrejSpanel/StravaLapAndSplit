@@ -27,7 +27,7 @@ object DataStream {
 sealed abstract class DataStream[Item] {
 
   def typeToLog: String
-  def streamType: Class[_ <: DataStream[_]] = this.getClass
+  def /*_*/ streamType : Class[_ <: DataStream[_]] = this.getClass /*_*/
 
   type DataItem = Item
   type DataMap = SortedMap[ZonedDateTime, DataItem]
