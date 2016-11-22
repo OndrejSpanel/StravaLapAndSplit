@@ -200,7 +200,9 @@ trait ActivityRequestHandler {
     //language=JavaScript
     xml.Unparsed(
       s"""
-    function renderEvents(events, route) {
+    // MapBox map handling
+
+    function mapEventData(events, route) {
       var markers = [];
 
       function findPoint(route, time) {
@@ -231,6 +233,11 @@ trait ActivityRequestHandler {
 
         markers.push(marker)
       });
+      return markers;
+    }
+
+    function renderEvents(events, route) {
+      var markers = mapEventData(events, route);
 
       map.addSource("events", {
         "type": "geojson",
