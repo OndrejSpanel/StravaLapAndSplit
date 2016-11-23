@@ -66,21 +66,22 @@ trait ActivityRequestHandler {
         val t = activityData.events(i)
         val ee = ees(i)
         val action = ee.action
+        val eTime = activityData.secondsInActivity(t.stamp)
         <tr>
           <td> {xml.Unparsed(t.description)} </td>
-          <td> {Main.displaySeconds(activityData.secondsInActivity(t.stamp))} </td>
+          <td> {Main.displaySeconds(eTime)} </td>
           <td> {Main.displayDistance(activityData.distanceForTime(t.stamp))} </td>
           <td>
             {val types = t.listTypes
           if (types.length != 1 && !lastTime.contains(t.stamp)) {
             lastTime = Some(t.stamp)
-            htmlSelectEvent(activityData.secondsInActivity(t.stamp).toString, t.listTypes, action)
+            htmlSelectEvent(eTime.toString, t.listTypes, action)
           } else {
             {Events.typeToDisplay(types, types(0).id)}
             <input type="hidden" name="events" value={t.defaultEvent}/>
           }}
           </td>
-          <td class="cellNoBorder" id={s"link${activityData.secondsInActivity(t.stamp).toString}"}> </td>
+          <td class="cellNoBorder" id={s"link${eTime.toString}"}> </td>
         </tr>
       }}
     </table> ++ {
@@ -169,6 +170,14 @@ trait ActivityRequestHandler {
       });
     }
 
+    function selectOption(e) {
+      var tableOption = document.getElementById(e[1]);
+      // select appropriate option
+      tableOption.value = e[0];
+      console.log("Option " + e[1] + " : " + e[0]);
+
+    }
+
     function addEvent(e) {
       var tableLink = document.getElementById("link" + e[1]);
       tableLink.innerHTML = splitLink(id, e);
@@ -187,7 +196,10 @@ trait ActivityRequestHandler {
     function changeEvent(item, newValue) {
       var itemTime = item.id;
       events.forEach(function(e) {
-        if (e[1] == itemTime) e[0] = newValue;
+        if (e[1] == itemTime) {
+          e[0] = newValue;
+          selectOption(e);
+        }
       });
 
       events.forEach(function(e) {
@@ -433,7 +445,6 @@ trait ActivityRequestHandler {
             renderEvents(events, route);
 
             onEventsChanged = function() {
-              console.log("Events changed " + events.length.toString);
               var eventsData = mapEventData(events, route);
 
               var geojson = {
