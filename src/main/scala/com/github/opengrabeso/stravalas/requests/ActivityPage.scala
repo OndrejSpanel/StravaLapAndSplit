@@ -174,8 +174,6 @@ trait ActivityRequestHandler {
       var tableOption = document.getElementById(e[1]);
       // select appropriate option
       tableOption.value = e[0];
-      console.log("Option " + e[1] + " : " + e[0]);
-
     }
 
     function addEvent(e) {
@@ -229,6 +227,15 @@ trait ActivityRequestHandler {
       s"""
     // MapBox map handling
 
+    /**
+     * @param {String} eTime time of the event
+     * */
+    function getSelectHtml(eTime) {
+      var tableOption = document.getElementById(eTime);
+      var html = tableOption.innerHTML;
+      var value = tableOption.value;
+      return "<select>" + html + "</select>";
+    }
     function mapEventData(events, route) {
       var markers = [];
 
@@ -253,7 +260,7 @@ trait ActivityRequestHandler {
           "properties": {
             "title": e[0],
             "icon": "circle",
-            "description": e[3],
+            "description": getSelectHtml(e[1]),
             "color": "#444",
             "opacity": 0.5
           }
