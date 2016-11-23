@@ -11,7 +11,7 @@ protected case class ActivityContent(head: NodeSeq, body: NodeSeq)
 
 object ActivityRequest {
   def htmlSelectEvent(time: String, types: Array[EventKind], action: String) = {
-    <select id={time} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
+    <select id={time} name="events" onchange={s"changeEvent(this, this.options[this.selectedIndex].value, $time)"}>
       {for (et <- types) yield {
       <option value={et.id} selected={if (action == et.id) "" else null}>
         {et.display}
@@ -174,6 +174,14 @@ trait ActivityRequestHandler {
       var tableOption = document.getElementById(e[1]);
       // select appropriate option
       tableOption.value = e[0];
+
+      // we need to update the table source, because it is used to create map popups
+      // http://stackoverflow.com/a/40766724/16673
+      var opts = tableOption.getElementsByTagName('option');
+      for (var i = 0; i < opts.length; i++)
+          opts[i].removeAttribute('selected');
+      var checked = tableOption.querySelector('option:checked');
+      checked.setAttribute('selected', 'selected');
     }
 
     function addEvent(e) {
@@ -188,11 +196,11 @@ trait ActivityRequestHandler {
     }
 
     /**
-     * @param {Element} item
-     * @param {String} newValue
-     * */
-    function changeEvent(item, newValue) {
-      var itemTime = item.id;
+    * @param {Element} item
+    * @param {String} newValue
+    * @param {String} itemTime
+    * */
+    function changeEvent(item, newValue, itemTime) {
       events.forEach(function(e) {
         if (e[1] == itemTime) {
           e[0] = newValue;
@@ -215,6 +223,7 @@ trait ActivityRequestHandler {
         }
       });
 
+
       // execute the callback
       onEventsChanged();
     }
@@ -234,7 +243,7 @@ trait ActivityRequestHandler {
       var tableOption = document.getElementById(eTime);
       var html = tableOption.innerHTML;
       var value = tableOption.value;
-      return "<select>" + html + "</select>";
+      return '<select onchange="changeEvent(this, this.options[this.selectedIndex].value,' + eTime + ')">' + html + '</select>';
     }
     function mapEventData(events, route) {
       var markers = [];
@@ -460,36 +469,40 @@ trait ActivityRequestHandler {
               };
 
               map.getSource("events").setData(geojson);
-            }
+            };
+
+            map.on('mousemove', function (e) {
+                var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
+                map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
+            });
+
+            map.on('click', function (e) {
+                var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
+
+                if (!features.length) {
+                    return;
+                }
+
+                var feature = features[0];
+
+                // Populate the popup and set its coordinates
+                // based on the feature found.
+                var popup = new mapboxgl.Popup()
+                    .setLngLat(feature.geometry.coordinates)
+                    .setHTML(feature.properties.description)
+                    .addTo(map);
+            });
+
+
 
           }
+
         };
         xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
         xmlHttp.send(null)});
 
     }
 
-    map.on('mousemove', function (e) {
-        var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
-        map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
-    });
-
-    map.on('click', function (e) {
-        var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
-
-        if (!features.length) {
-            return;
-        }
-
-        var feature = features[0];
-
-        // Populate the popup and set its coordinates
-        // based on the feature found.
-        var popup = new mapboxgl.Popup()
-            .setLngLat(feature.geometry.coordinates)
-            .setHTML(feature.properties.description)
-            .addTo(map);
-    });
     """)
   }
 }
