@@ -232,6 +232,7 @@ trait ActivityRequestHandler {
           "properties": {
             "title": e[0],
             "icon": "circle",
+            "description": (e[2] / 1000).toFixed(2)+ " km",
             "color": "#444",
             "opacity": 0.5
           }
@@ -346,6 +347,12 @@ trait ActivityRequestHandler {
         }
       });
 
+      // icon list see https://www.mapbox.com/maki-icons/ or see https://github.com/mapbox/mapbox-gl-styles/tree/master/sprites/basic-v9/_svg
+      // basic geometric shapes, each also with - stroke variant:
+      //   star, star-stroke, circle, circle-stroked, triangle, triangle-stroked, square, square-stroked
+      //
+      // specific, but generic enough:
+      //   marker, cross, heart (Maki only?)
       map.addSource("points", {
         "type": "geojson",
         "data": {
@@ -358,7 +365,7 @@ trait ActivityRequestHandler {
             },
             "properties": {
               "title": "Begin",
-              "icon": "triangle", // star, marker, triangle - see https://github.com/mapbox/mapbox-gl-styles/tree/master/sprites/basic-v9/_svg
+              "icon": "triangle",
               "color": "#F22",
               "opacity": 1
             }
@@ -434,6 +441,28 @@ trait ActivityRequestHandler {
         xmlHttp.send(null)});
 
     }
+
+    map.on('mousemove', function (e) {
+        var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
+        map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
+    });
+
+    map.on('click', function (e) {
+        var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
+
+        if (!features.length) {
+            return;
+        }
+
+        var feature = features[0];
+
+        // Populate the popup and set its coordinates
+        // based on the feature found.
+        var popup = new mapboxgl.Popup()
+            .setLngLat(feature.geometry.coordinates)
+            .setHTML(feature.properties.description)
+            .addTo(map);
+    });
     """)
   }
 }
