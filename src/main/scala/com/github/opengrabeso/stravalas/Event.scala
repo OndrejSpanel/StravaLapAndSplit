@@ -122,6 +122,7 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) e
 
 case class EditableEvent(var action: String, time: Int, km: Double) {
   override def toString: String = {
-    s""""$action", $time, $km"""
+    val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)} km <a href="on">On</a> <br/> <a href="on">Off</a>"""
+    s""""$action", $time, $km, '$description'"""
   }
 }

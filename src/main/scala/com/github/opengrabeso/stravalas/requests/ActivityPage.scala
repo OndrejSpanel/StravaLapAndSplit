@@ -232,7 +232,7 @@ trait ActivityRequestHandler {
           "properties": {
             "title": e[0],
             "icon": "circle",
-            "description": (e[2] / 1000).toFixed(2)+ " km",
+            "description": e[3],
             "color": "#444",
             "opacity": 0.5
           }
