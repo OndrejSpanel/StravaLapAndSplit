@@ -1,4 +1,5 @@
 package com.github.opengrabeso.stravalas
+import com.github.opengrabeso.stravalas.requests.ActivityRequest
 import org.joda.time.{DateTime => ZonedDateTime}
 
 case class EventKind(id: String, display: String)
@@ -120,9 +121,12 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) e
 }
 
 
-case class EditableEvent(var action: String, time: Int, km: Double) {
+case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind]) {
   override def toString: String = {
-    val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)} km <a href="on">On</a> <br/> <a href="on">Off</a>"""
+    val select = ActivityRequest.htmlSelectEvent(time.toString, kinds, action)
+    val selectHtmlSingleLine = select.toString.lines.mkString(" ")
+
+    val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)} km $selectHtmlSingleLine"""
     s""""$action", $time, $km, '$description'"""
   }
 }

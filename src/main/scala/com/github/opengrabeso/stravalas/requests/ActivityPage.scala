@@ -9,7 +9,22 @@ import scala.xml.NodeSeq
 
 protected case class ActivityContent(head: NodeSeq, body: NodeSeq)
 
+object ActivityRequest {
+  def htmlSelectEvent(time: String, types: Array[EventKind], action: String) = {
+    <select id={time} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
+      {for (et <- types) yield {
+      <option value={et.id} selected={if (action == et.id) "" else null}>
+        {et.display}
+      </option>
+    }}
+    </select>
+  }
+
+}
+
 trait ActivityRequestHandler {
+  import ActivityRequest._
+
   protected def htmlHelper(actId: String, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
@@ -59,16 +74,10 @@ trait ActivityRequestHandler {
             {val types = t.listTypes
           if (types.length != 1 && !lastTime.contains(t.stamp)) {
             lastTime = Some(t.stamp)
-            <select id={activityData.secondsInActivity(t.stamp).toString} name="events" onchange="changeEvent(this, this.options[this.selectedIndex].value)">
-              {for (et <- types) yield {
-              <option value={et.id} selected={if (action == et.id) "" else null}>
-                {et.display}
-              </option>
-            }}
-            </select>
+            htmlSelectEvent(activityData.secondsInActivity(t.stamp).toString, t.listTypes, action)
           } else {
             {Events.typeToDisplay(types, types(0).id)}
-              <input type="hidden" name="events" value={t.defaultEvent}/>
+            <input type="hidden" name="events" value={t.defaultEvent}/>
           }}
           </td>
           <td class="cellNoBorder" id={s"link${activityData.secondsInActivity(t.stamp).toString}"}> </td>
