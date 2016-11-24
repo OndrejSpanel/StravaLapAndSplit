@@ -49,7 +49,7 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
       // TODO: pass data directly to JS?
       Storage.store("events-" + d._1, auth.userId, d._2)
 
-      val content = htmlHelper(d._1, d._2, session, resp)
+      val content = activityHtmlContent(d._1, d._2, session, resp)
 
       <html>
         <head>

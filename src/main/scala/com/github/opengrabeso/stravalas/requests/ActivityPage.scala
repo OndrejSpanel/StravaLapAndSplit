@@ -25,7 +25,7 @@ object ActivityRequest {
 trait ActivityRequestHandler {
   import ActivityRequest._
 
-  protected def htmlHelper(actId: String, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
+  protected def activityHtmlContent(actId: String, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
@@ -517,7 +517,7 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
 
     Storage.store("events-" + actId, auth.userId, activityData)
 
-    val content = htmlHelper(actId, activityData, session, resp)
+    val content = activityHtmlContent(actId, activityData, session, resp)
 
     <html>
       <head>
