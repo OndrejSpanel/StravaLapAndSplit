@@ -24,7 +24,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           <style>
             tr.activities:nth-child(even) {{background-color: #f2f2f2}}
             tr.activities:hover {{background-color: #f0f0e0}}
-          </style>
+            </style>
         </head>
         <body>
           {bodyHeader(auth)}
@@ -57,7 +57,12 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           </table>
           <form action="upload" method="post" enctype="multipart/form-data">
             <p>Select files to upload
-              <input type="file" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/>
+
+              <div id="drop-container" style="border:1px solid black;height:100px;">
+                Drop Here
+              </div>
+
+              <input type="file" id="fileInput" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/>
             </p>
             <input type="submit" value="Upload"/>
           </form>
@@ -70,6 +75,28 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           </form>
           }}
           {bodyFooter}
+          {xml.Unparsed(
+          """
+                 <script>
+              // dragover and dragenter events need to have 'preventDefault' called
+              // in order for the 'drop' event to register.
+              // See: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Drag_operations#droptargets
+              var dropContainer = document.getElementById("drop-container");
+
+              dropContainer.addEventListener("dragover", function (evt){
+                evt.preventDefault();
+              });
+              dropContainer.addEventListener("dragenter", function (evt){
+                evt.preventDefault();
+              });
+              dropContainer.addEventListener("drop", function (evt){
+                // pretty simple -- but not for IE :(
+                fileInput.files = evt.dataTransfer.files;
+                evt.preventDefault();
+              });
+                 </script>
+              """
+        )}
         </body>
       </html>
     }
