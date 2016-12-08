@@ -55,6 +55,12 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             </tr>
           }}
           </table>
+          <form action="upload" method="post" enctype="multipart/form-data">
+            <p>Select files to upload
+              <input type="file" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/>
+            </p>
+            <input type="submit" value="Upload"/>
+          </form>
           {cond(activities.length > 0) {
           <form action="activity" method="get">
             <p>Other activity Id:
@@ -62,19 +68,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
               <input type="submit" value="Submit"/>
             </p>
           </form>
-        }
-          <form action="upload" method="post" enctype="multipart/form-data">
-            <p>Select files to upload
-              <input type="file" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/>
-            </p>
-            <input type="submit" value="Upload"/>
-          </form>}
-          <p>Strava activity Id:
-            <form action="activity" method="get">
-              <input type="text" name="activityId" value=""/>
-              <input type="submit" value="Submit"/>
-            </form>
-          </p>
+          }}
           {bodyFooter}
         </body>
       </html>
