@@ -29,9 +29,12 @@ object Storage {
     .build()
   )
 
-  def output(filename: String): OutputStream = {
-    val instance = GcsFileOptions.getDefaultInstance
-    val channel = gcsService.createOrReplace(fileId(filename), instance)
+  def output(filename: String, metadata: Seq[(String, String)]): OutputStream = {
+    val instance = new GcsFileOptions.Builder()
+    for (m <- metadata) {
+      instance.addUserMetadata(m._1, m._2)
+    }
+    val channel = gcsService.createOrReplace(fileId(filename), instance.build)
     Channels.newOutputStream(channel)
   }
 
@@ -42,8 +45,8 @@ object Storage {
     Channels.newInputStream(readChannel)
   }
 
-  def store(filename: String, userId: String, obj: AnyRef) = {
-    val os = output(userFilename(filename, userId))
+  def store(filename: String, userId: String, obj: AnyRef, metadata: (String, String)*) = {
+    val os = output(userFilename(filename, userId), metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj)
     oos.close()
@@ -62,6 +65,14 @@ object Storage {
     for (i <- list) yield {
       assert(i.getName.startsWith(prefix))
       val name = i.getName.drop(prefix.length)
+      val m = try {
+        val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
+        Some(md)
+      } catch {
+        case e: Exception =>
+          e.printStackTrace()
+          None
+      }
       name
     }
   }

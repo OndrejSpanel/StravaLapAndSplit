@@ -15,12 +15,18 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
 
 import scala.collection.immutable.SortedMap
+import scala.util.Try
 
 object Main {
 
   import RequestUtils._
 
   private val md = MessageDigest.getInstance("SHA-256")
+
+  def digest(str: String): String = {
+    val digestBytes = md.digest(str.getBytes)
+    BigInt(digestBytes).toString(16)
+  }
 
   case class SecretResult(appId: String, appSecret: String, mapboxToken: String, error: String)
 
@@ -40,10 +46,7 @@ object Main {
 
   case class StravaAuthResult(token: String, mapboxToken: String, id: String, name: String) {
     // used to prove user is authenticated, but we do not want to store token in plain text to avoid security leaks
-    val userId: String = {
-      val digestBytes = md.digest(token.getBytes)
-      BigInt(digestBytes).toString(16)
-    }
+    val userId: String = digest(token)
   }
 
   def stravaAuth(code: String): StravaAuthResult = {
@@ -76,7 +79,7 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  case class ActivityId(id: Long, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
+  case class ActivityId(id: Long, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
 
     def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
 
@@ -94,8 +97,9 @@ object Main {
       val sportName = json.path("type").textValue
       val duration = json.path("elapsed_time").intValue
       val distance = json.path("distance").doubleValue
+      val actDigest = digest(json.toString)
 
-      ActivityId(id, name, time, time.plusSeconds(duration), Event.Sport.withName(sportName), distance)
+      ActivityId(id, actDigest, name, time, time.plusSeconds(duration), Event.Sport.withName(sportName), distance)
     }
   }
 
@@ -105,12 +109,18 @@ object Main {
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-    val stravaActivities = (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))
+
+    val stravaActivities = (0 until responseJson.size).map { i =>
+      val actI = responseJson.get(i)
+      ActivityId.load(actI)
+    }
     val storedActivities = {
       val d = Storage.enumerate(auth.userId)
-      d.map { a =>
-        val act = Storage.load[Main.ActivityEvents](a, auth.userId)
-        act.id
+      d.flatMap { a =>
+        Try {
+          val act = Storage.load[Main.ActivityEvents](a, auth.userId)
+          act.id
+        }.toOption
       }
     }
     stravaActivities ++ storedActivities
@@ -155,7 +165,7 @@ object Main {
       val begTime = Seq(id.startTime, that.id.startTime).min
       val endTime = Seq(id.endTime, that.id.endTime).max
 
-      val mergedId = ActivityId(id.id, id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
+      val mergedId = ActivityId(0, "", id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
 
       val eventsAndSports = (events ++ that.events).sortBy(_.stamp)
 

@@ -515,7 +515,7 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
     val actId = request.queryParams("activityId")
     val activityData = Main.getEventsFrom(auth.token, actId)
 
-    Storage.store("events-" + actId, auth.userId, activityData)
+    Storage.store("events-" + actId, auth.userId, activityData, "digest" -> activityData.id.digest)
 
     val content = activityHtmlContent(actId, activityData, session, resp)
 

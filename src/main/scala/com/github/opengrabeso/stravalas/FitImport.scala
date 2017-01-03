@@ -125,7 +125,8 @@ object FitImport {
       val startTime = allStreams.map(_.head._1).min
       val endTime = allStreams.map(_.last._1).max
 
-      val id = Main.ActivityId(0, "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
+      // TODO: digest
+      val id = Main.ActivityId(0, "", "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
 
       object ImportedStreams extends Main.ActivityStreams {
 
