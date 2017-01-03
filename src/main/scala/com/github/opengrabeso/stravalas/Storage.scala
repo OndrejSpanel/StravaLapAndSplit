@@ -3,12 +3,10 @@ package com.github.opengrabeso.stravalas
 import java.io._
 import java.nio.channels.Channels
 
-import com.google.appengine.tools.cloudstorage.GcsFileOptions
-import com.google.appengine.tools.cloudstorage.GcsFilename
-import com.google.appengine.tools.cloudstorage.GcsServiceFactory
-import com.google.appengine.tools.cloudstorage.RetryParams
+import com.google.appengine.tools.cloudstorage._
 
 import scala.reflect.ClassTag
+import collection.JavaConverters._
 
 object Storage {
 
@@ -55,6 +53,17 @@ object Storage {
     val is = input(userFilename(filename, userId))
     val ois = new ObjectInputStream(is)
     ois.readObject().asInstanceOf[T]
+  }
+
+  def enumerate(userId: String) = {
+    val prefix = userFilename("", userId)
+    val options = new ListOptions.Builder().setPrefix(prefix).build()
+    val list = gcsService.list(bucket, options).asScala.toIterable
+    for (i <- list) yield {
+      assert(i.getName.startsWith(prefix))
+      val name = i.getName.drop(prefix.length)
+      name
+    }
   }
 
 

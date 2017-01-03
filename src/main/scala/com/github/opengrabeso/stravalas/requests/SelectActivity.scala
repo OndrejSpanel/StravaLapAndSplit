@@ -17,7 +17,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     authResult.map { auth =>
       resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
       session.attribute("auth", auth)
-      val activities = Main.lastActivities(auth.token)
+      val activities = Main.lastActivities(auth)
       <html>
         <head>
           {headPrefix}<title>Stravamat - select activity</title>

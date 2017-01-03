@@ -99,13 +99,21 @@ object Main {
     }
   }
 
-  def lastActivities(authToken: String): Array[ActivityId] = {
+  def lastActivities(auth: StravaAuthResult): Seq[ActivityId] = {
     val uri = "https://www.strava.com/api/v3/athlete/activities"
-    val request = buildGetRequest(uri, authToken, "per_page=15")
+    val request = buildGetRequest(uri, auth.token, "per_page=15")
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-    (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
+    val stravaActivities = (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))
+    val storedActivities = {
+      val d = Storage.enumerate(auth.userId)
+      d.map { a =>
+        val act = Storage.load[Main.ActivityEvents](a, auth.userId)
+        act.id
+      }
+    }
+    stravaActivities ++ storedActivities
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
