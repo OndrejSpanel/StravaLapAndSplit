@@ -103,17 +103,23 @@ object Main {
     }
   }
 
-  def lastActivities(auth: StravaAuthResult): Seq[ActivityId] = {
+  def stravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
     val uri = "https://www.strava.com/api/v3/athlete/activities"
     val request = buildGetRequest(uri, auth.token, "per_page=15")
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-
     val stravaActivities = (0 until responseJson.size).map { i =>
       val actI = responseJson.get(i)
       ActivityId.load(actI)
     }
+
+    val storedActivities = stagedActivities(auth)
+    // do not display the activities which are already staged
+    stravaActivities diff storedActivities
+  }
+
+  def stagedActivities(auth: StravaAuthResult): Seq[ActivityId] = {
     val storedActivities = {
       val d = Storage.enumerate(auth.userId)
       d.flatMap { a =>
@@ -123,7 +129,7 @@ object Main {
         }.toOption
       }
     }
-    stravaActivities ++ storedActivities
+   storedActivities.toSeq
   }
 
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
@@ -440,6 +446,7 @@ object Main {
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
 
+    println(s"Download from strava $id")
     val uri = s"https://www.strava.com/api/v3/activities/$id"
     val request = buildGetRequest(uri, authToken, "")
 
@@ -510,7 +517,7 @@ object Main {
       val latlng = DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
       val attributes =  attributeValues.flatMap { case (name, values) =>
           name match {
-            case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
+            case "heartrate" => Some(DataStreamHR(SortedMap(timeValues zip values:_*)))
             case _ => None
           }
       }
@@ -589,6 +596,22 @@ object Main {
   }
 
   def displayDistance(dist: Double): String = "%.2f".format(dist*0.001)
+
+  def getEventsCachedFrom(auth: StravaAuthResult, id: String): ActivityEvents = {
+    try {
+      val ret = Storage.load[Main.ActivityEvents]("events-" + id, auth.userId)
+      println(s"Cached $id")
+      ret
+    } catch {
+      case _: java.io.FileNotFoundException =>
+        // not cached yet, load directly from Strava
+        getEventsFrom(auth.token, id)
+      case x: Exception =>
+        println(s"Ex ${x.getMessage}")
+        getEventsFrom(auth.token, id)
+    }
+  }
+
 }
 
 

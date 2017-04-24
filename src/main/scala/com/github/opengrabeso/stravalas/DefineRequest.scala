@@ -18,6 +18,7 @@ case class Handle(value: String, method: Method = Method.Get)
 abstract class DefineRequest(val handleUri: String, val method: Method = Method.Get) {
 
   def apply(request: Request, resp: Response): AnyRef = {
+    println(s"Request ${request.url()}")
     val nodes = html(request, resp)
     if (nodes.nonEmpty) {
       val docType = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd" >"""
