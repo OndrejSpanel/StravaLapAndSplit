@@ -2,12 +2,13 @@ package net.suunto3rdparty
 package moveslink
 
 import java.io.{File, FileInputStream, IOException}
-import org.joda.time.{DateTime=>ZonedDateTime}
+
+import org.joda.time.{DateTime => ZonedDateTime}
 import java.util.Properties
+import java.util.logging.Logger
 
 import strava.StravaAPI
 import Util._
-import org.apache.log4j.Logger
 import resource._
 
 import scala.annotation.tailrec
@@ -15,7 +16,7 @@ import scala.annotation.tailrec
 object MovesLinkUploader {
   val fileTest = false
 
-  private val log = Logger.getLogger(getClass)
+  private val log = Logger.getLogger(getClass.getName)
 
   val getDataFolder: File = {
     val suuntoHome = Util.getSuuntoHome
@@ -228,7 +229,7 @@ object MovesLinkUploader {
       return false
     }
     if (!getDataFolder.canWrite) {
-      log.error("Cannot write to moves link data folder at " + getDataFolder.getAbsolutePath)
+      log.severe("Cannot write to moves link data folder at " + getDataFolder.getAbsolutePath)
       return false
     }
     true

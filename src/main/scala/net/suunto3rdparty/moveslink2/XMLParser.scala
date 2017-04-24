@@ -8,7 +8,7 @@ import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
 import org.apache.commons.math.ArgumentOutsideDomainException
 import org.apache.commons.math.analysis.interpolation.SplineInterpolator
 import org.apache.commons.math.analysis.polynomials.PolynomialSplineFunction
-import org.apache.log4j.Logger
+import java.util.logging.Logger
 
 import scala.collection.immutable.SortedMap
 import scala.util._
@@ -16,7 +16,7 @@ import scala.xml._
 import Util._
 
 object XMLParser {
-  private val log = Logger.getLogger(XMLParser.getClass)
+  private val log = Logger.getLogger(XMLParser.getClass.getName)
   private val PositionConstant = 57.2957795131
 
   private val dateFormat = ISODateTimeFormat.dateTimeNoMillis
@@ -223,7 +223,7 @@ object XMLParser {
   }
 
   def parse(fileName: String, xmlFile: File): Try[Move] = {
-    XMLParser.log.debug("Parsing " + xmlFile.getName)
+    XMLParser.log.fine("Parsing " + xmlFile.getName)
 
     val doc = if (xmlFile.getName.endsWith(".xml")) {
       getXMLDocument(xmlFile)

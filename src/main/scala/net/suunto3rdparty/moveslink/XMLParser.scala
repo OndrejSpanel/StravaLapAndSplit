@@ -6,14 +6,14 @@ import org.joda.time.format.DateTimeFormat
 import java.util.regex.Pattern
 
 import scala.xml._
-import org.apache.log4j.Logger
+import java.util.logging.Logger
 import Util._
 
 import scala.collection.immutable.SortedMap
 import scala.util.{Failure, Success, Try}
 
 object XMLParser {
-  private val log = Logger.getLogger(XMLParser.getClass)
+  private val log = Logger.getLogger(XMLParser.getClass.getName)
   private val dateFormat = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(DateTimeZone.getDefault)
 
   def parseSamples(fileName: String, header: Header, samples: Node): Move = {
@@ -124,7 +124,7 @@ object XMLParser {
     val moves = document \ "Moves"
 
     val moveList = moves \ "Move"
-    XMLParser.log.debug(moveList.size + " move elements in this file")
+    XMLParser.log.fine(moveList.size + " move elements in this file")
     val suuntoMoves = moveList.zipWithIndex.map { case (moveItem, i) =>
       try {
         val headerNode = (moveItem \ "Header")(0)

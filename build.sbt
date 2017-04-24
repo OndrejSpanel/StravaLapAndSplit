@@ -2,7 +2,6 @@ name := "Stravamat"
 
 scalaVersion := "2.11.8"
 
-val log4jVersion = "2.5"
 val jacksonVersion = "2.8.3"
 
 libraryDependencies ++= Seq(
@@ -25,10 +24,7 @@ libraryDependencies ++= Seq(
   "com.jsuereth" %% "scala-arm" % "1.4" exclude(
     "org.scala-lang.plugins", "scala-continuations-library_" + scalaBinaryVersion.value
   ),
-  "org.apache.commons" % "commons-math" % "2.1",
-  "org.apache.logging.log4j" % "log4j-core" % log4jVersion,
-  "org.apache.logging.log4j" % "log4j-api" % log4jVersion,
-  "org.apache.logging.log4j" % "log4j-1.2-api" % log4jVersion
+  "org.apache.commons" % "commons-math" % "2.1"
 )
 
 
