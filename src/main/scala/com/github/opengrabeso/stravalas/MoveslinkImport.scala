@@ -58,7 +58,7 @@ object MoveslinkImport {
       val sport = sportFromActivityType(move.header.moveType)
       val id = Main.ActivityId(0, "", "Activity", startTime, endTime, sport, d)
 
-      val events = Array[Event]() // TODO: basic events
+      val events = Array[Event](BegEvent(id.startTime, sport), EndEvent(id.endTime))
 
       Main.ActivityEvents(id, events, dist, gps, Seq(hrStream))
 
