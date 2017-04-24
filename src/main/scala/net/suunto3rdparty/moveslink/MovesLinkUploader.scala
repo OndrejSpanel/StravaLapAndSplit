@@ -46,7 +46,7 @@ object MovesLinkUploader {
     } yield {
       log.info("Analyzing " + fileName)
       val file = new File(getDataFolder, fileName)
-      val moves = XMLParser.parse(fileName, file)
+      val moves: Seq[Move] = ???
       val validMoves = moves.filter(_.streamGet[DataStreamHRWithDist].nonEmpty)
 
       val validMovesAfter = validMoves.filter(_.startsAfter(after))

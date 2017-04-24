@@ -16,7 +16,7 @@ trait SuuntoData {
     val doc = XML.load(res)
 
     val move = moveslink.XMLParser.parseXML("quest.xml", doc)
-    move
+    move.flatMap(_.toOption)
   }
 
 

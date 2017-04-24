@@ -25,7 +25,7 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
     }
 
 
-    val data = itemsIterator.flatMap { item =>
+    val data: Iterator[(String, Main.ActivityEvents)] = itemsIterator.flatMap { item =>
       if (!item.isFormField && "activities" == item.getFieldName) {
         val name = item.getName
         val stream = item.openStream()
@@ -34,6 +34,10 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
         extension.toLowerCase match {
           case "fit" =>
             FitImport(stream).map(name -> _)
+          case "sml" =>
+            MoveslinkImport.loadSml(name, stream).map(name -> _)
+          case "xml" =>
+            MoveslinkImport.loadXml(name, stream).map(name -> _)
           case e =>
             None
         }

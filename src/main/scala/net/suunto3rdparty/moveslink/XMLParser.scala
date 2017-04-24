@@ -1,10 +1,8 @@
 package net.suunto3rdparty
 package moveslink
 
-import java.io.File
-
 import org.joda.time.{DateTime => ZonedDateTime, _}
-import org.joda.time.format.{DateTimeFormat, PeriodFormat, PeriodFormatter}
+import org.joda.time.format.DateTimeFormat
 import java.util.regex.Pattern
 
 import scala.xml._
@@ -12,7 +10,7 @@ import org.apache.log4j.Logger
 import Util._
 
 import scala.collection.immutable.SortedMap
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass)
@@ -117,14 +115,7 @@ object XMLParser {
     timeToUTC(ZonedDateTime.parse(timeText, dateFormat))
   }
 
-  def parse(fileName: String, xmlFile: File): Seq[Move] = {
-    XMLParser.log.debug("Parsing " + xmlFile.getName)
-    val document = XML.loadFile(xmlFile)
-
-    parseXML(fileName, document)
-  }
-
-  def parseXML(fileName: String, document: Elem): Seq[Move] = {
+  def parseXML(fileName: String, document: Elem): Seq[Try[Move]] = {
 
     val deviceNodes = document \ "Device" \ "FullName"
 
@@ -134,7 +125,7 @@ object XMLParser {
 
     val moveList = moves \ "Move"
     XMLParser.log.debug(moveList.size + " move elements in this file")
-    val suuntoMoves = moveList.zipWithIndex.flatMap { case (moveItem, i) =>
+    val suuntoMoves = moveList.zipWithIndex.map { case (moveItem, i) =>
       try {
         val headerNode = (moveItem \ "Header")(0)
         val samples = (moveItem \ "Samples")(0)
@@ -158,15 +149,15 @@ object XMLParser {
         val suuntoMove = parseSamples(fileName, header, samples)
 
         val moveWithLaps = if (laps.nonEmpty) {
-          suuntoMove.addStream(suuntoMove, new DataStreamLap(SortedMap(laps.map(time => time -> "Manual"): _*)))
+          suuntoMove.addStream(suuntoMove, DataStreamLap(SortedMap(laps.map(time => time -> "Manual"): _*)))
         } else suuntoMove
-        Some(moveWithLaps)
+        Success(moveWithLaps)
       }
       catch {
         case ex: Exception =>
           XMLParser.log.info(s"Data invalid in the no. ${i + 1} of the moves")
           //println(ex.printStackTrace)
-          None
+          Failure(ex)
       }
     }
     suuntoMoves
