@@ -42,6 +42,8 @@ object MoveslinkImport {
 
     val distStream = move.streamGet[DataStreamDist] orElse move.streamGet[DataStreamHRWithDist].map(distFromHRStream)
 
+    val laps = move.streamGet[DataStreamLap]
+
     val gps = move.streamGet[DataStreamGPS].getOrElse(DataStreamGPS(SortedMap.empty[ZonedDateTime, GPSPoint]))
 
     val dist = distStream.getOrElse(DataStreamDist(SortedMap.empty[ZonedDateTime, Double]))
