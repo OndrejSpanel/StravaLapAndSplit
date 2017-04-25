@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import org.joda.time.{Period, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.JavaConverters._
-import org.joda.time.format.PeriodFormatterBuilder
+import org.joda.time.format.{ISODateTimeFormat, PeriodFormatterBuilder}
 import DateTimeOps._
 import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
@@ -596,6 +596,32 @@ object Main {
   }
 
   def displayDistance(dist: Double): String = "%.2f".format(dist*0.001)
+
+  def displayDate(startTime: ZonedDateTime): String = {
+    ISODateTimeFormat.dateTime().print(startTime)
+  }
+
+  def jsDate(t: ZonedDateTime): String = {
+    s"""
+    function () {
+
+      var date = new Date("$t");
+      return new Intl.DateTimeFormat(
+        undefined, // locale
+        {
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+        }
+      ).format(date)
+    }()
+    """
+  }
+
+
+
 
   def getEventsCachedFrom(auth: StravaAuthResult, id: String): ActivityEvents = {
     try {

@@ -1,18 +1,16 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import javax.servlet.http.HttpServletResponse
-
 import spark.{Request, Response}
-
-import scala.util.Try
+import DateTimeOps._
 
 object SelectActivity extends DefineRequest("/selectActivity") {
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
-    val activities = Main.stagedActivities(auth)
+    val activities = Main.stagedActivities(auth).sortBy(_.startTime)
+
     <html>
       <head>
         {headPrefix}<title>Stravamat - select activity</title>
@@ -27,26 +25,18 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <table class="activities">
           {for (act <- activities) yield {
           <tr>
-            <td>
-              {act.id}
-            </td> <td>
-            {act.sportName}
-          </td> <td>
-            <a href={act.link}>
-              {act.name}
-            </a>
-          </td>
-            <td>
-              {Main.displayDistance(act.distance)}
-              km</td> <td>
-            {Main.displaySeconds(act.duration)}
-          </td>
+            <td><script>document.write({xml.Unparsed(Main.jsDate(act.startTime))})</script></td>
+            <td> {act.sportName} </td>
+            <td> <a href={act.link}> {act.name} </a> </td>
+            <td>{Main.displayDistance(act.distance)} km</td>
+            <td>{Main.displaySeconds(act.duration)}</td>
             <td>
               <form action="activity" method="get">
                 <input type="hidden" name="activityId" value={act.id.toString}/>
                 <input type="submit" value=">>"/>
               </form>
             </td>
+            <td> {act.id} </td>
           </tr>
         }}
         </table>
