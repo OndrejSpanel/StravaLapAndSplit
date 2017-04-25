@@ -46,6 +46,7 @@ object Storage {
   }
 
   def store(filename: String, userId: String, obj: AnyRef, metadata: (String, String)*) = {
+    println(s"store '$filename' - '$userId'")
     val os = output(userFilename(filename, userId), metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj)
@@ -53,9 +54,12 @@ object Storage {
   }
 
   def load[T : ClassTag](filename: String, userId: String) = {
+    println(s"load '$filename' - '$userId'")
     val is = input(userFilename(filename, userId))
     val ois = new ObjectInputStream(is)
-    ois.readObject().asInstanceOf[T]
+    val r = ois.readObject().asInstanceOf[T]
+    println("  ok")
+    r
   }
 
   def enumerate(userId: String) = {
@@ -67,12 +71,13 @@ object Storage {
       val name = i.getName.drop(prefix.length)
       val m = try {
         val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
-        Some(md)
+        Some(md.getOptions.getUserMetadata)
       } catch {
         case e: Exception =>
           e.printStackTrace()
           None
       }
+      println(s"enum '$name' - '$userId': md '$m'")
       name
     }
   }

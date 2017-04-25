@@ -5,9 +5,9 @@ import java.io.InputStream
 import com.github.opengrabeso.stravalas.Event.Sport
 import net.suunto3rdparty.MoveHeader.ActivityType._
 import net.suunto3rdparty._
-import scala.collection.immutable.SortedMap
 
-import org.joda.time.{DateTime=>ZonedDateTime}
+import scala.collection.immutable.SortedMap
+import org.joda.time.{DateTime => ZonedDateTime}
 import DateTimeOps._
 
 import scala.xml.{Node, XML}
@@ -56,17 +56,25 @@ object MoveslinkImport {
       endTime <- move.endTime
       d <- dist.stream.lastOption.map(_._2)
     } yield {
-      // TODO: digest
       val sport = sportFromActivityType(move.header.moveType)
-      val id = Main.ActivityId(0, "", "Activity", startTime, endTime, sport, d)
+
+      // timestamp around 2017 needs 30 bits: (2017-1970)*365*24*3600 = (2017-1970)*365*24*3600
+      val startInSec = startTime.getMillis / 1000
+      val durationInSec = endTime.getMillis / 1000 - startInSec // 18 b is enough for 3 days - ln(3*24*3600)/ln(2) = 17.98
+      val sportId = sport.id // 8b should be enough
+
+      val startBits = 32
+      val durationBits = 18
+      val sportBits = 8
+
+      val signature = (((startInSec << durationBits) + durationInSec) << sportBits) + sportId
+
+      val id = Main.ActivityId(signature, "", "Activity", startTime, endTime, sport, d)
 
       val events = Array[Event](BegEvent(id.startTime, sport), EndEvent(id.endTime))
 
       Main.ActivityEvents(id, events, dist, gps, Seq(hrStream))
-
     }
-
-
 
 
   }

@@ -10,14 +10,12 @@ object ActivityFromStrava extends DefineRequest("/activityFromStrava") with Acti
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
-    val code = request.queryParams("code")
     val actId = request.queryParams("activityId")
     val activityData = Main.getEventsCachedFrom(auth, actId)
 
     Storage.store("events-" + actId, auth.userId, activityData, "digest" -> activityData.id.digest)
 
-    println(s"Encode $code")
-    resp.redirect(s"/selectActivity?code=${URLEncoder.encode(code, "UTF-8")}")
+    resp.redirect(s"/selectActivity")
     Nil
   }
 
