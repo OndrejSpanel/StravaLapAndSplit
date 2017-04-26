@@ -9,7 +9,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
-    val activities = Main.stagedActivities(auth).sortBy(_.startTime)
+    val activities = Main.stagedActivities(auth).sortBy(_.id.startTime)
 
     <html>
       <head>
@@ -23,21 +23,23 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         {bodyHeader(auth)}<h2>Staging</h2>
 
         <table class="activities">
-          {for (act <- activities) yield {
-          <tr>
-            <td>{Main.localeDateRange(act.startTime, act.endTime)}</td>
-            <td> {act.sportName} </td>
-            <td> <a href={act.link}> {act.name} </a> </td>
-            <td>{Main.displayDistance(act.distance)} km</td>
-            <td>{Main.displaySeconds(act.duration)}</td>
-            <td>
-              <form action="activity" method="get">
-                <input type="hidden" name="activityId" value={act.id.toString}/>
-                <input type="submit" value=">>"/>
-              </form>
-            </td>
-            <td> {act.id} </td>
-          </tr>
+          {for (actEvents <- activities) yield {
+            val act = actEvents.id
+            <tr>
+              <td>{Main.localeDateRange(act.startTime, act.endTime)}</td>
+              <td> {act.sportName} </td>
+              <td> {if (actEvents.hasGPS) "GPS" else "--"}</td>
+              <td> <a href={act.link}> {act.name} </a> </td>
+              <td>{Main.displayDistance(act.distance)} km</td>
+              <td>{Main.displaySeconds(act.duration)}</td>
+              <td>
+                <form action="activity" method="get">
+                  <input type="hidden" name="activityId" value={act.id.toString}/>
+                  <input type="submit" value=">>"/>
+                </form>
+              </td>
+              <td> {act.id} </td>
+            </tr>
         }}
         </table>
         <hr/>

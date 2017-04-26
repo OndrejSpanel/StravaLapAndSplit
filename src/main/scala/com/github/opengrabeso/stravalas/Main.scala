@@ -120,18 +120,18 @@ object Main {
       ActivityId.load(actI)
     }
 
-    val storedActivities = stagedActivities(auth)
+    val storedActivities = stagedActivities(auth).map(_.id)
     // do not display the activities which are already staged
     stravaActivities diff storedActivities
   }
 
-  def stagedActivities(auth: StravaAuthResult): Seq[ActivityId] = {
+  def stagedActivities(auth: StravaAuthResult): Seq[ActivityEvents] = {
     val storedActivities = {
       val d = Storage.enumerate(auth.userId)
       d.flatMap { a =>
         try {
           val act = Storage.load[Main.ActivityEvents](a, auth.userId)
-          Some(act.id)
+          Some(act)
         } catch {
           case _: java.io.InvalidClassException => // bad serialVersionUID
             None
@@ -146,7 +146,6 @@ object Main {
 
   @SerialVersionUID(1111L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
-
     assert(events.forall(_.stamp >= id.startTime))
     assert(events.forall(_.stamp <= id.endTime))
 
@@ -664,13 +663,16 @@ object Main {
   def localeDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
     // TODO: get timezone and locale from the browser
     val locale = new Locale("cs")
-    val formatDT = DateTimeFormat.forStyle("MS").withLocale(locale)
-    val formatT = DateTimeFormat.forStyle("-S").withLocale(locale)
-    if (endTime.getMillis - startTime.getMillis < 24 * 3600 * 1000) {
+
+    val zone = startTime.getZone
+
+    val formatDT = DateTimeFormat.forStyle("MS").withLocale(locale).withZone(zone)
+    val formatT = DateTimeFormat.forStyle("-S").withLocale(locale).withZone(zone)
+    (if (endTime.getMillis - startTime.getMillis < 24 * 3600 * 1000) {
       formatDT.print(startTime) + ".." + formatT.print(endTime)
     } else {
       formatDT.print(startTime) + ".." + formatDT.print(endTime)
-    }
+    }) + " " + zone.toString
   }
 
 
