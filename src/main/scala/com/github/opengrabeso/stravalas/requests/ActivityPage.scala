@@ -249,9 +249,32 @@ trait ActivityRequestHandler {
       var markers = [];
 
       function findPoint(route, time) {
-        return route.filter(function(r) {
-          return r[2] == time
-        })[0]
+        // interpolate between close points if necessary
+        var i;
+        for (i = 1; i < route.length - 1; i++) {
+          // find first above
+          if (route[i][2] >= time) break;
+
+        }
+
+        var prev = route[i-1];
+        var next = route[i];
+
+        var f;
+
+        if (f < prev[2]) f = 0;
+        else if (f > next[2]) f = 1;
+        else f = (time - prev[2]) / (next[2] - prev[2]);
+
+        function lerp(a, b, f) {
+          return a + (b - a) * f;
+        }
+        return [
+          lerp(prev[0], next[0], f),
+          lerp(prev[1], next[1], f),
+          lerp(prev[2], next[2], f), // should be time
+          lerp(prev[3], next[3], f)
+        ];
       }
 
       var dropStartEnd = events.slice(1, -1);
@@ -260,22 +283,26 @@ trait ActivityRequestHandler {
         // ["split", 0, 0.0, "Run"]
         var r = findPoint(route, e[1]);
 
-        var marker = {
-          "type": "Feature",
-          "geometry": {
-            "type": "Point",
-            "coordinates": [r[0], r[1]]
-          },
-          "properties": {
-            "title": e[0],
-            "icon": "circle",
-            "description": getSelectHtml(e[1]),
-            "color": "#444",
-            "opacity": 0.5
-          }
-        };
+        if (r) {
+          var marker = {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [r[0], r[1]]
+            },
+            "properties": {
+              "title": e[0],
+              "icon": "circle",
+              "description": getSelectHtml(e[1]),
+              "color": "#444",
+              "opacity": 0.5
+            }
+          };
 
-        markers.push(marker)
+          markers.push(marker)
+        } else {
+          console.log("Point " + e[1] + " not found");
+        }
       });
       return markers;
     }

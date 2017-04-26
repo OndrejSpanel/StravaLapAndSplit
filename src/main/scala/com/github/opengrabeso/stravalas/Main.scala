@@ -16,7 +16,6 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
 
 import scala.collection.immutable.SortedMap
-import scala.util.Try
 
 object Main {
 
@@ -130,15 +129,22 @@ object Main {
     val storedActivities = {
       val d = Storage.enumerate(auth.userId)
       d.flatMap { a =>
-        Try {
+        try {
           val act = Storage.load[Main.ActivityEvents](a, auth.userId)
-          act.id
-        }.toOption
+          Some(act.id)
+        } catch {
+          case _: java.io.InvalidClassException => // bad serialVersionUID
+            None
+          case x: Exception =>
+            x.printStackTrace()
+            None
+        }
       }
     }
-   storedActivities.toSeq
+    storedActivities.toSeq
   }
 
+  @SerialVersionUID(1111L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
     assert(events.forall(_.stamp >= id.startTime))
@@ -165,8 +171,32 @@ object Main {
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
+
+    def optimizeRoute: Seq[(ZonedDateTime, GPSPoint)] = {
+      // TODO: smart optimization based on direction changes and distances
+      val maxPoints = 1000
+      if (gps.stream.size < maxPoints) gps.stream.toList
+      else {
+        val ratio = gps.stream.size / maxPoints
+        val gpsSeq = gps.stream.toList
+
+        val groups = gpsSeq.grouped(ratio).toList
+
+        // take each n-th
+        val allButLast = groups.dropRight(1).map(_.head)
+        // always take the last one
+        val lastGroup = groups.last
+        val last = if (lastGroup.lengthCompare(1) > 0) lastGroup.take(1) ++ lastGroup.takeRight(1)
+        else lastGroup
+
+        allButLast ++ last
+      }
+    }
+
     def routeJS: String = {
-      gps.stream.map { case (time,g) =>
+      val toSend = optimizeRoute
+
+      toSend.map { case (time,g) =>
         val t = id.secondsInActivity(time)
         val d = distanceForTime(time)
         s"[${g.longitude},${g.latitude},$t,$d]"
