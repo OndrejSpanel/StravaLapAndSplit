@@ -31,12 +31,12 @@ object MoveslinkImport {
     // ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
     def distFromHRStream(hr: DataStreamHRWithDist): DataStreamDist = {
-      val stream = hr.stream.mapValues(_.dist)
+      val stream = hr.mapStreamValues(_.dist)
       DataStreamDist(stream)
     }
 
     def hrFromHRStream(hr: DataStreamHRWithDist): DataStreamHR = {
-      val stream = hr.stream.mapValues(_.hr)
+      val stream = hr.mapStreamValues(_.hr)
       DataStreamHR(stream)
     }
 
