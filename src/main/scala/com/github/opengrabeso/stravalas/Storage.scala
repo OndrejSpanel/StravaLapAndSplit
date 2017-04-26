@@ -46,7 +46,7 @@ object Storage {
   }
 
   def store(filename: String, userId: String, obj: AnyRef, metadata: (String, String)*) = {
-    println(s"store '$filename' - '$userId'")
+    //println(s"store '$filename' - '$userId'")
     val os = output(userFilename(filename, userId), metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj)
@@ -54,12 +54,10 @@ object Storage {
   }
 
   def load[T : ClassTag](filename: String, userId: String) = {
-    println(s"load '$filename' - '$userId'")
+    //println(s"load '$filename' - '$userId'")
     val is = input(userFilename(filename, userId))
     val ois = new ObjectInputStream(is)
-    val r = ois.readObject().asInstanceOf[T]
-    println("  ok")
-    r
+    ois.readObject().asInstanceOf[T]
   }
 
   def enumerate(userId: String) = {
@@ -77,7 +75,7 @@ object Storage {
           e.printStackTrace()
           None
       }
-      println(s"enum '$name' - '$userId': md '$m'")
+      //println(s"enum '$name' - '$userId': md '$m'")
       name
     }
   }
