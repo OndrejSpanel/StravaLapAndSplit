@@ -5,11 +5,42 @@ import spark.{Request, Response}
 import DateTimeOps._
 
 object SelectActivity extends DefineRequest("/selectActivity") {
+
+  object ActivityAction extends Enumeration {
+    type ActivityAction = Value
+    val ActUpload, ActMerge, ActIgnore = Value
+  }
+
+  import ActivityAction._
+
+  val displayActivityAction = Map(
+    ActUpload -> "Upload",
+    ActMerge -> "Merge with above",
+    ActIgnore -> "Ignore"
+  )
+
+  def htmlActivityAction(id: Long, types: Seq[ActivityAction], action: ActivityAction) = {
+    <select id={id.toString} name="do" onchange={s"changeActivity(this, this.options[this.selectedIndex].value, $id)"}>
+      {for (et <- types) yield {
+      <option value={et.id.toString} selected={if (action == et) "" else null}>
+        {displayActivityAction(et)}
+      </option>
+    }}
+    </select>
+  }
+
+
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val activities = Main.stagedActivities(auth).sortBy(_.id.startTime)
+
+    val actions = ActivityAction.values.toSeq
+
+    // detect activity groups - any overlapping activities should be one group, unless
+    //val activityGroups =
+
 
     <html>
       <head>
@@ -38,6 +69,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
                   <input type="submit" value=">>"/>
                 </form>
               </td>
+              <td>{htmlActivityAction(act.id, actions, ActUpload)}</td>
               <td> {act.id} </td>
             </tr>
         }}
@@ -56,28 +88,36 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             <input type="file" id="fileInput" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/>
           </p>
           <input type="submit" value="Upload"/>
-        </form>{bodyFooter}{xml.Unparsed(
-        """
-                 <script>
-              // dragover and dragenter events need to have 'preventDefault' called
-              // in order for the 'drop' event to register.
-              // See: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Drag_operations#droptargets
-              var dropContainer = document.getElementById("drop-container");
+        </form>
+        {bodyFooter}
+        <script>{xml.Unparsed(
+        //language=JavaScript
+          """
 
-              dropContainer.addEventListener("dragover", function (evt){
-                evt.preventDefault();
-              });
-              dropContainer.addEventListener("dragenter", function (evt){
-                evt.preventDefault();
-              });
-              dropContainer.addEventListener("drop", function (evt){
-                // pretty simple -- but not for IE :(
-                fileInput.files = evt.dataTransfer.files;
-                evt.preventDefault();
-              });
-                 </script>
-              """
-      )}
+          // dragover and dragenter events need to have 'preventDefault' called
+          // in order for the 'drop' event to register.
+          // See: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Drag_operations#droptargets
+          var dropContainer = document.getElementById("drop-container");
+
+          dropContainer.addEventListener("dragover", function (evt){
+            evt.preventDefault();
+          });
+          dropContainer.addEventListener("dragenter", function (evt){
+            evt.preventDefault();
+          });
+          dropContainer.addEventListener("drop", function (evt){
+            // pretty simple -- but not for IE :(
+            fileInput.files = evt.dataTransfer.files;
+            evt.preventDefault();
+          });
+
+
+          function changeActivity(event, value, id) {
+            console.log("changeActivity " + event + ","
+          }
+          """
+        )}
+        </script>
       </body>
     </html>
   }
