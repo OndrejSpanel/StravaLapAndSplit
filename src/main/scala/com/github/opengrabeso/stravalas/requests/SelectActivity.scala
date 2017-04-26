@@ -25,7 +25,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <table class="activities">
           {for (act <- activities) yield {
           <tr>
-            <td><script>document.write({xml.Unparsed(Main.jsDate(act.startTime))})</script></td>
+            <td>{Main.localeDateRange(act.startTime, act.endTime)}</td>
             <td> {act.sportName} </td>
             <td> <a href={act.link}> {act.name} </a> </td>
             <td>{Main.displayDistance(act.distance)} km</td>

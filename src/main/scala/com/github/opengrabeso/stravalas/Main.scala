@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravalas
 
 import java.security.MessageDigest
 import java.util
+import java.util.Locale
 
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
@@ -9,7 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import org.joda.time.{Period, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.JavaConverters._
-import org.joda.time.format.{ISODateTimeFormat, PeriodFormatterBuilder}
+import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 import DateTimeOps._
 import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
@@ -604,10 +605,10 @@ object Main {
   def jsDate(t: ZonedDateTime): String = {
     s"""
     function () {
-
+      var locale = navigator.languages[0] || navigator.language
       var date = new Date("$t");
       return new Intl.DateTimeFormat(
-        undefined, // locale
+        locale,
         {
           year: "numeric",
           month: "numeric",
@@ -620,6 +621,21 @@ object Main {
     """
   }
 
+  def jsDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
+    jsDate(startTime)
+  }
+
+  def localeDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
+    // TODO: get timezone and locale from the browser
+    val locale = new Locale("cs")
+    val formatDT = DateTimeFormat.forStyle("MS").withLocale(locale)
+    val formatT = DateTimeFormat.forStyle("-S").withLocale(locale)
+    if (endTime.getMillis - startTime.getMillis < 24 * 3600 * 1000) {
+      formatDT.print(startTime) + ".." + formatT.print(endTime)
+    } else {
+      formatDT.print(startTime) + ".." + formatDT.print(endTime)
+    }
+  }
 
 
 
