@@ -86,7 +86,13 @@ object Main {
 
     val duration: Int = Seconds.secondsBetween(startTime, endTime).getSeconds
 
-    def link: String = s"https://www.strava.com/activities/$id"
+    def link: String = {
+      if (id < 999999999999L) {
+        s"https://www.strava.com/activities/$id"
+      } else {
+        null // not a Strava activity - no link
+      }
+    }
   }
 
   object ActivityId {
