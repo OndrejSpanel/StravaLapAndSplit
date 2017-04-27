@@ -89,17 +89,19 @@ object StravamatUploader extends App {
 
 
   object CorsSupport {
-    lazy val allowedOrigin = {
-      HttpOrigin("*") // TODO: restrict
-    }
+    //HttpOriginRange.*
+    lazy val allowedOrigin = HttpOriginRange(
+      HttpOrigin("http://localhost:8080"),
+      HttpOrigin("https://stravamat.appspot.com")
+    )
 
     //this directive adds access control headers to normal responses
     private def addAccessControlHeaders = {
       mapResponseHeaders { headers =>
         //`Access-Control-Allow-Origin`(allowedOrigin) +:
-        `Access-Control-Allow-Origin`.* +:
-        `Access-Control-Allow-Credentials`(true) +:
-        `Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With") +:
+        //`Access-Control-Allow-Credentials`(true) +:
+        //`Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With") +:
+        `Access-Control-Max-Age`(2) // TODO: increase to a resonable value
         headers
       }
     }
@@ -112,8 +114,8 @@ object StravamatUploader extends App {
       complete(HttpResponse(200).withHeaders(`Access-Control-Allow-Methods`(OPTIONS, POST, PUT, GET, DELETE)))
     }
 
-    def apply(r: Route) = addAccessControlHeaders {
-      preflightRequestHandler ~ r
+    def apply(r: Route) = /*addAccessControlHeaders*/ {
+      r
     }
   }
 
