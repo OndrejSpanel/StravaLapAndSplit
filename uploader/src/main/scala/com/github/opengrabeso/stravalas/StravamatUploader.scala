@@ -67,7 +67,7 @@ object StravamatUploader extends App {
     sendResponseXml(400, response)
   }
   def doneHandler(): HttpResponse = {
-    val response = <html>Done</html>
+    val response = <result>Done</result>
     val ret = sendResponseXml(200, response)
     // once the message goes out, we can stop the server
     println("Done - stop server")
@@ -111,26 +111,26 @@ object StravamatUploader extends App {
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
+    val requests = path(enumPath) {
+      complete(enumHandler())
+    } ~ path(getPath) {
+      parameters('path) { path =>
+        complete(getHandler(path))
+      }
+    } ~ path(donePath) {
+      complete(doneHandler())
+    }
+
     val route = post {
 
       checkSameOrigin(CorsSupport.allowedOrigin) {
         val originHeader = headerValueByType[Origin](())
         originHeader { origin =>
-          respondWithHeaders(CorsSupport.accessControl(origin.origins)) {
-            path(enumPath) {
-              complete(enumHandler())
-            } ~ path(getPath) {
-              parameters('path) { path =>
-                complete(getHandler(path))
-              }
-            } ~ path(donePath) {
-              complete(doneHandler())
-            }
-          }
+          respondWithHeaders(CorsSupport.accessControl(origin.origins))(requests)
         }
 
       }
-    }
+    } ~ get(requests)
 
     val bindingFuture: Future[ServerBinding] = Http().bindAndHandle(Route.handlerFlow(route), "localhost", callbackPort)
 
