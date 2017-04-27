@@ -60,7 +60,7 @@ object Storage {
     ois.readObject().asInstanceOf[T]
   }
 
-  def enumerate(userId: String) = {
+  def enumerate(userId: String): Iterable[String] = {
     val prefix = userFilename("", userId)
     val options = new ListOptions.Builder().setPrefix(prefix).build()
     val list = gcsService.list(bucket, options).asScala.toIterable
@@ -80,5 +80,28 @@ object Storage {
     }
   }
 
+  def check(userId: String, path: String, digest: String): Boolean = {
+
+    val prefix = userFilename(path, userId)
+    val options = new ListOptions.Builder().setPrefix(prefix).build()
+    val found = gcsService.list(bucket, options).asScala.toIterable.headOption
+
+    // there should be at most one result
+    found.flatMap{i =>
+      assert(i.getName.startsWith(prefix))
+      val name = i.getName.drop(prefix.length)
+      val m = try {
+        val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
+        val userData = md.getOptions.getUserMetadata.asScala
+        userData.get("digest").map(_ == digest)
+      } catch {
+        case e: Exception =>
+          e.printStackTrace()
+          None
+      }
+      //println(s"enum '$name' - '$userId': md '$m'")
+      m
+    }.contains(true)
+  }
 
 }

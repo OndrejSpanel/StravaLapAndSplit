@@ -49,13 +49,19 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
             return xmlhttp;
           }
 
-          function ajaxPost(/** XMLHttpRequest */ xmlhttp, /** string */ request, /** boolean */ async) {
+          /**
+          * @param {XMLHttpRequest} xmlhttp
+          * @param {string} request
+          * @param {string} [data]
+          * @param {boolean} async
+          */
+          function ajaxPost(xmlhttp, request, data, async) {
             xmlhttp.open("POST", request, async); // POST to prevent caching
-            xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-            xmlhttp.send("");
+            xmlhttp.setRequestHeader("Content-type", "text/plain");
+            xmlhttp.send(data ? data: "");
           }
 
-          function ajaxAsync(uri, callback, failure) {
+          function ajaxAsync(uri, data, callback, failure) {
             var xmlhttp = ajax();
             // the callback function to be callled when AJAX request comes back
             xmlhttp.onreadystatechange = function () {
@@ -67,22 +73,24 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
                 }
               }
             };
-            ajaxPost(xmlhttp, uri, true); // POST to prevent caching
+            ajaxPost(xmlhttp, uri, data, true); // POST to prevent caching
           }
 
           function loadFile(file) {
-            ajaxAsync(uploaderUri + "/digest?path=" + file, function() {
+            ajaxAsync(uploaderUri + "/digest?path=" + file, "", function(response) {
+              var digest = response.documentElement.getElementsByTagName("value")[0].textContent;
               document.getElementById("myDiv").innerHTML = "<h3>Loading file '" + file + "' </h3>";
-              console.log("Digest " + file);
+              console.log("Digest " + file + "=" + digest);
               // check if digest is matching the server value
+              ajaxAsync("putDigest?path=" + file, digest, function () {
+                console.log("Digest sent")
+              });
             });
 
           }
 
-
-
           /**
-           @param files {Element}
+           @param {Element} files
            */
           function loadAllFiles(files) {
             var items = files.getElementsByTagName("file");
@@ -95,7 +103,7 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
 
           function enumerate() {
 
-            ajaxAsync(uploaderUri + "/$enumPath", function sucess(response){
+            ajaxAsync(uploaderUri + "/$enumPath", "", function sucess(response){
               document.getElementById("myDiv").innerHTML = "<h3>Loading files</h3>";
               loadAllFiles(response.documentElement)
             }, function failure() {

@@ -15,6 +15,10 @@ object Method {
 
 case class Handle(value: String, method: Method = Method.Get)
 
+object DefineRequest {
+  abstract class Post(handleUri: String) extends DefineRequest(handleUri, method = Method.Post)
+}
+
 abstract class DefineRequest(val handleUri: String, val method: Method = Method.Get) {
 
   def apply(request: Request, resp: Response): AnyRef = {
