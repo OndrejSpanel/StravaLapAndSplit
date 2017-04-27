@@ -97,7 +97,7 @@ object StravamatUploader extends App {
   private val md = MessageDigest.getInstance("SHA-256")
 
   def digest(str: String): String = {
-    val digestBytes = md.digest(str.getBytes)
+    val digestBytes = (0:Byte) +: md.digest(str.getBytes) // prepend 0 byte to avoid negative sign
     BigInt(digestBytes).toString(16)
   }
 
