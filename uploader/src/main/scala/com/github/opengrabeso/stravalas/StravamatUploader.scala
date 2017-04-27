@@ -10,9 +10,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
+import scala.util.Success
 import scala.xml.Elem
 
 object StravamatUploader extends App {
@@ -140,9 +140,18 @@ object StravamatUploader extends App {
     ServerInfo(system, bindingFuture)
   }
 
-  // wait until the server has stopped
-  Await.result(serverInfo.system.whenTerminated, Duration.Inf)
-  println("Server stopped")
+  import scala.concurrent.ExecutionContext.Implicits.global
+
+  serverInfo.binding.onComplete {
+    case Success(_) =>
+      // wait until the server has stopped
+      Await.result(serverInfo.system.whenTerminated, Duration.Inf)
+      println("Server stopped")
+    case _ =>
+      println("Server not started")
+      serverInfo.system.terminate()
+  }
+
 
 
 }
