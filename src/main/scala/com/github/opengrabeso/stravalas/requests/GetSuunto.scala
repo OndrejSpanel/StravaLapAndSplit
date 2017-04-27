@@ -35,6 +35,7 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
         <script>{xml.Unparsed(
           //language=JavaScript
           s"""
+          var uploaderUri = "$uploaderUri";
           /**
            * @returns {XMLHttpRequest}
            */
@@ -52,24 +53,54 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
             xmlhttp.open("POST", request, async); // POST to prevent caching
             xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
             xmlhttp.send("");
-
           }
 
-          function enumerate() {
+          function ajaxAsync(uri, callback, failure) {
             var xmlhttp = ajax();
             // the callback function to be callled when AJAX request comes back
             xmlhttp.onreadystatechange = function () {
               if (xmlhttp.readyState === 4) {
                 if (xmlhttp.status >= 200 && xmlhttp.status < 300) {
-                  //console.log(xmlhttp);
-                  var response = xmlhttp.responseXML;
-                  document.getElementById("myDiv").innerText = new XMLSerializer().serializeToString(response.documentElement);
-                } else {
-                  document.getElementById("myDiv").innerHTML = "<h3>Uploader not responding</h3>";
+                  callback(xmlhttp.responseXML);
+                } else if (failure) {
+                  failure(xmlhttp.responseXML);
                 }
               }
             };
-            ajaxPost(xmlhttp, "$uploaderUri/$enumPath", true); // POST to prevent caching
+            ajaxPost(xmlhttp, uri, true); // POST to prevent caching
+          }
+
+          function loadFile(file) {
+            ajaxAsync(uploaderUri + "/digest?path=" + file, function() {
+              document.getElementById("myDiv").innerHTML = "<h3>Loading file '" + file + "' </h3>";
+              console.log("Digest " + file);
+              // check if digest is matching the server value
+            });
+
+          }
+
+
+
+          /**
+           @param files {Element}
+           */
+          function loadAllFiles(files) {
+            var items = files.getElementsByTagName("file");
+            for (var i = 0; i < items.length; i++) {
+              var file = items.item(i).textContent;
+              console.log(file);
+              loadFile(file);
+            }
+          }
+
+          function enumerate() {
+
+            ajaxAsync(uploaderUri + "/$enumPath", function sucess(response){
+              document.getElementById("myDiv").innerHTML = "<h3>Loading files</h3>";
+              loadAllFiles(response.documentElement)
+            }, function failure() {
+              document.getElementById("myDiv").innerHTML = "<h3>Uploader not responding</h3>";
+            });
           }
 
           window.onload = enumerate();
