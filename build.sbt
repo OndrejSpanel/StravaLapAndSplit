@@ -18,8 +18,8 @@ lazy val uploader = (project in file("uploader")).settings(
   name := "StravamatUploader",
   commonSettings,
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.11",
-  libraryDependencies += "com.typesafe.akka" %% "akka-http-experimental" % "2.4.11",
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.17",
+  libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.5",
 
   libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
   libraryDependencies ++= commonLibs

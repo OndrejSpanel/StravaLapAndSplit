@@ -6,13 +6,10 @@ import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.ContentType.WithCharset
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-
-
-
 import akka.stream.ActorMaterializer
+
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
@@ -51,8 +48,9 @@ object StravamatUploader extends App {
   def enumHandler(): HttpResponse = {
     println("enum")
     val response = <files>
-
-      <file></file>
+      {MoveslinkFiles.listFiles.map { file =>
+        <file>{file}</file>
+      }}
     </files>
     sendResponseXml(200, response)
   }
@@ -92,53 +90,49 @@ object StravamatUploader extends App {
     //HttpOriginRange.*
     lazy val allowedOrigin = HttpOriginRange(
       HttpOrigin("http://localhost:8080"),
-      HttpOrigin("https://stravamat.appspot.com")
+      HttpOrigin("http://stravamat.appspot.com")
+      // it is no use allowing https://stravamat.appspot.com, as it cannot access plain unsecure http anyway (mixed content)
     )
 
     //this directive adds access control headers to normal responses
-    private def addAccessControlHeaders = {
-      mapResponseHeaders { headers =>
-        //`Access-Control-Allow-Origin`(allowedOrigin) +:
-        //`Access-Control-Allow-Credentials`(true) +:
-        //`Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With") +:
-        `Access-Control-Max-Age`(2) // TODO: increase to a resonable value
-        headers
+    def accessControl(origins: Seq[HttpOrigin]): List[HttpHeader] = {
+      origins.find(allowedOrigin.matches).toList.flatMap { origin =>
+        List(
+          `Access-Control-Allow-Origin`(origin),
+          `Access-Control-Allow-Headers`("Content-Type", "X-Requested-With"),
+          `Access-Control-Max-Age`(60)
+        )
       }
     }
-
-
-    // from https://groups.google.com/forum/#!topic/akka-user/5RCZIJt7jHo
-    //this handles preflight OPTIONS requests.
-    //otherwise has to be under addAccessControlHeaders
-    private def preflightRequestHandler: Route = options {
-      complete(HttpResponse(200).withHeaders(`Access-Control-Allow-Methods`(OPTIONS, POST, PUT, GET, DELETE)))
-    }
-
-    def apply(r: Route) = /*addAccessControlHeaders*/ {
-      r
-    }
   }
-
-
 
   private def startHttpServer(callbackPort: Int): ServerInfo = {
 
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
-    val route = get {
-      path(enumPath) {
-        complete(enumHandler())
-      } ~ path(getPath) {
-        parameters('path) { path =>
-          complete(getHandler(path))
+    val route = post {
+
+      checkSameOrigin(CorsSupport.allowedOrigin) {
+        val originHeader = headerValueByType[Origin](())
+        originHeader { origin =>
+          respondWithHeaders(CorsSupport.accessControl(origin.origins)) {
+            path(enumPath) {
+              complete(enumHandler())
+            } ~ path(getPath) {
+              parameters('path) { path =>
+                complete(getHandler(path))
+              }
+            } ~ path(donePath) {
+              complete(doneHandler())
+            }
+          }
         }
-      } ~ path(donePath) {
-        complete(doneHandler())
+
       }
     }
 
-    val bindingFuture: Future[ServerBinding] = Http().bindAndHandle(Route.handlerFlow(CorsSupport(route)), "localhost", callbackPort)
+    val bindingFuture: Future[ServerBinding] = Http().bindAndHandle(Route.handlerFlow(route), "localhost", callbackPort)
 
     println(s"Server started, listening on http://localhost:$callbackPort")
     println(s"  http://localhost:$callbackPort/enum")
