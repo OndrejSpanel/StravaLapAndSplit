@@ -1,9 +1,10 @@
-
+import sbt.Keys.scalacOptions
 
 lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
   version := "0.1.0",
-  scalaVersion := "2.11.8"
+  scalaVersion := "2.11.8",
+  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
 lazy val commonLibs = Seq(
