@@ -5,8 +5,13 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.ContentType.WithCharset
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers._
+import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+
+
+
 import akka.stream.ActorMaterializer
 
 import scala.concurrent.duration.Duration
@@ -44,6 +49,7 @@ object StravamatUploader extends App {
   import HttpHandlerHelper._
 
   def enumHandler(): HttpResponse = {
+    println("enum")
     val response = <files>
 
       <file></file>
@@ -81,6 +87,38 @@ object StravamatUploader extends App {
 
   }
 
+
+  object CorsSupport {
+    lazy val allowedOrigin = {
+      HttpOrigin("*") // TODO: restrict
+    }
+
+    //this directive adds access control headers to normal responses
+    private def addAccessControlHeaders = {
+      mapResponseHeaders { headers =>
+        //`Access-Control-Allow-Origin`(allowedOrigin) +:
+        `Access-Control-Allow-Origin`.* +:
+        `Access-Control-Allow-Credentials`(true) +:
+        `Access-Control-Allow-Headers`("Authorization", "Content-Type", "X-Requested-With") +:
+        headers
+      }
+    }
+
+
+    // from https://groups.google.com/forum/#!topic/akka-user/5RCZIJt7jHo
+    //this handles preflight OPTIONS requests.
+    //otherwise has to be under addAccessControlHeaders
+    private def preflightRequestHandler: Route = options {
+      complete(HttpResponse(200).withHeaders(`Access-Control-Allow-Methods`(OPTIONS, POST, PUT, GET, DELETE)))
+    }
+
+    def apply(r: Route) = addAccessControlHeaders {
+      preflightRequestHandler ~ r
+    }
+  }
+
+
+
   private def startHttpServer(callbackPort: Int): ServerInfo = {
 
     implicit val system = ActorSystem()
@@ -98,7 +136,7 @@ object StravamatUploader extends App {
       }
     }
 
-    val bindingFuture: Future[ServerBinding] = Http().bindAndHandle(Route.handlerFlow(route), "localhost", callbackPort)
+    val bindingFuture: Future[ServerBinding] = Http().bindAndHandle(Route.handlerFlow(CorsSupport(route)), "localhost", callbackPort)
 
     println(s"Server started, listening on http://localhost:$callbackPort")
     println(s"  http://localhost:$callbackPort/enum")

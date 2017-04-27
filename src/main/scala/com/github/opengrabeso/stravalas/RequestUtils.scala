@@ -30,4 +30,11 @@ object RequestUtils {
     request
   }
 
+  def buildGetRequest(uri: String, parameters: Map[String, String] = Map.empty): HttpRequest = {
+    val parametersAsString = parameters.map(kv => kv._1 + "=" + kv._2).mkString("&")
+    val request = requestFactory.buildGetRequest(new GenericUrl(uri + "?" + parametersAsString))
+    request
+  }
+
+
 }

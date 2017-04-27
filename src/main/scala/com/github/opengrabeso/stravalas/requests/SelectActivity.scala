@@ -76,7 +76,8 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         </table>
         <hr/>
         <h2>Data sources</h2>
-        <a href={s"loadFromStrava"}>Load from Strava ...</a>
+        <a href={"loadFromStrava"}>Load from Strava ...</a>
+        <a href={"getSuunto"}>Get from Suunto devices ...</a>
 
         <form action="upload" method="post" enctype="multipart/form-data">
           <p>Select files to upload
