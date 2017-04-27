@@ -1,5 +1,7 @@
 package com.github.opengrabeso.stravalas
 
+import java.security.MessageDigest
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
@@ -20,6 +22,7 @@ object StravamatUploader extends App {
   private val enumPath = "enum"
   private val donePath = "done"
   private val getPath = "get"
+  private val hashPath = "digest"
 
   object HttpHandlerHelper {
 
@@ -58,26 +61,65 @@ object StravamatUploader extends App {
 
   val serverInfo = startHttpServer(8088) // do not use 8080, would conflict with Google App Engine Dev Server
 
+  case class FileInfo(name: String, content: Option[String])
+
+  // typically the same file is checked for digest and then read - avoid reading it twice
+  var lastFile = Option.empty[FileInfo]
+
+  def getCached(name: String): Option[String] = {
+    lastFile.filter(_.name == name).fold {
+      val ret = MoveslinkFiles.get(name)
+      lastFile = Some(FileInfo(name, ret))
+      ret
+    }(_.content)
+  }
+
+
   def getHandler(path: String): HttpResponse = {
     println(s"Get path $path")
-    MoveslinkFiles.get(path).fold {
+    getCached(path).fold {
       val response = <error>
         <message>No such file</message>
-        <file>
-          {path}
-        </file>
+        <filename> {path} </filename>
       </error>
       sendResponseXml(404, response)
     } { f =>
-      val response = <error>
+      val response = <file>
         <message>File found</message>
-        <file>
-          {f}
-        </file>
-      </error>
+        <filename> {path} </filename>
+        <content> {f} </content>
+      </file>
       sendResponseXml(200, response)
     }
   }
+
+  // TODO: DRY with Main.digest
+  private val md = MessageDigest.getInstance("SHA-256")
+
+  def digest(str: String): String = {
+    val digestBytes = md.digest(str.getBytes)
+    BigInt(digestBytes).toString(16)
+  }
+
+
+  def digestHandler(path: String): HttpResponse = {
+    println(s"Get digest $path")
+    getCached(path).fold {
+      val response = <error>
+        <message>No such file</message>
+        <filename> {path} </filename>
+      </error>
+      sendResponseXml(404, response)
+    } { f =>
+      val response = <digest>
+        <message>File found</message>
+        <filename>{path}</filename>
+        <value>{digest(f)}</value>
+      </digest>
+      sendResponseXml(200, response)
+    }
+  }
+
   def doneHandler(): HttpResponse = {
     val response = <result>Done</result>
     val ret = sendResponseXml(200, response)
@@ -128,6 +170,10 @@ object StravamatUploader extends App {
     } ~ path(getPath) {
       parameters('path) { path =>
         complete(getHandler(path))
+      }
+    } ~ path(hashPath) {
+      parameters('path) { path =>
+        complete(digestHandler(path))
       }
     } ~ path(donePath) {
       complete(doneHandler())
