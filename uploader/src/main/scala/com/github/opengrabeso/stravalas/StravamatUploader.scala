@@ -60,11 +60,23 @@ object StravamatUploader extends App {
 
   def getHandler(path: String): HttpResponse = {
     println(s"Get path $path")
-    val response = <error>
-      <message>No such file</message>
-      <file>path</file>
-    </error>
-    sendResponseXml(400, response)
+    MoveslinkFiles.get(path).fold {
+      val response = <error>
+        <message>No such file</message>
+        <file>
+          {path}
+        </file>
+      </error>
+      sendResponseXml(404, response)
+    } { f =>
+      val response = <error>
+        <message>File found</message>
+        <file>
+          {f}
+        </file>
+      </error>
+      sendResponseXml(200, response)
+    }
   }
   def doneHandler(): HttpResponse = {
     val response = <result>Done</result>

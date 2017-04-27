@@ -1,6 +1,11 @@
 package com.github.opengrabeso.stravalas
 
 import java.io.File
+import java.nio.file.Files
+
+import java.nio.charset.StandardCharsets
+
+import scala.util.Try
 
 object MoveslinkFiles {
 
@@ -18,5 +23,15 @@ object MoveslinkFiles {
 
   def listMoveslink2Files: Set[String] = getData2Folder.list.toSet.filter(f => f.endsWith(".sml") || f.endsWith(".xml"))
 
-  def listFiles: Set[String] = listQuestFiles.map(placeInFolder(moveslinkFolder, _)) ++ listMoveslink2Files.map(placeInFolder(moveslink2Folder, _))
+  lazy val listFiles: Set[String] = listQuestFiles.map(placeInFolder(moveslinkFolder, _)) ++ listMoveslink2Files.map(placeInFolder(moveslink2Folder, _))
+
+  def get(path: String): Option[String] = {
+    if (listFiles.contains(path)) {
+      Try {
+        val bytes = Files.readAllBytes(suuntoHome.toPath.resolve(path))
+        new String(bytes, StandardCharsets.UTF_8) // note: actual charset may differ, we should read if from the XML
+        // TODO: parse XML, send binary data to the server
+      }.toOption
+    } else None
+  }
 }
