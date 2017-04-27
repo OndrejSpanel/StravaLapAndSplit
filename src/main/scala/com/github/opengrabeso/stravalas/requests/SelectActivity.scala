@@ -44,6 +44,8 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
     <html>
       <head>
+        {/* allow referer when using redirect to unsafe getSuunto page */}
+        <meta name="referrer" content="unsafe-url"/>
         {headPrefix}<title>Stravamat - select activity</title>
         <style>
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
@@ -76,8 +78,9 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         </table>
         <hr/>
         <h2>Data sources</h2>
-        <a href={"loadFromStrava"}>Load from Strava ...</a>
-        <a href={"getSuunto"}>Get from Suunto devices ...</a>
+        <a href="loadFromStrava">Load from Strava ...</a>
+        {/* getSuunto is peforming cross site requests to the local browser, this cannot be done on a secure page */}
+        <a href="javascript:;" onClick="window.location.assign(unsafe('getSuunto'))">Get from Suunto devices ...</a>
 
         <form action="upload" method="post" enctype="multipart/form-data">
           <p>Select files to upload
@@ -114,7 +117,14 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
 
           function changeActivity(event, value, id) {
-            console.log("changeActivity " + event + ","
+            console.log("changeActivity " + event + ",");
+          }
+
+          function unsafe(uri) {
+              var abs = window.location.href;
+              var http = abs.replace(/^https:/, 'http:');
+              var rel = http.lastIndexOf('/');
+              return http.substring(0, rel + 1) + uri;
           }
           """
         )}

@@ -11,6 +11,10 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
     val uploaderUri = "http://localhost:8088" // uploader should be running as a local web server
     val enumPath = "enum" // must be the same as in StravamatUploader // TODO: share sources
 
+    // when returning, check referer to return to https if appropriate
+
+    val referer = request.headers("referer")
+
     // display a page, the page will ask the local uploading server to send files
     <html>
       <head>
@@ -23,6 +27,7 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
       <body>
         {bodyHeader(auth)}<h2>Getting files from Suunto ...</h2>
 
+        <a href={referer}>Go back</a>
         <p>
         <div id="myDiv"></div>
         </p>
