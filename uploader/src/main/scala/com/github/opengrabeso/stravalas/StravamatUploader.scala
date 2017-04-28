@@ -44,6 +44,10 @@ object StravamatUploader extends App {
     def sendResponseXml(code: Int, responseXml: Elem): HttpResponse = {
       sendResponseWithContentType(code, responseXml.prefixed, ContentTypes.`text/xml(UTF-8)`)
     }
+    def sendResponseBytes(code: Int, response: Array[Byte]): HttpResponse = {
+      val ct = ContentTypes.`application/octet-stream`
+      HttpResponse(status = code, entity = HttpEntity(ct, response))
+    }
   }
 
   import HttpHandlerHelper._
@@ -61,12 +65,12 @@ object StravamatUploader extends App {
 
   val serverInfo = startHttpServer(8088) // do not use 8080, would conflict with Google App Engine Dev Server
 
-  case class FileInfo(name: String, content: Option[String])
+  case class FileInfo(name: String, content: Option[Array[Byte]])
 
   // typically the same file is checked for digest and then read - avoid reading it twice
   var lastFile = Option.empty[FileInfo]
 
-  def getCached(name: String): Option[String] = {
+  def getCached(name: String): Option[Array[Byte]] = {
     lastFile.filter(_.name == name).fold {
       val ret = MoveslinkFiles.get(name)
       lastFile = Some(FileInfo(name, ret))
@@ -78,29 +82,22 @@ object StravamatUploader extends App {
   def getHandler(path: String): HttpResponse = {
     println(s"Get path $path")
     getCached(path).fold {
-      val response = <error>
-        <message>No such file</message>
-        <filename> {path} </filename>
-      </error>
-      sendResponseXml(404, response)
+      sendResponseBytes(404, Array())
     } { f =>
-      val response = <file>
-        <message>File found</message>
-        <filename> {path} </filename>
-        <content> {f} </content>
-      </file>
-      sendResponseXml(200, response)
+      // send binary response
+      sendResponseBytes(200, f)
     }
   }
 
   // TODO: DRY with Main.digest
   private val md = MessageDigest.getInstance("SHA-256")
 
-  def digest(str: String): String = {
-    val digestBytes = (0:Byte) +: md.digest(str.getBytes) // prepend 0 byte to avoid negative sign
+  def digest(bytes: Array[Byte]): String = {
+    val digestBytes = (0:Byte) +: md.digest(bytes) // prepend 0 byte to avoid negative sign
     BigInt(digestBytes).toString(16)
   }
 
+  def digest(str: String): String = digest(str.getBytes)
 
   def digestHandler(path: String): HttpResponse = {
     println(s"Get digest $path")

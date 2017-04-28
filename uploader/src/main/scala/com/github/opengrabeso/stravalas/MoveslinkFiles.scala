@@ -25,13 +25,15 @@ object MoveslinkFiles {
 
   lazy val listFiles: Set[String] = listQuestFiles.map(placeInFolder(moveslinkFolder, _)) ++ listMoveslink2Files.map(placeInFolder(moveslink2Folder, _))
 
-  def get(path: String): Option[String] = {
+  def get(path: String): Option[Array[Byte]] = {
     if (listFiles.contains(path)) {
       Try {
-        val bytes = Files.readAllBytes(suuntoHome.toPath.resolve(path))
-        new String(bytes, StandardCharsets.UTF_8) // note: actual charset may differ, we should read if from the XML
-        // TODO: parse XML, send binary data to the server
+        Files.readAllBytes(suuntoHome.toPath.resolve(path))
       }.toOption
     } else None
+  }
+
+  def getString(path: String): Option[String] = {
+    get(path).map(new String(_, StandardCharsets.UTF_8))
   }
 }

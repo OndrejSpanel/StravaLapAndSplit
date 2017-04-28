@@ -23,10 +23,12 @@ object Main {
 
   private val md = MessageDigest.getInstance("SHA-256")
 
-  def digest(str: String): String = {
-    val digestBytes = (0:Byte) +: md.digest(str.getBytes) // prepend 0 byte to avoid negative sign
+  def digest(bytes: Array[Byte]): String = {
+    val digestBytes = (0:Byte) +: md.digest(bytes) // prepend 0 byte to avoid negative sign
     BigInt(digestBytes).toString(16)
   }
+
+  def digest(str: String): String = digest(str.getBytes)
 
   case class SecretResult(appId: String, appSecret: String, mapboxToken: String, error: String)
 
@@ -46,7 +48,7 @@ object Main {
 
   case class StravaAuthResult(token: String, mapboxToken: String, id: String, name: String) {
     // used to prove user is authenticated, but we do not want to store token in plain text to avoid security leaks
-    val userId: String = digest(token)
+    lazy val userId: String = digest(token)
   }
 
   def stravaAuth(code: String): StravaAuthResult = {

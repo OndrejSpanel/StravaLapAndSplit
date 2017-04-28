@@ -1,9 +1,12 @@
 package com.github.opengrabeso.stravalas
 package requests
 
+import java.io.{ByteArrayInputStream, InputStream}
+
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
+import org.apache.commons.io.IOUtils
 import spark.{Request, Response}
 
 object Upload extends DefineRequest("/upload", method = Method.Post) with ActivityRequestHandler {
@@ -26,27 +29,36 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
 
     itemsIterator.foreach { item =>
       if (!item.isFormField && "activities" == item.getFieldName) {
-        val name = item.getName
-        val stream = item.openStream()
-
-        val extension = item.getName.split('.').last
-        val actData: Seq[(String, Main.ActivityEvents)] = extension.toLowerCase match {
-          case "fit" =>
-            FitImport(stream).map(name -> _).toSeq
-          case "sml" =>
-            MoveslinkImport.loadSml(name, stream).map(name -> _)
-          case "xml" =>
-            MoveslinkImport.loadXml(name, stream).map(name -> _)
-          case e =>
-            Nil
-        }
-        for (act <- actData) {
-          Storage.store("events-" + act._2.id.id, auth.userId, act._2)
-        }
+        storeFromStream(auth, item.getName, item.openStream())
       }
     }
 
     resp.redirect("/selectActivity")
     Nil
+  }
+
+  def storeFromStream(auth: Main.StravaAuthResult, name: String, streamOrig: InputStream) = {
+    // we may read only once, we need to buffer it
+    val fileBytes = IOUtils.toByteArray(streamOrig)
+    val digest = Main.digest(fileBytes)
+
+    val stream = new ByteArrayInputStream(fileBytes)
+
+    val extension = name.split('.').last
+    val actData: Seq[Main.ActivityEvents] = extension.toLowerCase match {
+      case "fit" =>
+        FitImport(stream).toSeq
+      case "sml" =>
+        MoveslinkImport.loadSml(name, stream)
+      case "xml" =>
+        MoveslinkImport.loadXml(name, stream)
+      case e =>
+        Nil
+    }
+    for ((act, index) <- actData.zipWithIndex) {
+      // some activities (Quest) have more parts, each part needs a distinct name
+      val nameWithIndex = if (index > 0) s"$name-$index" else name
+      Storage.store(nameWithIndex, auth.userId, act, "digest" -> digest)
+    }
   }
 }

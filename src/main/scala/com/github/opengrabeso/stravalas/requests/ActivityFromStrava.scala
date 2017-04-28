@@ -13,7 +13,7 @@ object ActivityFromStrava extends DefineRequest("/activityFromStrava") with Acti
     val actId = request.queryParams("activityId")
     val activityData = Main.getEventsCachedFrom(auth, actId)
 
-    Storage.store("events-" + actId, auth.userId, activityData, "idDigest" -> activityData.id.digest)
+    Storage.store("events-" + actId, auth.userId, activityData, "digest" -> activityData.id.digest)
 
     resp.redirect(s"/selectActivity")
     Nil

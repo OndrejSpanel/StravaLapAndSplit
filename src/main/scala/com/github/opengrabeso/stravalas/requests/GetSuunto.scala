@@ -61,15 +61,43 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
             xmlhttp.send(data ? data: "");
           }
 
+          /**
+          * @param {XMLHttpRequest} xmlhttp
+          * @param {string} request
+          * @param {string} [data]
+          * @param {boolean} async
+          */
+          function ajaxPostRaw(xmlhttp, request, data, async) {
+            xmlhttp.open("POST", request, async); // POST to prevent caching
+            xmlhttp.responseType = "arraybuffer";
+            xmlhttp.setRequestHeader("Content-type", "text/plain");
+            xmlhttp.send(data ? data: "");
+          }
+
+          function ajaxAsyncRaw(uri, data, callback, failure) {
+            var xmlhttp = ajax();
+            // the callback function to be callled when AJAX request comes back
+            xmlhttp.onreadystatechange = function () {
+              if (xmlhttp.readyState === 4) {
+                if (xmlhttp.status >= 200 && xmlhttp.status < 300) {
+                  callback(xmlhttp.response, xmlhttp.status);
+                } else if (failure) {
+                  failure(xmlhttp.response, xmlhttp.status);
+                }
+              }
+            };
+            ajaxPostRaw(xmlhttp, uri, data, true); // POST to prevent caching
+          }
+
           function ajaxAsync(uri, data, callback, failure) {
             var xmlhttp = ajax();
             // the callback function to be callled when AJAX request comes back
             xmlhttp.onreadystatechange = function () {
               if (xmlhttp.readyState === 4) {
                 if (xmlhttp.status >= 200 && xmlhttp.status < 300) {
-                  callback(xmlhttp.responseXML);
+                  callback(xmlhttp.responseXML, xmlhttp.status);
                 } else if (failure) {
-                  failure(xmlhttp.responseXML);
+                  failure(xmlhttp.responseXML, xmlhttp.status);
                 }
               }
             };
@@ -79,11 +107,22 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
           function loadFile(file) {
             ajaxAsync(uploaderUri + "/digest?path=" + file, "", function(response) {
               var digest = response.documentElement.getElementsByTagName("value")[0].textContent;
-              document.getElementById("myDiv").innerHTML = "<h3>Loading file '" + file + "' </h3>";
               console.log("Digest " + file + "=" + digest);
               // check if digest is matching the server value
-              ajaxAsync("putDigest?path=" + file, digest, function () {
-                console.log("Digest sent")
+              ajaxAsync("putDigest?path=" + file, digest, function (digestResponse, digestCode) {
+                // returns 200 (not present) or 204 (already present)
+                if (digestCode === 200) {
+                  ajaxAsyncRaw(uploaderUri + "/get?path=" + file, "", function (fileResponse) {
+                    // fileResponse is array of bytes
+                    console.log("Loaded bytes of "+ file + " : " + fileResponse.byteLength);
+                    ajaxAsync("put?path=" + file, fileResponse, function (putResponse, putCode) {
+                      document.getElementById("myDiv").innerHTML = "<h3>Loading file '" + file + "' </h3>";
+                      console.log("Put file " + file + " code " + putCode);
+                    });
+                  });
+                } else {
+                  console.log("Digest " + file + " matching")
+                }
               });
             });
 
