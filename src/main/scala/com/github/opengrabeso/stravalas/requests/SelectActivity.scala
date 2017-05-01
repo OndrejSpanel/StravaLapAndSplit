@@ -3,6 +3,7 @@ package requests
 
 import spark.{Request, Response}
 import DateTimeOps._
+import FileId._
 
 object SelectActivity extends DefineRequest("/selectActivity") {
 
@@ -19,8 +20,9 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     ActIgnore -> "Ignore"
   )
 
-  def htmlActivityAction(id: Long, types: Seq[ActivityAction], action: ActivityAction) = {
-    <select id={id.toString} name="do" onchange={s"changeActivity(this, this.options[this.selectedIndex].value, $id)"}>
+  def htmlActivityAction(id: FileId, types: Seq[ActivityAction], action: ActivityAction) = {
+    val idString = id.toString
+    <select id={idString} name="do" onchange={s"changeActivity(this, this.options[this.selectedIndex].value, '$idString')"}>
       {for (et <- types) yield {
       <option value={et.id.toString} selected={if (action == et) "" else null}>
         {displayActivityAction(et)}

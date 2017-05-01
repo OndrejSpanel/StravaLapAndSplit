@@ -1,9 +1,7 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import java.net.URLEncoder
-
-import spark.{Request, Response, Session}
+import spark.{Request, Response}
 
 object ActivityFromStrava extends DefineRequest("/activityFromStrava") with ActivityRequestHandler {
 
@@ -11,9 +9,15 @@ object ActivityFromStrava extends DefineRequest("/activityFromStrava") with Acti
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
     val actId = request.queryParams("activityId")
-    val activityData = Main.getEventsCachedFrom(auth, actId)
 
-    Storage.store("events-" + actId, auth.userId, activityData, "digest" -> activityData.id.digest)
+    val stravaId = FileId.parse(actId)
+
+    val activityData = stravaId match {
+      case FileId.StravaId(idNum) =>
+        Main.getEventsFrom(auth.token, idNum.toString)
+    }
+
+    Storage.store(stravaId.filename, auth.userId, activityData, "digest" -> activityData.id.digest)
 
     resp.redirect(s"/selectActivity")
     Nil

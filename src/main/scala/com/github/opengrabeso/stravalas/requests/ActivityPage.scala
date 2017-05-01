@@ -50,7 +50,7 @@ trait ActivityRequestHandler {
         }}
       </style>
 
-      <script type="text/javascript">{activityJS(actId, activityData, auth.token)}</script>
+      <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
     val bodyContent = <table class="activityTable">
       <tr>
@@ -96,12 +96,12 @@ trait ActivityRequestHandler {
     ActivityContent(headContent, bodyContent)
   }
 
-  private def activityJS(actId: String, activityData: ActivityEvents, authToken: String) = {
+  private def activityJS(actIdString: String, activityData: ActivityEvents) = {
+    val actId = FileId.parse(actIdString).filename
     //language=JavaScript
     xml.Unparsed(
       s"""
       var id = "$actId";
-      var authToken = "$authToken";
       // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
       var events = [
         ${activityData.editableEvents.mkString("[", "],[", "]")}
@@ -120,7 +120,6 @@ trait ActivityRequestHandler {
     function linkWithEvents(id, time, action, value) {
       var splitWithEvents =
               '  <input type="hidden" name="id" value="' + id + '"/>' +
-              '  <input type="hidden" name="auth_token" value="' + authToken + '"/>' +
               '  <input type="hidden" name="operation" value="split"/>' +
               '  <input type="hidden" name="time" value="' + time + '"/>' +
               '  <input type="submit" value="' + value + '"/>';
@@ -525,7 +524,7 @@ trait ActivityRequestHandler {
           }
 
         };
-        xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
+        xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id), true); // true for asynchronous
         xmlHttp.send(null)});
 
     }
@@ -537,10 +536,15 @@ trait ActivityRequestHandler {
 object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandler {
 
   override def html(request: Request, resp: Response) = {
+    import FileId._
+
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
     val actId = request.queryParams("activityId")
-    val activityData = Storage.load[Main.ActivityEvents]("events-" + actId, auth.userId)
+
+    val fileId = FileId.parse(actId)
+
+    val activityData = Storage.load[Main.ActivityEvents](fileId.filename, auth.userId)
 
     val content = activityHtmlContent(actId, activityData, session, resp)
 

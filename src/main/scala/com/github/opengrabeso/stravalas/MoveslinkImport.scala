@@ -9,6 +9,7 @@ import net.suunto3rdparty._
 import scala.collection.immutable.SortedMap
 import org.joda.time.{DateTime => ZonedDateTime}
 import DateTimeOps._
+import FileId._
 
 import scala.xml.{Node, XML}
 
@@ -26,7 +27,7 @@ object MoveslinkImport {
     }
   }
 
-  def loadFromMove(move: Move): Option[Main.ActivityEvents] = {
+  def loadFromMove(fileName: String, digest: String, move: Move): Option[Main.ActivityEvents] = {
     // Move(fileName: Set[String], header: MoveHeader, streams: Map[Class[_], DataStream[_]]) {
     // ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
@@ -58,6 +59,7 @@ object MoveslinkImport {
     } yield {
       val sport = sportFromActivityType(move.header.moveType)
 
+      /*
       // timestamp around 2017 needs 30 bits: (2017-1970)*365*24*3600 = (2017-1970)*365*24*3600
       val startInSec = startTime.getMillis / 1000
       val durationInSec = endTime.getMillis / 1000 - startInSec // 18 b is enough for 3 days - ln(3*24*3600)/ln(2) = 17.98
@@ -66,33 +68,35 @@ object MoveslinkImport {
       val startBits = 32
       val durationBits = 18
       val sportBits = 8
+      */
 
-      val signature = (((startInSec << durationBits) + durationInSec) << sportBits) + sportId
-
-      val id = Main.ActivityId(signature, "", "Activity", startTime, endTime, sport, d)
+      val id = Main.ActivityId(FilenameId(fileName), digest, "Activity", startTime, endTime, sport, d)
 
       val events = Array[Event](BegEvent(id.startTime, sport), EndEvent(id.endTime))
 
-      Main.ActivityEvents(id, events, dist, gps, Seq(hrStream))
+      // TODO: avoid duplicate timestamp events
+      val lapEvents = laps.toList.flatMap(_.stream.keys.map(LapEvent))
+
+      val allEvents = (events ++ lapEvents).sortBy(_.stamp)
+
+      Main.ActivityEvents(id, allEvents, dist, gps, Seq(hrStream))
     }
-
-
   }
 
-  def loadSml(fileName: String, stream: InputStream): Seq[Main.ActivityEvents] = {
+  def loadSml(fileName: String, digest: String, stream: InputStream): Option[Move] = {
     def getDeviceLog(doc: Node): Node = (doc \ "DeviceLog") (0)
 
     val doc = XML.load(stream)
 
     val dev = getDeviceLog(doc)
 
-    moveslink2.XMLParser.parseXML(fileName, dev).toOption.toSeq.flatMap(loadFromMove)
+    moveslink2.XMLParser.parseXML(fileName, dev).toOption
   }
 
-  def loadXml(fileName: String, stream: InputStream): Seq[Main.ActivityEvents] = {
+  def loadXml(fileName: String, digest: String, stream: InputStream): Seq[Move] = {
     val doc = XML.load(stream)
 
-    moveslink.XMLParser.parseXML(fileName, doc).flatMap(_.toOption).flatMap(loadFromMove)
+    moveslink.XMLParser.parseXML(fileName, doc).flatMap(_.toOption)
   }
 
 }

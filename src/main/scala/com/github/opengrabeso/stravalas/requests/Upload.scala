@@ -38,6 +38,7 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
   }
 
   def storeFromStream(auth: Main.StravaAuthResult, name: String, streamOrig: InputStream) = {
+    import MoveslinkImport._
     // we may read only once, we need to buffer it
     val fileBytes = IOUtils.toByteArray(streamOrig)
     val digest = Main.digest(fileBytes)
@@ -47,11 +48,11 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
     val extension = name.split('.').last
     val actData: Seq[Main.ActivityEvents] = extension.toLowerCase match {
       case "fit" =>
-        FitImport(stream).toSeq
+        FitImport(name, stream).toSeq
       case "sml" =>
-        MoveslinkImport.loadSml(name, stream)
+        loadSml(name, digest, stream).toSeq.flatMap(loadFromMove(name, digest, _))
       case "xml" =>
-        MoveslinkImport.loadXml(name, stream)
+        loadXml(name, digest, stream).flatMap(loadFromMove(name, digest, _))
       case e =>
         Nil
     }

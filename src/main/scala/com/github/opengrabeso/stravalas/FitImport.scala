@@ -6,6 +6,7 @@ import com.garmin.fit._
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
 import org.joda.time.{DateTime => ZonedDateTime}
 import DateTimeOps._
+import FileId._
 import net.suunto3rdparty.{DataStreamDist, DataStreamGPS, DataStreamHR, GPSPoint}
 
 import scala.collection.immutable.SortedMap
@@ -31,7 +32,7 @@ object FitImport {
   }
 
 
-  def apply(in: InputStream): Option[ActivityEvents] = {
+  def apply(filename: String, in: InputStream): Option[ActivityEvents] = {
     val decode = new Decode
     try {
 
@@ -126,7 +127,7 @@ object FitImport {
       val endTime = allStreams.map(_.last._1).max
 
       // TODO: digest
-      val id = Main.ActivityId(0, "", "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
+      val id = Main.ActivityId(FilenameId(filename), "", "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
 
       object ImportedStreams extends Main.ActivityStreams {
 

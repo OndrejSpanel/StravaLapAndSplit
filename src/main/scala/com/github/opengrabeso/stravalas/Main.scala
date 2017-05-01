@@ -12,6 +12,9 @@ import org.joda.time.{Period, Seconds, DateTime => ZonedDateTime}
 import scala.collection.JavaConverters._
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 import DateTimeOps._
+
+import FileId._
+
 import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
 
@@ -81,17 +84,19 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  case class ActivityId(id: Long, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
+  @SerialVersionUID(10L)
+  case class ActivityId(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
 
     def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
 
     val duration: Int = Seconds.secondsBetween(startTime, endTime).getSeconds
 
     def link: String = {
-      if (id < 999999999999L) {
-        s"https://www.strava.com/activities/$id"
-      } else {
-        null // not a Strava activity - no link
+      id match {
+        case StravaId(num) =>
+          s"https://www.strava.com/activities/$id"
+        case _ =>
+          null // not a Strava activity - no link
       }
     }
   }
@@ -107,7 +112,7 @@ object Main {
       val distance = json.path("distance").doubleValue
       val actDigest = digest(json.toString)
 
-      ActivityId(id, actDigest, name, time, time.plusSeconds(duration), Event.Sport.withName(sportName), distance)
+      ActivityId(StravaId(id), actDigest, name, time, time.plusSeconds(duration), Event.Sport.withName(sportName), distance)
     }
   }
 
@@ -135,7 +140,8 @@ object Main {
           val act = Storage.load[Main.ActivityEvents](a, auth.userId)
           Some(act)
         } catch {
-          case _: java.io.InvalidClassException => // bad serialVersionUID
+          case x: java.io.InvalidClassException => // bad serialVersionUID
+            println(s"load error ${x.getMessage}")
             None
           case x: Exception =>
             x.printStackTrace()
@@ -146,7 +152,7 @@ object Main {
     storedActivities.toSeq
   }
 
-  @SerialVersionUID(1111L)
+  @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
     assert(events.forall(_.stamp >= id.startTime))
     assert(events.forall(_.stamp <= id.endTime))
@@ -209,7 +215,7 @@ object Main {
       val begTime = Seq(id.startTime, that.id.startTime).min
       val endTime = Seq(id.endTime, that.id.endTime).max
 
-      val mergedId = ActivityId(0, "", id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
+      val mergedId = ActivityId(NoId, "", id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
 
       val eventsAndSports = (events ++ that.events).sortBy(_.stamp)
 
@@ -676,24 +682,6 @@ object Main {
       formatDT.print(startTime) + ".." + formatDT.print(endTime)
     }) + " " + zone.toString
   }
-
-
-
-  def getEventsCachedFrom(auth: StravaAuthResult, id: String): ActivityEvents = {
-    try {
-      val ret = Storage.load[Main.ActivityEvents]("events-" + id, auth.userId)
-      println(s"Cached $id")
-      ret
-    } catch {
-      case _: java.io.FileNotFoundException =>
-        // not cached yet, load directly from Strava
-        getEventsFrom(auth.token, id)
-      case x: Exception =>
-        println(s"Ex ${x.getMessage}")
-        getEventsFrom(auth.token, id)
-    }
-  }
-
 }
 
 

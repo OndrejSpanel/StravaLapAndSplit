@@ -19,7 +19,7 @@ abstract class ProcessFile(value: String, method: Method = Method.Get) extends D
         val eventsInput = req.raw.getParameterValues("events")
         val splitTime = req.queryParams("time").toInt
 
-        val events = Storage.load[Main.ActivityEvents]("events-" + id, auth.userId)
+        val events = Storage.load[Main.ActivityEvents](id, auth.userId)
 
         val adjusted = Main.adjustEvents(events, eventsInput)
 
