@@ -54,8 +54,27 @@ object StravamatUploader extends App {
 
   def enumHandler(): HttpResponse = {
     println("enum")
+
+    // sort files by timestamp
+    val sortedFiles = MoveslinkFiles.listFiles.toList.sortBy { fn =>
+      // extract timestamp
+      // GPS filename: Moveslink2/34FB984612000700-2017-05-23T16_27_11-0.sml
+      val gpsPattern = "\\/.*-(\\d*)-(\\d*)-(\\d*)T(\\d*)_(\\d*)_(\\d*)-".r.unanchored
+      // Quest filename Moveslink/Quest_2596420792_20170510143253.xml
+      val questPattern = "\\/Quest_\\d*_(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)\\.".r.unanchored
+      // note: may be different timezones, but a rough sort in enough for us (date is important)
+      val date = fn match {
+        case gpsPattern(yyyy,mm,dd,h,m,s) =>
+          yyyy + mm + dd + h + m + s
+        case questPattern(yyyy,mm,dd,h,m,s) =>
+          yyyy + mm + dd + h + m + s
+        case _ => ""
+      }
+      date
+    }
+
     val response = <files>
-      {MoveslinkFiles.listFiles.map { file =>
+      {sortedFiles.map { file =>
         <file>{file}</file>
       }}
     </files>
