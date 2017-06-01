@@ -28,14 +28,14 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
         {bodyHeader(auth)}<h2>Getting files from Suunto ...</h2>
 
         <a href={referer}>Go back</a>
-        <p>
         <div id="myDiv"></div>
-        </p>
+        <div id="status"></div>
         {bodyFooter}
         <script>{xml.Unparsed(
           //language=JavaScript
           s"""
           var uploaderUri = "$uploaderUri";
+          var loadingCount = 0;
           /**
            * @returns {XMLHttpRequest}
            */
@@ -104,6 +104,15 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
             ajaxPost(xmlhttp, uri, data, true); // POST to prevent caching
           }
 
+          function notifyLoaded() {
+            loadingCount--;
+            if (loadingCount <= 0) {
+              displayStatus("Synchronization completed");
+            } else {
+              displayStatus("Synchronizing " + loadingCount + " files");
+            }
+          }
+
           function loadFile(file) {
             ajaxAsync(uploaderUri + "/digest?path=" + file, "", function(response) {
               var digest = response.documentElement.getElementsByTagName("value")[0].textContent;
@@ -116,17 +125,36 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
                     // fileResponse is array of bytes
                     console.log("Loaded bytes of "+ file + " : " + fileResponse.byteLength);
                     ajaxAsync("put?path=" + file, fileResponse, function (putResponse, putCode) {
-                      document.getElementById("myDiv").innerHTML = "<h3>Loading file '" + file + "' </h3>";
+                      displayProgress(file);
                       console.log("Put file " + file + " code " + putCode);
+                      notifyLoaded();
                     });
                   });
                 } else {
-                  console.log("Digest " + file + " matching")
+                  console.log("Digest " + file + " matching");
+                  notifyLoaded();
                 }
               });
             });
 
           }
+
+          /**
+           @param {string} status
+           */
+          function displayProgress(status) {
+            document.getElementById("myDiv").innerHTML = "<h3>Loading file '" + status + "' </h3>";
+
+          }
+
+          /**
+           @param {string} status
+           */
+          function displayStatus(status) {
+            document.getElementById("status").innerHTML = "<h4>" + status + "</h4>";
+
+          }
+
 
           /**
            @param {Element} files
@@ -137,6 +165,7 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
               var file = items.item(i).textContent;
               console.log(file);
               loadFile(file);
+              loadingCount++;
             }
           }
 
