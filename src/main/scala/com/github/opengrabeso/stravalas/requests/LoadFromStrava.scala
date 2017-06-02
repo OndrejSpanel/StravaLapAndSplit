@@ -22,7 +22,7 @@ object LoadFromStrava extends DefineRequest("/loadFromStrava") {
           <tr>
             <td>{act.id.stravaId}</td>
             <td>{act.sportName}</td>
-            <td><a href={act.link}>{act.name}</a></td>
+            <td>{act.hrefLink}</td>
             <td>{Main.displayDistance(act.distance)}km</td>
             <td>{Main.displaySeconds(act.duration)}</td>
             <td>

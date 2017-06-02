@@ -555,7 +555,7 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
       </head>
       <body>
         {bodyHeader(auth)}
-        <a href={activityData.id.link}> {activityData.id.name} </a>
+        {activityData.id.hrefLink}
 
         <form action ="download" method="get">
           <input type="hidden" name="id" value={activityData.id.id.toString}/>

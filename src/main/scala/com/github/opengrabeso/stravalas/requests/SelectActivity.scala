@@ -59,6 +59,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     //val activityGroups =
 
     val actions = ActivityAction.values.toSeq
+    var ignored = false
     <html>
       <head>
         {/* allow referer when using redirect to unsafe getSuunto page */}
@@ -73,13 +74,17 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         {bodyHeader(auth)}<h2>Staging</h2>
 
         <table class="activities">
-          {for (actEvents <- recentActivities) yield {
+          {for ((actEvents, actStrava) <- recentToStrava) yield {
             val act = actEvents.id
+            // once any activity is present on Strava, do not offer upload by default any more
+            // (if some earlier is not present, it was probably already uploaded and deleted)
+            if (actStrava.isDefined) ignored = true
+            val action = if (ignored) ActIgnore else ActUpload
             <tr>
               <td>{Main.localeDateRange(act.startTime, act.endTime)}</td>
-              <td> {act.sportName} </td>
-              <td> {if (actEvents.hasGPS) "GPS" else "--"}</td>
-              <td> <a href={act.link}> {act.name} </a> </td>
+              <td>{act.sportName}</td>
+              <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
+              <td>{act.hrefLink}</td>
               <td>{Main.displayDistance(act.distance)} km</td>
               <td>{Main.displaySeconds(act.duration)}</td>
               <td>
@@ -88,8 +93,8 @@ object SelectActivity extends DefineRequest("/selectActivity") {
                   <input type="submit" value=">>"/>
                 </form>
               </td>
-              <td>{htmlActivityAction(act.id, actions, ActUpload)}</td>
-              <td> {act.id} </td>
+              <td>{htmlActivityAction(act.id, actions, action)}</td>
+              <td>{actStrava.fold(<p>{act.id.toString}</p>)(_.hrefLink)}</td>
             </tr>
         }}
         </table>

@@ -12,13 +12,12 @@ import org.joda.time.{Period, Seconds, DateTime => ZonedDateTime}
 import scala.collection.JavaConverters._
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 import DateTimeOps._
-
 import FileId._
-
 import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
 
 import scala.collection.immutable.SortedMap
+import scala.xml.Elem
 
 object Main {
 
@@ -113,6 +112,8 @@ object Main {
           null // not a Strava activity - no link
       }
     }
+
+    def hrefLink: Elem = <a href={link}>{name}</a>
   }
 
   object ActivityId {
