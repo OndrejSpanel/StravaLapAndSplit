@@ -19,17 +19,18 @@ abstract class ProcessFile(value: String, method: Method = Method.Get) extends D
         val eventsInput = req.raw.getParameterValues("events")
         val splitTime = req.queryParams("time").toInt
 
-        val events = Storage.load[Main.ActivityEvents](id, auth.userId)
+        for (events <- Storage.load[Main.ActivityEvents](id, auth.userId)) {
 
-        val adjusted = Main.adjustEvents(events, eventsInput)
+          val adjusted = Main.adjustEvents(events, eventsInput)
 
-        val split = adjusted.split(splitTime)
+          val split = adjusted.split(splitTime)
 
-        split.foreach{ save =>
+          split.foreach { save =>
 
-          val export = FitExport.export(save)
+            val export = FitExport.export(save)
 
-          process(req, resp, export, s"attachment;filename=split_${id}_$splitTime.fit")
+            process(req, resp, export, s"attachment;filename=split_${id}_$splitTime.fit")
+          }
         }
 
         Nil

@@ -138,7 +138,7 @@ object Main {
       d.flatMap { a =>
         try {
           val act = Storage.load[Main.ActivityEvents](a, auth.userId)
-          Some(act)
+          act
         } catch {
           case x: java.io.InvalidClassException => // bad serialVersionUID
             println(s"load error ${x.getMessage}")
@@ -151,6 +151,9 @@ object Main {
     }
     storedActivities.toSeq
   }
+
+  @SerialVersionUID(10L)
+  case object NoActivity
 
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {

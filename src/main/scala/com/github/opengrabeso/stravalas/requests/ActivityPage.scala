@@ -536,7 +536,6 @@ trait ActivityRequestHandler {
 object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandler {
 
   override def html(request: Request, resp: Response) = {
-    import FileId._
 
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
@@ -544,7 +543,7 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
 
     val fileId = FileId.parse(actId)
 
-    val activityData = Storage.load[Main.ActivityEvents](fileId.filename, auth.userId)
+    val activityData = Storage.load[Main.ActivityEvents](fileId.filename, auth.userId).get
 
     val content = activityHtmlContent(actId, activityData, session, resp)
 

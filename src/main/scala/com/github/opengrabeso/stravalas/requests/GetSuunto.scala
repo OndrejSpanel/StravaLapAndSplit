@@ -35,7 +35,7 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
           //language=JavaScript
           s"""
           var uploaderUri = "$uploaderUri";
-          var loadingCount = 0;
+          var filesToLoad = [];
           /**
            * @returns {XMLHttpRequest}
            */
@@ -104,15 +104,6 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
             ajaxPost(xmlhttp, uri, data, true); // POST to prevent caching
           }
 
-          function notifyLoaded() {
-            loadingCount--;
-            if (loadingCount <= 0) {
-              displayStatus("Synchronization completed");
-            } else {
-              displayStatus("Synchronizing " + loadingCount + " files");
-            }
-          }
-
           function loadFile(file) {
             ajaxAsync(uploaderUri + "/digest?path=" + file, "", function(response) {
               var digest = response.documentElement.getElementsByTagName("value")[0].textContent;
@@ -123,16 +114,17 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
                 if (digestCode === 200) {
                   ajaxAsyncRaw(uploaderUri + "/get?path=" + file, "", function (fileResponse) {
                     // fileResponse is array of bytes
+                    displayProgress("Loading", file, fileResponse.byteLength);
                     console.log("Loaded bytes of "+ file + " : " + fileResponse.byteLength);
                     ajaxAsync("put?path=" + file, fileResponse, function (putResponse, putCode) {
-                      displayProgress(file);
                       console.log("Put file " + file + " code " + putCode);
-                      notifyLoaded();
+                      loadNextFile();
                     });
                   });
                 } else {
                   console.log("Digest " + file + " matching");
-                  notifyLoaded();
+                  displayProgress("Skipping", file);
+                  loadNextFile();
                 }
               });
             });
@@ -140,11 +132,28 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
           }
 
           /**
-           @param {string} status
-           */
-          function displayProgress(status) {
-            document.getElementById("myDiv").innerHTML = "<h3>Loading file '" + status + "' </h3>";
+          @param {number?} fileSize
+          @return string
+          */
+          function displayFileSize(fileSize) {
+            if (fileSize) {
+              if (fileSize > 1024*1024) {
+                return ((fileSize + 512 * 1024) / (1024 * 1024)).toFixed(0) + " MB";
+              } else {
+                return ((fileSize + 512) / 1024).toFixed(0) + " KB";
+              }
+            } else return "";
+          }
 
+          /**
+          @param {string} fileName
+          @param {string} operation
+          @param {number?} fileSize
+          */
+          function displayProgress(operation, fileName, fileSize) {
+            document.getElementById("myDiv").innerHTML = fileName ?
+              "<h3>" + operation + " file '" + fileName + "' " + displayFileSize(fileSize) + "</h3>" :
+              "";
           }
 
           /**
@@ -156,6 +165,17 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
           }
 
 
+          function loadNextFile() {
+            var next = filesToLoad.shift();
+            if (next) {
+              console.log("loadNextFile: Left " + filesToLoad.length);
+              displayStatus("Synchronizing " + (filesToLoad.length + 1) + " files");
+              loadFile(next);
+            } else {
+              displayStatus("Synchronization completed");
+              displayProgress(undefined);
+            }
+          }
           /**
            @param {Element} files
            */
@@ -163,10 +183,10 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
             var items = files.getElementsByTagName("file");
             for (var i = 0; i < items.length; i++) {
               var file = items.item(i).textContent;
-              console.log(file);
-              loadFile(file);
-              loadingCount++;
+              filesToLoad.push(file);
             }
+            loadNextFile();
+
           }
 
           function enumerate() {

@@ -3,6 +3,7 @@ package requests
 
 import java.io.{ByteArrayInputStream, InputStream}
 
+import com.github.opengrabeso.stravalas.Main.NoActivity
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
@@ -56,10 +57,14 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
       case e =>
         Nil
     }
-    for ((act, index) <- actData.zipWithIndex) {
-      // some activities (Quest) have more parts, each part needs a distinct name
-      val nameWithIndex = if (index > 0) s"$name-$index" else name
-      Storage.store(nameWithIndex, auth.userId, act, "digest" -> digest)
+    if (actData.nonEmpty) {
+      for ((act, index) <- actData.zipWithIndex) {
+        // some activities (Quest) have more parts, each part needs a distinct name
+        val nameWithIndex = if (index > 0) s"$name-$index" else name
+        Storage.store(nameWithIndex, auth.userId, act, "digest" -> digest)
+      }
+    } else {
+      Storage.store(name, auth.userId, NoActivity, "digest" -> digest)
     }
   }
 }

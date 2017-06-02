@@ -53,11 +53,15 @@ object Storage {
     oos.close()
   }
 
-  def load[T : ClassTag](filename: String, userId: String) = {
+  def load[T : ClassTag](filename: String, userId: String): Option[T] = {
     //println(s"load '$filename' - '$userId'")
     val is = input(userFilename(filename, userId))
     val ois = new ObjectInputStream(is)
-    ois.readObject().asInstanceOf[T]
+    val read = ois.readObject()
+    read match {
+      case r: T => Some(r)
+      case _ => None// handles readObject returning null as well
+    }
   }
 
   def enumerate(userId: String): Iterable[String] = {
