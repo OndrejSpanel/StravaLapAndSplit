@@ -1,17 +1,13 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import javax.servlet.http.HttpServletResponse
-
 import spark.{Request, Response}
-
-import scala.util.Try
 
 object LoadFromStrava extends DefineRequest("/loadFromStrava") {
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
-    val activities = Main.stravaActivities(auth)
+    val activities = Main.stravaActivitiesNotStaged(auth)
     <html>
       <head>
         {headPrefix}<title>Stravamat - select activity</title>

@@ -94,7 +94,7 @@ object Main {
     def link: String = {
       id match {
         case StravaId(num) =>
-          s"https://www.strava.com/activities/$id"
+          s"https://www.strava.com/activities/$num"
         case _ =>
           null // not a Strava activity - no link
       }
@@ -116,7 +116,7 @@ object Main {
     }
   }
 
-  def stravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
+  def recentStravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
     val uri = "https://www.strava.com/api/v3/athlete/activities"
     val request = buildGetRequest(uri, auth.token, "per_page=15")
 
@@ -126,6 +126,11 @@ object Main {
       val actI = responseJson.get(i)
       ActivityId.load(actI)
     }
+    stravaActivities
+  }
+
+  def stravaActivitiesNotStaged(auth: StravaAuthResult): Seq[ActivityId] = {
+    val stravaActivities = recentStravaActivities(auth)
 
     val storedActivities = stagedActivities(auth).map(_.id)
     // do not display the activities which are already staged

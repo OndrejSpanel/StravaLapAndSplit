@@ -36,13 +36,22 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
-    val activities = Main.stagedActivities(auth).sortBy(_.id.startTime)
+    val stravaActivities = Main.recentStravaActivities(auth)
+
+    val allActivities = Main.stagedActivities(auth).sortBy(_.id.startTime)
+    val stagedActivities = Main.stagedActivities(auth)
+
+    // ignore anything older than oldest of recent Strava activities
+    val ignoreBefore = stravaActivities.lastOption.map(_.startTime)
 
     val actions = ActivityAction.values.toSeq
 
+    val recentActivities = ignoreBefore.fold(stagedActivities) { before =>
+      stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
+    }
+
     // detect activity groups - any overlapping activities should be one group, unless
     //val activityGroups =
-
 
     <html>
       <head>
@@ -58,7 +67,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         {bodyHeader(auth)}<h2>Staging</h2>
 
         <table class="activities">
-          {for (actEvents <- activities) yield {
+          {for (actEvents <- recentActivities) yield {
             val act = actEvents.id
             <tr>
               <td>{Main.localeDateRange(act.startTime, act.endTime)}</td>
