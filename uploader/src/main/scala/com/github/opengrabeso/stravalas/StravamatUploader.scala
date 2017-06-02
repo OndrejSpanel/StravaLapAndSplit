@@ -83,7 +83,7 @@ object StravamatUploader extends App {
 
     val listFiles = MoveslinkFiles.listFiles.toList
     // sort files by timestamp
-    val wantedFiles = sinceDate.fold(listFiles)(since => listFiles.filter(timestampFromName(_).forall(_ < since)))
+    val wantedFiles = sinceDate.fold(listFiles)(since => listFiles.filter(timestampFromName(_).forall(_ > since)))
 
     val sortedFiles = wantedFiles.sortBy(timestampFromName)
 
