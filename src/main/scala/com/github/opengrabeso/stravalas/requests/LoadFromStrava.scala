@@ -27,7 +27,7 @@ object LoadFromStrava extends DefineRequest("/loadFromStrava") {
             <td>{Main.displaySeconds(act.duration)}</td>
             <td>
               <form action="activityFromStrava" method="get">
-                <input type="hidden" name="activityId" value={act.id.toString}/>
+                <input type="hidden" name="activityId" value={act.id.stravaId}/>
                 <input type="submit" value=">>"/>
               </form>
             </td>

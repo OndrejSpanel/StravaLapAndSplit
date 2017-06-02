@@ -10,7 +10,7 @@ object ActivityFromStrava extends DefineRequest("/activityFromStrava") with Acti
     val auth = session.attribute[Main.StravaAuthResult]("auth")
     val actId = request.queryParams("activityId")
 
-    val stravaId = FileId.parse(actId)
+    val stravaId = FileId.StravaId(actId.toLong)
 
     val activityData = stravaId match {
       case FileId.StravaId(idNum) =>
