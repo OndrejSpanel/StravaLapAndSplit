@@ -3,6 +3,7 @@ package com.github.opengrabeso.stravalas
 @SerialVersionUID(10L)
 trait FileId {
   def filename: String
+  def stravaId: String
 }
 
 object FileId {
@@ -23,13 +24,19 @@ object FileId {
     }
   }
 
+  @SerialVersionUID(10L)
   case class StravaId(id: Long) extends FileId {
     def filename = "events-" + id.toString
+    def stravaId = id.toString
   }
+  @SerialVersionUID(10L)
   case class FilenameId(id: String) extends FileId {
     def filename = id
+    def stravaId = ""
   }
+  @SerialVersionUID(10L)
   case object NoId extends FileId {
     def filename = ""
+    def stravaId = ""
   }
 }
