@@ -1,12 +1,17 @@
 package com.github.opengrabeso.stravalas
 package requests
 
+import java.time.ZonedDateTime
+
 import spark.{Request, Response}
 
-object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with ActivityRequestHandler {
+object GetSuunto extends DefineRequest("/getSuunto") with ActivityRequestHandler {
   override def html(request: Request, resp: Response) = {
     val session = request.session
     val auth = session.attribute[Main.StravaAuthResult]("auth")
+    val sinceString = Option(request.queryParams("since"))
+
+    val sincePar = sinceString.fold("")(s => s"?since=$s")
 
     val uploaderUri = "http://localhost:8088" // uploader should be running as a local web server
     val enumPath = "enum" // must be the same as in StravamatUploader // TODO: share sources
@@ -191,7 +196,7 @@ object GetSuunto extends DefineRequest("/getSuunto", method = Method.Get) with A
 
           function enumerate() {
 
-            ajaxAsync(uploaderUri + "/$enumPath", "", function sucess(response){
+            ajaxAsync(uploaderUri + "/$enumPath$sincePar", "", function sucess(response){
               document.getElementById("myDiv").innerHTML = "<h3>Loading files</h3>";
               loadAllFiles(response.documentElement)
             }, function failure() {

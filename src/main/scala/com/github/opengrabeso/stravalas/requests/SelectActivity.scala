@@ -38,21 +38,19 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
     val stravaActivities = Main.recentStravaActivities(auth)
 
-    val allActivities = Main.stagedActivities(auth).sortBy(_.id.startTime)
-    val stagedActivities = Main.stagedActivities(auth)
-
     // ignore anything older than oldest of recent Strava activities
     val ignoreBefore = stravaActivities.lastOption.map(_.startTime)
 
-    val actions = ActivityAction.values.toSeq
+    val stagedActivities = Main.stagedActivities(auth)
 
     val recentActivities = ignoreBefore.fold(stagedActivities) { before =>
-      stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
-    }
+      stagedActivities.filter(_.id.startTime > before)
+    }.sortBy(_.id.startTime)
 
     // detect activity groups - any overlapping activities should be one group, unless
     //val activityGroups =
 
+    val actions = ActivityAction.values.toSeq
     <html>
       <head>
         {/* allow referer when using redirect to unsafe getSuunto page */}
@@ -90,8 +88,13 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <hr/>
         <h2>Data sources</h2>
         <a href="loadFromStrava">Load from Strava ...</a>
-        {/* getSuunto is peforming cross site requests to the local browser, this cannot be done on a secure page */}
-        <a href="javascript:;" onClick="window.location.assign(unsafe('getSuunto'))">Get from Suunto devices ...</a>
+        {
+          /* getSuunto is peforming cross site requests to the local browser, this cannot be done on a secure page */
+
+          val sincePar = ignoreBefore.fold("")("?since=" + _.toString)
+          val getSuuntoLink = s"window.location.assign(unsafe('getSuunto$sincePar'))"
+          <a href="javascript:;" onClick={getSuuntoLink}>Get from Suunto devices ...</a>
+        }
 
         <form action="upload" method="post" enctype="multipart/form-data">
           <p>Select files to upload

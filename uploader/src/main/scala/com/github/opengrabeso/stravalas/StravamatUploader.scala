@@ -1,6 +1,8 @@
 package com.github.opengrabeso.stravalas
 
 import java.security.MessageDigest
+import org.joda.time.{DateTime => ZonedDateTime}
+import Util._
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -52,26 +54,38 @@ object StravamatUploader extends App {
 
   import HttpHandlerHelper._
 
-  def enumHandler(): HttpResponse = {
+  def enumHandler(since: Option[String]): HttpResponse = {
     println("enum")
 
-    // sort files by timestamp
-    val sortedFiles = MoveslinkFiles.listFiles.toList.sortBy { fn =>
+
+    val sinceDate = since.map { s =>
+      val v = ZonedDateTime.parse(s)
+      v.minusDays(1) // timezone may be wrong, to be sure we are not skipping too much, move one day behind
+    }
+
+
+    def timestampFromName(name: String): Option[ZonedDateTime] = {
       // extract timestamp
       // GPS filename: Moveslink2/34FB984612000700-2017-05-23T16_27_11-0.sml
       val gpsPattern = "\\/.*-(\\d*)-(\\d*)-(\\d*)T(\\d*)_(\\d*)_(\\d*)-".r.unanchored
       // Quest filename Moveslink/Quest_2596420792_20170510143253.xml
       val questPattern = "\\/Quest_\\d*_(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)\\.".r.unanchored
       // note: may be different timezones, but a rough sort in enough for us (date is important)
-      val date = fn match {
+      name match {
         case gpsPattern(yyyy,mm,dd,h,m,s) =>
-          yyyy + mm + dd + h + m + s
+          Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s")) // TODO: DRY
         case questPattern(yyyy,mm,dd,h,m,s) =>
-          yyyy + mm + dd + h + m + s
-        case _ => ""
+          Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s")) // TODO: DRY
+        case _ =>
+          None
       }
-      date
     }
+
+    val listFiles = MoveslinkFiles.listFiles.toList
+    // sort files by timestamp
+    val wantedFiles = sinceDate.fold(listFiles)(since => listFiles.filter(timestampFromName(_).forall(_ < since)))
+
+    val sortedFiles = wantedFiles.sortBy(timestampFromName)
 
     val response = <files>
       {sortedFiles.map { file =>
@@ -182,7 +196,9 @@ object StravamatUploader extends App {
     implicit val materializer = ActorMaterializer()
 
     val requests = path(enumPath) {
-      complete(enumHandler())
+      parameters('since.?) { since =>
+        complete(enumHandler(since))
+      }
     } ~ path(getPath) {
       parameters('path) { path =>
         complete(getHandler(path))
