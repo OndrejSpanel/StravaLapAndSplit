@@ -87,9 +87,23 @@ object Main {
   @SerialVersionUID(10L)
   case class ActivityId(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
 
+    override def toString = s"${id.toString} - $name ($startTime..$endTime)"
+
     def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
 
     val duration: Int = Seconds.secondsBetween(startTime, endTime).getSeconds
+
+
+    def isMatching(that: ActivityId): Boolean = {
+      // check overlap time
+
+      val commonBeg = Seq(startTime,that.startTime).max
+      val commonEnd = Seq(endTime,that.endTime).min
+      if (commonEnd > commonBeg) {
+        val commonDuration = Seconds.secondsBetween(commonBeg, commonEnd).getSeconds
+        commonDuration > (duration min that.duration) * 0.75f
+      } else false
+    }
 
     def link: String = {
       id match {
@@ -154,7 +168,7 @@ object Main {
         }
       }
     }
-    storedActivities.toSeq
+    storedActivities.toVector
   }
 
   @SerialVersionUID(10L)
@@ -162,6 +176,9 @@ object Main {
 
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
+
+    override def toString = id.toString
+
     assert(events.forall(_.stamp >= id.startTime))
     assert(events.forall(_.stamp <= id.endTime))
 
@@ -318,6 +335,7 @@ object Main {
         act
       }
     }
+
   }
 
   trait ActivityStreams {

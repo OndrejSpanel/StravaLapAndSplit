@@ -32,6 +32,8 @@ object SelectActivity extends DefineRequest("/selectActivity") {
   }
 
 
+  def sameActivity(events: Main.ActivityEvents, r: Main.ActivityEvents) = ???
+
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
@@ -46,6 +48,12 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     val recentActivities = ignoreBefore.fold(stagedActivities) { before =>
       stagedActivities.filter(_.id.startTime > before)
     }.sortBy(_.id.startTime)
+
+    // match recent activities against Strava activities
+    // a significant overlap means a match
+    val recentToStrava = recentActivities.map { r =>
+      r -> stravaActivities.find(_ isMatching r.id)
+    }
 
     // detect activity groups - any overlapping activities should be one group, unless
     //val activityGroups =
