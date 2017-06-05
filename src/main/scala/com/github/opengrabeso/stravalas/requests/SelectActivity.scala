@@ -31,6 +31,12 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     </select>
   }
 
+  def jsResult(func: String) = {
+
+    val toRun = s"function () {return $func}()"
+
+    <script>document.write({xml.Unparsed(toRun)})</script>
+  }
 
   override def html(request: Request, resp: Response) = {
     val session = request.session()
@@ -67,6 +73,43 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
           tr.activities:hover {{background-color: #f0f0e0}}
         </style>
+        <script>{xml.Unparsed(
+          //language=JavaScript
+          """
+          function getLocale() {
+            return navigator.languages[0] || navigator.language;
+          }
+          function formatDateTime(t) {
+            var locale = getLocale();
+            var date = new Date(t);
+            return new Intl.DateTimeFormat(
+              locale,
+              {
+                year: "numeric",
+                month: "numeric",
+                day: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+              }
+            ).format(date)
+          }
+          function formatTime(t) {
+            var locale = getLocale();
+            var date = new Date(t);
+            return new Intl.DateTimeFormat(
+              locale,
+              {
+                //year: "numeric",
+                //month: "numeric",
+                //day: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+              }
+            ).format(date)
+          }
+          """
+        )}
+        </script>
       </head>
       <body>
         {bodyHeader(auth)}<h2>Staging</h2>
@@ -79,7 +122,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             if (actStrava.isDefined) ignored = true
             val action = if (ignored) ActIgnore else ActUpload
             <tr>
-              <td>{Main.localeDateRange(act.startTime, act.endTime)}</td>
+              <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
               <td>{act.sportName}</td>
               <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
               <td>{act.hrefLink}</td>

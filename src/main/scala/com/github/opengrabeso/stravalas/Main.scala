@@ -672,27 +672,8 @@ object Main {
     ISODateTimeFormat.dateTime().print(startTime)
   }
 
-  def jsDate(t: ZonedDateTime): String = {
-    s"""
-    function () {
-      var locale = navigator.languages[0] || navigator.language
-      var date = new Date("$t");
-      return new Intl.DateTimeFormat(
-        locale,
-        {
-          year: "numeric",
-          month: "numeric",
-          day: "numeric",
-          hour: "numeric",
-          minute: "numeric",
-        }
-      ).format(date)
-    }()
-    """
-  }
-
   def jsDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
-    jsDate(startTime)
+    s"""formatDateTime("$startTime") + "..." + formatTime("$endTime") """
   }
 
   def localeDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
