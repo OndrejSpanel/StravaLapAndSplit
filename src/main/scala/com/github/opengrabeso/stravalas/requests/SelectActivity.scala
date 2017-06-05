@@ -122,8 +122,20 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <script src="static/ajaxUtils.js"></script>
       </head>
       <body>
-        {bodyHeader(auth)}<h2>Staging</h2>
+        {bodyHeader(auth)}
 
+        <h2>Data sources</h2>
+        <a href="loadFromStrava">Load from Strava ...</a>
+        {
+        /* getSuunto is peforming cross site requests to the local browser, this cannot be done on a secure page */
+
+        val sincePar = ignoreBefore.fold("")("?since=" + _.toString)
+        val getSuuntoLink = s"window.location.assign(unsafe('getSuunto$sincePar'))"
+        <a href="javascript:;" onClick={getSuuntoLink}>Get from Suunto devices ...</a>
+        }
+        <a href="getFiles">Upload files...</a>
+        <hr/>
+        <h2>Staging</h2>
         <table class="activities">
           {for ((actEvents, actStrava) <- recentToStrava) yield {
             val act = actEvents.id
@@ -150,17 +162,6 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             </tr>
         }}
         </table>
-        <hr/>
-        <h2>Data sources</h2>
-        <a href="loadFromStrava">Load from Strava ...</a>
-        {
-          /* getSuunto is peforming cross site requests to the local browser, this cannot be done on a secure page */
-
-          val sincePar = ignoreBefore.fold("")("?since=" + _.toString)
-          val getSuuntoLink = s"window.location.assign(unsafe('getSuunto$sincePar'))"
-          <a href="javascript:;" onClick={getSuuntoLink}>Get from Suunto devices ...</a>
-        }
-        <a href="getFiles">Upload files...</a>
         {bodyFooter}
       </body>
     </html>
