@@ -43,7 +43,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     // ignore anything older than oldest of recent Strava activities
     val ignoreBefore = stravaActivities.lastOption.map(_.startTime)
 
-    val stagedActivities = Main.stagedActivities(auth)
+    val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
 
     val recentActivities = ignoreBefore.fold(stagedActivities) { before =>
       stagedActivities.filter(_.id.startTime > before)
