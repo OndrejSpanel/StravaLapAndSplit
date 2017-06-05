@@ -1,8 +1,6 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import java.time.ZonedDateTime
-
 import spark.{Request, Response}
 
 object GetSuunto extends DefineRequest("/getSuunto") with ActivityRequestHandler {
