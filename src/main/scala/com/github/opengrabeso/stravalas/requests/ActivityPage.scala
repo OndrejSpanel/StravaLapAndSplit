@@ -5,6 +5,11 @@ import com.github.opengrabeso.stravalas.Main.ActivityEvents
 import org.joda.time.{DateTime => ZonedDateTime, Seconds}
 import spark.{Request, Response, Session}
 
+import org.apache.commons.fileupload.FileItemStream
+import org.apache.commons.fileupload.disk.DiskFileItemFactory
+import org.apache.commons.fileupload.servlet.ServletFileUpload
+import org.apache.commons.io.IOUtils
+
 import scala.xml.NodeSeq
 
 protected case class ActivityContent(head: NodeSeq, body: NodeSeq)
@@ -25,7 +30,7 @@ object ActivityRequest {
 trait ActivityRequestHandler {
   import ActivityRequest._
 
-  protected def activityHtmlContent(actId: String, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
+  protected def activityHtmlContent(actId: FileId, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
@@ -96,12 +101,12 @@ trait ActivityRequestHandler {
     ActivityContent(headContent, bodyContent)
   }
 
-  private def activityJS(actIdString: String, activityData: ActivityEvents) = {
-    val actId = FileId.parse(actIdString).filename
+  private def activityJS(fileId: FileId, activityData: ActivityEvents) = {
+    val actIdName = fileId.filename
     //language=JavaScript
     xml.Unparsed(
       s"""
-      var id = "$actId";
+      var id = "$actIdName";
       // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
       var events = [
         ${activityData.editableEvents.mkString("[", "],[", "]")}
@@ -545,7 +550,7 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
 
     val activityData = Storage.load[Main.ActivityEvents](fileId.filename, auth.userId).get
 
-    val content = activityHtmlContent(actId, activityData, session, resp)
+    val content = activityHtmlContent(fileId, activityData, session, resp)
 
     <html>
       <head>
@@ -569,5 +574,109 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
     </html>
   }
 
+
+}
+
+object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityRequestHandler {
+
+  def saveAsNeeded(activityData: ActivityEvents)(implicit auth: Main.StravaAuthResult) = {
+    if (activityData.id.id == FileId.NoId) {
+      // save the merged data under some synthetic id so that it can be used
+      // TODO: cleanup obsolete session data
+
+      // TODO: unique ID (merge or hash input ids?)
+      val newId = FileId.TempId("111")
+
+      val newData = activityData.copy(id = activityData.id.copy(id = newId))
+
+      Storage.store(newId.filename, auth.userId, newData)
+
+      newData
+
+    } else {
+      activityData
+    }
+
+  }
+
+  override def html(request: Request, resp: Response) = {
+
+    val session = request.session()
+    implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
+
+    val fif = new DiskFileItemFactory()
+    fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
+
+    val upload = new ServletFileUpload(fif)
+
+    val items = upload.getItemIterator(request.raw)
+
+    val itemsIterator = new Iterator[FileItemStream] {
+      def hasNext = items.hasNext
+
+      def next() = items.next
+    }
+
+    val ops = itemsIterator.flatMap { item =>
+      if (item.isFormField) {
+        // expect field name id={FileId}
+        val IdPattern = "id=(.*)".r
+        val id = item.getFieldName match {
+          case IdPattern(idText) =>
+            Some(idText)
+          case _ =>
+            None
+        }
+        //println(item)
+        val is = item.openStream()
+        val itemContent = try {
+          IOUtils.toString(is)
+        } finally {
+          is.close()
+        }
+        id.map { id =>
+          FileId.parse(id) -> itemContent.toInt
+        }
+      } else {
+        None
+      }
+    }.toVector
+
+    // TODO: create groups, process each group separately
+    val toMerge = ops.flatMap { op =>
+      if (op._2 == SelectActivity.ActivityAction.ActUpload.id) {
+        Some(Storage.load[Main.ActivityEvents](op._1.filename, auth.userId).get)
+      } else {
+        None
+      }
+    }
+
+
+    if (toMerge.nonEmpty) {
+      val activityData = saveAsNeeded(toMerge.reduceLeft(_ merge _))
+
+      // merged content
+      val content = activityHtmlContent(activityData.id.id, activityData, session, resp)
+
+      <html>
+        <head>
+          <title>Stravamat</title>{headPrefix}{content.head}
+        </head>
+        <body>
+          {bodyHeader(auth)}{activityData.id.hrefLink}{content.body}{bodyFooter}
+        </body>
+      </html>
+    }
+    else {
+      <html>
+        <head>
+          <title>Stravamat</title>{headPrefix}
+        </head>
+        <body>
+          Empty - no activity selected
+        </body>
+      </html>
+    }
+  }
 
 }

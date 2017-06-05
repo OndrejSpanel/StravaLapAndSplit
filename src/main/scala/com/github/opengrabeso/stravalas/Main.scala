@@ -113,7 +113,16 @@ object Main {
       }
     }
 
-    def hrefLink: Elem = <a href={link}>{name}</a>
+    def hrefLink: Elem = {
+      id match {
+        case StravaId(num) =>
+          <a href={s"https://www.strava.com/activities/$num"}>{name}</a>
+        case FilenameId(filename) =>
+          <div>File</div> // TODO: check Quest / GPS filename?
+        case _ =>
+          <div>{id.toString}</div>
+      }
+    }
   }
 
   object ActivityId {

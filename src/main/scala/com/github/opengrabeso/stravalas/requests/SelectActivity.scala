@@ -3,7 +3,6 @@ package requests
 
 import spark.{Request, Response}
 import DateTimeOps._
-import FileId._
 
 object SelectActivity extends DefineRequest("/selectActivity") {
 
@@ -22,7 +21,8 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
   def htmlActivityAction(id: FileId, types: Seq[ActivityAction], action: ActivityAction) = {
     val idString = id.toString
-    <select id={idString} name="do" onchange={s"changeActivity(this, this.options[this.selectedIndex].value, '$idString')"}>
+    //<select id={idString} name={s"id=$idString"} onchange={s"changeActivity(this, this.options[this.selectedIndex].value, '$idString')"}>
+    <select id={idString} name={s"id=$idString"}>
       {for (et <- types) yield {
       <option value={et.id.toString} selected={if (action == et) "" else null}>
         {displayActivityAction(et)}
@@ -127,7 +127,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <h2>Data sources</h2>
         <a href="loadFromStrava">Load from Strava ...</a>
         {
-        /* getSuunto is peforming cross site requests to the local browser, this cannot be done on a secure page */
+        /* getSuunto is peforming cross site requests to the local server, this cannot be done on a secure page */
 
         val sincePar = ignoreBefore.fold("")("?since=" + _.toString)
         val getSuuntoLink = s"window.location.assign(unsafe('getSuunto$sincePar'))"
@@ -136,32 +136,29 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <a href="getFiles">Upload files...</a>
         <hr/>
         <h2>Staging</h2>
-        <table class="activities">
-          {for ((actEvents, actStrava) <- recentToStrava) yield {
-            val act = actEvents.id
-            // once any activity is present on Strava, do not offer upload by default any more
-            // (if some earlier is not present, it was probably already uploaded and deleted)
-            if (actStrava.isDefined) ignored = true
-            val action = if (ignored) ActIgnore else ActUpload
-            <tr>
-              <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}')"}>Unstage</button></td>
-              <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
-              <td>{act.sportName}</td>
-              <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
-              <td>{act.hrefLink}</td>
-              <td>{Main.displayDistance(act.distance)} km</td>
-              <td>{Main.displaySeconds(act.duration)}</td>
-              <td>
-                <form action="activity" method="get">
-                  <input type="hidden" name="activityId" value={act.id.toString}/>
-                  <input type="submit" value=">>"/>
-                </form>
-              </td>
-              <td>{htmlActivityAction(act.id, actions, action)}</td>
-              <td>{actStrava.fold(<p>{act.id.toString}</p>)(_.hrefLink)}</td>
-            </tr>
-        }}
-        </table>
+        <form action="activity" method="post" enctype="multipart/form-data">
+          <table class="activities">
+            {for ((actEvents, actStrava) <- recentToStrava) yield {
+              val act = actEvents.id
+              // once any activity is present on Strava, do not offer upload by default any more
+              // (if some earlier is not present, it was probably already uploaded and deleted)
+              if (actStrava.isDefined) ignored = true
+              val action = if (ignored) ActIgnore else ActUpload
+              <tr>
+                <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}')"}>Unstage</button></td>
+                <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
+                <td>{act.sportName}</td>
+                <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
+                <td>{act.hrefLink}</td>
+                <td>{Main.displayDistance(act.distance)} km</td>
+                <td>{Main.displaySeconds(act.duration)}</td>
+                <td>{htmlActivityAction(act.id, actions, action)}</td>
+                <td>{actStrava.fold(<p>{act.id.toString}</p>)(_.hrefLink)}</td>
+              </tr>
+          }}
+          </table>
+          <input type="submit" value="Process..."/>
+        </form>
         {bodyFooter}
       </body>
     </html>

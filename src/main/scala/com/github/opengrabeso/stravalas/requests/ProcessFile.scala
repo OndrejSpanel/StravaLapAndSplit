@@ -3,7 +3,7 @@ package requests
 
 import spark.{Request, Response}
 
-abstract class ProcessFile(value: String, method: Method = Method.Get) extends DefineRequest(value, method) {
+abstract class ProcessFile(value: String) extends DefineRequest(value) {
 
   def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit
 

@@ -8,9 +8,11 @@ import RequestUtils._
 
 object UploadToStrava extends ProcessFile("/upload-strava") {
   def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit = {
-    val authToken = req.queryParams("auth_token")
 
-    val api = new StravaAPI(authToken)
+    val session = req.session()
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
+
+    val api = new StravaAPI(auth.token)
 
     val ret = api.uploadRawFileGz(export, "fit.gz") // TODO: forward response (at least status)
 

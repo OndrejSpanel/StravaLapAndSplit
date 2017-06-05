@@ -18,9 +18,11 @@ object FileId {
           FilenameId(content)
         case "StravaId" =>
           StravaId(content.toLong)
+        case "TempId" =>
+          TempId(content)
       }
     } else {
-      throw new UnsupportedOperationException("Bad activity id")
+      throw new UnsupportedOperationException(s"Malformed activity id '$actId")
     }
   }
 
@@ -34,6 +36,13 @@ object FileId {
     def filename = id
     def stravaId = ""
   }
+
+  @SerialVersionUID(10L)
+  case class TempId(id: String) extends FileId {
+    def filename = "temp-" + id
+    def stravaId = ""
+  }
+
   @SerialVersionUID(10L)
   case object NoId extends FileId {
     def filename = ""
