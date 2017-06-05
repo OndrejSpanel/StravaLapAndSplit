@@ -32,8 +32,6 @@ object SelectActivity extends DefineRequest("/selectActivity") {
   }
 
 
-  def sameActivity(events: Main.ActivityEvents, r: Main.ActivityEvents) = ???
-
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
