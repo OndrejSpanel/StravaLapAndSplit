@@ -76,9 +76,14 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <script>{xml.Unparsed(
           //language=JavaScript
           """
+          /** @return {string} */
           function getLocale() {
             return navigator.languages[0] || navigator.language;
           }
+          /**
+          * @param {string} t
+          * @return {string}
+          */
           function formatDateTime(t) {
             var locale = getLocale();
             var date = new Date(t);
@@ -93,6 +98,10 @@ object SelectActivity extends DefineRequest("/selectActivity") {
               }
             ).format(date)
           }
+          /**
+          * @param {string} t
+          * @return {string}
+          */
           function formatTime(t) {
             var locale = getLocale();
             var date = new Date(t);
@@ -110,6 +119,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           """
         )}
         </script>
+        <script src="static/ajaxUtils.js"></script>
       </head>
       <body>
         {bodyHeader(auth)}<h2>Staging</h2>
@@ -122,6 +132,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             if (actStrava.isDefined) ignored = true
             val action = if (ignored) ActIgnore else ActUpload
             <tr>
+              <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}')"}>Unstage</button></td>
               <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
               <td>{act.sportName}</td>
               <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>

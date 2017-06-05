@@ -28,6 +28,8 @@ class ServletRouting extends SparkApplication {
 
       upload.PutDigest, upload.PutFile,
 
+      activityOps.Delete,
+
       RouteData
     )
 

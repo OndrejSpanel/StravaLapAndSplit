@@ -64,6 +64,12 @@ object Storage {
     }
   }
 
+  def delete(filename: String, userId: String): Boolean = {
+    val instance = new GcsFileOptions.Builder()
+    val toDelete = userFilename(filename, userId)
+    gcsService.delete(fileId(toDelete))
+  }
+
   def enumerate(userId: String): Iterable[String] = {
     val prefix = userFilename("", userId)
     val options = new ListOptions.Builder().setPrefix(prefix).build()
