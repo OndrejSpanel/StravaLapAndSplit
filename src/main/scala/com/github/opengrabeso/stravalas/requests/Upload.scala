@@ -53,15 +53,17 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
       case "sml" =>
         loadSml(name, digest, stream).toSeq.flatMap(loadFromMove(name, digest, _))
       case "xml" =>
-        loadXml(name, digest, stream).flatMap(loadFromMove(name, digest, _))
+        loadXml(name, digest, stream).zipWithIndex.flatMap { case (act,index) =>
+          // some activities (Quest) have more parts, each part needs a distinct name
+          val nameWithIndex = if (index > 0) s"$name-$index" else name
+          loadFromMove(nameWithIndex, digest, act)
+        }
       case e =>
         Nil
     }
     if (actData.nonEmpty) {
-      for ((act, index) <- actData.zipWithIndex) {
-        // some activities (Quest) have more parts, each part needs a distinct name
-        val nameWithIndex = if (index > 0) s"$name-$index" else name
-        Storage.store(nameWithIndex, auth.userId, act, "digest" -> digest)
+      for (act <- actData) {
+        Storage.store(act.id.id.filename, auth.userId, act, "digest" -> digest)
       }
     } else {
       Storage.store(name, auth.userId, NoActivity, "digest" -> digest)

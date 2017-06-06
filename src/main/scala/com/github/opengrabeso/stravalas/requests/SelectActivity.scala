@@ -145,7 +145,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
               if (actStrava.isDefined) ignored = true
               val action = if (ignored) ActIgnore else ActUpload
               <tr>
-                <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}')"}>Unstage</button></td>
+                <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}');return false"}>Unstage</button></td>
                 <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
                 <td>{act.sportName}</td>
                 <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>

@@ -250,7 +250,8 @@ object Main {
       val begTime = Seq(id.startTime, that.id.startTime).min
       val endTime = Seq(id.endTime, that.id.endTime).max
 
-      val mergedId = ActivityId(NoId, "", id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
+      // TODO: unique ID (merge or hash input ids?)
+      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
 
       val eventsAndSports = (events ++ that.events).sortBy(_.stamp)
 

@@ -578,25 +578,14 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
 }
 
 object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityRequestHandler {
-
   def saveAsNeeded(activityData: ActivityEvents)(implicit auth: Main.StravaAuthResult) = {
-    if (activityData.id.id == FileId.NoId) {
-      // save the merged data under some synthetic id so that it can be used
-      // TODO: cleanup obsolete session data
-
-      // TODO: unique ID (merge or hash input ids?)
-      val newId = FileId.TempId("111")
-
-      val newData = activityData.copy(id = activityData.id.copy(id = newId))
-
-      Storage.store(newId.filename, auth.userId, newData)
-
-      newData
-
-    } else {
-      activityData
+    activityData.id.id match {
+      case id: FileId.TempId =>
+        // TODO: cleanup obsolete session data
+        Storage.store(id.filename, auth.userId, activityData)
+      case _ =>
     }
-
+    activityData
   }
 
   override def html(request: Request, resp: Response) = {
