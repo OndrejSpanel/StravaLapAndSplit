@@ -3,6 +3,7 @@ package requests
 
 import spark.{Request, Response}
 import DateTimeOps._
+import org.joda.time.{DateTime => ZonedDateTime, Seconds}
 
 object SelectActivity extends DefineRequest("/selectActivity") {
 
@@ -38,13 +39,15 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     val stravaActivities = Main.recentStravaActivities(auth)
 
     // ignore anything older than oldest of recent Strava activities
-    val ignoreBefore = stravaActivities.lastOption.map(_.startTime)
+    val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime)
+    val ignoreBeforeFirst = stravaActivities.headOption.map(_.startTime minusDays  14)
+    val ignoreBeforeNow = new ZonedDateTime() minusMonths 2
+
+    val before = (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
 
     val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
 
-    val recentActivities = ignoreBefore.fold(stagedActivities) { before =>
-      stagedActivities.filter(_.id.startTime > before)
-    }.sortBy(_.id.startTime)
+    val recentActivities = stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
 
     // match recent activities against Strava activities
     // a significant overlap means a match
@@ -126,11 +129,9 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <h2>Data sources</h2>
         <a href="loadFromStrava">Load from Strava ...</a>
         {
-        /* getSuunto is peforming cross site requests to the local server, this cannot be done on a secure page */
-
-        val sincePar = ignoreBefore.fold("")("?since=" + _.toString)
-        val getSuuntoLink = s"window.location.assign(unsafe('getSuunto$sincePar'))"
-        <a href="javascript:;" onClick={getSuuntoLink}>Get from Suunto devices ...</a>
+          /* getSuunto is peforming cross site requests to the local server, this cannot be done on a secure page */
+          val getSuuntoLink = s"window.location.assign(unsafe('getSuunto${s"?since=$before"}'))"
+          <a href="javascript:;" onClick={getSuuntoLink}>Get from Suunto devices ...</a>
         }
         <a href="getFiles">Upload files...</a>
         <hr/>
