@@ -153,7 +153,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
                 <td>{Main.displayDistance(act.distance)} km</td>
                 <td>{Main.displaySeconds(act.duration)}</td>
                 <td>{htmlActivityAction(act.id, actions, action)}</td>
-                <td>{actStrava.fold(<p>{act.id.toString}</p>)(_.hrefLink)}</td>
+                <td>{actStrava.fold(<div>{act.id.toString}</div>)(_.hrefLink)}</td>
               </tr>
           }}
           </table>
