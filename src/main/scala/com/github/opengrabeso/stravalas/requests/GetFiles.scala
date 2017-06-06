@@ -83,12 +83,6 @@ object GetFiles extends DefineRequest("/getFiles") {
             console.log("changeActivity " + event + ",");
           }
 
-          function unsafe(uri) {
-              var abs = window.location.href;
-              var http = abs.replace(/^https:/, 'http:');
-              var rel = http.lastIndexOf('/');
-              return http.substring(0, rel + 1) + uri;
-          }
           """
         )}
         </script>

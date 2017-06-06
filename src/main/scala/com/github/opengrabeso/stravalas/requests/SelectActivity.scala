@@ -63,7 +63,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     //val activityGroups =
 
     val actions = ActivityAction.values.toSeq
-    var ignored = false
+    var ignored = true
     <html>
       <head>
         {/* allow referer when using redirect to unsafe getSuunto page */}
@@ -116,6 +116,12 @@ object SelectActivity extends DefineRequest("/selectActivity") {
               }
             ).format(date)
           }
+          function unsafe(uri) {
+              var abs = window.location.href;
+              var http = abs.replace(/^https:/, 'http:');
+              var rel = http.lastIndexOf('/');
+              return http.substring(0, rel + 1) + uri;
+          }
           """
         )}
         </script>
@@ -138,24 +144,29 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <h2>Staging</h2>
         <form action="activity" method="post" enctype="multipart/form-data">
           <table class="activities">
-            {for ((actEvents, actStrava) <- recentToStrava) yield {
-              val act = actEvents.id
-              // once any activity is present on Strava, do not offer upload by default any more
-              // (if some earlier is not present, it was probably already uploaded and deleted)
-              if (actStrava.isDefined) ignored = true
-              val action = if (ignored) ActIgnore else ActUpload
-              <tr>
-                <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}');return false"}>Unstage</button></td>
-                <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
-                <td>{act.sportName}</td>
-                <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
-                <td>{act.hrefLink}</td>
-                <td>{Main.displayDistance(act.distance)} km</td>
-                <td>{Main.displaySeconds(act.duration)}</td>
-                <td>{htmlActivityAction(act.id, actions, action)}</td>
-                <td>{actStrava.fold(<div>{act.id.toString}</div>)(_.hrefLink)}</td>
-              </tr>
-          }}
+            {
+              // find most recent Strava activity
+              val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
+
+              for ((actEvents, actStrava) <- recentToStrava) yield {
+                val act = actEvents.id
+                val ignored = mostRecentStrava.exists(_ >= actEvents.id.startTime)
+                val action = if (ignored) ActIgnore else ActUpload
+                // once any activity is present on Strava, do not offer upload by default any more
+                // (if some earlier is not present, it was probably already uploaded and deleted)
+                <tr>
+                  <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}');return false"}>Unstage</button></td>
+                  <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
+                  <td>{act.sportName}</td>
+                  <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
+                  <td>{act.hrefLink}</td>
+                  <td>{Main.displayDistance(act.distance)} km</td>
+                  <td>{Main.displaySeconds(act.duration)}</td>
+                  <td>{htmlActivityAction(act.id, actions, action)}</td>
+                  <td>{actStrava.fold(<div>{act.id.toString}</div>)(_.hrefLink)}</td>
+                </tr>
+              }
+            }
           </table>
           <input type="submit" value="Process..."/>
         </form>
