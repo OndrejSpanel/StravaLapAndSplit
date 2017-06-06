@@ -41,6 +41,19 @@ object GetSuunto extends DefineRequest("/getSuunto") with ActivityRequestHandler
           var uploaderUri = "$uploaderUri";
           var filesToLoad = [];
 
+          function dateFromFilename(name) {
+             var gpsPat = /.*.*-(\\d*)-(\\d*)-(\\d*)T(\\d*)_(\\d*)_(\\d*)-.*/;
+             var questPat = /.*\\/Quest_\\d*_(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)\\..*/;
+             var gpsMatch = gpsPat.exec(name);
+             var questMatch = gpsPat.exec(name);
+             if (gpsMatch) {
+               return " " + new Date(gpsMatch[1], gpsMatch[2] - 1, gpsMatch[3]).toLocaleDateString()
+             } else if (questMatch) {
+               return " " + new Date(questMatch[1], questMatch[2] - 1, questMatch[3]).toLocaleDateString()
+             }
+             return "";
+          }
+
           function loadFile(file) {
             ajaxAsync(uploaderUri + "/digest?path=" + file, "", function(response) {
               var digest = response.documentElement.getElementsByTagName("value")[0].textContent;
@@ -89,7 +102,7 @@ object GetSuunto extends DefineRequest("/getSuunto") with ActivityRequestHandler
           */
           function displayProgress(operation, fileName, fileSize) {
             document.getElementById("myDiv").innerHTML = fileName ?
-              "<h3>" + operation + " file '" + fileName + "' " + displayFileSize(fileSize) + "</h3>" :
+              "<h3>" + operation + dateFromFilename(fileName) + " file '"  + fileName + "' " + displayFileSize(fileSize) + "</h3>" :
               "";
           }
 
