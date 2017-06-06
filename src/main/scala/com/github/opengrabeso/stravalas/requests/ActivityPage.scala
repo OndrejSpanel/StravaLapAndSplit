@@ -612,10 +612,11 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
         val IdPattern = "id=(.*)".r
         val id = item.getFieldName match {
           case IdPattern(idText) =>
-            Some(idText)
+            Some(FileId.parse(idText))
           case _ =>
             None
         }
+        /*
         //println(item)
         val is = item.openStream()
         val itemContent = try {
@@ -623,9 +624,8 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
         } finally {
           is.close()
         }
-        id.map { id =>
-          FileId.parse(id) -> itemContent.toInt
-        }
+        */
+        id
       } else {
         None
       }
@@ -633,11 +633,7 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
 
     // TODO: create groups, process each group separately
     val toMerge = ops.flatMap { op =>
-      if (op._2 == SelectActivity.ActivityAction.ActUpload.id) {
-        Some(Storage.load[Main.ActivityEvents](op._1.filename, auth.userId).get)
-      } else {
-        None
-      }
+      Storage.load[Main.ActivityEvents](op.filename, auth.userId)
     }
 
 

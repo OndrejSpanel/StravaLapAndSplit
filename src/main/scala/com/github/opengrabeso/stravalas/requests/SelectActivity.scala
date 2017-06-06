@@ -21,14 +21,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
   def htmlActivityAction(id: FileId, types: Seq[ActivityAction], action: ActivityAction) = {
     val idString = id.toString
-    //<select id={idString} name={s"id=$idString"} onchange={s"changeActivity(this, this.options[this.selectedIndex].value, '$idString')"}>
-    <select id={idString} name={s"id=$idString"}>
-      {for (et <- types) yield {
-      <option value={et.id.toString} selected={if (action == et) "" else null}>
-        {displayActivityAction(et)}
-      </option>
-    }}
-    </select>
+    <input type="checkbox" name={s"id=$idString"} checked={if (action!=ActIgnore) "true" else null}></input>
   }
 
   def jsResult(func: String) = {
