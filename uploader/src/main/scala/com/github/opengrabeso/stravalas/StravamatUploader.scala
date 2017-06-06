@@ -1,12 +1,13 @@
 package com.github.opengrabeso.stravalas
 
 import java.security.MessageDigest
+
 import org.joda.time.{DateTime => ZonedDateTime}
 import Util._
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
+import akka.http.scaladsl._
 import akka.http.scaladsl.model.ContentType.WithCharset
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
@@ -197,11 +198,11 @@ object StravamatUploader extends App {
 
     val requests = path(enumPath) {
       parameters('since.?) { since =>
-        complete(enumHandler(since))
+        encodeResponseWith(coding.Gzip, coding.NoCoding) {complete(enumHandler(since))}
       }
     } ~ path(getPath) {
       parameters('path) { path =>
-        complete(getHandler(path))
+        encodeResponseWith(coding.Gzip, coding.NoCoding) {complete(getHandler(path))}
       }
     } ~ path(hashPath) {
       parameters('path) { path =>

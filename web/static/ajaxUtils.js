@@ -32,7 +32,7 @@ function ajaxPost(xmlhttp, request, data, async) {
 function ajaxPostRaw(xmlhttp, request, data, async) {
     xmlhttp.open("POST", request, async); // POST to prevent caching
     xmlhttp.responseType = "arraybuffer";
-    xmlhttp.setRequestHeader("Content-type", "text/plain");
+    xmlhttp.setRequestHeader("Content-type", "application/octet-stream");
     xmlhttp.send(data ? data: "");
 }
 
