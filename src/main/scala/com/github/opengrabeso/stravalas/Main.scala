@@ -7,10 +7,10 @@ import java.util.Locale
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
-import org.joda.time.{Period, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Period, PeriodType, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 
 import scala.collection.JavaConverters._
-import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 import DateTimeOps._
 import FileId._
 import com.google.api.client.json.jackson2.JacksonFactory
@@ -672,8 +672,8 @@ object Main {
         .printZeroAlways().minimumPrintedDigits(2).appendSeconds()
         .toFormatter
 
-    val period = Period.seconds(duration).normalizedStandard()
-    myFormat.print(period)
+    val periodToFormat = new Period(duration*1000, PeriodType.dayTime)
+    myFormat.print(periodToFormat)
   }
 
   def displayDistance(dist: Double): String = "%.2f".format(dist*0.001)
