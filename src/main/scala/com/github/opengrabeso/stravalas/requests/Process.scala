@@ -2,15 +2,16 @@ package com.github.opengrabeso.stravalas
 package requests
 
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
-import org.joda.time.{DateTime => ZonedDateTime, Seconds}
+import net.suunto3rdparty.moveslink.MovesLinkUploader
+import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 import spark.{Request, Response, Session}
-
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
 import org.apache.commons.io.IOUtils
 
 import scala.xml.NodeSeq
+import net.suunto3rdparty.Util._
 
 object Process extends DefineRequest.Post("/process") {
   def saveAsNeeded(activityData: ActivityEvents)(implicit auth: Main.StravaAuthResult) = {
@@ -73,6 +74,21 @@ object Process extends DefineRequest.Post("/process") {
 
 
     if (toMerge.nonEmpty) {
+
+      val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
+
+      val timeOffset = net.suunto3rdparty.Settings.questTimeOffset
+      val ignoreDuration = 30
+
+      val attrMoves = attrMovesRaw.map(_.timeOffset(-timeOffset))
+
+      def filterIgnored(x : ActivityEvents) = x.isAlmostEmpty(ignoreDuration)
+
+      val timelineGPS = gpsMoves.toList.filterNot(filterIgnored).sortBy(_.startTime)
+      val timelineAttr = attrMoves.toList.filterNot(filterIgnored).sortBy(_.startTime)
+
+      val merged = MovesLinkUploader.processTimelines(timelineGPS, timelineAttr)
+
       ???
 
       <html>
@@ -80,7 +96,7 @@ object Process extends DefineRequest.Post("/process") {
           <title>Stravamat</title>
         </head>
         <body>
-          Processed  ... TODO: report processing results
+          Processed {merged.size.toString} ... TODO: report processing results
         </body>
       </html>
     }

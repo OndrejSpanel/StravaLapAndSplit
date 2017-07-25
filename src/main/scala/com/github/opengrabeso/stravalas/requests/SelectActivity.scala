@@ -136,7 +136,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <a href="getFiles">Upload files...</a>
         <hr/>
         <h2>Staging</h2>
-        <form action="activity" method="post" enctype="multipart/form-data">
+        <form action="process" method="post" enctype="multipart/form-data">
           <table class="activities">
             {
               // find most recent Strava activity

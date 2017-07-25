@@ -172,7 +172,8 @@ object Main {
           act
         } catch {
           case x: java.io.InvalidClassException => // bad serialVersionUID
-            println(s"load error ${x.getMessage}")
+            println(s"load error ${x.getMessage} - $a")
+            Storage.delete(a, auth.userId)
             None
           case x: Exception =>
             x.printStackTrace()

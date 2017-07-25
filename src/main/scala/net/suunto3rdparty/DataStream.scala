@@ -25,7 +25,8 @@ object DataStream {
     stream.transform((_, v) => f(v))
   }
 }
-sealed abstract class DataStream {
+@SerialVersionUID(10L)
+sealed abstract class DataStream extends Serializable {
 
   def typeToLog: String
   def streamType: Class[_ <: DataStream] = this.getClass
@@ -273,8 +274,8 @@ object DataStreamGPS {
 
 }
 
+@SerialVersionUID(10L)
 class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream {
-
 
   import DataStreamGPS._
 
@@ -562,6 +563,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
 }
 
+@SerialVersionUID(10L)
 class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream {
   type Item = String
 
@@ -573,6 +575,7 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
   def dropAlmostEmpty: DataStreamLap = this
 }
 
+@SerialVersionUID(10L)
 class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream {
   type Item = HRPoint
 
@@ -594,6 +597,7 @@ class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint
 
 }
 
+@SerialVersionUID(10L)
 class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream {
   type Item = Int
 
@@ -605,6 +609,7 @@ class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends D
   def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 }
 
+@SerialVersionUID(10L)
 class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream {
 
   def typeToLog = "Dist"
