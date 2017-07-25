@@ -151,6 +151,12 @@ object StravamatUploader extends App {
     }
   }
 
+  def optionsHandler(): HttpResponse = {
+    val response = <result>OK</result>
+    val ret = sendResponseXml(200, response)
+    ret
+  }
+
   def doneHandler(): HttpResponse = {
     val response = <result>Done</result>
     val ret = sendResponseXml(200, response)
@@ -221,7 +227,16 @@ object StravamatUploader extends App {
         }
 
       }
-    } ~ get(requests)
+    } ~ get(requests) ~ options {
+      checkSameOrigin(CorsSupport.allowedOrigin) {
+        val originHeader = headerValueByType[Origin](())
+        originHeader { origin =>
+          respondWithHeaders(CorsSupport.accessControl(origin.origins))(complete(optionsHandler()))
+        }
+
+      }
+
+    }
 
     val bindingFuture: Future[ServerBinding] = Http().bindAndHandle(Route.handlerFlow(route), "localhost", callbackPort)
 
