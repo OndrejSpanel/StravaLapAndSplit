@@ -9,7 +9,7 @@ import scala.annotation.tailrec
 object MovesLinkUploader {
 
   @tailrec
-  def processTimelines(lineGPS: List[ActivityEvents], lineHRD: List[ActivityEvents], processed: List[ActivityEvents]): List[ActivityEvents] = {
+  private def processTimelinesRecurse(lineGPS: List[ActivityEvents], lineHRD: List[ActivityEvents], processed: List[ActivityEvents]): List[ActivityEvents] = {
     def prependNonEmpty(move: Option[ActivityEvents], list: List[ActivityEvents]): List[ActivityEvents] = {
       move.find(!_.isAlmostEmpty(30)).toList ++ list
     }
@@ -19,10 +19,10 @@ object MovesLinkUploader {
         processed
       } else {
         // HR moves without GPS info
-        processTimelines(lineGPS, lineHRD.tail, prependNonEmpty(lineHRD.headOption, processed))
+        processTimelinesRecurse(lineGPS, lineHRD.tail, prependNonEmpty(lineHRD.headOption, processed))
       }
     } else if (lineHRD.isEmpty) {
-      processTimelines(lineGPS.tail, lineHRD, prependNonEmpty(lineGPS.headOption, processed))
+      processTimelinesRecurse(lineGPS.tail, lineHRD, prependNonEmpty(lineGPS.headOption, processed))
     } else {
       val hrdMove = lineHRD.head
       val gpsMove = lineGPS.head
@@ -35,9 +35,9 @@ object MovesLinkUploader {
 
       if (gpsBeg >= hrdEnd) {
         // no match for hrd
-        processTimelines(lineGPS, lineHRD.tail, prependNonEmpty(lineHRD.headOption, processed))
+        processTimelinesRecurse(lineGPS, lineHRD.tail, prependNonEmpty(lineHRD.headOption, processed))
       } else if (hrdBeg > gpsEnd) {
-        processTimelines(lineGPS.tail, lineHRD, prependNonEmpty(lineGPS.headOption, processed))
+        processTimelinesRecurse(lineGPS.tail, lineHRD, prependNonEmpty(lineGPS.headOption, processed))
       } else {
         // some overlap, handle it
         // check if the activity start is the same within a tolerance
@@ -65,20 +65,23 @@ object MovesLinkUploader {
 
           println(s"Merged GPS ${takeGPS.map(_.toLog)} into ${hrdMove.toLog}")
 
-          processTimelines(prependNonEmpty(leftGPS, lineGPS.tail), prependNonEmpty(merged, lineHRD.tail), processed)
+          processTimelinesRecurse(prependNonEmpty(leftGPS, lineGPS.tail), prependNonEmpty(merged, lineHRD.tail), processed)
         } else if (gpsBeg > hrdBeg) {
           val (takeHRD, leftHRD) = hrdMove.span(gpsBeg)
 
-          processTimelines(lineGPS, prependNonEmpty(leftHRD, lineHRD.tail), prependNonEmpty(takeHRD, processed))
+          processTimelinesRecurse(lineGPS, prependNonEmpty(leftHRD, lineHRD.tail), prependNonEmpty(takeHRD, processed))
 
-        } else  {
+        } else {
           val (takeGPS, leftGPS) = gpsMove.span(hrdBeg)
 
-          processTimelines(prependNonEmpty(leftGPS, lineGPS.tail), lineHRD, prependNonEmpty(takeGPS, processed))
+          processTimelinesRecurse(prependNonEmpty(leftGPS, lineGPS.tail), lineHRD, prependNonEmpty(takeGPS, processed))
         }
       }
 
     }
   }
 
+  def processTimelines(lineGPS: List[ActivityEvents], lineHRD: List[ActivityEvents]): List[ActivityEvents] = {
+    processTimelinesRecurse(lineGPS, lineHRD, Nil).reverse
+  }
 }
