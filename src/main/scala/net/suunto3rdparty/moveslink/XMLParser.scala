@@ -1,8 +1,10 @@
 package net.suunto3rdparty
 package moveslink
 
+import java.io.File
+
 import org.joda.time.{DateTime => ZonedDateTime, _}
-import org.joda.time.format.DateTimeFormat
+import org.joda.time.format.{DateTimeFormat, PeriodFormat, PeriodFormatter}
 import java.util.regex.Pattern
 
 import scala.xml._
@@ -149,7 +151,7 @@ object XMLParser {
         val suuntoMove = parseSamples(fileName, header, samples)
 
         val moveWithLaps = if (laps.nonEmpty) {
-          suuntoMove.addStream(suuntoMove, DataStreamLap(SortedMap(laps.map(time => time -> "Manual"): _*)))
+          suuntoMove.addStream(suuntoMove, new DataStreamLap(SortedMap(laps.map(time => time -> "Manual"): _*)))
         } else suuntoMove
         Success(moveWithLaps)
       }

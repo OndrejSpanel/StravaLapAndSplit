@@ -119,7 +119,7 @@ object FitImport {
 
         val distances = DataStreamGPS.routeStreamFromDistStream(distanceDeltas)
 
-        SortedMap(distances:_*)
+        distances
       }
 
       val allStreams = Seq(gpsStream, distData, hrStream).filter(_.nonEmpty)
@@ -131,13 +131,13 @@ object FitImport {
 
       object ImportedStreams extends Main.ActivityStreams {
 
-        val dist = DataStreamDist(distData)
+        val dist = new DataStreamDist(distData)
 
         val latlng = gpsDataStream
 
         def attributes = Seq(
           // TODO: cadence, temperature and other attributes
-          DataStreamHR(hrStream)
+          new DataStreamHR(hrStream)
         )
 
       }

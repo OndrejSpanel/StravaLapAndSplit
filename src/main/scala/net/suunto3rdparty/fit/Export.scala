@@ -5,7 +5,7 @@ import com.garmin.fit
 import com.garmin.fit._
 import java.io.File
 
-import org.joda.time.{Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Duration, Seconds, DateTime => ZonedDateTime}
 import Util._
 import net.suunto3rdparty.MoveHeader.ActivityType._
 
@@ -61,13 +61,13 @@ object Export {
 
     // write all data, sorted by time
 
-    type MultiSamples = SortedMap[ZonedDateTime, Seq[DataStream[_]#DataItem]]
+    type MultiSamples = SortedMap[ZonedDateTime, Seq[DataStream#Item]]
 
-    def toMultiSamples[Item](data: DataStream[Item]#DataMap): MultiSamples = {
+    def toMultiSamples(data: DataStream#DataMap): MultiSamples = {
       data.mapValues(Seq(_))
     }
 
-    def mergeMultiSamples[Item](m: MultiSamples, d: DataStream[Item]#DataMap): MultiSamples = {
+    def mergeMultiSamples(m: MultiSamples, d: DataStream#DataMap): MultiSamples = {
       val updateExisting = m.map { case (k, v) =>
         k -> (v ++ d.get(k))
       }
@@ -88,7 +88,7 @@ object Export {
       case Cycling => (Sport.CYCLING, SubSport.ROAD)
       case Unknown =>
         move.streamGet[DataStreamGPS].map { gps =>
-          val stats = DataStreamGPS.speedStats(DataStreamGPS.computeSpeedStream(gps.distStream))
+          val stats = gps.speedStats
           // autodetect based on a speed
           if (stats._3 >= 30 || stats._2 >= 15) (Sport.CYCLING, SubSport.MOUNTAIN)
           else (Sport.GENERIC, SubSport.GENERIC) // will be most likely handled as run by Strava

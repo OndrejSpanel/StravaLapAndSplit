@@ -185,7 +185,7 @@ object Main {
   case object NoActivity
 
   @SerialVersionUID(10L)
-  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
 
     override def toString = id.toString
 
@@ -354,7 +354,7 @@ object Main {
 
     def latlng: DataStreamGPS
 
-    def attributes: Seq[DataStream[_]]
+    def attributes: Seq[DataStream]
   }
 
 
@@ -365,15 +365,15 @@ object Main {
     val distStream = if (act.latlng.stream.nonEmpty) {
       act.latlng.distStream
     } else {
-      DataStreamGPS.distStreamFromRouteStream(act.dist.stream.toSeq)
+      DataStreamGPS.distStreamFromRouteStream(act.dist.stream)
     }
 
     val smoothingSec = 10
     val speedStream = DataStreamGPS.computeSpeedStream(distStream, smoothingSec)
-    val speedMap = SortedMap(speedStream:_*)
+    val speedMap = speedStream
 
     // integrate route distance back from smoothed speed stream so that we are processing consistent data
-    val routeDistance = SortedMap(DataStreamGPS.routeStreamFromSpeedStream(speedStream):_*)
+    val routeDistance = DataStreamGPS.routeStreamFromSpeedStream(speedStream)
 
     // find pause candidates: times when smoothed speed is very low
     val speedPauseMax = 0.7
@@ -383,7 +383,7 @@ object Main {
     type PauseStream = Seq[(ZonedDateTime, ZonedDateTime, Double)]
     val pauseSpeeds: PauseStream = (speedStream zip speedStream.drop(1)).collect {
       case ((t1, s1), (t2, s2)) if s1 < speedPauseMax && s2< speedPauseMax => (t1, t2, s1)
-    }
+    }.toSeq
     // aggregate pause intervals - merge all
     def mergePauses(pauses: PauseStream, done: PauseStream): PauseStream = {
       pauses match {
@@ -477,7 +477,7 @@ object Main {
 
         val spd = speedDuringInterval(pBeg, pEnd)
 
-        val (avg, fast, max) = DataStreamGPS.speedStats(spd.toSeq)
+        val (avg, fast, max) = DataStreamGPS.speedStats(spd)
 
         def paceToKmh(pace: Double) = 60 / pace
 
@@ -594,11 +594,11 @@ object Main {
         getAttribByName("heartrate")
       )
 
-      val dist = DataStreamDist(SortedMap(timeValues zip distValues:_*))
-      val latlng = DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
+      val dist = new DataStreamDist(SortedMap(timeValues zip distValues:_*))
+      val latlng = new DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
       val attributes =  attributeValues.flatMap { case (name, values) =>
           name match {
-            case "heartrate" => Some(DataStreamHR(SortedMap(timeValues zip values:_*)))
+            case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
             case _ => None
           }
       }

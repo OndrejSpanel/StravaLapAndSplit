@@ -2,7 +2,7 @@ package net.suunto3rdparty
 
 import org.joda.time.{Period, ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
-import scala.collection.immutable.{Queue, SortedMap}
+import scala.collection.immutable.SortedMap
 import Util._
 
 import scala.annotation.tailrec
@@ -16,6 +16,7 @@ object DataStream {
     val duration = timeDifference(begTime, endTime)
     val maxSpeed = 0.1
     dist < duration * maxSpeed
+
   }
 
   def mapStreamValues[Item, T](stream: SortedMap[ZonedDateTime, Item], f: Item => T): SortedMap[ZonedDateTime, T] = {
@@ -24,25 +25,23 @@ object DataStream {
     stream.transform((_, v) => f(v))
   }
 }
-sealed abstract class DataStream[Item] {
+sealed abstract class DataStream {
 
   def typeToLog: String
-  def /*_*/ streamType : Class[_ <: DataStream[_]] = this.getClass /*_*/
+  def streamType: Class[_ <: DataStream] = this.getClass
 
-  type DataItem = Item
-  type DataMap = SortedMap[ZonedDateTime, DataItem]
+  type Item
+
+  type DataMap = SortedMap[ZonedDateTime, Item]
 
   def stream: DataMap
 
-  // stream may be null during serialization
-  assert(stream == null || stream.isEmpty || stream.head._1 <= stream.last._1)
+  def pickData(data: DataMap): DataStream
 
   def mapStreamValues[T](f: Item => T): SortedMap[ZonedDateTime, T] = DataStream.mapStreamValues(stream, f)
 
-  def pickData(data: DataMap): DataStream[Item]
-
-  def startTime: Option[ZonedDateTime] = stream.headOption.map(_._1)
-  def endTime: Option[ZonedDateTime] = stream.lastOption.map(_._1)
+  val startTime: Option[ZonedDateTime] = stream.headOption.map(_._1)
+  val endTime: Option[ZonedDateTime] = stream.lastOption.map(_._1)
 
   def inTimeRange(b: ZonedDateTime, e: ZonedDateTime): Boolean = {
     startTime.forall(_ >= b) && endTime.forall(_ <= e)
@@ -54,19 +53,19 @@ sealed abstract class DataStream[Item] {
   // must not be discarded
   def isNeeded: Boolean
 
-  def span(time: ZonedDateTime): (DataStream[Item], DataStream[Item]) = {
+  def span(time: ZonedDateTime): (DataStream, DataStream) = {
     val (take, left) = stream.span(_._1 < time)
     (pickData(take), pickData(left))
   }
 
-  def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStream[Item] = {
+  def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStream = {
 
     val subData = stream.filter(i => i._1 >= timeBeg && i._1 <= timeEnd)
 
     pickData(subData)
   }
 
-  def timeOffset(bestOffset: Int): DataStream[Item] = {
+  def timeOffset(bestOffset: Int): DataStream = {
     val adjusted = stream.map{
       case (k,v) =>
         k.plus(bestOffset*1000) -> v
@@ -105,7 +104,7 @@ object DataStreamGPS {
   }
 
 
-  private type DistStream  = Seq[(ZonedDateTime, Double)]
+  private type DistStream  = SortedMap[ZonedDateTime, Double]
 
   /**
     * Experiments have shown smoothingInterval = 60 gives most accurate results.
@@ -113,22 +112,17 @@ object DataStreamGPS {
     */
   private val smoothingInterval = 60
 
-
-  private type DistList = List[(ZonedDateTime, Double)]
   /**
-    * GPS records sometimes miss one sample, the missing sample is added the a neighboring sample, like:
+    * Quest records sometimes miss one sample, the missing sample is added the a neighboring sample, like:
     * 2016-04-13T09:47:01Z	4.9468178241
     * 2016-04-13T09:47:02Z	10.5000627924
     * 2016-04-13T09:47:04Z	5.2888359044
     */
-  /**
-    * Currently unused, previous example was wrong, it was result of bad handling of time deltas between GPS samples.
-    * */
-  def fixSpeed(input: DistList): DistList = {
-    def fixSpeedRecurse(input: DistList, done: DistList): DistList = {
+  private def fixSpeed(input: DistStream): DistStream = {
+    def fixSpeedRecurse(input: DistStream, done: DistStream): DistStream = {
       if (input.isEmpty) done
       else {
-        if (input.tail.isEmpty) fixSpeedRecurse(input.tail, input.head +: done)
+        if (input.tail.isEmpty) fixSpeedRecurse(input.tail, done + input.head)
         else {
           val item0 = input.head
           val item1 = input.tail.head
@@ -141,64 +135,43 @@ object DataStreamGPS {
             if (value0 >= value1) {
               // 0 large, 1 missing, 2 small
               val fixed0 = item0.copy(_2 = value0 / duration)
-              val addMissing = for (s <- (1 to missingCount.toInt).toList) yield fixed0.copy(_1 = item0._1.plusSeconds(s))
-              fixSpeedRecurse(input.tail, addMissing ++ (fixed0 +: done))
+              val addMissing = for (s <- 1 to missingCount.toInt) yield fixed0.copy(_1 = item0._1.plusSeconds(s))
+              fixSpeedRecurse(input.tail, done + fixed0 ++ addMissing)
             } else {
               // 0 small, 1 missing, 2 large
               val fixed2 = item1.copy(_2 = value0 / duration)
-              val addMissing = for (s <- (1 to missingCount.toInt).toList) yield fixed2.copy(_1 = item0._1.plusSeconds(s))
-              fixSpeedRecurse(input.tail.tail, (fixed2 +: addMissing) ++ (item0 +: done))
+              val addMissing = for (s <- 1 to missingCount.toInt) yield fixed2.copy(_1 = item0._1.plusSeconds(s))
+              fixSpeedRecurse(input.tail.tail, done + item0 ++ addMissing + fixed2)
             }
           } else {
-            fixSpeedRecurse(input.tail, input.head +: done)
+            fixSpeedRecurse(input.tail, done + input.head)
           }
 
         }
       }
     }
 
-    fixSpeedRecurse(input, Nil).reverse
+    fixSpeedRecurse(input, SortedMap())
   }
 
-  private def smoothSpeed(rawInput: DistStream, durationSec: Int): DistStream = {
-    val input = rawInput.toList
-
-    class History(duration: Int) {
-      var tSum = 0
-      var dSum = 0.0
-      var samples = Queue[(Int, Double)]()
-
-      def addSample(t: Int, d: Double): Unit = {
-        tSum += t
-        dSum += d
-        samples = samples :+ (t, d)
-        while (tSum > duration) {
-          val pop = samples.head
-          samples = samples.tail
-          tSum -= pop._1
-          dSum -= pop._2
-        }
+  private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
+    def smoothingRecurse(done: DistStream, prev: DistStream, todo: DistStream): DistStream = {
+      if (todo.isEmpty) done
+      else if (prev.isEmpty) {
+        smoothingRecurse(done + todo.head, prev + todo.head, todo.tail)
+      } else {
+        def durationWindow(win: DistStream) = Seconds.secondsBetween(win.keys.head, win.keys.last).getSeconds
+        def keepWindow(win: DistStream): DistStream = if (durationWindow(win) <= durationSec) win else keepWindow(win.tail)
+        val newWindow = keepWindow(prev + todo.head)
+        val duration = durationWindow(newWindow)
+        val windowSpeed = if (duration > 0) prev.values.sum / duration else 0.0
+        val interval = Seconds.secondsBetween(prev.last._1, todo.head._1).getSeconds
+        val smoothDist = (windowSpeed * duration + todo.head._2) / ( duration + interval)
+        smoothingRecurse(done + (todo.head._1 -> smoothDist), newWindow, todo.tail)
       }
-
-      def avgSpeed: Double = if (tSum > 0) dSum / tSum else 0
     }
 
-    val distTimes = input.map(_._1)
-
-    val timeDeltas = (distTimes.head +: distTimes zip distTimes).map(tt => Seconds.secondsBetween(tt._1, tt._2).getSeconds)
-
-    val distDeltas = timeDeltas zip input.map(_._2)
-
-    val h = new History(durationSec)
-
-    val speeds = for ((td, dd) <- distDeltas) yield {
-      h.addSample(td, dd)
-      h.avgSpeed
-    }
-
-    //val speeds = for ((td, dd) <- distDeltas) yield if (td > 0) dd / td else 0
-
-    distTimes zip speeds
+    smoothingRecurse(SortedMap(), SortedMap(), fixSpeed(input))
   }
 
   private def pairToDist(ab: (GPSPoint, GPSPoint)) = {
@@ -217,24 +190,26 @@ object DataStreamGPS {
     val gpsValues = gps.values.toSeq
     val gpsPairs = gpsKeys.drop(1) zip (gpsValues zip gpsValues.drop(1))
     val gpsDistances = gpsPairs.map { case (t, p) => t -> pairToDist(p) }
-    (gpsKeys.head -> 0.0) +: gpsDistances
+    SortedMap((gpsKeys.head -> 0.0) +: gpsDistances:_*)
   }
 
   def routeStreamFromDistStream(distDeltas: DistStream): DistStream = {
     val route = distDeltas.scanLeft(0d) { case (sum, (_, d)) => sum + d }
     // scanLeft adds initial value as a first element - use tail to drop it
-    distDeltas.map(_._1) zip route.tail
+    val ret = distDeltas.map(_._1) zip route.tail
+    SortedMap(ret.toSeq:_*)
   }
 
   def distStreamFromRouteStream(dist: DistStream): DistStream = {
-    val times = dist.map(_._1)
-    val routeValues = dist.map(_._2)
+    val times = dist.map(_._1).toSeq
+    val routeValues = dist.map(_._2).toSeq
     val distValues = 0.0 +: (routeValues zip routeValues.drop(1)).map(p => p._2 - p._1)
-    times zip distValues
+    val ret = times zip distValues
+    SortedMap(ret:_*)
   }
 
   def routeStreamFromSpeedStream(distDeltas: DistStream): DistStream = {
-    if (distDeltas.isEmpty) Seq()
+    if (distDeltas.isEmpty) SortedMap()
     else {
       assert(distDeltas.head._2 == 0)
       val route = distDeltas.tail.scanLeft(distDeltas.head) { case ((tSum, dSum), (t, d)) =>
@@ -288,7 +263,7 @@ object DataStreamGPS {
     }
 
 
-    val med = median(speeds)
+    val med = median(speeds.toSeq)
 
     val fast = percentile(80)
     // TODO:
@@ -298,13 +273,17 @@ object DataStreamGPS {
 
 }
 
-case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream[GPSPoint] {
+class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream {
+
 
   import DataStreamGPS._
+
+  type Item = GPSPoint
 
   def typeToLog: String = "GPS"
 
   override def pickData(data: DataMap) = new DataStreamGPS(data)
+  override def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStreamGPS = super.slice(timeBeg, timeEnd).asInstanceOf[DataStreamGPS]
 
   override def isAlmostEmpty: Boolean = {
     if (stream.isEmpty) true
@@ -371,10 +350,20 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
     } else None
   }
 
-  lazy val distStream: DistStream = distStreamFromGPS(stream)
 
   private def distStreamToCSV(ds: DistStream): String = {
     ds.map(kv => s"${kv._1},${kv._2}").mkString("\n")
+  }
+
+  lazy val distStream: DistStream = distStreamFromGPS(stream)
+
+
+  private def computeSpeedStream: DistStream = {
+
+    val gpsDistances = distStreamFromGPS(stream)
+
+    val smoothedSpeed = smoothSpeed(gpsDistances, smoothingInterval)
+    smoothedSpeed
   }
 
   //noinspection ScalaUnusedSymbol
@@ -403,7 +392,7 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
       val begMatch = maxTime(offsetStream.head._1, startTime.get)
       val endMatch = minTime(offsetStream.last._1, endTime.get)
       // ignore non-matching parts (prefix, postfix)
-      def selectInner[T](data: Seq[(ZonedDateTime, T)]) = data.dropWhile(_._1 < begMatch).takeWhile(_._1 < endMatch)
+      def selectInner[T](data: SortedMap[ZonedDateTime, T]) = data.dropWhile(_._1 < begMatch).takeWhile(_._1 < endMatch)
       val distToMatch = selectInner(offsetStream)
 
       val distPairs = distToMatch zip distToMatch.drop(1) // drop(1), not tail, because distToMatch may be empty
@@ -436,12 +425,57 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
   }
 
 
+  /**
+    * @return median, average, max
+    * */
+  def speedStats: (Double, Double, Double) = {
+
+    def median(s: Seq[Double])  = {
+      val (lower, upper) = s.sorted.splitAt(s.size / 2)
+      if (s.size % 2 == 0) (lower.last + upper.head) / 2.0 else upper.head
+    }
+
+    val speedStream = computeSpeedStream // consider lazy value instead
+    val toKmh = 3.6
+    val speeds = speedStream.values.toSeq.map(_ * toKmh)
+
+    val max = speeds.max
+    val min = speeds.min
+
+    val num_bins = 10
+
+    val hist = speeds
+      .map(x => (((x - min) / (max - min)) * num_bins).floor.toInt)
+      .groupBy(identity)
+      .map(x => x._1 -> x._2.size)
+      .toSeq
+      .sortBy(_._1)
+      .map(_._2)
+
+    def percentile(percent: Int) = {
+      val countUnder = (percent * 0.01 * speeds.size).toInt
+
+      def percentileRecurse(countLeft: Int, histLeft: Seq[Int], ret: Int): Int = {
+        if (histLeft.isEmpty || histLeft.head >= countLeft) ret
+        else percentileRecurse(countLeft - histLeft.head, histLeft.tail, ret + 1)
+      }
+      val slot = percentileRecurse(countUnder, hist, 0)
+      slot.toDouble / num_bins * (max - min) + min
+    }
+
+
+    val med = median(speeds)
+
+    val fast = percentile(80)
+    // TODO:
+    (med, fast, max)
+  }
   /*
   * @param 10 sec distance stream (provided by a Quest) */
   private def findOffset(distanceStream: DistStream) = {
     val maxOffset = 60
     val offsets = -maxOffset to maxOffset
-    val speedStream = computeSpeedStream(distStream)
+    val speedStream = computeSpeedStream
     val errors = for (offset <- offsets) yield {
       val offsetStream = distanceStream.map { case (k,v) =>
         k.plus(Seconds.seconds(offset)) -> v
@@ -469,13 +503,23 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
 
     // smoothing causes offset in one direction
     //val empiricalOffset = 30 // this is for Quest smoothing 5 and GPS smoothing (smoothingInterval) 30
-    val empiricalOffset = 18 // this is for Quest smoothing 5 and GPS smoothing (smoothingInterval) 60
+    val empiricalOffset = 13 // this is for Quest smoothing 5 and GPS smoothing (smoothingInterval) 60
     (minErrorOffset + empiricalOffset, confidenceForSolution(minErrorOffset))
   }
 
   def adjustHrd(hrdMove: Move): Move = {
+
+
     val hrWithDistStream = hrdMove.streamGet[DataStreamHRWithDist]
     hrWithDistStream.map { dist =>
+      // try first: assume user stops watch first, GPS pod quickly after, i.e. offset can be determined based on the end times
+
+      val gpsAfterHrd = 3000 // time in ms it takes to stop GPS after stopping HR
+
+      // match values: stream.last._1 = dist.stream.last._1 + xxxx + gpsAfterHrd
+
+      val endOffset = (stream.last._1.getMillis - dist.stream.last._1.getMillis - gpsAfterHrd).toInt
+
       val distanceSums = dist.mapStreamValues(_.dist)
       val distances = (dist.stream.values.tail zip dist.stream.values).map(ab => ab._1.dist - ab._2.dist)
 
@@ -491,17 +535,25 @@ case class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]
       val distancesSmooth = smoothDistances(distances, Vector(), Nil)
 
       //val distances10x = distancesSmooth.flatMap(d => List.fill(10)(d/10)).mkString("\n")
-      val distancesWithTimes = (distanceSums.keys zip distancesSmooth).toSeq
+      val distancesWithTimes = SortedMap((distanceSums.keys zip distancesSmooth).toSeq:_*)
       val (bestOffset, confidence) = findOffset(distancesWithTimes)
       println(s"Quest offset $bestOffset from distance ${distanceSums.last._2}, confidence $confidence")
+      println(s"Offset based on stop time: $endOffset")
       //hrdMove.timeOffset(bestOffset)
-      hrdMove
+      if (endOffset.abs < 10) {
+        // some smart verification between estimated and measured end offset
+        hrdMove.timeOffset((endOffset / 1000.0).round.toInt)
+      } else {
+        hrdMove
+      }
     }.getOrElse(hrdMove)
   }
 
 }
 
-case class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream[String] {
+class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) extends DataStream {
+  type Item = String
+
   def typeToLog: String = "Laps"
 
   override def pickData(data: DataMap) = new DataStreamLap(data)
@@ -510,10 +562,12 @@ case class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) 
   def dropAlmostEmpty: DataStreamLap = this
 }
 
-case class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream[HRPoint] {
+class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream {
+  type Item = HRPoint
+
   def typeToLog = "HRDist"
 
-  def rebase: DataStream[HRPoint] = {
+  def rebase: DataStream = {
     if (stream.isEmpty) this
     else {
       val base = stream.head._2.dist
@@ -529,7 +583,8 @@ case class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HR
 
 }
 
-case class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream[Int] {
+class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream {
+  type Item = Int
 
   def typeToLog = "HR"
 
@@ -539,29 +594,33 @@ case class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) exte
   def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 }
 
-case class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream[Double] {
-
-  assert(stream.isEmpty || stream.head._2 <= stream.last._2)
+class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream {
 
   def typeToLog = "Dist"
 
-  def offsetDist(dist: Double): DataStreamDist = DataStreamDist(mapStreamValues(_ + dist))
+  type Item = Double
+
+  def rebase: DataStreamDist = {
+    if (stream.isEmpty) this
+    else {
+      val base = stream.head._2
+      new DataStreamDist(mapStreamValues(_ - base))
+    }
+  }
+
+  def offsetDist(dist: Double): DataStreamDist = new DataStreamDist(mapStreamValues(_ + dist))
 
   def distanceForTime(time: ZonedDateTime): Double = {
     stream.from(time).headOption.map(_._2).getOrElse(stream.last._2)
   }
 
-
-
-  private def rebase = {
-    if (stream.isEmpty) this
-    else offsetDist(- stream.head._2)
-  }
-
   override def isAlmostEmpty = stream.isEmpty || DataStream.distanceIsAlmostEmpty(stream.head._2, stream.last._2, stream.head._1, stream.last._1)
   override def isNeeded = false
 
-  override def pickData(data: DataMap): DataStreamDist = DataStreamDist(data).rebase
+  override def pickData(data: DataMap): DataStreamDist = new DataStreamDist(data).rebase
+  override def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStreamDist = super.slice(timeBeg, timeEnd).asInstanceOf[DataStreamDist]
+
+
   def dropAlmostEmpty: DataStreamDist = this // TODO: drop
 }
 
