@@ -2,14 +2,15 @@ package net.suunto3rdparty
 package moveslink
 
 import Util._
+import com.github.opengrabeso.stravalas.Main.ActivityEvents
 
 import scala.annotation.tailrec
 
 object MovesLinkUploader {
 
   @tailrec
-  def processTimelines(lineGPS: List[Move], lineHRD: List[Move], processed: List[Move]): List[Move] = {
-    def prependNonEmpty(move: Option[Move], list: List[Move]): List[Move] = {
+  def processTimelines(lineGPS: List[ActivityEvents], lineHRD: List[ActivityEvents], processed: List[ActivityEvents]): List[ActivityEvents] = {
+    def prependNonEmpty(move: Option[ActivityEvents], list: List[ActivityEvents]): List[ActivityEvents] = {
       move.find(!_.isAlmostEmpty(30)).toList ++ list
     }
 
@@ -26,11 +27,11 @@ object MovesLinkUploader {
       val hrdMove = lineHRD.head
       val gpsMove = lineGPS.head
 
-      val gpsBeg = gpsMove.startTime.get
-      val gpsEnd = gpsMove.endTime.get
+      val gpsBeg = gpsMove.startTime
+      val gpsEnd = gpsMove.endTime
 
-      val hrdBeg = hrdMove.startTime.get
-      val hrdEnd = hrdMove.endTime.get
+      val hrdBeg = hrdMove.startTime
+      val hrdEnd = hrdMove.endTime
 
       if (gpsBeg >= hrdEnd) {
         // no match for hrd
@@ -54,9 +55,12 @@ object MovesLinkUploader {
             gpsMove.span(hrdEnd)
           }
 
-          val merged = takeGPS.map(m => (m.stream[DataStreamGPS], m)).map { sm =>
-            val hrdAdjusted = sm._1.adjustHrd(hrdMove)
-            hrdAdjusted.addStream(sm._2, sm._1)
+          val merged = takeGPS.map(m => (m.gps, m)).map { sm =>
+            val offset = sm._1.adjustHrdStream(hrdMove.dist.stream)
+
+            val hrdAdjusted = hrdMove.timeOffset(offset)
+
+            sm._2.merge(hrdAdjusted)
           }
 
           println(s"Merged GPS ${takeGPS.map(_.toLog)} into ${hrdMove.toLog}")

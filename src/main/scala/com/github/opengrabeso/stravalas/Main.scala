@@ -7,7 +7,7 @@ import java.util.Locale
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
-import org.joda.time.{Period, PeriodType, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Interval, Period, PeriodType, Seconds, DateTime => ZonedDateTime}
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 
 import scala.collection.JavaConverters._
@@ -91,6 +91,8 @@ object Main {
     def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
 
     val duration: Int = Seconds.secondsBetween(startTime, endTime).getSeconds
+
+    def timeOffset(offset: Int): ActivityId = copy(startTime = startTime plusSeconds offset, endTime = endTime plusSeconds offset)
 
 
     def isMatching(that: ActivityId): Boolean = {
@@ -187,7 +189,20 @@ object Main {
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
 
+    def streams = {
+      dist +: gps +: attributes
+    }
+
+    def startTime = id.startTime
+    def endTime = id.endTime
+    def duration: Double = (endTime.getMillis - startTime.getMillis).toDouble / 1000
+
+    def isAlmostEmpty(minDurationSec: Int) = {
+      !streams.exists(_.stream.nonEmpty) || endTime < startTime.plusSeconds(minDurationSec) || streams.exists(x => x.isAlmostEmpty)
+    }
+
     override def toString = id.toString
+    def toLog: String = streams.map(_.toLog).mkString(", ")
 
     assert(events.forall(_.stamp >= id.startTime))
     assert(events.forall(_.stamp <= id.endTime))
@@ -345,6 +360,39 @@ object Main {
 
         act
       }
+    }
+
+    def span(time: ZonedDateTime): (Option[ActivityEvents], Option[ActivityEvents]) = {
+
+      val (takeDist, leftDist) = dist.span(time)
+      val (takeGps, leftGps) = gps.span(time)
+      val splitAttributes = attributes.map(_.span(time))
+
+      val takeAttributes = splitAttributes.map(_._1)
+      val leftAttributes = splitAttributes.map(_._2)
+
+      val (takeEvents, leftEvents) = events.span(_.stamp < time)
+
+      val (takeBegTime, takeEndTime) = (startTime, time)
+
+      val (leftBegTime, leftEndTime) = (time, endTime)
+
+      val takeMove = if (takeBegTime < takeEndTime) {
+        Some(ActivityEvents(id.copy(startTime = takeBegTime, endTime = takeEndTime), takeEvents, takeDist, takeGps, takeAttributes))
+      } else None
+      val leftMove = if (leftBegTime < leftEndTime) {
+        Some(ActivityEvents(id.copy(startTime = leftBegTime, endTime = leftEndTime), leftEvents, leftDist, leftGps, leftAttributes))
+      } else None
+
+      (takeMove, leftMove)
+    }
+
+    def timeOffset(offset: Int): ActivityEvents = {
+      copy(
+        id = id.timeOffset(offset),
+        gps = gps.timeOffset(offset),
+        dist = dist.timeOffset(offset),
+        attributes = attributes.map(_.timeOffset(offset)))
     }
 
   }

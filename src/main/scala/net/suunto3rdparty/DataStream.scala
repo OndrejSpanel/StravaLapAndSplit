@@ -284,6 +284,13 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
   override def pickData(data: DataMap) = new DataStreamGPS(data)
   override def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStreamGPS = super.slice(timeBeg, timeEnd).asInstanceOf[DataStreamGPS]
+  override def timeOffset(bestOffset: Int): DataStreamGPS = super.timeOffset(bestOffset).asInstanceOf[DataStreamGPS]
+
+
+  override def span(time: ZonedDateTime): (DataStreamGPS, DataStreamGPS) = {
+    val ret = super.span(time)
+    (ret._1.asInstanceOf[DataStreamGPS], ret._2.asInstanceOf[DataStreamGPS])
+  }
 
   override def isAlmostEmpty: Boolean = {
     if (stream.isEmpty) true
@@ -507,45 +514,49 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
     (minErrorOffset + empiricalOffset, confidenceForSolution(minErrorOffset))
   }
 
-  def adjustHrd(hrdMove: Move): Move = {
+  def adjustHrdStream(dist: DataStreamDist#DataMap): Int = {
 
+    // try first: assume user stops watch first, GPS pod quickly after, i.e. offset can be determined based on the end times
+
+    val gpsAfterHrd = 3000 // time in ms it takes to stop GPS after stopping HR
+
+    // match values: stream.last._1 = dist.stream.last._1 + xxxx + gpsAfterHrd
+
+    val endOffset = (stream.last._1.getMillis - dist.last._1.getMillis - gpsAfterHrd).toInt
+
+    val distances = (dist.values.tail zip dist.values).map(ab => ab._1 - ab._2)
+
+    def smoothDistances(todo: Iterable[Double], window: Vector[Double], done: List[Double]): List[Double] = {
+      if (todo.isEmpty) done
+      else {
+        val smoothSize = 5
+        val newWindow = if (window.size < smoothSize) window :+ todo.head
+        else window.tail :+ todo.head
+        smoothDistances(todo.tail, newWindow, done :+ newWindow.sum / newWindow.size)
+      }
+    }
+    val distancesSmooth = smoothDistances(distances, Vector(), Nil)
+
+    //val distances10x = distancesSmooth.flatMap(d => List.fill(10)(d/10)).mkString("\n")
+    val distancesWithTimes = SortedMap((dist.keys zip distancesSmooth).toSeq:_*)
+    val (bestOffset, confidence) = findOffset(distancesWithTimes)
+    println(s"Quest offset $bestOffset from distance ${dist.last._2}, confidence $confidence")
+    println(s"Offset based on stop time: $endOffset")
+    //hrdMove.timeOffset(bestOffset)
+    if (endOffset.abs < 10) {
+      // some smart verification between estimated and measured end offset
+      (endOffset / 1000.0).round.toInt
+    } else {
+      0
+    }
+  }
+
+  def adjustHrd(hrdMove: Move): Move = {
 
     val hrWithDistStream = hrdMove.streamGet[DataStreamHRWithDist]
     hrWithDistStream.map { dist =>
-      // try first: assume user stops watch first, GPS pod quickly after, i.e. offset can be determined based on the end times
-
-      val gpsAfterHrd = 3000 // time in ms it takes to stop GPS after stopping HR
-
-      // match values: stream.last._1 = dist.stream.last._1 + xxxx + gpsAfterHrd
-
-      val endOffset = (stream.last._1.getMillis - dist.stream.last._1.getMillis - gpsAfterHrd).toInt
-
-      val distanceSums = dist.mapStreamValues(_.dist)
-      val distances = (dist.stream.values.tail zip dist.stream.values).map(ab => ab._1.dist - ab._2.dist)
-
-      def smoothDistances(todo: Iterable[Double], window: Vector[Double], done: List[Double]): List[Double] = {
-        if (todo.isEmpty) done
-        else {
-          val smoothSize = 5
-          val newWindow = if (window.size < smoothSize) window :+ todo.head
-          else window.tail :+ todo.head
-          smoothDistances(todo.tail, newWindow, done :+ newWindow.sum / newWindow.size)
-        }
-      }
-      val distancesSmooth = smoothDistances(distances, Vector(), Nil)
-
-      //val distances10x = distancesSmooth.flatMap(d => List.fill(10)(d/10)).mkString("\n")
-      val distancesWithTimes = SortedMap((distanceSums.keys zip distancesSmooth).toSeq:_*)
-      val (bestOffset, confidence) = findOffset(distancesWithTimes)
-      println(s"Quest offset $bestOffset from distance ${distanceSums.last._2}, confidence $confidence")
-      println(s"Offset based on stop time: $endOffset")
-      //hrdMove.timeOffset(bestOffset)
-      if (endOffset.abs < 10) {
-        // some smart verification between estimated and measured end offset
-        hrdMove.timeOffset((endOffset / 1000.0).round.toInt)
-      } else {
-        hrdMove
-      }
+      val offset = adjustHrdStream(dist.mapStreamValues(_.dist))
+      hrdMove.timeOffset(offset)
     }.getOrElse(hrdMove)
   }
 
@@ -619,6 +630,12 @@ class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) exte
 
   override def pickData(data: DataMap): DataStreamDist = new DataStreamDist(data).rebase
   override def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStreamDist = super.slice(timeBeg, timeEnd).asInstanceOf[DataStreamDist]
+  override def timeOffset(bestOffset: Int): DataStreamDist = super.timeOffset(bestOffset).asInstanceOf[DataStreamDist]
+
+  override def span(time: ZonedDateTime): (DataStreamDist, DataStreamDist) = {
+    val ret = super.span(time)
+    (ret._1.asInstanceOf[DataStreamDist], ret._2.asInstanceOf[DataStreamDist])
+  }
 
 
   def dropAlmostEmpty: DataStreamDist = this // TODO: drop
