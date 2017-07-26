@@ -3,14 +3,13 @@ package requests
 
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
 import net.suunto3rdparty.moveslink.MovesLinkUploader
-import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 import spark.{Request, Response, Session}
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
-import org.apache.commons.io.IOUtils
 
-import scala.xml.NodeSeq
+import com.google.appengine.api.taskqueue._
+
 import net.suunto3rdparty.Util._
 
 object Process extends DefineRequest.Post("/process") {
@@ -89,14 +88,26 @@ object Process extends DefineRequest.Post("/process") {
 
       val merged = MovesLinkUploader.processTimelines(timelineGPS, timelineAttr)
 
-      ???
+      // store everything into a session storage, and make background tasks to upload it to Strava
+
+
+      // [START addQueue]
+      val queue = QueueFactory.getDefaultQueue
+      for (upload <- merged) {
+
+        val export = FitExport.export(upload)
+
+        queue add TaskOptions.Builder.withUrl("/upload-result").method(TaskOptions.Method.POST).payload(export)
+        println(s"Queued task ${upload.id.id.filename}")
+      }
+
 
       <html>
         <head>
           <title>Stravamat</title>
         </head>
         <body>
-          Processed {merged.size.toString} ... TODO: report processing results
+          Sent {merged.size.toString} files ... TODO: report processing results
         </body>
       </html>
     }
