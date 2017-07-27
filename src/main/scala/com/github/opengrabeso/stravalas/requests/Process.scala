@@ -11,6 +11,8 @@ import com.google.appengine.api.taskqueue._
 import net.suunto3rdparty.Util._
 import net.suunto3rdparty.strava.StravaAPI
 
+import scala.util.{Failure, Success}
+
 object Process extends DefineRequest.Post("/process") {
   override def html(request: Request, resp: Response) = {
 
@@ -94,13 +96,12 @@ object Process extends DefineRequest.Post("/process") {
           //val ret = api.uploadRawFileGz(export, "fit.gz")
           val ret = api.uploadRawFile(export, "fit")
 
-          ret.fold {
-            println("Upload not started")
-          } { uploadId =>
-            val output = Map("id" -> uploadId) // this is upload id, not file id - TODO: we need to wait for that (using a task?)
-            println(s"Upload started: $output $uploadId")
+          ret match {
+            case Failure(_) =>
+              println("Upload not started")
+            case Success(uploadId) =>
+              println(s"Upload started: $uploadId")
           }
-
 
         } else {
           // export here, or in the worker? Both is possible
@@ -123,7 +124,10 @@ object Process extends DefineRequest.Post("/process") {
           <title>Stravamat</title>
         </head>
         <body>
-          Sent {merged.size.toString} files ... TODO: report processing results
+          Sent {merged.size.toString} files
+          {
+            // TODO: poll the queue for results
+          }
         </body>
       </html>
     }

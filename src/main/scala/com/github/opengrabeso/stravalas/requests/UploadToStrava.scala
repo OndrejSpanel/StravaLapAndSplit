@@ -16,7 +16,7 @@ object UploadToStrava extends ProcessFile("/upload-strava") {
 
     val ret = api.uploadRawFileGz(export, "fit.gz") // TODO: forward response (at least status)
 
-    if (ret.isDefined) {
+    if (ret.isSuccess) {
       val contentType = "application/json"
       resp.status(200)
 
