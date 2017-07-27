@@ -235,6 +235,7 @@ object Main {
     def lon: Double = if (hasGPS) (begPos._2 + endPos._2) * 0.5 else 0.0
 
     def hasGPS: Boolean = gps.stream.nonEmpty
+    def hasAttributes: Boolean = attributes.exists(_.stream.nonEmpty)
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 

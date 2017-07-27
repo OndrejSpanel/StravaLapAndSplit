@@ -213,6 +213,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
                   <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
                   <td>{act.sportName}</td>
                   <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
+                  <td>{if (actEvents.hasAttributes) "Rec" else "--"}</td>
                   <td>{act.hrefLink}</td>
                   <td>{Main.displayDistance(act.distance)} km</td>
                   <td>{Main.displaySeconds(act.duration)}</td>
