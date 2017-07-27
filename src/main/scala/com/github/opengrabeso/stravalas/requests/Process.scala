@@ -13,16 +13,6 @@ import com.google.appengine.api.taskqueue._
 import net.suunto3rdparty.Util._
 
 object Process extends DefineRequest.Post("/process") {
-  def saveAsNeeded(activityData: ActivityEvents)(implicit auth: Main.StravaAuthResult) = {
-    activityData.id.id match {
-      case id: FileId.TempId =>
-        // TODO: cleanup obsolete session data
-        Storage.store(id.filename, auth.userId, activityData)
-      case _ =>
-    }
-    activityData
-  }
-
   override def html(request: Request, resp: Response) = {
 
     val session = request.session()
@@ -68,7 +58,7 @@ object Process extends DefineRequest.Post("/process") {
 
     // TODO: create groups, process each group separately
     val toMerge = ops.flatMap { op =>
-      Storage.load[Main.ActivityEvents](op.filename, auth.userId)
+      Storage.load[Main.ActivityEvents](Main.namespace.stage, op.filename, auth.userId)
     }
 
 
@@ -97,8 +87,14 @@ object Process extends DefineRequest.Post("/process") {
 
         val export = FitExport.export(upload)
 
-        queue add TaskOptions.Builder.withUrl("/upload-result").method(TaskOptions.Method.POST).payload(export)
-        println(s"Queued task ${upload.id.id.filename}")
+        // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
+        val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
+        // are any metadata needed?
+        Storage.store(Main.namespace.upload, uniqueName, auth.userId, export)
+
+        // using post with param is not recommended, but it should be OK when not using any payload
+        queue add TaskOptions.Builder.withUrl("/upload-result").method(TaskOptions.Method.POST).param("key", uniqueName)
+        println(s"Queued task $uniqueName")
       }
 
 

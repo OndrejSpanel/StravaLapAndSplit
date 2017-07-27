@@ -163,17 +163,24 @@ object Main {
     stravaActivities diff storedActivities
   }
 
+  object namespace {
+    // stage are data visible to the user
+    val stage = "stage"
+    // upload - invisible data, used to hand data to the background upload tasks
+    val upload = "upload"
+  }
+
   def stagedActivities(auth: StravaAuthResult): Seq[ActivityEvents] = {
     val storedActivities = {
-      val d = Storage.enumerate(auth.userId)
+      val d = Storage.enumerate(namespace.stage, auth.userId)
       d.flatMap { a =>
         try {
-          val act = Storage.load[Main.ActivityEvents](a, auth.userId)
+          val act = Storage.load[Main.ActivityEvents](namespace.stage, a, auth.userId)
           act
         } catch {
           case x: java.io.InvalidClassException => // bad serialVersionUID
             println(s"load error ${x.getMessage} - $a")
-            Storage.delete(a, auth.userId)
+            Storage.delete(namespace.stage, a, auth.userId)
             None
           case x: Exception =>
             x.printStackTrace()

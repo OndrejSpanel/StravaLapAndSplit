@@ -63,10 +63,10 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
     }
     if (actData.nonEmpty) {
       for (act <- actData) {
-        Storage.store(act.id.id.filename, auth.userId, act, "digest" -> digest)
+        Storage.store(Main.namespace.stage, act.id.id.filename, auth.userId, act, "digest" -> digest)
       }
     } else {
-      Storage.store(name, auth.userId, NoActivity, "digest" -> digest)
+      Storage.store(Main.namespace.stage, name, auth.userId, NoActivity, "digest" -> digest)
     }
   }
 }
