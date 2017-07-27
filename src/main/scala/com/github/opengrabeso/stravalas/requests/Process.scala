@@ -7,10 +7,9 @@ import spark.{Request, Response, Session}
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
-
 import com.google.appengine.api.taskqueue._
-
 import net.suunto3rdparty.Util._
+import net.suunto3rdparty.strava.StravaAPI
 
 object Process extends DefineRequest.Post("/process") {
   override def html(request: Request, resp: Response) = {
@@ -85,16 +84,37 @@ object Process extends DefineRequest.Post("/process") {
       val queue = QueueFactory.getDefaultQueue
       for (upload <- merged) {
 
-        val export = FitExport.export(upload)
+        val sync = false
+        if (sync) {
+          // sync version - export and upload here
 
-        // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
-        val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
-        // are any metadata needed?
-        Storage.store(Main.namespace.upload, uniqueName, auth.userId, export)
+          val export = FitExport.export(upload)
 
-        // using post with param is not recommended, but it should be OK when not using any payload
-        queue add TaskOptions.Builder.withUrl("/upload-result").method(TaskOptions.Method.POST).param("key", uniqueName)
-        println(s"Queued task $uniqueName")
+          val api = new StravaAPI(auth.token)
+          //val ret = api.uploadRawFileGz(export, "fit.gz")
+          val ret = api.uploadRawFile(export, "fit")
+
+          ret.fold {
+            println("Upload not started")
+          } { uploadId =>
+            val output = Map("id" -> uploadId) // this is upload id, not file id - TODO: we need to wait for that (using a task?)
+            println(s"Upload started: $output $uploadId")
+          }
+
+
+        } else {
+          // export here, or in the worker? Both is possible
+
+          // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
+          val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
+          // are any metadata needed?
+          Storage.store(Main.namespace.upload, uniqueName, auth.userId, upload)
+
+
+          // using post with param is not recommended, but it should be OK when not using any payload
+          queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth))
+          println(s"Queued task $uniqueName")
+        }
       }
 
 

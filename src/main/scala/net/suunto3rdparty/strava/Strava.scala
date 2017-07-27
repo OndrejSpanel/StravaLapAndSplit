@@ -144,17 +144,17 @@ class StravaAPI(authString: String) {
           ByteArrayContent.fromString("text/plain", value)
         )
       }
-      def binaryPart(name: String, filename: String) = {
+      def binaryPart(name: String, filename: String, bytes: Array[Byte]) = {
         new MultipartContent.Part(
           new HttpHeaders().set("Content-Disposition", s"""attachment; name="$name"; filename="$filename""""),
-          new ByteArrayContent("application/octet-stream", sendBytes)
+          new ByteArrayContent("application/octet-stream", bytes)
         )
       }
 
       body.addPart(textPart("data_type", fileType))
       body.addPart(textPart("private", "1"))
 
-      body.addPart(binaryPart("file", "file.fit.gz"))
+      body.addPart(binaryPart("file", "file." + fileType, sendBytes))
 
       val request = buildPostRequest(buildURI("uploads"), authString, "", body)
       request.getHeaders.set("Expect",Array("100-continue"))
@@ -171,9 +171,15 @@ class StravaAPI(authString: String) {
     } catch {
       case ex: HttpResponseException =>
         // we expect to receive error 400 - duplicate activity
-        println(ex.getMessage)
+        if (ex.getMessage.contains("duplicate of activity")) {
+          // TODO: parse using regex, print info about a duplicate
+          println("Msg: " + ex.getMessage)
+        } else {
+          println("Msg: " + ex.getMessage)
+        }
         None
       case ex: Exception =>
+        println("Error uploading")
         ex.printStackTrace()
         None
     }

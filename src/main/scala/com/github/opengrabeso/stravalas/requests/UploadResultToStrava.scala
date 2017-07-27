@@ -6,44 +6,32 @@ import net.suunto3rdparty.strava.StravaAPI
 import spark.{Request, Response}
 import RequestUtils._
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
+import com.google.appengine.api.taskqueue._
 
-object UploadResultToStrava extends DefineRequest.Post("/upload-result") {
-  def html(req: Request, resp: Response) = {
+// background push queue task
 
-    val session = req.session()
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
+@SerialVersionUID(10L)
+case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult) extends DeferredTask {
 
-    val key = req.queryParams("key")
+  def run()= {
 
     val api = new StravaAPI(auth.token)
 
-    val upload = session.attribute[ActivityEvents](key)
+    for (upload <- Storage.load[Main.ActivityEvents](Main.namespace.upload, key, auth.userId)) {
 
-    val export = FitExport.export(upload)
+      val export = FitExport.export(upload)
 
-    val ret = api.uploadRawFileGz(export, "fit.gz")
+      //val ret = api.uploadRawFileGz(export, "fit.gz")
+      val ret = api.uploadRawFile(export, "fit")
 
-    if (ret.isDefined) {
-      val contentType = "application/json"
-      resp.status(200)
-
-      val output = Map("id" -> ret.get) // this is upload id, not file id - TODO: we need to wait for that (using a task?)
-
-      jsonMapper.writeValue(resp.raw.getOutputStream, output.asJava)
-
-      resp.`type`(contentType)
-    } else {
-      val contentType = "application/json"
-      resp.status(400)
-
-      val output = Map("error" -> "error")
-
-      jsonMapper.writeValue(resp.raw.getOutputStream, output.asJava)
-
-      resp.`type`(contentType)
+      ret.fold {
+        println("Upload not started")
+      } { uploadId =>
+        val output = Map("id" -> uploadId) // this is upload id, not file id - TODO: we need to wait for that (using a task?)
+        println(s"Upload started: $output $uploadId")
+      }
     }
 
-    Nil
   }
 
 }
