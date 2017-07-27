@@ -15,7 +15,7 @@ trait SuuntoData {
     val res = getClass.getResourceAsStream("/suuntoMerge/Moveslink/quest.xml")
     val doc = XML.load(res)
 
-    val move = moveslink.XMLParser.parseXML("quest.xml", doc)
+    val move = moveslink.XMLParser.parseXML("quest.xml", doc, 240)
     move.flatMap(_.toOption)
   }
 

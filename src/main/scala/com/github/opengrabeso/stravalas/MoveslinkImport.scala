@@ -93,10 +93,10 @@ object MoveslinkImport {
     moveslink2.XMLParser.parseXML(fileName, dev).toOption
   }
 
-  def loadXml(fileName: String, digest: String, stream: InputStream): Seq[Move] = {
+  def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int): Seq[Move] = {
     val doc = XML.load(stream)
 
-    moveslink.XMLParser.parseXML(fileName, doc).flatMap(_.toOption)
+    moveslink.XMLParser.parseXML(fileName, doc, maxHR).flatMap(_.toOption)
   }
 
 }

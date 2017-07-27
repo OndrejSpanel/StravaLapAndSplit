@@ -67,7 +67,7 @@ object Process extends DefineRequest.Post("/process") {
 
       val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
 
-      val timeOffset = net.suunto3rdparty.Settings.questTimeOffset
+      val timeOffset = net.suunto3rdparty.Settings(auth.userId).questTimeOffset
       val ignoreDuration = 30
 
       val attrMoves = attrMovesRaw.map(_.timeOffset(-timeOffset))

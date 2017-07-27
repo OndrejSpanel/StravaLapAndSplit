@@ -61,6 +61,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
     val actions = ActivityAction.values.toSeq
     var ignored = true
+    val settings = Settings(auth.userId)
     <html>
       <head>
         {/* allow referer when using redirect to unsafe getSuunto page */}
@@ -174,10 +175,10 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         <h2>Settings</h2>
         <table>
           <tr><td>
-            Max HR</td><td><input type="number" name="max_hr" id="max_hr" min="100" max="260" value={Settings.maxHR.toString} onchange="settingsChanged()"></input>
+            Max HR</td><td><input type="number" name="max_hr" id="max_hr" min="100" max="260" value={settings.maxHR.toString} onchange="settingsChanged()"></input>
           </td></tr>
           <tr><td>
-            Quest time offset</td><td> <input type="number" id="quest_time_offset" name="quest_time_offset" min="-60" max="60" value={Settings.questTimeOffset.toString} onchange="settingsChanged()"></input>
+            Quest time offset</td><td> <input type="number" id="quest_time_offset" name="quest_time_offset" min="-60" max="60" value={settings.questTimeOffset.toString} onchange="settingsChanged()"></input>
           </td>
             <td>Adjust up or down so that Quest time below matches the time on your watch</td>
           </tr>
