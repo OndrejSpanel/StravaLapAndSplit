@@ -4,6 +4,7 @@ package requests
 import spark.{Request, Response}
 import DateTimeOps._
 import org.joda.time.{DateTime => ZonedDateTime, Seconds}
+import net.suunto3rdparty.Settings
 
 object SelectActivity extends DefineRequest("/selectActivity") {
 
@@ -69,6 +70,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
           tr.activities:hover {{background-color: #f0f0e0}}
         </style>
+        <script src="static/ajaxUtils.js"></script>
         <script>{xml.Unparsed(
           //language=JavaScript
           """
@@ -118,10 +120,43 @@ object SelectActivity extends DefineRequest("/selectActivity") {
               var rel = http.lastIndexOf('/');
               return http.substring(0, rel + 1) + uri;
           }
+          function formatTimeSec(t) {
+            var locale = getLocale();
+            var date = new Date(t);
+            return new Intl.DateTimeFormat(
+              locale,
+              {
+                //year: "numeric",
+                //month: "numeric",
+                //day: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+                second: "numeric"
+              }
+            ).format(date)
+          }
+          function currentQuestTime(d) {
+            var offset = parseInt(document.getElementById("quest_time_offset").value);
+            return formatTimeSec(new Date(d.getTime() + 1000*offset));
+          }
+          function updateClock() {
+            var d = new Date();
+            document.getElementById("time").innerHTML = formatTimeSec(d);
+            document.getElementById("timeQuest").innerHTML = currentQuestTime(d);
+            setTimeout(function () {
+              updateClock();
+            }, 1000);
+          }
+          function settingsChanged() {
+            // send the new settings to the server
+            var questOffset = parseInt(document.getElementById("quest_time_offset").value);
+            var maxHR = parseInt(document.getElementById("max_hr").value);
+            ajaxAsync("save-settings?quest_time_offset=" + questOffset + "&max_hr=" + maxHR, "", function(response) {});
+
+          }
           """
         )}
         </script>
-        <script src="static/ajaxUtils.js"></script>
       </head>
       <body>
         {bodyHeader(auth)}
@@ -135,6 +170,30 @@ object SelectActivity extends DefineRequest("/selectActivity") {
         }
         <a href="getFiles">Upload files...</a>
         <hr/>
+
+        <h2>Settings</h2>
+        <table>
+          <tr><td>
+            Max HR</td><td><input type="number" name="max_hr" id="max_hr" min="100" max="260" value={Settings.maxHR.toString} onchange="settingsChanged()"></input>
+          </td></tr>
+          <tr><td>
+            Quest time offset</td><td> <input type="number" id="quest_time_offset" name="quest_time_offset" min="-60" max="60" value={Settings.questTimeOffset.toString} onchange="settingsChanged()"></input>
+          </td>
+            <td>Adjust up or down so that Quest time below matches the time on your watch</td>
+          </tr>
+
+          <tr>
+            <td>Current time</td>
+            <td id="time"></td>
+          </tr>
+          <tr>
+            <td>Quest time</td>
+            <td><b id="timeQuest"></b></td>
+          </tr>
+        </table>
+
+
+
         <h2>Staging</h2>
         <form action="process" method="post" enctype="multipart/form-data">
           <table class="activities">
@@ -165,6 +224,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           <input type="submit" value="Process..."/>
         </form>
         {bodyFooter}
+        <script>updateClock()</script>
       </body>
     </html>
   }

@@ -8,6 +8,10 @@ import resource._
 
 
 object Settings {
+
+  @SerialVersionUID(10)
+  case class SettingsStorage(questTimeOffset: Int, maxHR: Int)
+
   private val settingsFile = "suuntoToStrava.cfg"
 
   // TODO: GAE compatible settings (Cloud storage or cookie)

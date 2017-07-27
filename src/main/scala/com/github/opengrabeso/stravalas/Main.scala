@@ -168,6 +168,8 @@ object Main {
     val stage = "stage"
     // upload - invisible data, used to hand data to the background upload tasks
     val upload = "upload"
+    // user settings
+    val settings = "settings"
   }
 
   def stagedActivities(auth: StravaAuthResult): Seq[ActivityEvents] = {
