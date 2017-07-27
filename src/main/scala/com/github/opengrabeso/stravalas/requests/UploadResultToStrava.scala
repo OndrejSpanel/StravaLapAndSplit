@@ -30,6 +30,8 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult) extend
         val output = Map("id" -> uploadId) // this is upload id, not file id - TODO: we need to wait for that (using a task?)
         println(s"Upload started: $output $uploadId")
       }
+
+      Storage.delete(Main.namespace.upload, key, auth.userId)
     }
 
   }
