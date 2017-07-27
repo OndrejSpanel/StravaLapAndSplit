@@ -56,11 +56,17 @@ object Storage {
   def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
     //println(s"load '$filename' - '$userId'")
     val is = input(userFilename(namespace, filename, userId))
-    val ois = new ObjectInputStream(is)
-    val read = ois.readObject()
-    read match {
-      case r: T => Some(r)
-      case _ => None// handles readObject returning null as well
+    try {
+      val ois = new ObjectInputStream(is)
+      val read = ois.readObject()
+      read match {
+        case r: T => Some(r)
+        case _ => None // handles readObject returning null as well
+      }
+    } catch {
+      case ex: FileNotFoundException =>
+        // reading a file which does not exist - return null
+        None
     }
   }
 

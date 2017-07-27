@@ -29,8 +29,8 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult) extend
         case Failure(ex) =>
           println("Upload not started")
           // https://stackoverflow.com/questions/45353793/how-to-use-deferredtaskcontext-setdonotretry-with-google-app-engine-in-java
-          //DeferredTaskContext.setDoNotRetry(true)
-          //throw ex
+          DeferredTaskContext.setDoNotRetry(true)
+          throw ex
         case Success(uploadId) =>
           val queue = QueueFactory.getDefaultQueue
           println(s"Upload started $uploadId")
