@@ -72,6 +72,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           tr.activities:hover {{background-color: #f0f0e0}}
         </style>
         <script src="static/ajaxUtils.js"></script>
+        <script src="static/jquery-3.2.1.min.js"></script>
         <script>{xml.Unparsed(
           //language=JavaScript
           """
@@ -155,6 +156,25 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             ajaxAsync("save-settings?quest_time_offset=" + questOffset + "&max_hr=" + maxHR, "", function(response) {});
 
           }
+          function submitProcess() {
+            document.getElementById("upload_button").style.display = "none";
+            document.getElementById("uploads_table").style.display = "block";
+
+            var form = $("#process-form");
+            $.ajax({
+              type: form.attr("method"),
+              url: form.attr("action"),
+              data: new FormData(form[0]), //$("#process-form").serialize(),
+              contentType: false,
+              cache: false,
+              processData: false,
+              success: function(response) {
+                  showResults();
+                  console.log("AJAX submitted");
+              },
+            });
+
+          }
           """
         )}
         </script>
@@ -196,7 +216,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
 
         <h2>Staging</h2>
-        <form action="process" method="post" enctype="multipart/form-data">
+        <form id="process-form" action="process" method="post" enctype="multipart/form-data">
           <table class="activities">
             {
               // find most recent Strava activity
@@ -223,10 +243,25 @@ object SelectActivity extends DefineRequest("/selectActivity") {
               }
             }
           </table>
-          <input type="submit" value="Process..."/>
+          <input id="upload_button" type="submit" value="Process..."/>
+
+          <div id="uploads_table" style="display: none;">
+            {Process.uploadResultsHtml()}
+          </div>
         </form>
         {bodyFooter}
-        <script>updateClock()</script>
+        <script>{xml.Unparsed(
+          //language=JavaScript
+          """
+          $("#process-form").submit(function(event) {
+            // Stop the browser from submitting the form.
+            event.preventDefault();
+            submitProcess();
+          });
+
+          updateClock()
+          """)}
+        </script>
       </body>
     </html>
   }

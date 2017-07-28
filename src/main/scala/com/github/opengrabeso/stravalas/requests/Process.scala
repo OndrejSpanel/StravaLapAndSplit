@@ -74,76 +74,53 @@ object Process extends DefineRequest.Post("/process") {
   }
 
 
-  def uploadResultsHtml(something: Boolean) = {
-    if (something) {
+  def uploadResultsHtml() = {
+    <table id="uploaded"></table>
+    <script>
+      {xml.Unparsed(
+      // language=JavaScript
+      """
+      function extractResult(node, tagName, callback) {
+        var n = node.getElementsByTagName(tagName);
+        if (n.length > 0) return callback(n[0].textContent);
+      }
+      function addRow(tableBody, text) {
+        var tr = document.createElement('TR');
+        var td = document.createElement('TD');
+        td.appendChild(document.createTextNode(text));
+        tr.appendChild(td);
+        tableBody.appendChild(tr);
+      }
+      function showResults() {
 
-      <html>
-        <head>
-          <title>Stravamat</title>
-          <script src="static/ajaxUtils.js"></script>
-        </head>
-        <body>
-          <table id="uploaded">
-          </table>
-          <script>
-            {xml.Unparsed(
-            // language=JavaScript
-            """
-            function extractResult(node, tagName, callback) {
-              var n = node.getElementsByTagName(tagName);
-              if (n.length > 0) return callback(n[0].textContent);
-            }
-            function addRow(tableBody, text) {
-              var tr = document.createElement('TR');
-              var td = document.createElement('TD');
-              td.appendChild(document.createTextNode(text));
-              tr.appendChild(td);
-              tableBody.appendChild(tr);
-            }
-            function showResults() {
+        ajaxAsync("check-upload-status", "", function(response) {
+          var results = response.documentElement.getElementsByTagName("result");
+          var complete = response.documentElement.getElementsByTagName("complete");
+          var tableBody = document.getElementById("uploaded");
+          for (var i = 0; i < results.length; i++) {
 
-              ajaxAsync("check-upload-status", "", function(response) {
-                var results = response.documentElement.getElementsByTagName("result");
-                var complete = response.documentElement.getElementsByTagName("complete");
-                var tableBody = document.getElementById("uploaded");
-                for (var i = 0; i < results.length; i++) {
+            var res = extractResult(results[i], "done", function(text) {
+              return "Done " + text;
+            }) || extractResult(results[i], "duplicate", function(text) {
+              return "Duplicate " + text;
+            }) || extractResult(results[i], "error", function(text) {
+              return "Error " + text;
+            });
+            addRow(tableBody, res);
+          }
+          if (complete.length == 0) {
+            setTimeout(showResults, 1000);
+          } else {
+            addRow(tableBody, 'Complete'); // TODO: bold
+          }
+        }, function (failure) {
+          console.log(failure);
+          setTimeout(showResults, 1000);
+        });
+      }
 
-                  var res = extractResult(results[i], "done", function(text) {
-                    return "Done " + text;
-                  }) || extractResult(results[i], "duplicate", function(text) {
-                    return "Duplicate " + text;
-                  }) || extractResult(results[i], "error", function(text) {
-                    return "Error " + text;
-                  });
-                  addRow(tableBody, res);
-                }
-                if (complete.length == 0) {
-                  setTimeout(showResults, 1000);
-                } else {
-                  addRow(tableBody, 'Complete'); // TODO: bold
-                }
-              }, function (failure) {
-                console.log(failure);
-                setTimeout(showResults, 1000);
-              });
-            }
-
-            showResults();
-            """)}
-          </script>
-        </body>
-      </html>
-    }
-    else {
-      <html>
-        <head>
-          <title>Stravamat</title>{headPrefix}
-        </head>
-        <body>
-          Empty - no activity selected
-        </body>
-      </html>
-    }
+      """)}
+    </script>
   }
 
   override def html(request: Request, resp: Response) = {
@@ -188,6 +165,14 @@ object Process extends DefineRequest.Post("/process") {
 
     val something = mergeAndUpload(auth, toMerge)
 
-    uploadResultsHtml(something)
+    <html>
+      <head>
+        <title>Stravamat</title>
+        <script src="static/ajaxUtils.js"></script>
+      </head>
+      <body>
+        uploadResultsHtml()
+      </body>
+    </html>
   }
 }
