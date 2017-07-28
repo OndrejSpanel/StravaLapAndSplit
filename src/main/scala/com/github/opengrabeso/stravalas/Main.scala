@@ -401,6 +401,7 @@ object Main {
     def timeOffset(offset: Int): ActivityEvents = {
       copy(
         id = id.timeOffset(offset),
+        events = events.map(_.timeOffset(offset)),
         gps = gps.timeOffset(offset),
         dist = dist.timeOffset(offset),
         attributes = attributes.map(_.timeOffset(offset)))
