@@ -9,6 +9,7 @@ object CheckUploadStatus extends DefineRequest.Post("/check-upload-status")  {
     val session = req.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
+    val requests = Storage.enumerate(namespace.upload, auth.userId)
     val resultsFiles = Storage.enumerate(namespace.uploadResult, auth.userId)
 
     val results = for {
@@ -26,7 +27,7 @@ object CheckUploadStatus extends DefineRequest.Post("/check-upload-status")  {
     }
     val complete = <complete></complete>
 
-    val ret = if (resultsFiles.nonEmpty) results else complete
+    val ret = if (resultsFiles.nonEmpty || requests.nonEmpty) results else complete
     <status>
       {ret}
     </status>
