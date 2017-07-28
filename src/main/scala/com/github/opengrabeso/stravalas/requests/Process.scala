@@ -91,7 +91,7 @@ object Process extends DefineRequest.Post("/process") {
       }
       function showResults() {
 
-        ajaxAsync("check-upload-status?sid=" + sid, "", function(response) {
+        ajaxAsync("check-upload-status", "", function(response) {
           var results = response.documentElement.getElementsByTagName("result");
           var complete = response.documentElement.getElementsByTagName("complete");
           var tableBody = document.getElementById("uploaded");
@@ -125,6 +125,7 @@ object Process extends DefineRequest.Post("/process") {
 
     val session = request.session()
     implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
+    var sessionId = session.attribute[java.lang.Long]("sid").toLong
 
     val fif = new DiskFileItemFactory()
     fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
@@ -139,19 +140,14 @@ object Process extends DefineRequest.Post("/process") {
       def next() = items.next
     }
 
-    var sessionId: Long = 0
     val ops = itemsIterator.flatMap { item =>
       if (item.isFormField) {
         // expect field name id={FileId}
         val IdPattern = "id=(.*)".r
-        val UploadIdPattern = "upload-id=(.*)".r
         // a single field upload-id
         val id = item.getFieldName match {
           case IdPattern(idText) =>
             Some(FileId.parse(idText))
-          case UploadIdPattern(upId) =>
-            sessionId = upId.toLong
-            None
           case _ =>
             None
         }
