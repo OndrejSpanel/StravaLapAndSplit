@@ -14,55 +14,8 @@ import net.suunto3rdparty.strava.StravaAPI
 import scala.util.{Failure, Success}
 
 object Process extends DefineRequest.Post("/process") {
-  override def html(request: Request, resp: Response) = {
 
-    val session = request.session()
-    implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
-
-    val fif = new DiskFileItemFactory()
-    fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
-
-    val upload = new ServletFileUpload(fif)
-
-    val items = upload.getItemIterator(request.raw)
-
-    val itemsIterator = new Iterator[FileItemStream] {
-      def hasNext = items.hasNext
-
-      def next() = items.next
-    }
-
-    val ops = itemsIterator.flatMap { item =>
-      if (item.isFormField) {
-        // expect field name id={FileId}
-        val IdPattern = "id=(.*)".r
-        val id = item.getFieldName match {
-          case IdPattern(idText) =>
-            Some(FileId.parse(idText))
-          case _ =>
-            None
-        }
-        /*
-        //println(item)
-        val is = item.openStream()
-        val itemContent = try {
-          IOUtils.toString(is)
-        } finally {
-          is.close()
-        }
-        */
-        id
-      } else {
-        None
-      }
-    }.toVector
-
-    // TODO: create groups, process each group separately
-    val toMerge = ops.flatMap { op =>
-      Storage.load[Main.ActivityEvents](Main.namespace.stage, op.filename, auth.userId)
-    }
-
-
+  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents]) = {
     if (toMerge.nonEmpty) {
 
       val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
@@ -72,7 +25,7 @@ object Process extends DefineRequest.Post("/process") {
 
       val attrMoves = attrMovesRaw.map(_.timeOffset(-timeOffset))
 
-      def filterIgnored(x : ActivityEvents) = x.isAlmostEmpty(ignoreDuration)
+      def filterIgnored(x: ActivityEvents) = x.isAlmostEmpty(ignoreDuration)
 
       val timelineGPS = gpsMoves.toList.filterNot(filterIgnored).sortBy(_.startTime)
       val timelineAttr = attrMoves.toList.filterNot(filterIgnored).sortBy(_.startTime)
@@ -116,7 +69,13 @@ object Process extends DefineRequest.Post("/process") {
           println(s"Queued task $uniqueName")
         }
       }
+      true
+    } else false
+  }
 
+
+  def uploadResultsHtml(something: Boolean) = {
+    if (something) {
 
       <html>
         <head>
@@ -126,7 +85,8 @@ object Process extends DefineRequest.Post("/process") {
         <body>
           <table id="uploaded">
           </table>
-          <script>{xml.Unparsed(
+          <script>
+            {xml.Unparsed(
             // language=JavaScript
             """
             function extractResult(node, tagName, callback) {
@@ -186,4 +146,48 @@ object Process extends DefineRequest.Post("/process") {
     }
   }
 
+  override def html(request: Request, resp: Response) = {
+
+    val session = request.session()
+    implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
+
+    val fif = new DiskFileItemFactory()
+    fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
+
+    val upload = new ServletFileUpload(fif)
+
+    val items = upload.getItemIterator(request.raw)
+
+    val itemsIterator = new Iterator[FileItemStream] {
+      def hasNext = items.hasNext
+
+      def next() = items.next
+    }
+
+    val ops = itemsIterator.flatMap { item =>
+      if (item.isFormField) {
+        // expect field name id={FileId}
+        val IdPattern = "id=(.*)".r
+        val id = item.getFieldName match {
+          case IdPattern(idText) =>
+            Some(FileId.parse(idText))
+          case _ =>
+            None
+        }
+        id
+      } else {
+        None
+      }
+    }.toVector
+
+    // TODO: create groups, process each group separately
+    val toMerge = ops.flatMap { op =>
+      Storage.load[ActivityEvents](Main.namespace.stage, op.filename, auth.userId)
+    }
+
+
+    val something = mergeAndUpload(auth, toMerge)
+
+    uploadResultsHtml(something)
+  }
 }
