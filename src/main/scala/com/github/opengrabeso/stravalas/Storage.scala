@@ -84,7 +84,8 @@ object Storage {
       val name = i.getName.drop(prefix.length)
       val m = try {
         val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
-        Some(md.getOptions.getUserMetadata)
+        if (md != null) Some(md.getOptions.getUserMetadata)
+        else None
       } catch {
         case e: Exception =>
           e.printStackTrace()
