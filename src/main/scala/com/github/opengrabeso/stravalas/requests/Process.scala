@@ -111,7 +111,6 @@ object Process extends DefineRequest.Post("/process") {
           // are any metadata needed?
           Storage.store(Main.namespace.upload, uniqueName, auth.userId, upload)
 
-
           // using post with param is not recommended, but it should be OK when not using any payload
           queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth))
           println(s"Queued task $uniqueName")
@@ -122,12 +121,36 @@ object Process extends DefineRequest.Post("/process") {
       <html>
         <head>
           <title>Stravamat</title>
+          <script src="static/ajaxUtils.js"></script>
         </head>
         <body>
-          Sent {merged.size.toString} files
-          {
-            // TODO: poll the queue for results
-          }
+          <table id="uploaded">
+          </table>
+          <script>{xml.Unparsed(
+            // language=JavaScript
+            """
+            function showResults() {
+
+              ajaxAsync("check-upload-status", "", function(response) {
+                var results = response.documentElement.getElementsByTagName("result");
+                var tableBody = document.getElementById("uploaded");
+                for (var i = 0; i < results.length; i++) {
+                  var tr = document.createElement('TR');
+                  var td = document.createElement('TD');
+                  td.appendChild(document.createTextNode(results[i].innerHTML));
+                  tr.appendChild(td);
+                  tableBody.appendChild(tr);
+                }
+                setTimeout(showResults, 1000);
+              }, function (failure) {
+                console.log(failure);
+                setTimeout(showResults, 1000);
+              });
+            }
+
+            showResults();
+            """)}
+          </script>
         </body>
       </html>
     }

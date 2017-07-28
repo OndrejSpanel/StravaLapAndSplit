@@ -525,23 +525,26 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
     val endOffset = (stream.last._1.getMillis - dist.last._1.getMillis - gpsAfterHrd).toInt
 
-    val distances = (dist.values.tail zip dist.values).map(ab => ab._1 - ab._2)
+    if (false) {
+      val distances = (dist.values.tail zip dist.values).map(ab => ab._1 - ab._2)
 
-    def smoothDistances(todo: Iterable[Double], window: Vector[Double], done: List[Double]): List[Double] = {
-      if (todo.isEmpty) done
-      else {
-        val smoothSize = 5
-        val newWindow = if (window.size < smoothSize) window :+ todo.head
-        else window.tail :+ todo.head
-        smoothDistances(todo.tail, newWindow, done :+ newWindow.sum / newWindow.size)
+      def smoothDistances(todo: Iterable[Double], window: Vector[Double], done: List[Double]): List[Double] = {
+        if (todo.isEmpty) done
+        else {
+          val smoothSize = 5
+          val newWindow = if (window.size < smoothSize) window :+ todo.head
+          else window.tail :+ todo.head
+          smoothDistances(todo.tail, newWindow, done :+ newWindow.sum / newWindow.size)
+        }
       }
-    }
-    val distancesSmooth = smoothDistances(distances, Vector(), Nil)
 
-    //val distances10x = distancesSmooth.flatMap(d => List.fill(10)(d/10)).mkString("\n")
-    val distancesWithTimes = SortedMap((dist.keys zip distancesSmooth).toSeq:_*)
-    val (bestOffset, confidence) = findOffset(distancesWithTimes)
-    println(s"Quest offset $bestOffset from distance ${dist.last._2}, confidence $confidence")
+      val distancesSmooth = smoothDistances(distances, Vector(), Nil)
+
+      //val distances10x = distancesSmooth.flatMap(d => List.fill(10)(d/10)).mkString("\n")
+      val distancesWithTimes = SortedMap((dist.keys zip distancesSmooth).toSeq: _*)
+      val (bestOffset, confidence) = findOffset(distancesWithTimes)
+      println(s"Quest offset $bestOffset from distance ${dist.last._2}, confidence $confidence")
+    }
     println(s"Offset based on stop time: $endOffset")
     //hrdMove.timeOffset(bestOffset)
     if (endOffset.abs < 10) {

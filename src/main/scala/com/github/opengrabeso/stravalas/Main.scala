@@ -168,6 +168,8 @@ object Main {
     val stage = "stage"
     // upload - invisible data, used to hand data to the background upload tasks
     val upload = "upload"
+    // upload results - report upload status and resulting id
+    val uploadResult = "upload-result"
     // user settings
     val settings = "settings"
   }
@@ -200,7 +202,8 @@ object Main {
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
 
     def streams = {
-      dist +: gps +: attributes
+      if (hasGPS) dist +: gps +: attributes
+      else dist +: attributes
     }
 
     def startTime = id.startTime

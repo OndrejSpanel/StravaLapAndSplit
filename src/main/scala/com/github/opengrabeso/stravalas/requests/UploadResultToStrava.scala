@@ -1,15 +1,38 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import scala.collection.JavaConverters._
 import net.suunto3rdparty.strava.StravaAPI
-import spark.{Request, Response}
-import RequestUtils._
-import com.github.opengrabeso.stravalas.Main.ActivityEvents
+import com.google.api.client.http.HttpResponseException
 import com.google.appengine.api.taskqueue._
 
 import scala.util.{Failure, Success}
+import scala.xml.NodeSeq
 
+
+trait UploadStatus {
+  def xml: NodeSeq
+}
+
+@SerialVersionUID(10)
+case class UploadInProgress(uploadId: Long) extends UploadStatus {
+  def xml = Nil
+}
+
+@SerialVersionUID(10)
+case class UploadDone(stravaId: Long) extends UploadStatus {
+  def xml = <done>{stravaId}</done>
+}
+
+@SerialVersionUID(10)
+case class UploadDuplicate(dupeId: Long) extends UploadStatus {
+  def xml = <duplicate>{dupeId}</duplicate>
+}
+
+@SerialVersionUID(10)
+case class UploadError(ex: Throwable) extends UploadStatus {
+  def xml = <error>{ex.getMessage}</error>
+
+}
 // background push queue task
 
 @SerialVersionUID(10L)
@@ -26,20 +49,26 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult) extend
       val ret = api.uploadRawFileGz(export, "fit.gz")
 
       ret match {
+        case Failure(ex: HttpResponseException) if ex.getMessage.contains("duplicate of activity") =>
+          // TODO: parse using regex, print info about a duplicate
+          Storage.store(Main.namespace.uploadResult, key, auth.userId, UploadDuplicate(0))
         case Failure(ex) =>
-          println("Upload not started")
+          Storage.store(Main.namespace.uploadResult, key, auth.userId, UploadError(ex))
           // https://stackoverflow.com/questions/45353793/how-to-use-deferredtaskcontext-setdonotretry-with-google-app-engine-in-java
-          DeferredTaskContext.setDoNotRetry(true)
-          throw ex
+          //DeferredTaskContext.setDoNotRetry(true)
+          //throw ex
         case Success(uploadId) =>
           val queue = QueueFactory.getDefaultQueue
           println(s"Upload started $uploadId")
           val eta = System.currentTimeMillis() + 3000
           queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(uploadId, auth, eta))
 
+          Storage.store(Main.namespace.uploadResult, key, auth.userId, UploadInProgress(uploadId))
       }
 
       Storage.delete(Main.namespace.upload, key, auth.userId)
+
+
     }
 
   }

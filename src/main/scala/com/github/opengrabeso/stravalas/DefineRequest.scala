@@ -25,8 +25,15 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     println(s"Request ${request.url()}")
     val nodes = html(request, resp)
     if (nodes.nonEmpty) {
-      val docType = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd" >"""
-      docType + nodes.toString
+      nodes.head match {
+        case <html>{_*}</html> =>
+          val docType = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd" >"""
+          docType + nodes.toString
+        case _ =>
+          resp.`type`("text/xml; charset=utf-8")
+          val xmlPrefix = """<?xml version="1.0" encoding="UTF-8"?>""" + "\n"
+          xmlPrefix + nodes.toString
+      }
     } else resp.raw
   }
 

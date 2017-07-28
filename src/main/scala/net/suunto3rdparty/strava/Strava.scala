@@ -134,7 +134,7 @@ class StravaAPI(authString: String) {
 
   def uploadRawFile(sendBytes: Array[Byte], fileType: String): Try[Long] = {
 
-    try {
+    Try {
       // see https://strava.github.io/api/v3/uploads/ -
       val body = new MultipartContent()
 
@@ -167,23 +167,7 @@ class StravaAPI(authString: String) {
 
       val resultJson = jsonMapper.readTree(resultString)
       val id = Option(resultJson.path("id").numberValue)
-      Try {
-        id.get.longValue
-      }
-    } catch {
-      case ex: HttpResponseException =>
-        // we expect to receive error 400 - duplicate activity
-        if (ex.getMessage.contains("duplicate of activity")) {
-          // TODO: parse using regex, print info about a duplicate
-          println("Msg: " + ex.getMessage)
-        } else {
-          println("Msg: " + ex.getMessage)
-        }
-        Failure(ex)
-      case ex: Exception =>
-        println("Error uploading")
-        ex.printStackTrace()
-        Failure(ex)
+      id.get.longValue
     }
   }
 
