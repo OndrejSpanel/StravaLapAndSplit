@@ -129,6 +129,10 @@ object Process extends DefineRequest.Post("/process") {
           <script>{xml.Unparsed(
             // language=JavaScript
             """
+            function extractResult(node, tagName, callback) {
+              var n = node.getElementsByTagName(tagName);
+              if (n.length > 0) return callback(n[0].textContent);
+            }
             function showResults() {
 
               ajaxAsync("check-upload-status", "", function(response) {
@@ -137,7 +141,15 @@ object Process extends DefineRequest.Post("/process") {
                 for (var i = 0; i < results.length; i++) {
                   var tr = document.createElement('TR');
                   var td = document.createElement('TD');
-                  td.appendChild(document.createTextNode(results[i].innerHTML));
+
+                  var res = extractResult(results[i], "done", function(text) {
+                    return "Done " + text;
+                  }) || extractResult(results[i], "duplicate", function(text) {
+                    return "Duplicate " + text;
+                  })|| extractResult(results[i], "error", function(text) {
+                    return "Error " + text;
+                  });
+                  td.appendChild(document.createTextNode(res));
                   tr.appendChild(td);
                   tableBody.appendChild(tr);
                 }
