@@ -23,7 +23,7 @@ object MoveslinkFiles {
 
   def listMoveslink2Files: Set[String] = getData2Folder.list.toSet.filter(f => f.endsWith(".sml") || f.endsWith(".xml"))
 
-  lazy val listFiles: Set[String] = listQuestFiles.map(placeInFolder(moveslinkFolder, _)) ++ listMoveslink2Files.map(placeInFolder(moveslink2Folder, _))
+  def listFiles: Set[String] = listQuestFiles.map(placeInFolder(moveslinkFolder, _)) ++ listMoveslink2Files.map(placeInFolder(moveslink2Folder, _))
 
   def get(path: String): Option[Array[Byte]] = {
     if (listFiles.contains(path)) {
