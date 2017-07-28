@@ -106,7 +106,7 @@ object Process extends DefineRequest.Post("/process") {
             }) || extractResult(results[i], "error", function(text) {
               return "Error " + text;
             });
-            addRow(tableBody, res);
+            if (res) addRow(tableBody, res);
           }
           if (complete.length == 0) {
             setTimeout(showResults, 1000);
