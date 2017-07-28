@@ -167,9 +167,9 @@ object Main {
     // stage are data visible to the user
     val stage = "stage"
     // upload - invisible data, used to hand data to the background upload tasks
-    val upload = "upload"
+    def upload(session: Long) = "upload-" + session.toString
     // upload results - report upload status and resulting id
-    val uploadResult = "upload-result"
+    def uploadResult(session: Long) = "upload-result-" + session.toString
     // user settings
     val settings = "settings"
   }

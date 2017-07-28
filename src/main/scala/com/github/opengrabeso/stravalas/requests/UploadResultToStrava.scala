@@ -36,13 +36,16 @@ case class UploadError(ex: Throwable) extends UploadStatus {
 // background push queue task
 
 @SerialVersionUID(10L)
-case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult) extends DeferredTask {
+case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessionId: Long) extends DeferredTask {
 
   def run()= {
 
     val api = new StravaAPI(auth.token)
 
-    for (upload <- Storage.load[Main.ActivityEvents](Main.namespace.upload, key, auth.userId)) {
+    val uploadNamespace = Main.namespace.upload(sessionId)
+    val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
+
+    for (upload <- Storage.load[Main.ActivityEvents](uploadNamespace, key, auth.userId)) {
 
       val export = FitExport.export(upload)
 
@@ -51,9 +54,9 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult) extend
       ret match {
         case Failure(ex: HttpResponseException) if ex.getMessage.contains("duplicate of activity") =>
           // TODO: parse using regex, print info about a duplicate
-          Storage.store(Main.namespace.uploadResult, key, auth.userId, UploadDuplicate(0))
+          Storage.store(uploadResultNamespace, key, auth.userId, UploadDuplicate(0))
         case Failure(ex) =>
-          Storage.store(Main.namespace.uploadResult, key, auth.userId, UploadError(ex))
+          Storage.store(uploadResultNamespace, key, auth.userId, UploadError(ex))
           // https://stackoverflow.com/questions/45353793/how-to-use-deferredtaskcontext-setdonotretry-with-google-app-engine-in-java
           //DeferredTaskContext.setDoNotRetry(true)
           //throw ex
@@ -63,10 +66,10 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult) extend
           val eta = System.currentTimeMillis() + 3000
           queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(uploadId, auth, eta))
 
-          Storage.store(Main.namespace.uploadResult, key, auth.userId, UploadInProgress(uploadId))
+          Storage.store(uploadResultNamespace, key, auth.userId, UploadInProgress(uploadId))
       }
 
-      Storage.delete(Main.namespace.upload, key, auth.userId)
+      Storage.delete(uploadNamespace, key, auth.userId)
 
 
     }

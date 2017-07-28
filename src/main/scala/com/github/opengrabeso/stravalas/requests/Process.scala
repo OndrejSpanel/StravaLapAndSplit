@@ -15,7 +15,7 @@ import scala.util.{Failure, Success}
 
 object Process extends DefineRequest.Post("/process") {
 
-  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents]) = {
+  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents], sessionId: Long) = {
     if (toMerge.nonEmpty) {
 
       val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
@@ -34,8 +34,6 @@ object Process extends DefineRequest.Post("/process") {
 
       // store everything into a session storage, and make background tasks to upload it to Strava
 
-
-      // [START addQueue]
       val queue = QueueFactory.getDefaultQueue
       for (upload <- merged) {
 
@@ -62,10 +60,10 @@ object Process extends DefineRequest.Post("/process") {
           // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
           val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
           // are any metadata needed?
-          Storage.store(Main.namespace.upload, uniqueName, auth.userId, upload)
+          Storage.store(Main.namespace.upload(sessionId), uniqueName, auth.userId, upload)
 
           // using post with param is not recommended, but it should be OK when not using any payload
-          queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth))
+          queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth, sessionId))
           println(s"Queued task $uniqueName")
         }
       }
@@ -93,7 +91,7 @@ object Process extends DefineRequest.Post("/process") {
       }
       function showResults() {
 
-        ajaxAsync("check-upload-status", "", function(response) {
+        ajaxAsync("check-upload-status?sid=" + sid, "", function(response) {
           var results = response.documentElement.getElementsByTagName("result");
           var complete = response.documentElement.getElementsByTagName("complete");
           var tableBody = document.getElementById("uploaded");
@@ -141,13 +139,19 @@ object Process extends DefineRequest.Post("/process") {
       def next() = items.next
     }
 
+    var sessionId: Long = 0
     val ops = itemsIterator.flatMap { item =>
       if (item.isFormField) {
         // expect field name id={FileId}
         val IdPattern = "id=(.*)".r
+        val UploadIdPattern = "upload-id=(.*)".r
+        // a single field upload-id
         val id = item.getFieldName match {
           case IdPattern(idText) =>
             Some(FileId.parse(idText))
+          case UploadIdPattern(upId) =>
+            sessionId = upId.toLong
+            None
           case _ =>
             None
         }
@@ -163,7 +167,7 @@ object Process extends DefineRequest.Post("/process") {
     }
 
 
-    val something = mergeAndUpload(auth, toMerge)
+    val something = mergeAndUpload(auth, toMerge, sessionId)
 
     <html>
       <head>

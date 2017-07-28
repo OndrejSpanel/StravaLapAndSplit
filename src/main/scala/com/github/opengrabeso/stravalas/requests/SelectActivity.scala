@@ -164,7 +164,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             $.ajax({
               type: form.attr("method"),
               url: form.attr("action"),
-              data: new FormData(form[0]), //$("#process-form").serialize(),
+              data: new FormData(form[0]),
               contentType: false,
               cache: false,
               processData: false,
@@ -175,8 +175,12 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             });
 
           }
+
+          // session id, used in Process / showResults
+          var sid = new Date().valueOf();
           """
         )}
+
         </script>
       </head>
       <body>
@@ -217,6 +221,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
         <h2>Staging</h2>
         <form id="process-form" action="process" method="post" enctype="multipart/form-data">
+          <input type="hidden" id="upload-id" name="upload-id" value="0"></input>
           <table class="activities">
             {
               // find most recent Strava activity
@@ -258,6 +263,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
             event.preventDefault();
             submitProcess();
           });
+          $("#upload-id").attr("name","upload-id=" + sid);
 
           updateClock()
           """)}
