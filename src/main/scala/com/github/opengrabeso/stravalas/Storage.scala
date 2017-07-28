@@ -95,7 +95,7 @@ object Storage {
     }
   }
 
-  def check(userId: String, namespace: String, path: String, digest: String): Boolean = {
+  def check(namespace: String, userId: String, path: String, digest: String): Boolean = {
 
     val prefix = userFilename(namespace, path, userId)
     val options = new ListOptions.Builder().setPrefix(prefix).build()
