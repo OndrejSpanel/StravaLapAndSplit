@@ -11,7 +11,7 @@ object CheckUploadStatus extends DefineRequest.Post("/check-upload-status")  {
 
     val resultsFiles = Storage.enumerate(namespace.uploadResult, auth.userId)
 
-    val results = {for {
+    val results = for {
       resultFilename <- resultsFiles
       status <- Storage.load[UploadStatus](namespace.uploadResult, resultFilename, auth.userId)
     } yield {
@@ -23,9 +23,12 @@ object CheckUploadStatus extends DefineRequest.Post("/check-upload-status")  {
           ret
         }
       </result>
-    }}
+    }
+    val complete = <complete></complete>
+
+    val ret = if (resultsFiles.nonEmpty) results else complete
     <status>
-      {results}
+      {ret}
     </status>
 
   }
