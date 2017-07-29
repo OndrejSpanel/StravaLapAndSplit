@@ -11,7 +11,7 @@ import resource._
 import Util._
 import com.github.opengrabeso.stravalas.RequestUtils
 
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 case class StravaAPIParams(appId: Int, clientSecret: String, code: Option[String])
 
@@ -104,7 +104,7 @@ class StravaAPI(authString: String) {
   /**
   * @return Either[id, pending] pending is true if the result is not definitive yet
     */
-  def activityIdFromUploadId(id: Long): Either[Long, Boolean] = {
+  def activityIdFromUploadId(id: Long): Try[Option[Long]] = {
     try {
       val request = buildGetRequest(buildURI(s"uploads/$id"), authString, "")
       request.getHeaders.set("Expect",Array("100-continue"))
@@ -115,19 +115,21 @@ class StravaAPI(authString: String) {
 
       val activityId = (Option(resultJson.path("status").textValue), Option(resultJson.path("activity_id").numberValue)) match {
         case (Some(status), _) if status == "Your activity is still being processed." =>
-          Right(true)
+          Success(None)
         case (_, Some(actId)) if actId.longValue != 0 =>
-          Left(actId.longValue)
+          Success(Some(actId.longValue))
+        case (Some(status), _)  =>
+          Failure(new UnsupportedOperationException(status))
         case _ =>
-          Right(false)
+          Failure(new UnsupportedOperationException)
       }
       activityId
     } catch {
       case ex: HttpResponseException if ex.getStatusCode == 404 =>
-        Right(false)
+        Failure(ex)
       case ex: Exception =>
         ex.printStackTrace()
-        Right(false)
+        Failure(ex)
     }
 
   }

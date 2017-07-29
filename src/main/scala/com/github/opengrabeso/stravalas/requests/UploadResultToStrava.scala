@@ -64,7 +64,7 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
           val queue = QueueFactory.getDefaultQueue
           println(s"Upload started $uploadId")
           val eta = System.currentTimeMillis() + 3000
-          queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(uploadId, auth, eta))
+          queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(key, uploadId, auth, eta, sessionId))
 
           Storage.store(uploadResultNamespace, key, auth.userId, UploadInProgress(uploadId))
       }
@@ -78,10 +78,10 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
 
 }
 
-case class WaitForStravaUpload(id: Long, auth: Main.StravaAuthResult, eta: Long) extends DeferredTask {
+case class WaitForStravaUpload(key: String, id: Long, auth: Main.StravaAuthResult, eta: Long, sessionId: Long) extends DeferredTask {
   private def retry(nextEta: Long) = {
     val queue = QueueFactory.getDefaultQueue
-    queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(id, auth, nextEta))
+    queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(key, id, auth, nextEta, sessionId))
   }
 
   def run() = {
@@ -92,15 +92,18 @@ case class WaitForStravaUpload(id: Long, auth: Main.StravaAuthResult, eta: Long)
       retry(eta)
     } else {
       val api = new StravaAPI(auth.token)
+      val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
       val done = api.activityIdFromUploadId(id)
       done match {
-        case Left(actId) =>
+        case Success(Some(actId)) =>
           println(s"Uploaded as $actId")
-        case Right(true) =>
+          Storage.store(uploadResultNamespace, key, auth.userId, UploadDone(actId))
+        case Success(None) =>
           // still processing - retry
           retry(now + 2000)
-        case _ =>
+        case Failure(ex) =>
           println(s"Upload $id failed")
+          Storage.store(uploadResultNamespace, key, auth.userId, UploadError(ex))
 
       }
 
