@@ -85,7 +85,7 @@ object Process extends DefineRequest.Post("/process") {
       function addRow(tableBody, text) {
         var tr = document.createElement('TR');
         var td = document.createElement('TD');
-        td.appendChild(document.createTextNode(text));
+        td.innerHTML = text;
         tr.appendChild(td);
         tableBody.appendChild(tr);
       }
@@ -98,7 +98,8 @@ object Process extends DefineRequest.Post("/process") {
           for (var i = 0; i < results.length; i++) {
 
             var res = extractResult(results[i], "done", function(text) {
-              return "Done " + text;
+              // TODO: get Strava user friendly name, or include a time?
+              return "Done <a href=https://www.strava.com/activities/" + text + ">" + text + "</a>";
             }) || extractResult(results[i], "duplicate", function(text) {
               return "Duplicate " + text;
             }) || extractResult(results[i], "error", function(text) {
@@ -109,7 +110,7 @@ object Process extends DefineRequest.Post("/process") {
           if (complete.length == 0) {
             setTimeout(showResults, 1000);
           } else {
-            addRow(tableBody, 'Complete'); // TODO: bold
+            addRow(tableBody, '<b>Complete</b>'); // TODO: bold
           }
         }, function (failure) {
           console.log(failure);
