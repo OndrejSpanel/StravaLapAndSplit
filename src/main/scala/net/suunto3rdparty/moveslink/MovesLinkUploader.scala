@@ -2,6 +2,7 @@ package net.suunto3rdparty
 package moveslink
 
 import Util._
+import com.github.opengrabeso.stravalas.Main
 import com.github.opengrabeso.stravalas.Main.ActivityEvents
 
 import scala.annotation.tailrec
@@ -60,7 +61,17 @@ object MovesLinkUploader {
 
             val hrdAdjusted = hrdMove.timeOffset(offset)
 
-            sm._2.merge(hrdAdjusted)
+            val data = sm._2.merge(hrdAdjusted)
+
+            val smoothingSec = 10
+            // TODO: use differences from data.dist.stream instead of computing data.gps.distStream
+            val speedStream = DataStreamGPS.computeSpeedStream(data.gps.distStream, smoothingSec)
+
+            val speedStats = DataStreamGPS.speedStats(speedStream)
+
+            val detectSport = Main.detectSportBySpeed(speedStats, data.id.sportName)
+
+            data.copy(id = data.id.copy(sportName = detectSport))
           }
 
           println(s"Merged GPS ${takeGPS.map(_.toLog)} into ${hrdMove.toLog}")

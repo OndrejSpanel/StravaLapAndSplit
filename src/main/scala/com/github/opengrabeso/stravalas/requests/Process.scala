@@ -15,7 +15,7 @@ import scala.util.{Failure, Success}
 
 object Process extends DefineRequest.Post("/process") {
 
-  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents], sessionId: Long) = {
+  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents], sessionId: Long): Int = {
     if (toMerge.nonEmpty) {
 
       val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
@@ -67,8 +67,8 @@ object Process extends DefineRequest.Post("/process") {
           println(s"Queued task $uniqueName")
         }
       }
-      true
-    } else false
+      merged.size
+    } else 0
   }
 
 
@@ -158,22 +158,16 @@ object Process extends DefineRequest.Post("/process") {
       }
     }.toVector
 
-    // TODO: create groups, process each group separately
     val toMerge = ops.flatMap { op =>
       Storage.load[ActivityEvents](Main.namespace.stage, op.filename, auth.userId)
     }
 
 
-    val something = mergeAndUpload(auth, toMerge, sessionId)
+    val uploadCount = mergeAndUpload(auth, toMerge, sessionId)
 
-    <html>
-      <head>
-        <title>Stravamat</title>
-        <script src="static/ajaxUtils.js"></script>
-      </head>
-      <body>
-        uploadResultsHtml()
-      </body>
-    </html>
+    // used in AJAX only - XML response
+    <upload>
+      <count>{uploadCount.toString}</count>
+    </upload>
   }
 }

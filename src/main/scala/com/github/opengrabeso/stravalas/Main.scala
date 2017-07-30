@@ -83,7 +83,7 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  @SerialVersionUID(10L)
+  @SerialVersionUID(11L)
   case class ActivityId(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
 
     override def toString = s"${id.toString} - $name ($startTime..$endTime)"
@@ -280,7 +280,9 @@ object Main {
       val endTime = Seq(id.endTime, that.id.endTime).max
 
       // TODO: unique ID (merge or hash input ids?)
-      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
+      val sportName = if (Event.sportPriority(id.sportName) < Event.sportPriority(that.id.sportName)) id.sportName else that.id.sportName
+
+      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, sportName, id.distance + that.id.distance)
 
       val eventsAndSports = (events ++ that.events).sortBy(_.stamp)
 
@@ -420,6 +422,29 @@ object Main {
     def attributes: Seq[DataStream]
   }
 
+  def detectSportBySpeed(speedStats: (Double, Double, Double), defaultName: Event.Sport) = {
+    val (avg, fast, max) = speedStats
+    def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): Event.Sport = {
+      if (avg <= avgRun && fast <= fastRun && max <= maxRun) Event.Sport.Run
+      else Event.Sport.Ride
+    }
+
+    def paceToKmh(pace: Double) = 60 / pace
+
+    def kmh(speed: Double) = speed
+
+    val sport = defaultName match {
+      case Event.Sport.Run =>
+        // marked as run, however if clearly contradicting evidence is found, make it ride
+        detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
+      case Event.Sport.Ride =>
+        detectSport(kmh(20), kmh(17), kmh(15)) // 25 - 18 km/h possible
+      case Event.Sport.Workout =>
+        detectSport(paceToKmh(3), paceToKmh(4), paceToKmh(4)) // 3 - 4 min/km possible
+      case s => s
+    }
+    sport
+  }
 
   def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: Seq[ZonedDateTime], segments: Seq[Event]): ActivityEvents = {
 
@@ -540,27 +565,10 @@ object Main {
 
         val spd = speedDuringInterval(pBeg, pEnd)
 
-        val (avg, fast, max) = DataStreamGPS.speedStats(spd)
+        val speedStats = DataStreamGPS.speedStats(spd)
 
-        def paceToKmh(pace: Double) = 60 / pace
+        val sport = detectSportBySpeed(speedStats, actId.sportName)
 
-        def kmh(speed: Double) = speed
-
-        def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): Event.Sport = {
-          if (avg <= avgRun && fast <= fastRun && max <= maxRun) Event.Sport.Run
-          else Event.Sport.Ride
-        }
-
-        val sport = actId.sportName match {
-          case Event.Sport.Run =>
-            // marked as run, however if clearly contradicting evidence is found, make it ride
-            detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
-          case Event.Sport.Ride =>
-            detectSport(kmh(20), kmh(17), kmh(15)) // 25 - 18 km/h possible
-          case Event.Sport.Workout =>
-            detectSport(paceToKmh(3), paceToKmh(4), paceToKmh(4)) // 3 - 4 min/km possible
-          case s => s
-        }
         Some(pBeg, sport)
       }
     }

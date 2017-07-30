@@ -156,6 +156,7 @@ object DataStreamGPS {
   }
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
+    // TODO: optimize, this is currently very slow (processing 2 hours or run data takes 30 seconds)
     def smoothingRecurse(done: DistStream, prev: DistStream, todo: DistStream): DistStream = {
       if (todo.isEmpty) done
       else if (prev.isEmpty) {
@@ -172,7 +173,8 @@ object DataStreamGPS {
       }
     }
 
-    smoothingRecurse(SortedMap(), SortedMap(), fixSpeed(input))
+    // fixSpeed(input) was called here, but it was used only because of sample timestamp misunderstanding
+    smoothingRecurse(SortedMap(), SortedMap(), input)
   }
 
   private def pairToDist(ab: (GPSPoint, GPSPoint)) = {
@@ -360,7 +362,11 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
 
   private def distStreamToCSV(ds: DistStream): String = {
-    ds.map(kv => s"${kv._1},${kv._2}").mkString("\n")
+    val times = ds.map(_._1)
+    val diffs = 0L +: (times zip times.drop(1)).map { case (t1, t2) => t2.getMillis - t1.getMillis }.toSeq
+    (ds zip diffs).map { case (kv, duration) =>
+      s"${kv._1},${duration/1000.0},${kv._2}"
+    }.mkString("\n")
   }
 
   lazy val distStream: DistStream = distStreamFromGPS(stream)

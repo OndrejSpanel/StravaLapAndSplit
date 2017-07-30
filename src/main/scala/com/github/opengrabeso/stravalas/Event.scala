@@ -7,12 +7,18 @@ case class EventKind(id: String, display: String)
 object Event {
   object Sport extends Enumeration {
     // https://strava.github.io/api/v3/uploads/
-    // ride, run, swim, workout, hike, walk, nordicski, alpineski, backcountryski, iceskate, inlineskate, kitesurf,
-    // rollerski, windsurf, workout, snowboard, snowshoe, ebikeride, virtualride
-    val Ride, Run, Swim, Hike, NordicSki, Workout, Walk, AlpineSki, IceSkate, InlineSkate, KiteSurf,
-    RollerSki, WindSurf, Snowboard, Snowshoe, EbikeRide, VirtualRide = Value
+    //   ride, run, swim, workout, hike, walk, nordicski, alpineski, backcountryski, iceskate, inlineskate, kitesurf,
+    //   rollerski, windsurf, workout, snowboard, snowshoe, ebikeride, virtualride
+    // order by priority, roughly fastest to slowest (prefer faster sport does less harm on segments)
+    // Workout (as Unknown) is the last option
+    val Ride, Run, Hike, Walk, Swim, NordicSki, AlpineSki, IceSkate, InlineSkate, KiteSurf,
+    RollerSki, WindSurf, Snowboard, Snowshoe, EbikeRide, VirtualRide, Workout = Value
+
   }
   type Sport = Sport.Value
+
+  // lower priority means more preferred
+  def sportPriority(sport: Sport): Int = sport.id
 }
 
 @SerialVersionUID(10)
