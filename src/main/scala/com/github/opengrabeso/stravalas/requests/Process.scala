@@ -101,7 +101,11 @@ object Process extends DefineRequest.Post("/process") {
               // TODO: get Strava user friendly name, or include a time?
               return "Done <a href=https://www.strava.com/activities/" + text + ">" + text + "</a>";
             }) || extractResult(results[i], "duplicate", function(text) {
-              return "Duplicate " + text;
+              if (text ==0) {
+                return "Duplicate";
+              } else {
+                return "Duplicate of <a href=https://www.strava.com/activities/" + text + ">" + text + "</a>";
+              }
             }) || extractResult(results[i], "error", function(text) {
               return "Error " + text;
             });
