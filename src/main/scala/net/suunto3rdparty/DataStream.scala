@@ -106,6 +106,7 @@ object DataStreamGPS {
 
 
   private type DistStream  = SortedMap[ZonedDateTime, Double]
+  private type DistList  = List[(ZonedDateTime, Double)]
 
   /**
     * Experiments have shown smoothingInterval = 60 gives most accurate results.
@@ -396,7 +397,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   /*
   * @param timeOffset in seconds
   * */
-  private def errorToStream(offsetStream: DistStream, speedStream: DistStream): Double = {
+  private def errorToStream(offsetStream: DistList, speedStream: DistList): Double = {
     if (offsetStream.isEmpty || speedStream.isEmpty) {
       Double.MaxValue
     } else {
@@ -406,7 +407,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       val begMatch = maxTime(offsetStream.head._1, startTime.get)
       val endMatch = minTime(offsetStream.last._1, endTime.get)
       // ignore non-matching parts (prefix, postfix)
-      def selectInner[T](data: SortedMap[ZonedDateTime, T]) = data.dropWhile(_._1 < begMatch).takeWhile(_._1 < endMatch)
+      def selectInner[T](data: List[(ZonedDateTime, T)]) = data.dropWhile(_._1 < begMatch).takeWhile(_._1 < endMatch)
       val distToMatch = selectInner(offsetStream)
 
       val distPairs = distToMatch zip distToMatch.drop(1) // drop(1), not tail, because distToMatch may be empty
@@ -415,7 +416,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       }
       val smoothedSpeed = selectInner(speedStream)
 
-      def compareSpeedHistory(fineSpeed: DistStream, coarseSpeed: DistStream, error: Double): Double = {
+      def compareSpeedHistory(fineSpeed: DistList, coarseSpeed: DistList, error: Double): Double = {
         //
         if (fineSpeed.isEmpty || coarseSpeed.isEmpty) error
         else {
@@ -431,7 +432,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       if (smoothedSpeed.isEmpty || speedToMatch.isEmpty) {
         Double.MaxValue
       } else {
-        val error = compareSpeedHistory(smoothedSpeed, speedToMatch, 0)
+        val error = compareSpeedHistory(smoothedSpeed.toList, speedToMatch.toList, 0)
         error
       }
     }
@@ -487,11 +488,12 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   /*
   * @param 10 sec distance stream (provided by a Quest) */
   private def findOffset(distanceStream: DistStream) = {
+    val distanceList = distanceStream.toList
     val maxOffset = 60
     val offsets = -maxOffset to maxOffset
-    val speedStream = computeSpeedStream
+    val speedStream = computeSpeedStream.toList
     val errors = for (offset <- offsets) yield {
-      val offsetStream = distanceStream.map { case (k,v) =>
+      val offsetStream = distanceList.map { case (k,v) =>
         k.plus(Seconds.seconds(offset)) -> v
       }
       errorToStream(offsetStream, speedStream)
