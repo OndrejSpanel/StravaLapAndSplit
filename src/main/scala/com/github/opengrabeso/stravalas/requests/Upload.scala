@@ -1,12 +1,16 @@
 package com.github.opengrabeso.stravalas
 package requests
 
+import java.io.{ByteArrayInputStream, InputStream}
+
+import com.github.opengrabeso.stravalas.Main.NoActivity
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
+import org.apache.commons.io.IOUtils
 import spark.{Request, Response}
 
-object Upload extends DefineRequest("/upload", method = Method.Post) with ActivityRequestHandler {
+object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler {
   override def html(request: Request, resp: Response) = {
     val session = request.session
     val auth = session.attribute[Main.StravaAuthResult]("auth")
@@ -24,60 +28,45 @@ object Upload extends DefineRequest("/upload", method = Method.Post) with Activi
       def next() = items.next
     }
 
-
-    val data = itemsIterator.flatMap { item =>
+    itemsIterator.foreach { item =>
       if (!item.isFormField && "activities" == item.getFieldName) {
-        val name = item.getName
-        val stream = item.openStream()
-
-        val extension = item.getName.split('.').last
-        extension.toLowerCase match {
-          case "fit" =>
-            FitImport(stream).map(name -> _)
-          case e =>
-            None
-        }
-      } else None
-    }
-
-    if (data.hasNext) {
-      val d = data.foldLeft(data.next) {
-        (total, d) =>
-          total._1 -> total._2.merge(d._2)
+        storeFromStream(auth, item.getName, item.openStream())
       }
-
-      // TODO: pass data directly to JS?
-      Storage.store("events-" + d._1, auth.userId, d._2)
-
-      val content = activityHtmlContent(d._1, d._2, session, resp)
-
-      <html>
-        <head>
-          {headPrefix}
-          <title>Stravamat</title>
-          {content.head}
-        </head>
-        <body>
-          {bodyHeader(auth)}
-          {content.body}
-          {bodyFooter}
-        </body>
-      </html>
-
-    } else {
-      <html>
-        <head>
-          {headPrefix}
-          <title>Stravamat</title>
-        </head>
-        <body>
-          {bodyHeader(auth)}
-          <p>Empty activity</p>
-          {bodyFooter}
-        </body>
-      </html>
     }
 
+    resp.redirect("/selectActivity")
+    Nil
+  }
 
+  def storeFromStream(auth: Main.StravaAuthResult, name: String, streamOrig: InputStream) = {
+    import MoveslinkImport._
+    // we may read only once, we need to buffer it
+    val fileBytes = IOUtils.toByteArray(streamOrig)
+    val digest = Main.digest(fileBytes)
+
+    val stream = new ByteArrayInputStream(fileBytes)
+
+    val extension = name.split('.').last
+    val actData: Seq[Main.ActivityEvents] = extension.toLowerCase match {
+      case "fit" =>
+        FitImport(name, stream).toSeq
+      case "sml" =>
+        loadSml(name, digest, stream).toSeq.flatMap(loadFromMove(name, digest, _))
+      case "xml" =>
+        loadXml(name, digest, stream).zipWithIndex.flatMap { case (act,index) =>
+          // some activities (Quest) have more parts, each part needs a distinct name
+          val nameWithIndex = if (index > 0) s"$name-$index" else name
+          loadFromMove(nameWithIndex, digest, act)
+        }
+      case e =>
+        Nil
+    }
+    if (actData.nonEmpty) {
+      for (act <- actData) {
+        Storage.store(act.id.id.filename, auth.userId, act, "digest" -> digest)
+      }
+    } else {
+      Storage.store(name, auth.userId, NoActivity, "digest" -> digest)
+    }
   }
 }

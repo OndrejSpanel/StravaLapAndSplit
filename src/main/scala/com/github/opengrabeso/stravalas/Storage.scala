@@ -3,12 +3,10 @@ package com.github.opengrabeso.stravalas
 import java.io._
 import java.nio.channels.Channels
 
-import com.google.appengine.tools.cloudstorage.GcsFileOptions
-import com.google.appengine.tools.cloudstorage.GcsFilename
-import com.google.appengine.tools.cloudstorage.GcsServiceFactory
-import com.google.appengine.tools.cloudstorage.RetryParams
+import com.google.appengine.tools.cloudstorage._
 
 import scala.reflect.ClassTag
+import collection.JavaConverters._
 
 object Storage {
 
@@ -31,9 +29,12 @@ object Storage {
     .build()
   )
 
-  def output(filename: String): OutputStream = {
-    val instance = GcsFileOptions.getDefaultInstance
-    val channel = gcsService.createOrReplace(fileId(filename), instance)
+  def output(filename: String, metadata: Seq[(String, String)]): OutputStream = {
+    val instance = new GcsFileOptions.Builder()
+    for (m <- metadata) {
+      instance.addUserMetadata(m._1, m._2)
+    }
+    val channel = gcsService.createOrReplace(fileId(filename), instance.build)
     Channels.newOutputStream(channel)
   }
 
@@ -44,18 +45,72 @@ object Storage {
     Channels.newInputStream(readChannel)
   }
 
-  def store(filename: String, userId: String, obj: AnyRef) = {
-    val os = output(userFilename(filename, userId))
+  def store(filename: String, userId: String, obj: AnyRef, metadata: (String, String)*) = {
+    //println(s"store '$filename' - '$userId'")
+    val os = output(userFilename(filename, userId), metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj)
     oos.close()
   }
 
-  def load[T : ClassTag](filename: String, userId: String) = {
+  def load[T : ClassTag](filename: String, userId: String): Option[T] = {
+    //println(s"load '$filename' - '$userId'")
     val is = input(userFilename(filename, userId))
     val ois = new ObjectInputStream(is)
-    ois.readObject().asInstanceOf[T]
+    val read = ois.readObject()
+    read match {
+      case r: T => Some(r)
+      case _ => None// handles readObject returning null as well
+    }
   }
 
+  def delete(filename: String, userId: String): Boolean = {
+    val toDelete = userFilename(filename, userId)
+    gcsService.delete(fileId(toDelete))
+  }
+
+  def enumerate(userId: String): Iterable[String] = {
+    val prefix = userFilename("", userId)
+    val options = new ListOptions.Builder().setPrefix(prefix).build()
+    val list = gcsService.list(bucket, options).asScala.toIterable
+    for (i <- list) yield {
+      assert(i.getName.startsWith(prefix))
+      val name = i.getName.drop(prefix.length)
+      val m = try {
+        val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
+        Some(md.getOptions.getUserMetadata)
+      } catch {
+        case e: Exception =>
+          e.printStackTrace()
+          None
+      }
+      //println(s"enum '$name' - '$userId': md '$m'")
+      name
+    }
+  }
+
+  def check(userId: String, path: String, digest: String): Boolean = {
+
+    val prefix = userFilename(path, userId)
+    val options = new ListOptions.Builder().setPrefix(prefix).build()
+    val found = gcsService.list(bucket, options).asScala.toIterable.headOption
+
+    // there should be at most one result
+    found.flatMap{i =>
+      assert(i.getName.startsWith(prefix))
+      val name = i.getName.drop(prefix.length)
+      val m = try {
+        val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
+        val userData = md.getOptions.getUserMetadata.asScala
+        userData.get("digest").map(_ == digest)
+      } catch {
+        case e: Exception =>
+          e.printStackTrace()
+          None
+      }
+      //println(s"enum '$name' - '$userId': md '$m'")
+      m
+    }.contains(true)
+  }
 
 }

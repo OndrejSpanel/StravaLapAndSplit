@@ -5,10 +5,10 @@ import java.io.File
 import org.joda.time.{DateTime=>ZonedDateTime}
 import Util._
 
-import org.apache.log4j.Logger
+import java.util.logging.Logger
 
 object MovesLink2Uploader {
-  private val log = Logger.getLogger(getClass)
+  private val log = Logger.getLogger(getClass.getName)
 
   private val getDataFolder: File = {
     val folderName = "Moveslink2"

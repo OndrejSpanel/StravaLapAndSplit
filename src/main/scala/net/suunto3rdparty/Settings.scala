@@ -10,12 +10,15 @@ import resource._
 object Settings {
   private val settingsFile = "suuntoToStrava.cfg"
 
-  private val file = new File(MovesLinkUploader.getDataFolder, settingsFile)
+  // TODO: GAE compatible settings (Cloud storage or cookie)
   private var props: Properties = new Properties()
+  /*
+  private val file = new File(MovesLinkUploader.getDataFolder, settingsFile)
   for (f <- managed(new FileInputStream(file))) {
     props = new Properties()
     props.load(f)
   }
+  */
 
   var questTimeOffset: Int = props.getProperty("questTimeOffset", "0").toInt
   var maxHR: Int = props.getProperty("maxHR", "240").toInt
@@ -29,10 +32,12 @@ object Settings {
       props.setProperty("questTimeOffset", v.toString)
       maxHR = v;
     }
+    /*
     for (f <- managed(new FileOutputStream(file))) {
       props.store(f, "SuuntoToStrava configuration")
       Console.println("Settings saved")
     }
+    */
   }
 }
 

@@ -2,25 +2,35 @@ package com.github.opengrabeso.stravalas
 
 import java.security.MessageDigest
 import java.util
+import java.util.Locale
 
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
-import org.joda.time.{Period, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Period, PeriodType, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 
 import scala.collection.JavaConverters._
-import org.joda.time.format.PeriodFormatterBuilder
 import DateTimeOps._
+import FileId._
 import com.google.api.client.json.jackson2.JacksonFactory
 import net.suunto3rdparty._
 
 import scala.collection.immutable.SortedMap
+import scala.xml.Elem
 
 object Main {
 
   import RequestUtils._
 
   private val md = MessageDigest.getInstance("SHA-256")
+
+  def digest(bytes: Array[Byte]): String = {
+    val digestBytes = (0:Byte) +: md.digest(bytes) // prepend 0 byte to avoid negative sign
+    BigInt(digestBytes).toString(16)
+  }
+
+  def digest(str: String): String = digest(str.getBytes)
 
   case class SecretResult(appId: String, appSecret: String, mapboxToken: String, error: String)
 
@@ -40,10 +50,7 @@ object Main {
 
   case class StravaAuthResult(token: String, mapboxToken: String, id: String, name: String) {
     // used to prove user is authenticated, but we do not want to store token in plain text to avoid security leaks
-    val userId: String = {
-      val digestBytes = md.digest(token.getBytes)
-      BigInt(digestBytes).toString(16)
-    }
+    lazy val userId: String = digest(token)
   }
 
   def stravaAuth(code: String): StravaAuthResult = {
@@ -76,13 +83,46 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  case class ActivityId(id: Long, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
+  @SerialVersionUID(10L)
+  case class ActivityId(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
+
+    override def toString = s"${id.toString} - $name ($startTime..$endTime)"
 
     def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
 
     val duration: Int = Seconds.secondsBetween(startTime, endTime).getSeconds
 
-    def link: String = s"https://www.strava.com/activities/$id"
+
+    def isMatching(that: ActivityId): Boolean = {
+      // check overlap time
+
+      val commonBeg = Seq(startTime,that.startTime).max
+      val commonEnd = Seq(endTime,that.endTime).min
+      if (commonEnd > commonBeg) {
+        val commonDuration = Seconds.secondsBetween(commonBeg, commonEnd).getSeconds
+        commonDuration > (duration min that.duration) * 0.75f
+      } else false
+    }
+
+    def link: String = {
+      id match {
+        case StravaId(num) =>
+          s"https://www.strava.com/activities/$num"
+        case _ =>
+          null // not a Strava activity - no link
+      }
+    }
+
+    def hrefLink: Elem = {
+      id match {
+        case StravaId(num) =>
+          <a href={s"https://www.strava.com/activities/$num"}>{name}</a>
+        case FilenameId(filename) =>
+          <div>File</div> // TODO: check Quest / GPS filename?
+        case _ =>
+          <div>{id.toString}</div>
+      }
+    }
   }
 
   object ActivityId {
@@ -94,21 +134,60 @@ object Main {
       val sportName = json.path("type").textValue
       val duration = json.path("elapsed_time").intValue
       val distance = json.path("distance").doubleValue
+      val actDigest = digest(json.toString)
 
-      ActivityId(id, name, time, time.plusSeconds(duration), Event.Sport.withName(sportName), distance)
+      ActivityId(StravaId(id), actDigest, name, time, time.plusSeconds(duration), Event.Sport.withName(sportName), distance)
     }
   }
 
-  def lastActivities(authToken: String): Array[ActivityId] = {
+  def recentStravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
     val uri = "https://www.strava.com/api/v3/athlete/activities"
-    val request = buildGetRequest(uri, authToken, "per_page=15")
+    val request = buildGetRequest(uri, auth.token, "per_page=15")
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-    (0 until responseJson.size).map(i => ActivityId.load(responseJson.get(i)))(collection.breakOut)
+    val stravaActivities = (0 until responseJson.size).map { i =>
+      val actI = responseJson.get(i)
+      ActivityId.load(actI)
+    }
+    stravaActivities
   }
 
+  def stravaActivitiesNotStaged(auth: StravaAuthResult): Seq[ActivityId] = {
+    val stravaActivities = recentStravaActivities(auth)
+
+    val storedActivities = stagedActivities(auth).map(_.id)
+    // do not display the activities which are already staged
+    stravaActivities diff storedActivities
+  }
+
+  def stagedActivities(auth: StravaAuthResult): Seq[ActivityEvents] = {
+    val storedActivities = {
+      val d = Storage.enumerate(auth.userId)
+      d.flatMap { a =>
+        try {
+          val act = Storage.load[Main.ActivityEvents](a, auth.userId)
+          act
+        } catch {
+          case x: java.io.InvalidClassException => // bad serialVersionUID
+            println(s"load error ${x.getMessage}")
+            None
+          case x: Exception =>
+            x.printStackTrace()
+            None
+        }
+      }
+    }
+    storedActivities.toVector
+  }
+
+  @SerialVersionUID(10L)
+  case object NoActivity
+
+  @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
+
+    override def toString = id.toString
 
     assert(events.forall(_.stamp >= id.startTime))
     assert(events.forall(_.stamp <= id.endTime))
@@ -134,8 +213,32 @@ object Main {
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
+
+    def optimizeRoute: Seq[(ZonedDateTime, GPSPoint)] = {
+      // TODO: smart optimization based on direction changes and distances
+      val maxPoints = 1000
+      if (gps.stream.size < maxPoints) gps.stream.toList
+      else {
+        val ratio = gps.stream.size / maxPoints
+        val gpsSeq = gps.stream.toList
+
+        val groups = gpsSeq.grouped(ratio).toList
+
+        // take each n-th
+        val allButLast = groups.dropRight(1).map(_.head)
+        // always take the last one
+        val lastGroup = groups.last
+        val last = if (lastGroup.lengthCompare(1) > 0) lastGroup.take(1) ++ lastGroup.takeRight(1)
+        else lastGroup
+
+        allButLast ++ last
+      }
+    }
+
     def routeJS: String = {
-      gps.stream.map { case (time,g) =>
+      val toSend = optimizeRoute
+
+      toSend.map { case (time,g) =>
         val t = id.secondsInActivity(time)
         val d = distanceForTime(time)
         s"[${g.longitude},${g.latitude},$t,$d]"
@@ -147,7 +250,8 @@ object Main {
       val begTime = Seq(id.startTime, that.id.startTime).min
       val endTime = Seq(id.endTime, that.id.endTime).max
 
-      val mergedId = ActivityId(id.id, id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
+      // TODO: unique ID (merge or hash input ids?)
+      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
 
       val eventsAndSports = (events ++ that.events).sortBy(_.stamp)
 
@@ -242,6 +346,7 @@ object Main {
         act
       }
     }
+
   }
 
   trait ActivityStreams {
@@ -422,6 +527,7 @@ object Main {
 
   def getEventsFrom(authToken: String, id: String): ActivityEvents = {
 
+    println(s"Download from strava $id")
     val uri = s"https://www.strava.com/api/v3/activities/$id"
     val request = buildGetRequest(uri, authToken, "")
 
@@ -492,7 +598,7 @@ object Main {
       val latlng = DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
       val attributes =  attributeValues.flatMap { case (name, values) =>
           name match {
-            case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
+            case "heartrate" => Some(DataStreamHR(SortedMap(timeValues zip values:_*)))
             case _ => None
           }
       }
@@ -566,11 +672,34 @@ object Main {
         .printZeroAlways().minimumPrintedDigits(2).appendSeconds()
         .toFormatter
 
-    val period = Period.seconds(duration).normalizedStandard()
-    myFormat.print(period)
+    val periodToFormat = new Period(duration*1000, PeriodType.dayTime)
+    myFormat.print(periodToFormat)
   }
 
   def displayDistance(dist: Double): String = "%.2f".format(dist*0.001)
+
+  def displayDate(startTime: ZonedDateTime): String = {
+    ISODateTimeFormat.dateTime().print(startTime)
+  }
+
+  def jsDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
+    s"""formatDateTime("$startTime") + "..." + formatTime("$endTime") """
+  }
+
+  def localeDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
+    // TODO: get timezone and locale from the browser
+    val locale = new Locale("cs")
+
+    val zone = startTime.getZone
+
+    val formatDT = DateTimeFormat.forStyle("MS").withLocale(locale).withZone(zone)
+    val formatT = DateTimeFormat.forStyle("-S").withLocale(locale).withZone(zone)
+    (if (endTime.getMillis - startTime.getMillis < 24 * 3600 * 1000) {
+      formatDT.print(startTime) + ".." + formatT.print(endTime)
+    } else {
+      formatDT.print(startTime) + ".." + formatDT.print(endTime)
+    }) + " " + zone.toString
+  }
 }
 
 

@@ -1,108 +1,172 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import javax.servlet.http.HttpServletResponse
-
 import spark.{Request, Response}
-
-import scala.util.Try
+import DateTimeOps._
+import org.joda.time.{DateTime => ZonedDateTime, Seconds}
 
 object SelectActivity extends DefineRequest("/selectActivity") {
+
+  object ActivityAction extends Enumeration {
+    type ActivityAction = Value
+    val ActUpload, ActMerge, ActIgnore = Value
+  }
+
+  import ActivityAction._
+
+  val displayActivityAction = Map(
+    ActUpload -> "Upload",
+    ActMerge -> "Merge with above",
+    ActIgnore -> "Ignore"
+  )
+
+  def htmlActivityAction(id: FileId, types: Seq[ActivityAction], action: ActivityAction) = {
+    val idString = id.toString
+    <input type="checkbox" name={s"id=$idString"} checked={if (action!=ActIgnore) "true" else null}></input>
+  }
+
+  def jsResult(func: String) = {
+
+    val toRun = s"function () {return $func}()"
+
+    <script>document.write({xml.Unparsed(toRun)})</script>
+  }
+
   override def html(request: Request, resp: Response) = {
     val session = request.session()
-    val code = request.queryParams("code")
-    val authResult = Try {
-      Main.stravaAuth(code)
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
+
+    val stravaActivities = Main.recentStravaActivities(auth)
+
+    // ignore anything older than oldest of recent Strava activities
+    val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime)
+    val ignoreBeforeFirst = stravaActivities.headOption.map(_.startTime minusDays  14)
+    val ignoreBeforeNow = new ZonedDateTime() minusMonths 2
+
+    val before = (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
+
+    val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
+
+    val recentActivities = stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
+
+    // match recent activities against Strava activities
+    // a significant overlap means a match
+    val recentToStrava = recentActivities.map { r =>
+      r -> stravaActivities.find(_ isMatching r.id)
     }
-    authResult.map { auth =>
-      resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
-      session.attribute("auth", auth)
-      val activities = Main.lastActivities(auth.token)
-      <html>
-        <head>
-          {headPrefix}<title>Stravamat - select activity</title>
-          <style>
-            tr.activities:nth-child(even) {{background-color: #f2f2f2}}
-            tr.activities:hover {{background-color: #f0f0e0}}
-            </style>
-        </head>
-        <body>
-          {bodyHeader(auth)}
 
-          <table class="activities">
-            {for (act <- activities) yield {
-            <tr>
-              <td>
-                {act.id}
-              </td> <td>
-              {act.sportName}
-            </td> <td>
-              <a href={act.link}>
-                {act.name}
-              </a>
-            </td>
-              <td>
-                {Main.displayDistance(act.distance)}
-                km</td> <td>
-              {Main.displaySeconds(act.duration)}
-            </td>
-              <td>
-                <form action="activity" method="get">
-                  <input type="hidden" name="activityId" value={act.id.toString}/>
-                  <input type="submit" value=">>"/>
-                </form>
-              </td>
-            </tr>
-          }}
-          </table>
-          <form action="upload" method="post" enctype="multipart/form-data">
-            <p>Select files to upload
+    // detect activity groups - any overlapping activities should be one group, unless
+    //val activityGroups =
 
-              <div id="drop-container" style="border:1px solid black;height:100px;">
-                Drop Here
-              </div>
-
-              <input type="file" id="fileInput" name="activities" multiple="multiple" accept=".fit,.gpx,.tcx,.sml,.xml"/>
-            </p>
-            <input type="submit" value="Upload"/>
-          </form>
-          {cond(activities.length > 0) {
-          <form action="activity" method="get">
-            <p>Other activity Id:
-              <input type="text" name="activityId" value={activities(0).id.toString}/>
-              <input type="submit" value="Submit"/>
-            </p>
-          </form>
-          }}
-          {bodyFooter}
-          {xml.Unparsed(
+    val actions = ActivityAction.values.toSeq
+    var ignored = true
+    <html>
+      <head>
+        {/* allow referer when using redirect to unsafe getSuunto page */}
+        <meta name="referrer" content="unsafe-url"/>
+        {headPrefix}<title>Stravamat - select activity</title>
+        <style>
+          tr.activities:nth-child(even) {{background-color: #f2f2f2}}
+          tr.activities:hover {{background-color: #f0f0e0}}
+        </style>
+        <script>{xml.Unparsed(
+          //language=JavaScript
           """
-                 <script>
-              // dragover and dragenter events need to have 'preventDefault' called
-              // in order for the 'drop' event to register.
-              // See: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Drag_operations#droptargets
-              var dropContainer = document.getElementById("drop-container");
-
-              dropContainer.addEventListener("dragover", function (evt){
-                evt.preventDefault();
-              });
-              dropContainer.addEventListener("dragenter", function (evt){
-                evt.preventDefault();
-              });
-              dropContainer.addEventListener("drop", function (evt){
-                // pretty simple -- but not for IE :(
-                fileInput.files = evt.dataTransfer.files;
-                evt.preventDefault();
-              });
-                 </script>
-              """
+          /** @return {string} */
+          function getLocale() {
+            return navigator.languages[0] || navigator.language;
+          }
+          /**
+          * @param {string} t
+          * @return {string}
+          */
+          function formatDateTime(t) {
+            var locale = getLocale();
+            var date = new Date(t);
+            return new Intl.DateTimeFormat(
+              locale,
+              {
+                year: "numeric",
+                month: "numeric",
+                day: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+              }
+            ).format(date)
+          }
+          /**
+          * @param {string} t
+          * @return {string}
+          */
+          function formatTime(t) {
+            var locale = getLocale();
+            var date = new Date(t);
+            return new Intl.DateTimeFormat(
+              locale,
+              {
+                //year: "numeric",
+                //month: "numeric",
+                //day: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+              }
+            ).format(date)
+          }
+          function unsafe(uri) {
+              var abs = window.location.href;
+              var http = abs.replace(/^https:/, 'http:');
+              var rel = http.lastIndexOf('/');
+              return http.substring(0, rel + 1) + uri;
+          }
+          """
         )}
-        </body>
-      </html>
-    }
-  }.getOrElse {
-    resp.cookie("authCode", "", 0) // delete the cookie
-    resp.redirect("/", HttpServletResponse.SC_MOVED_TEMPORARILY)
-    Nil
+        </script>
+        <script src="static/ajaxUtils.js"></script>
+      </head>
+      <body>
+        {bodyHeader(auth)}
+
+        <h2>Data sources</h2>
+        <a href="loadFromStrava">Load from Strava ...</a>
+        {
+          /* getSuunto is peforming cross site requests to the local server, this cannot be done on a secure page */
+          val getSuuntoLink = s"window.location.assign(unsafe('getSuunto${s"?since=$before"}'))"
+          <a href="javascript:;" onClick={getSuuntoLink}>Get from Suunto devices ...</a>
+        }
+        <a href="getFiles">Upload files...</a>
+        <hr/>
+        <h2>Staging</h2>
+        <form action="activity" method="post" enctype="multipart/form-data">
+          <table class="activities">
+            {
+              // find most recent Strava activity
+              val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
+
+              for ((actEvents, actStrava) <- recentToStrava) yield {
+                val act = actEvents.id
+                val ignored = mostRecentStrava.exists(_ >= actEvents.id.startTime)
+                val action = if (ignored) ActIgnore else ActUpload
+                // once any activity is present on Strava, do not offer upload by default any more
+                // (if some earlier is not present, it was probably already uploaded and deleted)
+                <tr>
+                  <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}');return false"}>Unstage</button></td>
+                  <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
+                  <td>{act.sportName}</td>
+                  <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
+                  <td>{act.hrefLink}</td>
+                  <td>{Main.displayDistance(act.distance)} km</td>
+                  <td>{Main.displaySeconds(act.duration)}</td>
+                  <td>{htmlActivityAction(act.id, actions, action)}</td>
+                  <td>{actStrava.fold(<div>{act.id.toString}</div>)(_.hrefLink)}</td>
+                </tr>
+              }
+            }
+          </table>
+          <input type="submit" value="Process..."/>
+        </form>
+        {bodyFooter}
+      </body>
+    </html>
   }
+
 }

@@ -5,6 +5,11 @@ import com.github.opengrabeso.stravalas.Main.ActivityEvents
 import org.joda.time.{DateTime => ZonedDateTime, Seconds}
 import spark.{Request, Response, Session}
 
+import org.apache.commons.fileupload.FileItemStream
+import org.apache.commons.fileupload.disk.DiskFileItemFactory
+import org.apache.commons.fileupload.servlet.ServletFileUpload
+import org.apache.commons.io.IOUtils
+
 import scala.xml.NodeSeq
 
 protected case class ActivityContent(head: NodeSeq, body: NodeSeq)
@@ -25,7 +30,7 @@ object ActivityRequest {
 trait ActivityRequestHandler {
   import ActivityRequest._
 
-  protected def activityHtmlContent(actId: String, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
+  protected def activityHtmlContent(actId: FileId, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
@@ -50,7 +55,7 @@ trait ActivityRequestHandler {
         }}
       </style>
 
-      <script type="text/javascript">{activityJS(actId, activityData, auth.token)}</script>
+      <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
     val bodyContent = <table class="activityTable">
       <tr>
@@ -96,12 +101,12 @@ trait ActivityRequestHandler {
     ActivityContent(headContent, bodyContent)
   }
 
-  private def activityJS(actId: String, activityData: ActivityEvents, authToken: String) = {
+  private def activityJS(fileId: FileId, activityData: ActivityEvents) = {
+    val actIdName = fileId.filename
     //language=JavaScript
     xml.Unparsed(
       s"""
-      var id = "$actId";
-      var authToken = "$authToken";
+      var id = "$actIdName";
       // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
       var events = [
         ${activityData.editableEvents.mkString("[", "],[", "]")}
@@ -120,7 +125,6 @@ trait ActivityRequestHandler {
     function linkWithEvents(id, time, action, value) {
       var splitWithEvents =
               '  <input type="hidden" name="id" value="' + id + '"/>' +
-              '  <input type="hidden" name="auth_token" value="' + authToken + '"/>' +
               '  <input type="hidden" name="operation" value="split"/>' +
               '  <input type="hidden" name="time" value="' + time + '"/>' +
               '  <input type="submit" value="' + value + '"/>';
@@ -249,9 +253,32 @@ trait ActivityRequestHandler {
       var markers = [];
 
       function findPoint(route, time) {
-        return route.filter(function(r) {
-          return r[2] == time
-        })[0]
+        // interpolate between close points if necessary
+        var i;
+        for (i = 1; i < route.length - 1; i++) {
+          // find first above
+          if (route[i][2] >= time) break;
+
+        }
+
+        var prev = route[i-1];
+        var next = route[i];
+
+        var f;
+
+        if (f < prev[2]) f = 0;
+        else if (f > next[2]) f = 1;
+        else f = (time - prev[2]) / (next[2] - prev[2]);
+
+        function lerp(a, b, f) {
+          return a + (b - a) * f;
+        }
+        return [
+          lerp(prev[0], next[0], f),
+          lerp(prev[1], next[1], f),
+          lerp(prev[2], next[2], f), // should be time
+          lerp(prev[3], next[3], f)
+        ];
       }
 
       var dropStartEnd = events.slice(1, -1);
@@ -260,22 +287,26 @@ trait ActivityRequestHandler {
         // ["split", 0, 0.0, "Run"]
         var r = findPoint(route, e[1]);
 
-        var marker = {
-          "type": "Feature",
-          "geometry": {
-            "type": "Point",
-            "coordinates": [r[0], r[1]]
-          },
-          "properties": {
-            "title": e[0],
-            "icon": "circle",
-            "description": getSelectHtml(e[1]),
-            "color": "#444",
-            "opacity": 0.5
-          }
-        };
+        if (r) {
+          var marker = {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [r[0], r[1]]
+            },
+            "properties": {
+              "title": e[0],
+              "icon": "circle",
+              "description": getSelectHtml(e[1]),
+              "color": "#444",
+              "opacity": 0.5
+            }
+          };
 
-        markers.push(marker)
+          markers.push(marker)
+        } else {
+          console.log("Point " + e[1] + " not found");
+        }
       });
       return markers;
     }
@@ -498,7 +529,7 @@ trait ActivityRequestHandler {
           }
 
         };
-        xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id) + "&auth_token=" + authToken, true); // true for asynchronous
+        xmlHttp.open("GET", "route-data?id=" + encodeURIComponent(id), true); // true for asynchronous
         xmlHttp.send(null)});
 
     }
@@ -510,14 +541,16 @@ trait ActivityRequestHandler {
 object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandler {
 
   override def html(request: Request, resp: Response) = {
+
     val session = request.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
     val actId = request.queryParams("activityId")
-    val activityData = Main.getEventsFrom(auth.token, actId)
 
-    Storage.store("events-" + actId, auth.userId, activityData)
+    val fileId = FileId.parse(actId)
 
-    val content = activityHtmlContent(actId, activityData, session, resp)
+    val activityData = Storage.load[Main.ActivityEvents](fileId.filename, auth.userId).get
+
+    val content = activityHtmlContent(fileId, activityData, session, resp)
 
     <html>
       <head>
@@ -527,7 +560,7 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
       </head>
       <body>
         {bodyHeader(auth)}
-        <a href={activityData.id.link}> {activityData.id.name} </a>
+        {activityData.id.hrefLink}
 
         <form action ="download" method="get">
           <input type="hidden" name="id" value={activityData.id.id.toString}/>
@@ -541,5 +574,94 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
     </html>
   }
 
+
+}
+
+object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityRequestHandler {
+  def saveAsNeeded(activityData: ActivityEvents)(implicit auth: Main.StravaAuthResult) = {
+    activityData.id.id match {
+      case id: FileId.TempId =>
+        // TODO: cleanup obsolete session data
+        Storage.store(id.filename, auth.userId, activityData)
+      case _ =>
+    }
+    activityData
+  }
+
+  override def html(request: Request, resp: Response) = {
+
+    val session = request.session()
+    implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
+
+    val fif = new DiskFileItemFactory()
+    fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
+
+    val upload = new ServletFileUpload(fif)
+
+    val items = upload.getItemIterator(request.raw)
+
+    val itemsIterator = new Iterator[FileItemStream] {
+      def hasNext = items.hasNext
+
+      def next() = items.next
+    }
+
+    val ops = itemsIterator.flatMap { item =>
+      if (item.isFormField) {
+        // expect field name id={FileId}
+        val IdPattern = "id=(.*)".r
+        val id = item.getFieldName match {
+          case IdPattern(idText) =>
+            Some(FileId.parse(idText))
+          case _ =>
+            None
+        }
+        /*
+        //println(item)
+        val is = item.openStream()
+        val itemContent = try {
+          IOUtils.toString(is)
+        } finally {
+          is.close()
+        }
+        */
+        id
+      } else {
+        None
+      }
+    }.toVector
+
+    // TODO: create groups, process each group separately
+    val toMerge = ops.flatMap { op =>
+      Storage.load[Main.ActivityEvents](op.filename, auth.userId)
+    }
+
+
+    if (toMerge.nonEmpty) {
+      val activityData = saveAsNeeded(toMerge.reduceLeft(_ merge _))
+
+      // merged content
+      val content = activityHtmlContent(activityData.id.id, activityData, session, resp)
+
+      <html>
+        <head>
+          <title>Stravamat</title>{headPrefix}{content.head}
+        </head>
+        <body>
+          {bodyHeader(auth)}{activityData.id.hrefLink}{content.body}{bodyFooter}
+        </body>
+      </html>
+    }
+    else {
+      <html>
+        <head>
+          <title>Stravamat</title>{headPrefix}
+        </head>
+        <body>
+          Empty - no activity selected
+        </body>
+      </html>
+    }
+  }
 
 }
