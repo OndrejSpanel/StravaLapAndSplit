@@ -35,7 +35,7 @@ object GetFiles extends DefineRequest("/getFiles") {
       <head>
         {/* allow referer when using redirect to unsafe getSuunto page */}
         <meta name="referrer" content="unsafe-url"/>
-        {headPrefix}<title>Stravamat - select activity</title>
+        {headPrefix}<title>Stravamat - upload files</title>
         <style>
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
           tr.activities:hover {{background-color: #f0f0e0}}

@@ -21,7 +21,7 @@ object GetSuunto extends DefineRequest("/getSuunto") with ActivityRequestHandler
     // display a page, the page will ask the local uploading server to send files
     <html>
       <head>
-        {headPrefix}<title>Stravamat - select activity</title>
+        {headPrefix}<title>Stravamat - upload Suunto files</title>
         <style>
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
           tr.activities:hover {{background-color: #f0f0e0}}

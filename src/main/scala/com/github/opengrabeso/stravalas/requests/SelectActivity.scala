@@ -6,7 +6,7 @@ import DateTimeOps._
 import org.joda.time.{DateTime => ZonedDateTime, Seconds}
 import net.suunto3rdparty.Settings
 
-object SelectActivity extends DefineRequest("/selectActivity") {
+abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
@@ -53,7 +53,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
       <head>
         {/* allow referer when using redirect to unsafe getSuunto page */}
         <meta name="referrer" content="unsafe-url"/>
-        {headPrefix}<title>Stravamat - select activity</title>
+        {headPrefix}<title>Stravamat - select activities to process</title>
         <style>
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
           tr.activities:hover {{background-color: #f0f0e0}}
@@ -179,6 +179,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
           <a href="javascript:;" onClick={getSuuntoLink}>Get from Suunto devices ...</a>
         }
         <a href="getFiles">Upload files...</a>
+        <a href="staging">Staging...</a>
         <hr/>
 
         <h2>Settings</h2>

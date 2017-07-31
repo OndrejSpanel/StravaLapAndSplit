@@ -23,7 +23,7 @@ class ServletRouting extends SparkApplication {
     import requests._
     val handlers: Seq[DefineRequest] = Seq(
       IndexHtml, LogIn, LogOut,
-      SelectActivity, LoadFromStrava, ActivityFromStrava, Upload, GetSuunto, GetFiles,
+      ManageActivities, LoadFromStrava, ActivityFromStrava, Upload, GetSuunto, GetFiles, Staging,
       ActivityPage, ActivityPagePost, Download, UploadToStrava,
 
       Process, CheckUploadStatus,
