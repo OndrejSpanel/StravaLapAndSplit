@@ -12,6 +12,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
   def title: String
   def sources(before: ZonedDateTime): NodeSeq
+  def filterListed(activity: Main.ActivityEvents, strava: Option[Main.ActivityId]) = true
 
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
@@ -24,6 +25,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
     <script>document.write({xml.Unparsed(toRun)})</script>
   }
+
 
   override def html(request: Request, resp: Response) = {
     val session = request.session()
@@ -48,7 +50,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
     // a significant overlap means a match
     val recentToStrava = recentActivities.map { r =>
       r -> stravaActivities.find(_ isMatching r.id)
-    }
+    }.filter((filterListed _).tupled)
 
     // detect activity groups - any overlapping activities should be one group, unless
     //val activityGroups =
@@ -201,7 +203,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
 
 
-        <h2>Staging</h2>
+        <h2>Activities</h2>
         <form id="process-form" action="process" method="post" enctype="multipart/form-data">
           <table class="activities">
             {

@@ -7,7 +7,7 @@ import org.joda.time.{DateTime => ZonedDateTime, Seconds}
 import net.suunto3rdparty.Settings
 
 object ManageActivities extends SelectActivity("/selectActivity") {
-  override def title = "manage stored activities"
+  override def title = "select activities to process"
 
   override def sources(before: ZonedDateTime) = {
     <div>
@@ -22,4 +22,9 @@ object ManageActivities extends SelectActivity("/selectActivity") {
       <hr/>
     </div>
   }
+
+  override def filterListed(activity: Main.ActivityEvents, strava: Option[Main.ActivityId]) = {
+    strava.isEmpty
+  }
+
 }
