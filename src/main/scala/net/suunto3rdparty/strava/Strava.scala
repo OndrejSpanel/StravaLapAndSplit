@@ -11,7 +11,7 @@ import resource._
 import Util._
 import com.github.opengrabeso.stravalas.RequestUtils
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 case class StravaAPIParams(appId: Int, clientSecret: String, code: Option[String])
 
@@ -75,7 +75,7 @@ class StravaAPI(authString: String) {
   /*
     * @return upload id (use to check status with uploads/:id)
     * */
-  def upload(move: Move): Option[Long] = {
+  def upload(move: Move): Try[Long] = {
     val fitFormat = true
     if (fitFormat) {
       val moveBytes = fit.Export.toBuffer(move)
@@ -93,7 +93,7 @@ class StravaAPI(authString: String) {
     request.execute()
   }
 
-  def uploadRawFileGz(moveBytesOriginal: Array[Byte], fileType: String): Option[Long] = {
+  def uploadRawFileGz(moveBytesOriginal: Array[Byte], fileType: String): Try[Long] = {
 
     val baos = new ByteArrayOutputStream()
     managed(new GZIPOutputStream(baos)).foreach(_.write(moveBytesOriginal))
@@ -104,7 +104,7 @@ class StravaAPI(authString: String) {
   /**
   * @return Either[id, pending] pending is true if the result is not definitive yet
     */
-  def activityIdFromUploadId(id: Long): Either[Long, Boolean] = {
+  def activityIdFromUploadId(id: Long): Try[Option[Long]] = {
     try {
       val request = buildGetRequest(buildURI(s"uploads/$id"), authString, "")
       request.getHeaders.set("Expect",Array("100-continue"))
@@ -115,26 +115,28 @@ class StravaAPI(authString: String) {
 
       val activityId = (Option(resultJson.path("status").textValue), Option(resultJson.path("activity_id").numberValue)) match {
         case (Some(status), _) if status == "Your activity is still being processed." =>
-          Right(true)
+          Success(None)
         case (_, Some(actId)) if actId.longValue != 0 =>
-          Left(actId.longValue)
+          Success(Some(actId.longValue))
+        case (Some(status), _)  =>
+          Failure(new UnsupportedOperationException(status))
         case _ =>
-          Right(false)
+          Failure(new UnsupportedOperationException)
       }
       activityId
     } catch {
       case ex: HttpResponseException if ex.getStatusCode == 404 =>
-        Right(false)
+        Failure(ex)
       case ex: Exception =>
         ex.printStackTrace()
-        Right(false)
+        Failure(ex)
     }
 
   }
 
-  def uploadRawFile(sendBytes: Array[Byte], fileType: String): Option[Long] = {
+  def uploadRawFile(sendBytes: Array[Byte], fileType: String): Try[Long] = {
 
-    try {
+    Try {
       // see https://strava.github.io/api/v3/uploads/ -
       val body = new MultipartContent()
 
@@ -144,17 +146,17 @@ class StravaAPI(authString: String) {
           ByteArrayContent.fromString("text/plain", value)
         )
       }
-      def binaryPart(name: String, filename: String) = {
+      def binaryPart(name: String, filename: String, bytes: Array[Byte]) = {
         new MultipartContent.Part(
           new HttpHeaders().set("Content-Disposition", s"""attachment; name="$name"; filename="$filename""""),
-          new ByteArrayContent("application/octet-stream", sendBytes)
+          new ByteArrayContent("application/octet-stream", bytes)
         )
       }
 
       body.addPart(textPart("data_type", fileType))
       body.addPart(textPart("private", "1"))
 
-      body.addPart(binaryPart("file", "file.fit.gz"))
+      body.addPart(binaryPart("file", "file." + fileType, sendBytes))
 
       val request = buildPostRequest(buildURI("uploads"), authString, "", body)
       request.getHeaders.set("Expect",Array("100-continue"))
@@ -167,15 +169,7 @@ class StravaAPI(authString: String) {
 
       val resultJson = jsonMapper.readTree(resultString)
       val id = Option(resultJson.path("id").numberValue)
-      id.map(_.longValue)
-    } catch {
-      case ex: HttpResponseException =>
-        // we expect to receive error 400 - duplicate activity
-        println(ex.getMessage)
-        None
-      case ex: Exception =>
-        ex.printStackTrace()
-        None
+      id.get.longValue
     }
   }
 

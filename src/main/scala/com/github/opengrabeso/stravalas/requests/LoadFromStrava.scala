@@ -10,7 +10,7 @@ object LoadFromStrava extends DefineRequest("/loadFromStrava") {
     val activities = Main.stravaActivitiesNotStaged(auth)
     <html>
       <head>
-        {headPrefix}<title>Stravamat - select activity</title>
+        {headPrefix}<title>Stravamat - get activities from Strava</title>
         <style>
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
           tr.activities:hover {{background-color: #f0f0e0}}

@@ -23,13 +23,13 @@ object Move {
     }
   }
 
-  def convertMap(streamSeq: Seq[DataStream[_]]): Map[Class[_], DataStream[_]] = {
+  def convertMap(streamSeq: Seq[DataStream]): Map[Class[_], DataStream] = {
     streamSeq.map(s => s.streamType -> s).toMap
   }
 }
 
-case class Move(fileName: Set[String], header: MoveHeader, streams: Map[Class[_], DataStream[_]]) {
-  def this(fileName: Set[String], header: MoveHeader, streamSeq: DataStream[_]*) = {
+case class Move(fileName: Set[String], header: MoveHeader, streams: Map[Class[_], DataStream]) {
+  def this(fileName: Set[String], header: MoveHeader, streamSeq: DataStream*) = {
     this(fileName, header, Move.convertMap(streamSeq))
   }
 
@@ -37,12 +37,12 @@ case class Move(fileName: Set[String], header: MoveHeader, streams: Map[Class[_]
     copy(streams = streams.mapValues(_.timeOffset(bestOffset)))
   }
 
-  def stream[T <: DataStream[_]: ClassTag]: T = streams(classTag[T].runtimeClass).asInstanceOf[T]
+  def stream[T <: DataStream: ClassTag]: T = streams(classTag[T].runtimeClass).asInstanceOf[T]
 
-  def streamGet[T <: DataStream[_]: ClassTag]: Option[T] = streams.get(classTag[T].runtimeClass).map(_.asInstanceOf[T])
+  def streamGet[T <: DataStream: ClassTag]: Option[T] = streams.get(classTag[T].runtimeClass).map(_.asInstanceOf[T])
 
-  private def startTimeOfStreams(ss: Iterable[DataStream[_]]) = ss.flatMap(_.startTime).minOpt
-  private def endTimeOfStreams(ss: Iterable[DataStream[_]]) = ss.flatMap(_.endTime).maxOpt
+  private def startTimeOfStreams(ss: Iterable[DataStream]) = ss.flatMap(_.startTime).minOpt
+  private def endTimeOfStreams(ss: Iterable[DataStream]) = ss.flatMap(_.endTime).maxOpt
 
   val startTime: Option[ZonedDateTime] = startTimeOfStreams(streams.values)
   val endTime: Option[ZonedDateTime] = endTimeOfStreams(streams.values)
@@ -66,7 +66,7 @@ case class Move(fileName: Set[String], header: MoveHeader, streams: Map[Class[_]
   
   def toLog: String = streams.values.map(_.toLog).mkString(", ")
 
-  def addStream[Item](streamSource: Move, stream: DataStream[Item]): Move = {
+  def addStream(streamSource: Move, stream: DataStream): Move = {
     copy(streams = streams + (stream.streamType -> stream), fileName = fileName ++ streamSource.fileName, header = header.merge(streamSource.header))
   }
 

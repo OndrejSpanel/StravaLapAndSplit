@@ -28,7 +28,7 @@ class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
       gps.stream.get(relTime(t, time + 2)) shouldNot be(None)
 
       // verify even the dist stream is still missing the data
-      val distStream = SortedMap(gps.distStream:_*)
+      val distStream = gps.distStream
       distStream.get(relTime(t, time + 0)) shouldNot be(None)
       distStream.get(relTime(t, time + 1)) should be(None)
       distStream.get(relTime(t, time + 2)) shouldNot be(None)

@@ -14,14 +14,14 @@ object PutDigest extends DefineRequest.Post("/putDigest") {
     val digest = request.body()
 
     // check if such file / digest is already known and report back
-    if (Storage.check(auth.userId, path, digest)) {
+    if (Storage.check(Main.namespace.stage, auth.userId, path, digest)) {
       println(s"Received matching digest for $path")
       resp.status(204) // already present
     } else {
       println(s"Received non-matching digest for $path")
 
       // debugging opportunity
-      Storage.check(auth.userId, path, digest)
+      Storage.check(Main.namespace.stage, auth.userId, path, digest)
 
       resp.status(200) // not present / not matching - send full file
     }

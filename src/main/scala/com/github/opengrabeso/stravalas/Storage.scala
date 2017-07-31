@@ -17,8 +17,8 @@ object Storage {
   private def fileId(filename: String) = new GcsFilename(bucket, filename)
 
   // user id needed so that files from different users are not conflicting
-  private def userFilename(filename: String, userId: String) = {
-    userId + "/" + filename
+  private def userFilename(namespace: String, filename: String, userId: String) = {
+    userId + "/" + namespace + "/" + filename
   }
 
   private final val gcsService = GcsServiceFactory.createGcsService(
@@ -45,32 +45,38 @@ object Storage {
     Channels.newInputStream(readChannel)
   }
 
-  def store(filename: String, userId: String, obj: AnyRef, metadata: (String, String)*) = {
+  def store(namespace: String, filename: String, userId: String, obj: AnyRef, metadata: (String, String)*) = {
     //println(s"store '$filename' - '$userId'")
-    val os = output(userFilename(filename, userId), metadata)
+    val os = output(userFilename(namespace, filename, userId), metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj)
     oos.close()
   }
 
-  def load[T : ClassTag](filename: String, userId: String): Option[T] = {
+  def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
     //println(s"load '$filename' - '$userId'")
-    val is = input(userFilename(filename, userId))
-    val ois = new ObjectInputStream(is)
-    val read = ois.readObject()
-    read match {
-      case r: T => Some(r)
-      case _ => None// handles readObject returning null as well
+    val is = input(userFilename(namespace, filename, userId))
+    try {
+      val ois = new ObjectInputStream(is)
+      val read = ois.readObject()
+      read match {
+        case r: T => Some(r)
+        case _ => None // handles readObject returning null as well
+      }
+    } catch {
+      case ex: FileNotFoundException =>
+        // reading a file which does not exist - return null
+        None
     }
   }
 
-  def delete(filename: String, userId: String): Boolean = {
-    val toDelete = userFilename(filename, userId)
+  def delete(namespace: String, filename: String, userId: String): Boolean = {
+    val toDelete = userFilename(namespace, filename, userId)
     gcsService.delete(fileId(toDelete))
   }
 
-  def enumerate(userId: String): Iterable[String] = {
-    val prefix = userFilename("", userId)
+  def enumerate(namespace: String, userId: String): Iterable[String] = {
+    val prefix = userFilename(namespace, "", userId)
     val options = new ListOptions.Builder().setPrefix(prefix).build()
     val list = gcsService.list(bucket, options).asScala.toIterable
     for (i <- list) yield {
@@ -78,7 +84,8 @@ object Storage {
       val name = i.getName.drop(prefix.length)
       val m = try {
         val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
-        Some(md.getOptions.getUserMetadata)
+        if (md != null) Some(md.getOptions.getUserMetadata)
+        else None
       } catch {
         case e: Exception =>
           e.printStackTrace()
@@ -89,9 +96,9 @@ object Storage {
     }
   }
 
-  def check(userId: String, path: String, digest: String): Boolean = {
+  def check(namespace: String, userId: String, path: String, digest: String): Boolean = {
 
-    val prefix = userFilename(path, userId)
+    val prefix = userFilename(namespace, path, userId)
     val options = new ListOptions.Builder().setPrefix(prefix).build()
     val found = gcsService.list(bucket, options).asScala.toIterable.headOption
 

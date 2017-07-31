@@ -1,8 +1,10 @@
 package net.suunto3rdparty
 package moveslink
 
+import java.io.File
+
 import org.joda.time.{DateTime => ZonedDateTime, _}
-import org.joda.time.format.DateTimeFormat
+import org.joda.time.format.{DateTimeFormat, PeriodFormat, PeriodFormatter}
 import java.util.regex.Pattern
 
 import scala.xml._
@@ -16,7 +18,7 @@ object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)
   private val dateFormat = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(DateTimeZone.getDefault)
 
-  def parseSamples(fileName: String, header: Header, samples: Node): Move = {
+  def parseSamples(fileName: String, header: Header, samples: Node, maxHR: Int): Move = {
     val distanceStr = (samples \ "Distance")(0).text
     val heartRateStr = (samples \ "HR")(0).text
     def insertZeroHead(strs: Seq[String]) = {
@@ -43,7 +45,7 @@ object XMLParser {
 
     val validatedHR = heartRateSamples.map {
       hr =>
-        if (hr > Settings.maxHR) None // TODO: remove neighbouring samples as well
+        if (hr > maxHR) None // TODO: remove neighbouring samples as well
         else Some(hr)
     }
 
@@ -115,7 +117,7 @@ object XMLParser {
     timeToUTC(ZonedDateTime.parse(timeText, dateFormat))
   }
 
-  def parseXML(fileName: String, document: Elem): Seq[Try[Move]] = {
+  def parseXML(fileName: String, document: Elem, maxHR: Int): Seq[Try[Move]] = {
 
     val deviceNodes = document \ "Device" \ "FullName"
 
@@ -146,10 +148,10 @@ object XMLParser {
 
         val laps = lapDurations.scanLeft(header.startTime) { (time, duration) => time.plus(duration)}
 
-        val suuntoMove = parseSamples(fileName, header, samples)
+        val suuntoMove = parseSamples(fileName, header, samples, maxHR)
 
         val moveWithLaps = if (laps.nonEmpty) {
-          suuntoMove.addStream(suuntoMove, DataStreamLap(SortedMap(laps.map(time => time -> "Manual"): _*)))
+          suuntoMove.addStream(suuntoMove, new DataStreamLap(SortedMap(laps.map(time => time -> "Manual"): _*)))
         } else suuntoMove
         Success(moveWithLaps)
       }

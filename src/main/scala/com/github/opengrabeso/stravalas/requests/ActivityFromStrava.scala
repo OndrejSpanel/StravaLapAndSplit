@@ -17,7 +17,7 @@ object ActivityFromStrava extends DefineRequest("/activityFromStrava") with Acti
         Main.getEventsFrom(auth.token, idNum.toString)
     }
 
-    Storage.store(stravaId.filename, auth.userId, activityData, "digest" -> activityData.id.digest)
+    Storage.store(Main.namespace.stage, stravaId.filename, auth.userId, activityData, "digest" -> activityData.id.digest)
 
     resp.redirect(s"/selectActivity")
     Nil

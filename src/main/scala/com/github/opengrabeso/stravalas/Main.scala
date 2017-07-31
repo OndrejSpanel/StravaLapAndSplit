@@ -7,7 +7,7 @@ import java.util.Locale
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
-import org.joda.time.{Period, PeriodType, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Interval, Period, PeriodType, Seconds, DateTime => ZonedDateTime}
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 
 import scala.collection.JavaConverters._
@@ -83,7 +83,7 @@ object Main {
     headers.put("Authorization:", s"Bearer $authToken")
   }
 
-  @SerialVersionUID(10L)
+  @SerialVersionUID(11L)
   case class ActivityId(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
 
     override def toString = s"${id.toString} - $name ($startTime..$endTime)"
@@ -91,6 +91,8 @@ object Main {
     def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
 
     val duration: Int = Seconds.secondsBetween(startTime, endTime).getSeconds
+
+    def timeOffset(offset: Int): ActivityId = copy(startTime = startTime plusSeconds offset, endTime = endTime plusSeconds offset)
 
 
     def isMatching(that: ActivityId): Boolean = {
@@ -161,16 +163,28 @@ object Main {
     stravaActivities diff storedActivities
   }
 
+  object namespace {
+    // stage are data visible to the user
+    val stage = "stage"
+    // upload - invisible data, used to hand data to the background upload tasks
+    def upload(session: Long) = "upload-" + session.toString
+    // upload results - report upload status and resulting id
+    def uploadResult(session: Long) = "upload-result-" + session.toString
+    // user settings
+    val settings = "settings"
+  }
+
   def stagedActivities(auth: StravaAuthResult): Seq[ActivityEvents] = {
     val storedActivities = {
-      val d = Storage.enumerate(auth.userId)
+      val d = Storage.enumerate(namespace.stage, auth.userId)
       d.flatMap { a =>
         try {
-          val act = Storage.load[Main.ActivityEvents](a, auth.userId)
+          val act = Storage.load[Main.ActivityEvents](namespace.stage, a, auth.userId)
           act
         } catch {
           case x: java.io.InvalidClassException => // bad serialVersionUID
-            println(s"load error ${x.getMessage}")
+            println(s"load error ${x.getMessage} - $a")
+            Storage.delete(namespace.stage, a, auth.userId)
             None
           case x: Exception =>
             x.printStackTrace()
@@ -185,9 +199,23 @@ object Main {
   case object NoActivity
 
   @SerialVersionUID(10L)
-  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
+
+    def streams = {
+      if (hasGPS) dist +: gps +: attributes
+      else dist +: attributes
+    }
+
+    def startTime = id.startTime
+    def endTime = id.endTime
+    def duration: Double = (endTime.getMillis - startTime.getMillis).toDouble / 1000
+
+    def isAlmostEmpty(minDurationSec: Int) = {
+      !streams.exists(_.stream.nonEmpty) || endTime < startTime.plusSeconds(minDurationSec) || streams.exists(x => x.isAlmostEmpty)
+    }
 
     override def toString = id.toString
+    def toLog: String = streams.map(_.toLog).mkString(", ")
 
     assert(events.forall(_.stamp >= id.startTime))
     assert(events.forall(_.stamp <= id.endTime))
@@ -210,6 +238,7 @@ object Main {
     def lon: Double = if (hasGPS) (begPos._2 + endPos._2) * 0.5 else 0.0
 
     def hasGPS: Boolean = gps.stream.nonEmpty
+    def hasAttributes: Boolean = attributes.exists(_.stream.nonEmpty)
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
@@ -251,7 +280,9 @@ object Main {
       val endTime = Seq(id.endTime, that.id.endTime).max
 
       // TODO: unique ID (merge or hash input ids?)
-      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, id.sportName, id.distance + that.id.distance)
+      val sportName = if (Event.sportPriority(id.sportName) < Event.sportPriority(that.id.sportName)) id.sportName else that.id.sportName
+
+      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, sportName, id.distance + that.id.distance)
 
       val eventsAndSports = (events ++ that.events).sortBy(_.stamp)
 
@@ -347,6 +378,40 @@ object Main {
       }
     }
 
+    def span(time: ZonedDateTime): (Option[ActivityEvents], Option[ActivityEvents]) = {
+
+      val (takeDist, leftDist) = dist.span(time)
+      val (takeGps, leftGps) = gps.span(time)
+      val splitAttributes = attributes.map(_.span(time))
+
+      val takeAttributes = splitAttributes.map(_._1)
+      val leftAttributes = splitAttributes.map(_._2)
+
+      val (takeEvents, leftEvents) = events.span(_.stamp < time)
+
+      val (takeBegTime, takeEndTime) = (startTime, time)
+
+      val (leftBegTime, leftEndTime) = (time, endTime)
+
+      val takeMove = if (takeBegTime < takeEndTime) {
+        Some(ActivityEvents(id.copy(startTime = takeBegTime, endTime = takeEndTime), takeEvents, takeDist, takeGps, takeAttributes))
+      } else None
+      val leftMove = if (leftBegTime < leftEndTime) {
+        Some(ActivityEvents(id.copy(startTime = leftBegTime, endTime = leftEndTime), leftEvents, leftDist, leftGps, leftAttributes))
+      } else None
+
+      (takeMove, leftMove)
+    }
+
+    def timeOffset(offset: Int): ActivityEvents = {
+      copy(
+        id = id.timeOffset(offset),
+        events = events.map(_.timeOffset(offset)),
+        gps = gps.timeOffset(offset),
+        dist = dist.timeOffset(offset),
+        attributes = attributes.map(_.timeOffset(offset)))
+    }
+
   }
 
   trait ActivityStreams {
@@ -354,9 +419,32 @@ object Main {
 
     def latlng: DataStreamGPS
 
-    def attributes: Seq[DataStream[_]]
+    def attributes: Seq[DataStream]
   }
 
+  def detectSportBySpeed(speedStats: (Double, Double, Double), defaultName: Event.Sport) = {
+    val (avg, fast, max) = speedStats
+    def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): Event.Sport = {
+      if (avg <= avgRun && fast <= fastRun && max <= maxRun) Event.Sport.Run
+      else Event.Sport.Ride
+    }
+
+    def paceToKmh(pace: Double) = 60 / pace
+
+    def kmh(speed: Double) = speed
+
+    val sport = defaultName match {
+      case Event.Sport.Run =>
+        // marked as run, however if clearly contradicting evidence is found, make it ride
+        detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
+      case Event.Sport.Ride =>
+        detectSport(kmh(20), kmh(17), kmh(15)) // 25 - 18 km/h possible
+      case Event.Sport.Workout =>
+        detectSport(paceToKmh(3), paceToKmh(4), paceToKmh(4)) // 3 - 4 min/km possible
+      case s => s
+    }
+    sport
+  }
 
   def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: Seq[ZonedDateTime], segments: Seq[Event]): ActivityEvents = {
 
@@ -365,15 +453,15 @@ object Main {
     val distStream = if (act.latlng.stream.nonEmpty) {
       act.latlng.distStream
     } else {
-      DataStreamGPS.distStreamFromRouteStream(act.dist.stream.toSeq)
+      DataStreamGPS.distStreamFromRouteStream(act.dist.stream)
     }
 
     val smoothingSec = 10
     val speedStream = DataStreamGPS.computeSpeedStream(distStream, smoothingSec)
-    val speedMap = SortedMap(speedStream:_*)
+    val speedMap = speedStream
 
     // integrate route distance back from smoothed speed stream so that we are processing consistent data
-    val routeDistance = SortedMap(DataStreamGPS.routeStreamFromSpeedStream(speedStream):_*)
+    val routeDistance = DataStreamGPS.routeStreamFromSpeedStream(speedStream)
 
     // find pause candidates: times when smoothed speed is very low
     val speedPauseMax = 0.7
@@ -383,7 +471,7 @@ object Main {
     type PauseStream = Seq[(ZonedDateTime, ZonedDateTime, Double)]
     val pauseSpeeds: PauseStream = (speedStream zip speedStream.drop(1)).collect {
       case ((t1, s1), (t2, s2)) if s1 < speedPauseMax && s2< speedPauseMax => (t1, t2, s1)
-    }
+    }.toSeq
     // aggregate pause intervals - merge all
     def mergePauses(pauses: PauseStream, done: PauseStream): PauseStream = {
       pauses match {
@@ -477,27 +565,10 @@ object Main {
 
         val spd = speedDuringInterval(pBeg, pEnd)
 
-        val (avg, fast, max) = DataStreamGPS.speedStats(spd.toSeq)
+        val speedStats = DataStreamGPS.speedStats(spd)
 
-        def paceToKmh(pace: Double) = 60 / pace
+        val sport = detectSportBySpeed(speedStats, actId.sportName)
 
-        def kmh(speed: Double) = speed
-
-        def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): Event.Sport = {
-          if (avg <= avgRun && fast <= fastRun && max <= maxRun) Event.Sport.Run
-          else Event.Sport.Ride
-        }
-
-        val sport = actId.sportName match {
-          case Event.Sport.Run =>
-            // marked as run, however if clearly contradicting evidence is found, make it ride
-            detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
-          case Event.Sport.Ride =>
-            detectSport(kmh(20), kmh(17), kmh(15)) // 25 - 18 km/h possible
-          case Event.Sport.Workout =>
-            detectSport(paceToKmh(3), paceToKmh(4), paceToKmh(4)) // 3 - 4 min/km possible
-          case s => s
-        }
         Some(pBeg, sport)
       }
     }
@@ -594,11 +665,11 @@ object Main {
         getAttribByName("heartrate")
       )
 
-      val dist = DataStreamDist(SortedMap(timeValues zip distValues:_*))
-      val latlng = DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
+      val dist = new DataStreamDist(SortedMap(timeValues zip distValues:_*))
+      val latlng = new DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
       val attributes =  attributeValues.flatMap { case (name, values) =>
           name match {
-            case "heartrate" => Some(DataStreamHR(SortedMap(timeValues zip values:_*)))
+            case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
             case _ => None
           }
       }

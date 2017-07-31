@@ -4,6 +4,7 @@ package requests
 import java.io.{ByteArrayInputStream, InputStream}
 
 import com.github.opengrabeso.stravalas.Main.NoActivity
+import net.suunto3rdparty.Settings
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
@@ -53,7 +54,8 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
       case "sml" =>
         loadSml(name, digest, stream).toSeq.flatMap(loadFromMove(name, digest, _))
       case "xml" =>
-        loadXml(name, digest, stream).zipWithIndex.flatMap { case (act,index) =>
+        val maxHR = Settings(auth.userId).maxHR
+        loadXml(name, digest, stream, maxHR).zipWithIndex.flatMap { case (act,index) =>
           // some activities (Quest) have more parts, each part needs a distinct name
           val nameWithIndex = if (index > 0) s"$name-$index" else name
           loadFromMove(nameWithIndex, digest, act)
@@ -63,10 +65,10 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
     }
     if (actData.nonEmpty) {
       for (act <- actData) {
-        Storage.store(act.id.id.filename, auth.userId, act, "digest" -> digest)
+        Storage.store(Main.namespace.stage, act.id.id.filename, auth.userId, act, "digest" -> digest)
       }
     } else {
-      Storage.store(name, auth.userId, NoActivity, "digest" -> digest)
+      Storage.store(Main.namespace.stage, name, auth.userId, NoActivity, "digest" -> digest)
     }
   }
 }

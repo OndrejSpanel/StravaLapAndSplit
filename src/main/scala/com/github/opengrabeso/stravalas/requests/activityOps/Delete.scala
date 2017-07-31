@@ -15,7 +15,7 @@ object Delete extends DefineRequest.Post("/delete") {
 
     val fid = FileId.parse(id)
     // delete from staging area only, not from the uploaded (will be uploaded again unless files are deleted)
-    if (Storage.delete(fid.filename, auth.userId)) {
+    if (Storage.delete(Main.namespace.stage, fid.filename, auth.userId)) {
 
     } else {
       resp.status(404)

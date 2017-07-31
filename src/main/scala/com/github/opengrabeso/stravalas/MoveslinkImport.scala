@@ -33,24 +33,24 @@ object MoveslinkImport {
 
     def distFromHRStream(hr: DataStreamHRWithDist): DataStreamDist = {
       val stream = hr.mapStreamValues(_.dist)
-      DataStreamDist(stream)
+      new DataStreamDist(stream)
     }
 
     def hrFromHRStream(hr: DataStreamHRWithDist): DataStreamHR = {
       val stream = hr.mapStreamValues(_.hr)
-      DataStreamHR(stream)
+      new DataStreamHR(stream)
     }
 
     val distStream = move.streamGet[DataStreamDist] orElse move.streamGet[DataStreamHRWithDist].map(distFromHRStream)
 
     val laps = move.streamGet[DataStreamLap]
 
-    val gps = move.streamGet[DataStreamGPS].getOrElse(DataStreamGPS(SortedMap.empty[ZonedDateTime, GPSPoint]))
+    val gps = move.streamGet[DataStreamGPS].getOrElse(new DataStreamGPS(SortedMap.empty[ZonedDateTime, GPSPoint]))
 
-    val dist = distStream.getOrElse(DataStreamDist(SortedMap.empty[ZonedDateTime, Double]))
+    val dist = distStream.getOrElse(new DataStreamDist(SortedMap.empty[ZonedDateTime, Double]))
 
     // TODO: other attributes
-    val hrStream = move.streamGet[DataStreamHRWithDist].map(hrFromHRStream).getOrElse(DataStreamHR(SortedMap.empty[ZonedDateTime, Int]))
+    val hrStream = move.streamGet[DataStreamHRWithDist].map(hrFromHRStream).getOrElse(new DataStreamHR(SortedMap.empty[ZonedDateTime, Int]))
 
     for {
       startTime <- move.startTime
@@ -93,10 +93,10 @@ object MoveslinkImport {
     moveslink2.XMLParser.parseXML(fileName, dev).toOption
   }
 
-  def loadXml(fileName: String, digest: String, stream: InputStream): Seq[Move] = {
+  def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int): Seq[Move] = {
     val doc = XML.load(stream)
 
-    moveslink.XMLParser.parseXML(fileName, doc).flatMap(_.toOption)
+    moveslink.XMLParser.parseXML(fileName, doc, maxHR).flatMap(_.toOption)
   }
 
 }

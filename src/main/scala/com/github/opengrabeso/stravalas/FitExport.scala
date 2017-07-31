@@ -48,8 +48,8 @@ object FitExport {
 
     def encodeGPS(msg: RecordMesg, gps: GPSPoint) = {
       val longLatScale = (1L << 31).toDouble / 180
-      msg.setPositionLat((gps.latitude * longLatScale).toInt)
       msg.setPositionLong((gps.longitude * longLatScale).toInt)
+      msg.setPositionLat((gps.latitude * longLatScale).toInt)
       gps.elevation.foreach(e => msg.setAltitude(e.toFloat))
 
     }
@@ -128,6 +128,17 @@ object FitExport {
 
     val timeBeg = allEvents.head.time
     val timeEnd = allEvents.last.time
+
+    def encodeHeader(encoder: Encoder): Unit = {
+      //Generate FileIdMessage
+      val fileIdMesg = new FileIdMesg
+      fileIdMesg.setManufacturer(Manufacturer.SUUNTO)
+      fileIdMesg.setType(fit.File.ACTIVITY)
+      fileIdMesg.setProduct(1) // TODO: detect for real
+      encoder.onMesg(fileIdMesg)
+    }
+
+    encodeHeader(encoder)
 
     LapAutoClose.closeLap(timeBeg)
     allEvents.foreach(_.encode(encoder))

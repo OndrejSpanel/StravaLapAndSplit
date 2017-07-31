@@ -548,7 +548,7 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
 
     val fileId = FileId.parse(actId)
 
-    val activityData = Storage.load[Main.ActivityEvents](fileId.filename, auth.userId).get
+    val activityData = Storage.load[Main.ActivityEvents](Main.namespace.stage, fileId.filename, auth.userId).get
 
     val content = activityHtmlContent(fileId, activityData, session, resp)
 
@@ -582,7 +582,8 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
     activityData.id.id match {
       case id: FileId.TempId =>
         // TODO: cleanup obsolete session data
-        Storage.store(id.filename, auth.userId, activityData)
+        // TODO: use a different namespace to save processed data
+        Storage.store(Main.namespace.stage, id.filename, auth.userId, activityData)
       case _ =>
     }
     activityData
@@ -633,7 +634,7 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
 
     // TODO: create groups, process each group separately
     val toMerge = ops.flatMap { op =>
-      Storage.load[Main.ActivityEvents](op.filename, auth.userId)
+      Storage.load[Main.ActivityEvents](Main.namespace.stage, op.filename, auth.userId)
     }
 
 
