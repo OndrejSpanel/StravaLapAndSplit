@@ -3,10 +3,15 @@ package requests
 
 import spark.{Request, Response}
 import DateTimeOps._
-import org.joda.time.{DateTime => ZonedDateTime, Seconds}
+import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 import net.suunto3rdparty.Settings
 
+import scala.xml.NodeSeq
+
 abstract class SelectActivity(name: String) extends DefineRequest(name) {
+
+  def title: String
+  def sources(before: ZonedDateTime): NodeSeq
 
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
@@ -53,7 +58,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
       <head>
         {/* allow referer when using redirect to unsafe getSuunto page */}
         <meta name="referrer" content="unsafe-url"/>
-        {headPrefix}<title>Stravamat - select activities to process</title>
+        {headPrefix}<title>Stravamat - {title}</title>
         <style>
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
           tr.activities:hover {{background-color: #f0f0e0}}
@@ -171,16 +176,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
       <body>
         {bodyHeader(auth)}
 
-        <h2>Data sources</h2>
-        <a href="loadFromStrava">Load from Strava ...</a>
-        {
-          /* getSuunto is peforming cross site requests to the local server, this cannot be done on a secure page */
-          val getSuuntoLink = s"window.location.assign(unsafe('getSuunto${s"?since=$before"}'))"
-          <a href="javascript:;" onClick={getSuuntoLink}>Get from Suunto devices ...</a>
-        }
-        <a href="getFiles">Upload files...</a>
-        <a href="staging">Staging...</a>
-        <hr/>
+        {sources(before)}
 
         <h2>Settings</h2>
         <table>
