@@ -8,22 +8,9 @@ import net.suunto3rdparty.Settings
 
 object SelectActivity extends DefineRequest("/selectActivity") {
 
-  object ActivityAction extends Enumeration {
-    type ActivityAction = Value
-    val ActUpload, ActMerge, ActIgnore = Value
-  }
-
-  import ActivityAction._
-
-  val displayActivityAction = Map(
-    ActUpload -> "Upload",
-    ActMerge -> "Merge with above",
-    ActIgnore -> "Ignore"
-  )
-
-  def htmlActivityAction(id: FileId, types: Seq[ActivityAction], action: ActivityAction) = {
+  def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
-    <input type="checkbox" name={s"id=$idString"} checked={if (action!=ActIgnore) "true" else null}></input>
+    <input type="checkbox" name={s"id=$idString"} checked={if (include) "true" else null}></input>
   }
 
   def jsResult(func: String) = {
@@ -61,8 +48,6 @@ object SelectActivity extends DefineRequest("/selectActivity") {
     // detect activity groups - any overlapping activities should be one group, unless
     //val activityGroups =
 
-    val actions = ActivityAction.values.toSeq
-    var ignored = true
     val settings = Settings(auth.userId)
     <html>
       <head>
@@ -228,8 +213,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
 
               for ((actEvents, actStrava) <- recentToStrava) yield {
                 val act = actEvents.id
-                val ignored = mostRecentStrava.exists(_ >= actEvents.id.startTime)
-                val action = if (ignored) ActIgnore else ActUpload
+                val ignored = mostRecentStrava.exists(_ > actEvents.id.endTime)
                 // once any activity is present on Strava, do not offer upload by default any more
                 // (if some earlier is not present, it was probably already uploaded and deleted)
                 <tr>
@@ -241,7 +225,7 @@ object SelectActivity extends DefineRequest("/selectActivity") {
                   <td>{act.hrefLink}</td>
                   <td>{Main.displayDistance(act.distance)} km</td>
                   <td>{Main.displaySeconds(act.duration)}</td>
-                  <td>{htmlActivityAction(act.id, actions, action)}</td>
+                  <td>{htmlActivityAction(act.id, !ignored)}</td>
                   <td>{actStrava.fold(<div>{act.id.toString}</div>)(_.hrefLink)}</td>
                 </tr>
               }
