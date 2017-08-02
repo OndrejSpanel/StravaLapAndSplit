@@ -2,19 +2,62 @@ package com.github.opengrabeso.stravalas
 package requests
 
 import java.net.URLEncoder
-import javax.servlet.http.HttpServletResponse
 
 import spark.{Request, Response}
 
 import scala.util.Try
+import scala.xml.Elem
 
 object PushStart extends DefineRequest("/push-start") with ActivityRequestHandler {
-  private def retryLogin(resp: Response): Unit = {
+
+  override def urlPrefix = "push-"
+
+  private def retryLogin(request: Request, resp: Response): Elem = {
     resp.cookie("authCode", "", 0) // delete the cookie
-    resp.redirect("/", HttpServletResponse.SC_MOVED_TEMPORARILY)
-    // TODO: perform the OAuth login, once done, report to the push application local server
-    ???
-    //loginHtml(request, resp)
+    <html>
+      <head>
+        {headPrefix}
+        <title>Stravamat</title>
+      </head>
+      <body>
+        {
+          val hostname = request.host()
+          val scheme = request.scheme()
+          val secret = Main.secret
+          val clientId = secret.appId
+          val serverUri = scheme + "://" + hostname // Spark hostname seems to include port if needed
+          val uri = "https://www.strava.com/oauth/authorize?"
+          val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/push-login&scope=write,view_private&approval_prompt=force"
+          <h3>Work in progress, use at your own risk.</h3>
+            <p>
+              Automated uploading and processing of Suunto data to Strava
+            </p>
+            <h4>Working</h4>
+            <ul>
+              <li>Merges Quest and GPS Track Pod data</li>
+              <li>Splits GPS data as needed between Quest activities</li>
+              <li>Corrects quest watch time inaccuracies</li>
+            </ul>
+            <h4>Planned (not working yet)</h4>
+            <ul>
+              <li>Edit lap information</li>
+              <li>Show activity map</li>
+              <li>Merge or split activities</li>
+            </ul> :+ {
+            if (!clientId.isEmpty) {
+              <a href={action}>
+                <img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"></img>
+              </a>
+            } else {
+              <p>Error:
+                {secret.error}
+              </p>
+            }
+          }
+        }
+        {bodyFooter}
+      </body>
+    </html>
   }
 
   def html(req: Request, resp: Response) = {
@@ -31,10 +74,10 @@ object PushStart extends DefineRequest("/push-start") with ActivityRequestHandle
         resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
         session.attribute("auth", auth)
         resp.redirect(s"http://localhost:$port/auth?user=${URLEncoder.encode(auth.userId, "UTF-8")}")
+        Nil
       }
     }.getOrElse {
-      retryLogin(resp)
+      retryLogin(req, resp)
     }
-    Nil
   }
 }

@@ -21,6 +21,9 @@ object DefineRequest {
 
 abstract class DefineRequest(val handleUri: String, val method: Method = Method.Get) {
 
+  // some actions (logout) may have their URL prefixed to provide a specific functionality
+  def urlPrefix: String = ""
+
   def apply(request: Request, resp: Response): AnyRef = {
     println(s"Request ${request.url()}")
     val nodes = html(request, resp)
@@ -58,7 +61,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       </a>
       </td>
       <td>
-      <form action="logout">
+      <form action={urlPrefix + "logout"}>
         <input type="submit" value ="Log Out"/>
       </form>
       </td></tr>
