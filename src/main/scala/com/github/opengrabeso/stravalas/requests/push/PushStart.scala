@@ -1,5 +1,6 @@
 package com.github.opengrabeso.stravalas
 package requests
+package push
 
 import java.net.URLEncoder
 

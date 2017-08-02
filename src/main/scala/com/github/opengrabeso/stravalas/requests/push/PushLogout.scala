@@ -1,5 +1,7 @@
 package com.github.opengrabeso.stravalas
 package requests
+package push
+
 import spark.{Request, Response}
 
 object PushLogout extends DefineRequest("/push-logout") {

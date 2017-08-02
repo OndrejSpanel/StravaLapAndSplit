@@ -1,14 +1,14 @@
 package com.github.opengrabeso.stravalas
 package requests
+package push
 
-import java.net.URLEncoder
 import javax.servlet.http.HttpServletResponse
 
 import spark.{Request, Response}
 
 import scala.util.Try
 
-object PushLogin extends DefineRequest("/push-login") with ActivityRequestHandler {
+object PushLogin extends DefineRequest("/push-login") {
   override def urlPrefix = "push-"
 
   // DRY: LogIn
