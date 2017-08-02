@@ -22,7 +22,7 @@ class ServletRouting extends SparkApplication {
     // solution with reflection is elegant, but overcomplicated (and hard to get working with Google App Engine) and slow
     import requests._
     val handlers: Seq[DefineRequest] = Seq(
-      IndexHtml, LogIn, LogOut, Ping, Push,
+      IndexHtml, LogIn, LogOut, Ping, PushStart, PushDo,
 
       ManageActivities, LoadFromStrava, ActivityFromStrava, Upload, GetSuunto, GetFiles, Staging,
       ActivityPage, ActivityPagePost, Download, UploadToStrava,

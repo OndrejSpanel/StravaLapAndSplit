@@ -9,10 +9,10 @@ object IndexHtml extends DefineRequest("/") {
 
   def html(request: Request, resp: Response) = {
     val code = Option(request.cookie("authCode"))
-    if (code.exists(_.nonEmpty)) {
-      resp.redirect(s"/logIn?code=${URLEncoder.encode(code.get, "UTF-8")}")
+    code.map { code =>
+      resp.redirect(s"/logIn?code=${URLEncoder.encode(code, "UTF-8")}")
       Nil
-    } else {
+    }.getOrElse {
       loginHtml(request, resp)
     }
   }

@@ -14,13 +14,13 @@ import akka.stream.{ActorMaterializer, BindFailedException}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, duration}
-import scala.util.control.NonFatal
 import scala.util.{Success, Try}
 import scala.xml.Elem
 
 object Start extends App {
 
   private val instanceId = System.currentTimeMillis()
+  private var authUserId = Option.empty[String]
 
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
@@ -77,7 +77,9 @@ object Start extends App {
   }
 
   private val stravamatLocalUrl = "http://localhost:8080"
-  private val stravamatRemoteUrl = "https://stravamat.appspot.com/"
+  private val stravamatRemoteUrl = "https://stravamat.appspot.com"
+  private var useLocal = false
+  private lazy val stravaMatUrl = if (useLocal) stravamatLocalUrl else stravamatRemoteUrl
 
   private def checkLocalStravamat(): Boolean = {
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -87,30 +89,27 @@ object Start extends App {
     val localRequest = Http().singleRequest(HttpRequest(uri = stravamatLocalUrl + "/ping")).map(_.discardEntityBytes())
 
     // try communicating with the local Stravamat, if not responding, use the remote one
-    val useLocal = localTest && Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS))).isSuccess
+    useLocal = localTest && Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS))).isSuccess
     useLocal
   }
 
-  private def startBrowser(local: Boolean) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-
-    val useLocal = checkLocalStravamat()
-
-    val stravaMatUrl = if (useLocal) stravamatLocalUrl else stravamatRemoteUrl
-
-    // open browser, ask Stravamat to perform OAuth dance
-    val startPushUrl = s"$stravaMatUrl/push&port=$serverPort"
+  private def startBrowser() = {
+    val startPushUrl = s"$stravaMatUrl/push-start?port=$serverPort"
+    println(s"Starting browser $startPushUrl")
     Desktop.getDesktop.browse(new URL(startPushUrl).toURI)
   }
 
 
-  def authHandler(ok: Boolean): HttpResponse = {
+  def authHandler(userId: String) = {
     // session is authorized, we can continue sending the data
     val response = <result>Done</result>
     val ret = sendResponseXml(200, response)
-    println("Done - stop server")
+    println("Auth done - stop server")
     serverInfo.stop()
-    ret
+    println(s"Stravamat user id $userId")
+    authUserId = Some(userId)
+    val doPushUrl = s"$stravaMatUrl/push-do"
+    redirect(doPushUrl, StatusCodes.Found)
   }
 
   def shutdownHandler(id: Long): HttpResponse = {
@@ -130,8 +129,8 @@ object Start extends App {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val requests = path("auth") {
-      parameter('status) { status =>
-        complete(authHandler(status == "ok"))
+      parameter('user) { user =>
+        authHandler(user)
       }
     } ~ path("shutdown") {
       parameter('id) {
@@ -173,10 +172,22 @@ object Start extends App {
     }
   }
 
-  private val isLocalStravamat = checkLocalStravamat()
+  /*
+  Authentication dance
+  - request Stravamat to perform authentication, including user selection
+   - http://stravamat/push-start?port=<XXXX>
+  - Stravamat knowns or gets the Strava auth token (user id hash)
+  - it generates a Stravamat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt>
+  - we receive the token and redirect to a page http://stravamat/push-push?token=<XXXX>
+
+
+
+  */
+
+  checkLocalStravamat()
   private val serverInfo = startHttpServer(serverPort)
 
-  startBrowser(isLocalStravamat)
+  startBrowser()
 
   waitForServerToStop(serverInfo)
 
