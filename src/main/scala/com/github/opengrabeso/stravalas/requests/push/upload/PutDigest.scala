@@ -1,10 +1,11 @@
 package com.github.opengrabeso.stravalas
 package requests
+package push
 package upload
 
 import spark.{Request, Response}
 
-object PutDigest extends DefineRequest.Post("/putDigest") {
+object PutDigest extends DefineRequest.Post("/push-put-digest") {
 
   override def html(request: Request, resp: Response) = {
     val session = request.session
