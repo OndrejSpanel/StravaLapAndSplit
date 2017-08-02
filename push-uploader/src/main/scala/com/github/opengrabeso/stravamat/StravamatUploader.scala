@@ -1,4 +1,4 @@
-package com.github.opengrabeso.stravalas
+package com.github.opengrabeso.stravamat
 
 import java.security.MessageDigest
 
@@ -20,7 +20,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.Success
 import scala.xml.Elem
 
-object StravamatUploader extends App {
+object StravamatUploader {
 
   private val enumPath = "enum"
   private val donePath = "done"

@@ -1,4 +1,4 @@
-package com.github.opengrabeso.stravalas
+package com.github.opengrabeso.stravamat
 
 import java.io.File
 
