@@ -1,4 +1,5 @@
 package com.github.opengrabeso.stravamat
+import org.joda.time.{DateTime => ZonedDateTime}
 
 import java.io.File
 import java.nio.file.Files
@@ -36,4 +37,23 @@ object MoveslinkFiles {
   def getString(path: String): Option[String] = {
     get(path).map(new String(_, StandardCharsets.UTF_8))
   }
+
+  def timestampFromName(name: String): Option[ZonedDateTime] = {
+    // extract timestamp
+    // GPS filename: Moveslink2/34FB984612000700-2017-05-23T16_27_11-0.sml
+    val gpsPattern = "\\/.*-(\\d*)-(\\d*)-(\\d*)T(\\d*)_(\\d*)_(\\d*)-".r.unanchored
+    // Quest filename Moveslink/Quest_2596420792_20170510143253.xml
+    val questPattern = "\\/Quest_\\d*_(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)\\.".r.unanchored
+    // note: may be different timezones, but a rough sort in enough for us (date is important)
+    name match {
+      case gpsPattern(yyyy,mm,dd,h,m,s) =>
+        Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s")) // TODO: DRY
+      case questPattern(yyyy,mm,dd,h,m,s) =>
+        Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s")) // TODO: DRY
+      case _ =>
+        None
+    }
+  }
+
+
 }

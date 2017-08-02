@@ -8,23 +8,22 @@ import spark.{Request, Response}
 object PutDigest extends DefineRequest.Post("/push-put-digest") {
 
   override def html(request: Request, resp: Response) = {
-    val session = request.session
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
     val path = request.queryParams("path")
+    val userId = request.queryParams("user")
 
     val digest = request.body()
 
     // check if such file / digest is already known and report back
-    if (Storage.check(Main.namespace.stage, auth.userId, path, digest)) {
+    if (Storage.check(Main.namespace.stage, userId, path, digest)) {
       println(s"Received matching digest for $path")
-      resp.status(204) // already present
+      resp.status(204) // status No content: already present
     } else {
       println(s"Received non-matching digest for $path")
 
       // debugging opportunity
-      Storage.check(Main.namespace.stage, auth.userId, path, digest)
+      //Storage.check(Main.namespace.stage, userId, path, digest)
 
-      resp.status(200) // not present / not matching - send full file
+      resp.status(200) // status OK: not matching - send full file
     }
 
     Nil

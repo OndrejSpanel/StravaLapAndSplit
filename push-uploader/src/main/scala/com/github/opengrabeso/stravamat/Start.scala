@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravamat
 
 import java.awt.Desktop
 import java.net.URL
+import java.security.MessageDigest
 import java.util.concurrent.CountDownLatch
 
 import akka.actor.ActorSystem
@@ -19,6 +20,7 @@ import scala.concurrent.{Await, Future, duration}
 import scala.util.{Success, Try}
 import scala.xml.{Elem, XML}
 import org.joda.time.{DateTime => ZonedDateTime}
+import Util._
 
 import scala.util.control.NonFatal
 
@@ -203,19 +205,43 @@ object Start extends App {
   def performUpload(data: AuthData) = {
     val AuthData(userId, since) = data
 
+    val sinceDate = since minusDays 1
+
     import scala.concurrent.ExecutionContext.Implicits.global
 
     // TODO: push-put-check is just an example, replace with real file processing
 
+    val listFiles = MoveslinkFiles.listFiles.toList
+    // sort files by timestamp
+    val wantedFiles = listFiles.filter(MoveslinkFiles.timestampFromName(_).forall(_ > sinceDate))
+
+    val sortedFiles = wantedFiles.sortBy(MoveslinkFiles.timestampFromName)
+
     val timeout = 30.seconds
-    val uri = s"$stravaMatUrl/push-put-check?user=$userId"
-    val req = Http().singleRequest(HttpRequest(uri = uri)).flatMap { resp =>
-      resp.entity.toStrict(timeout)
+    for {
+      f <- sortedFiles
+      fileBytes <- MoveslinkFiles.get(f)
+    } {
+
+
+      val digest = Digest.digest(fileBytes)
+
+      // check by putting a digest first
+      val uri = s"$stravaMatUrl/push-put-digest?user=$userId&path=$f"
+      val req = Http().singleRequest(
+        HttpRequest(
+          uri = uri,
+          method = HttpMethods.POST,
+          entity = HttpEntity(digest)
+        )
+      ).map { resp =>
+        resp.discardEntityBytes()
+        resp.status
+      }
+      val resp = Await.result(req, Duration.Inf)
+
+      println(s"File $f status $resp")
     }
-    val resp = Await.result(req, Duration.Inf)
-    val xmlResp = XML.load(resp.data.decodeString("UTF-8"))
-    // extract server / since
-    val sinceX = (xmlResp \ "server" \ "since").map(_.text).head
 
     serverInfo.system.terminate()
 
