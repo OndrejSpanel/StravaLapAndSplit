@@ -7,7 +7,9 @@ import java.net.URLEncoder
 import spark.{Request, Response}
 
 import scala.util.Try
-import scala.xml.Elem
+import scala.xml.{Elem, NodeSeq}
+import org.joda.time.{DateTime => ZonedDateTime}
+import DateTimeOps._
 
 object PushStart extends DefineRequest("/push-start") with ActivityRequestHandler {
 
@@ -72,10 +74,20 @@ object PushStart extends DefineRequest("/push-start") with ActivityRequestHandle
       val authResult = Try(Main.stravaAuth(code))
       //noinspection UnitInMap
       authResult.toOption.map { auth =>
+
+        val stravaActivities = Main.recentStravaActivities(auth)
+
+        // ignore anything older than oldest of recent Strava activities
+        val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime) // oldest of the last 15 Strava activities
+        val ignoreBeforeFirst = stravaActivities.headOption.map(_.startTime minusDays  14) // most recent on Strava - 2 weeks
+        val ignoreBeforeNow = new ZonedDateTime() minusMonths 2 // max. 2 months
+
+        val since = (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
+
         resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
         session.attribute("auth", auth)
-        resp.redirect(s"http://localhost:$port/auth?user=${URLEncoder.encode(auth.userId, "UTF-8")}")
-        Nil
+        resp.redirect(s"http://localhost:$port/auth?user=${URLEncoder.encode(auth.userId, "UTF-8")}&since=$since")
+        NodeSeq.Empty
       }
     }.getOrElse {
       retryLogin(req, resp)

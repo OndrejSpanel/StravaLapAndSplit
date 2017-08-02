@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravamat
 
 import java.awt.Desktop
 import java.net.URL
+import java.util.concurrent.CountDownLatch
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.{Http, coding}
@@ -13,14 +14,21 @@ import akka.http.scaladsl.server.Route
 import akka.stream.{ActorMaterializer, BindFailedException}
 
 import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, duration}
 import scala.util.{Success, Try}
-import scala.xml.Elem
+import scala.xml.{Elem, XML}
+import org.joda.time.{DateTime => ZonedDateTime}
+
+import scala.util.control.NonFatal
 
 object Start extends App {
 
+  case class AuthData(userId: String, since: ZonedDateTime)
+
   private val instanceId = System.currentTimeMillis()
-  private var authUserId = Option.empty[String]
+  private var authData = Option.empty[AuthData]
+  private val authDone = new CountDownLatch(1)
 
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
@@ -58,9 +66,15 @@ object Start extends App {
   private case class ServerInfo(system: ActorSystem, binding: Future[ServerBinding]) {
     def stop(): Unit = {
       implicit val executionContext = system.dispatcher
+      binding.flatMap(_.unbind()) // trigger unbinding from the port
+    }
+
+    def shutdown(): Unit = {
+      implicit val executionContext = system.dispatcher
       binding
         .flatMap(_.unbind()) // trigger unbinding from the port
         .onComplete(_ => system.terminate()) // and shutdown when done
+
     }
 
   }
@@ -94,30 +108,41 @@ object Start extends App {
   }
 
   private def startBrowser() = {
+    /*
+    Authentication dance
+    - request Stravamat to perform authentication, including user selection
+     - http://stravamat/push-start?port=<XXXX>
+    - Stravamat knowns or gets the Strava auth token (user id hash)
+    - it generates a Stravamat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt>
+     - this is captured by authHandler
+    - we receive the token and redirect to a page http://stravamat/push-push?token=<XXXX>
+    */
+
     val startPushUrl = s"$stravaMatUrl/push-start?port=$serverPort"
     println(s"Starting browser $startPushUrl")
     Desktop.getDesktop.browse(new URL(startPushUrl).toURI)
   }
 
 
-  def authHandler(userId: String) = {
+  def authHandler(userId: String, since: String) = {
     // session is authorized, we can continue sending the data
-    val response = <result>Done</result>
-    val ret = sendResponseXml(200, response)
-    println("Auth done - stop server")
     serverInfo.stop()
-    println(s"Stravamat user id $userId")
-    authUserId = Some(userId)
+    println(s"Auth done - Stravamat user id $userId")
+    val sinceTime = new ZonedDateTime(since)
+    val sinceTime2 = ZonedDateTime.parse(since)
+    authData = Some(AuthData(userId, sinceTime))
+    authDone.countDown()
     val doPushUrl = s"$stravaMatUrl/push-do"
     redirect(doPushUrl, StatusCodes.Found)
   }
 
   def shutdownHandler(id: Long): HttpResponse = {
-    println(s"Shutdown - stop server $instanceId, received $id")
     val response = if (id !=instanceId) {
-      serverInfo.stop()
+      println(s"Shutdown - stop server $instanceId, received $id")
+      serverInfo.shutdown()
       <result>Done</result>
     } else {
+      println(s"Shutdown ignored - same instance")
       <result>Ignored - same instance</result>
     }
 
@@ -129,8 +154,8 @@ object Start extends App {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val requests = path("auth") {
-      parameter('user) { user =>
-        authHandler(user)
+      parameters('user, 'since) { (user, since) =>
+        authHandler(user, since)
       }
     } ~ path("shutdown") {
       parameter('id) {
@@ -161,35 +186,53 @@ object Start extends App {
 
   private def waitForServerToStop(serverInfo: ServerInfo) = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    serverInfo.binding.onComplete {
-      case Success(_) =>
-        // wait until the server has stopped
-        Await.result(serverInfo.system.whenTerminated, Duration.Inf)
-        println("Server stopped")
-      case _ =>
+    try {
+      val binding = Await.result(serverInfo.binding, Duration.Inf)
+      authDone.await()
+
+    } catch {
+      case NonFatal(_) =>
         println("Server not started")
         serverInfo.system.terminate()
     }
   }
 
-  /*
-  Authentication dance
-  - request Stravamat to perform authentication, including user selection
-   - http://stravamat/push-start?port=<XXXX>
-  - Stravamat knowns or gets the Strava auth token (user id hash)
-  - it generates a Stravamat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt>
-  - we receive the token and redirect to a page http://stravamat/push-push?token=<XXXX>
-
-
-
-  */
-
   checkLocalStravamat()
   private val serverInfo = startHttpServer(serverPort)
 
+  def performUpload(data: AuthData) = {
+    val AuthData(userId, since) = data
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    // TODO: push-put-check is just an example, replace with real file processing
+
+    val timeout = 30.seconds
+    val uri = s"$stravaMatUrl/push-put-check?user=$userId"
+    val req = Http().singleRequest(HttpRequest(uri = uri)).flatMap { resp =>
+      resp.entity.toStrict(timeout)
+    }
+    val resp = Await.result(req, Duration.Inf)
+    val xmlResp = XML.load(resp.data.decodeString("UTF-8"))
+    // extract server / since
+    val sinceX = (xmlResp \ "server" \ "since").map(_.text).head
+
+    serverInfo.system.terminate()
+
+  }
+
+
   startBrowser()
+
 
   waitForServerToStop(serverInfo)
 
+  // server is stopped once auth information is received into authUserId, or when another instance has forced a shutdown
+  for (data <- authData) {
+    performUpload(data)
+  }
+
+  Await.result(serverInfo.system.whenTerminated, Duration.Inf)
+  println("System stopped")
 
 }
