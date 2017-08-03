@@ -45,7 +45,7 @@ object PushDo extends DefineRequest("/push-do") with ActivityRequestHandler {
               var doneFiles = $(response).find("done").first().text();
               $("#total").html(totalFiles);
               $("#done").html(doneFiles);
-              if (totalFiles < doneFiles) setTimeout(update, 1000);
+              if (doneFiles < totalFiles) setTimeout(update, 1000);
               else $("#uploaded").show();
             });
           }
