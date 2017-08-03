@@ -203,6 +203,8 @@ object Start extends App {
   private val serverInfo = startHttpServer(serverPort)
 
   def performUpload(data: AuthData) = {
+
+
     val AuthData(userId, since) = data
 
     val sinceDate = since minusDays 1
@@ -218,15 +220,16 @@ object Start extends App {
     val sortedFiles = wantedFiles.sortBy(MoveslinkFiles.timestampFromName)
 
     for {
-      f <- sortedFiles
+      (f, i) <- sortedFiles.zipWithIndex
       fileBytes <- MoveslinkFiles.get(f)
     } {
+      val uploadProgress = s"total-files=${sortedFiles.size}&done-files=${i+1}"
       // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
 
       val req = Http().singleRequest(
         HttpRequest(
-          uri = s"$stravaMatUrl/push-put-digest?user=$userId&path=$f",
+          uri = s"$stravaMatUrl/push-put-digest?user=$userId&path=$f&$uploadProgress",
           method = HttpMethods.POST,
           entity = HttpEntity(digest)
         )
@@ -244,7 +247,7 @@ object Start extends App {
           // digest not matching, we need to send full content
           val uploadReq = Http().singleRequest(
             HttpRequest(
-              uri = s"$stravaMatUrl/push-put?user=$userId&path=$f&digest=$digest",
+              uri = s"$stravaMatUrl/push-put?user=$userId&path=$f&digest=$digest&$uploadProgress",
               method = HttpMethods.POST,
               entity = HttpEntity(fileBytes)
             )

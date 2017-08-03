@@ -20,6 +20,7 @@ object PushDo extends DefineRequest("/push-do") with ActivityRequestHandler {
       </head>
       <body>
         {bodyHeader(auth)}<h2>Receiving Suunto files ...</h2>
+        <a href="push-list-pending">List pending</a>
       </body>
     </html>
 

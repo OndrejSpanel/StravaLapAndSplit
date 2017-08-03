@@ -166,6 +166,8 @@ object Main {
   object namespace {
     // stage are data visible to the user
     val stage = "stage"
+    // file upload progress
+    val uploadProgress = "upload-progress"
     // upload - invisible data, used to hand data to the background upload tasks
     def upload(session: Long) = "upload-" + session.toString
     // upload results - report upload status and resulting id

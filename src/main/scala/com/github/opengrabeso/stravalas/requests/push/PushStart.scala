@@ -76,6 +76,7 @@ object PushStart extends DefineRequest("/push-start") with ActivityRequestHandle
       authResult.toOption.map { auth =>
 
         val stravaActivities = Main.recentStravaActivities(auth)
+        session.attribute("stravaActivities", stravaActivities)
 
         // ignore anything older than oldest of recent Strava activities
         val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime) // oldest of the last 15 Strava activities

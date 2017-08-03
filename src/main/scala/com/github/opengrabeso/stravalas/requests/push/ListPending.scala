@@ -1,0 +1,29 @@
+package com.github.opengrabeso.stravalas
+package requests
+package push
+import spark.{Request, Response}
+
+object ListPending extends DefineRequest("/push-list-pending") {
+  def html(req: Request, resp: Response) = {
+    val session = req.session()
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
+    //val stravaActivities = session.attribute[Seq[Main.ActivityId]]("stravaActivities")
+
+    //val stored = Storage.enumerate(Main.namespace.stage, auth.userId)
+
+    val progress = Storage.load[upload.Progress](Main.namespace.uploadProgress, "progress", auth.userId)
+    // to do the matching we would have to load the stored activities
+
+    progress.fold {
+      <progress>
+        <unknown></unknown>
+      </progress>
+    } { p =>
+      // now do the matching and list those not matching
+      <progress>
+        <total>{p.total}</total>
+        <done>{p.done}</done>
+      </progress>
+    }
+  }
+}
