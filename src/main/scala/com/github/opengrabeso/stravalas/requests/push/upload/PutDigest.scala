@@ -21,7 +21,7 @@ object PutDigest extends DefineRequest.Post("/push-put-digest") {
       println(s"Received matching digest for $path")
       resp.status(204) // status No content: already present
 
-      Storage.store(Main.namespace.uploadProgress, "progress", userId, Progress(totalFiles, doneFiles))
+      saveProgress(userId, totalFiles, doneFiles)
 
     } else {
       println(s"Received non-matching digest for $path")

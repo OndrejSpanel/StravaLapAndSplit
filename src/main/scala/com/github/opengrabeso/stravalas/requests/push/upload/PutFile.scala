@@ -41,7 +41,6 @@ object PutFile extends DefineRequest.Post("/push-put") {
           fileContent.read()
         }
 
-        // TODO: implement, is more efficient
         override def read(b: Array[Byte], off: Int, len: Int) = {
           val read = fileContent.read(b, off, len)
           report(read)
@@ -57,7 +56,7 @@ object PutFile extends DefineRequest.Post("/push-put") {
 
     Upload.storeFromStreamWithDigest(userId, path, input, digest)
 
-    Storage.store(Main.namespace.uploadProgress, "progress", userId, Progress(totalFiles, doneFiles))
+    saveProgress(userId, totalFiles, doneFiles)
 
     resp.status(200)
 

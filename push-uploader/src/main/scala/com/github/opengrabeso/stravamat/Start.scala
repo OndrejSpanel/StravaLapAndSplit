@@ -199,9 +199,6 @@ object Start extends App {
     }
   }
 
-  checkLocalStravamat()
-  private val serverInfo = startHttpServer(serverPort)
-
   def performUpload(data: AuthData) = {
 
 
@@ -269,9 +266,12 @@ object Start extends App {
 
   }
 
+  checkLocalStravamat()
 
+  private val serverInfo = startHttpServer(serverPort)
+
+  // TODO: we need to reset upload progress somehow before showing the page
   startBrowser()
-
 
   waitForServerToStop(serverInfo)
 
