@@ -217,20 +217,16 @@ object Start extends App {
 
     val sortedFiles = wantedFiles.sortBy(MoveslinkFiles.timestampFromName)
 
-    val timeout = 30.seconds
     for {
       f <- sortedFiles
       fileBytes <- MoveslinkFiles.get(f)
     } {
-
-
+      // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
 
-      // check by putting a digest first
-      val uri = s"$stravaMatUrl/push-put-digest?user=$userId&path=$f"
       val req = Http().singleRequest(
         HttpRequest(
-          uri = uri,
+          uri = s"$stravaMatUrl/push-put-digest?user=$userId&path=$f",
           method = HttpMethods.POST,
           entity = HttpEntity(digest)
         )
@@ -238,9 +234,32 @@ object Start extends App {
         resp.discardEntityBytes()
         resp.status
       }
-      val resp = Await.result(req, Duration.Inf)
-
+      val resp = Await.result(req, Duration.Inf) // Http should handle timeouts on its own as needed
       println(s"File $f status $resp")
+
+      resp match {
+        case StatusCodes.NoContent =>
+
+        case StatusCodes.OK =>
+          // digest not matching, we need to send full content
+          val uploadReq = Http().singleRequest(
+            HttpRequest(
+              uri = s"$stravaMatUrl/push-put?user=$userId&path=$f&digest=$digest",
+              method = HttpMethods.POST,
+              entity = HttpEntity(fileBytes)
+            )
+          ).map { resp =>
+            resp.discardEntityBytes()
+            resp.status
+          }
+          println(s"  File $f upload started")
+          val uploadResp = Await.result(uploadReq, Duration.Inf) // Http should handle timeouts on its own as needed
+          // TODO: handle upload failures somehow
+          println(s"File $f upload status $uploadResp")
+
+        case _ => // unexpected - what to do?
+      }
+
     }
 
     serverInfo.system.terminate()
