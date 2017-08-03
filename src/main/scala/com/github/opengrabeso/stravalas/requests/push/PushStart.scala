@@ -65,7 +65,12 @@ object PushStart extends DefineRequest("/push-start") with ActivityRequestHandle
 
   def html(req: Request, resp: Response) = {
     val session = req.session()
-    val port = req.queryParams("port").toInt
+    val sessionPort = session.attribute[String]("push-port")
+    val port = Option(sessionPort).fold[Int] {
+      val p = req.queryParams("port").toInt
+      session.attribute("push-port", p.toString)
+      p
+    }(_.toInt)
     // check stored oauth cookie
     val code = Option(req.cookie("authCode"))
     code.flatMap { code =>

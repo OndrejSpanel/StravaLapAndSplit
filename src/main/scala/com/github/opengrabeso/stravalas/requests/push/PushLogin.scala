@@ -21,7 +21,7 @@ object PushLogin extends DefineRequest("/push-login") {
     authResult.map { auth =>
       resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
       session.attribute("auth", auth)
-      resp.redirect("/push-do")
+      resp.redirect("/push-start")
     }.getOrElse {
       resp.cookie("authCode", "", 0) // delete the cookie
       resp.redirect("/push-start", HttpServletResponse.SC_MOVED_TEMPORARILY)
