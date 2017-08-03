@@ -23,9 +23,14 @@ object PushDo extends DefineRequest("/push-do") with ActivityRequestHandler {
       <body>
         {bodyHeader(auth)}<h2>Receiving Suunto files ...</h2>
         <p>
-          <span id="done"></span> of <span id="total"></span>
+          <span id="done">--</span> of <span id="total">--</span>
         </p>
-        <a href="javascript:update();false">List pending</a>
+        <div id="uploaded" style="display: none;">
+          {
+          // TODO: integrate selectActivity functionality here
+          }
+          <a href="selectActivity">Select activity</a>
+        </div>
         <script>
           {xml.Unparsed(
           //language=JavaScript
@@ -40,8 +45,11 @@ object PushDo extends DefineRequest("/push-do") with ActivityRequestHandler {
               var doneFiles = $(response).find("done").first().text();
               $("#total").html(totalFiles);
               $("#done").html(doneFiles);
+              if (totalFiles < doneFiles) setTimeout(update, 1000);
+              else $("#uploaded").show();
             });
           }
+          update();
           """)}
         </script>
 
