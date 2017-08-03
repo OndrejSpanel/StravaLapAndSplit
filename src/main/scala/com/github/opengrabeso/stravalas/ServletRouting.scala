@@ -28,7 +28,7 @@ class ServletRouting extends SparkApplication {
 
       push.upload.PutDigest, push.upload.PutFile, push.ListPending,
 
-      ManageActivities, LoadFromStrava, ActivityFromStrava, Upload, GetSuunto, GetFiles, Staging,
+      ManageActivities, LoadFromStrava, ActivityFromStrava, Upload, GetFiles, Staging,
       ActivityPage, ActivityPagePost, Download, UploadToStrava,
 
       Process, CheckUploadStatus,
