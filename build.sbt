@@ -30,6 +30,7 @@ lazy val pushUploader = (project in file("push-uploader")).settings(
 
 lazy val stravamat = (project in file("."))
   .aggregate(pushUploader)
+  .disablePlugins(sbtassembly.AssemblyPlugin)
   .settings(
     appengineSettings,
 
@@ -59,3 +60,4 @@ lazy val stravamat = (project in file("."))
       "commons-io" % "commons-io" % "2.1"
     )
   )
+
