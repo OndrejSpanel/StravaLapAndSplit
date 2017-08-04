@@ -234,6 +234,7 @@ object XMLParser {
   }
 
   def parseXML(fileName: String, doc: Node): Try[Move] = {
+    // optimize: using Jackson or scala.xml.pull, working with xml dom model is very slow
     val samples = doc \ "Samples"
     val rrData = Try((doc \ "R-R" \ "Data")(0))
     val rr = rrData.map(node => getRRArray(node.text))

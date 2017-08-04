@@ -1,6 +1,6 @@
 package com.github.opengrabeso.stravalas
 
-import spark.{Request, Response}
+import spark.{Request, Response, Session}
 
 import scala.xml.NodeSeq
 
@@ -20,6 +20,9 @@ object DefineRequest {
 }
 
 abstract class DefineRequest(val handleUri: String, val method: Method = Method.Get) {
+
+  // some actions (logout) may have their URL prefixed to provide a specific functionality
+  def urlPrefix: String = ""
 
   def apply(request: Request, resp: Response): AnyRef = {
     println(s"Request ${request.url()}")
@@ -58,7 +61,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       </a>
       </td>
       <td>
-      <form action="logout">
+      <form action={urlPrefix + "logout"}>
         <input type="submit" value ="Log Out"/>
       </form>
       </td></tr>
@@ -76,5 +79,13 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       <p style="color:#fff">© 2016 <a href="https://github.com/OndrejSpanel" style="color:inherit">Ondřej Španěl</a></p>
       <div/>
     </div>
+  }
+
+  /*
+  We need the ID to be unique for a given user, timestamps seems reasonable for this.
+  Normal web app session ID is not unique, sessions get reused.
+  */
+  def uniqueSessionId(session: Session): String = {
+    session.attribute[String]("push-session")
   }
 }

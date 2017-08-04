@@ -36,7 +36,7 @@ case class UploadError(ex: Throwable) extends UploadStatus {
 // background push queue task
 
 @SerialVersionUID(10L)
-case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessionId: Long) extends DeferredTask {
+case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessionId: String) extends DeferredTask {
 
   def run()= {
 
@@ -85,7 +85,7 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
 
 }
 
-case class WaitForStravaUpload(key: String, id: Long, auth: Main.StravaAuthResult, eta: Long, sessionId: Long) extends DeferredTask {
+case class WaitForStravaUpload(key: String, id: Long, auth: Main.StravaAuthResult, eta: Long, sessionId: String) extends DeferredTask {
   private def retry(nextEta: Long) = {
     val queue = QueueFactory.getDefaultQueue
     queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(key, id, auth, nextEta, sessionId))

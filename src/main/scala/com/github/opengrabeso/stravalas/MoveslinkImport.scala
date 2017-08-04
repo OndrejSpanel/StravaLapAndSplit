@@ -84,19 +84,30 @@ object MoveslinkImport {
   }
 
   def loadSml(fileName: String, digest: String, stream: InputStream): Option[Move] = {
+
+    def now() = System.currentTimeMillis()
+    val start = now()
+    def logTime(msg: String) = println(s"$msg: time ${now()-start}")
+
     def getDeviceLog(doc: Node): Node = (doc \ "DeviceLog") (0)
 
+    logTime(s"start $fileName")
     val doc = XML.load(stream)
+    logTime("XML.load")
 
     val dev = getDeviceLog(doc)
+    logTime("getDeviceLog")
 
-    moveslink2.XMLParser.parseXML(fileName, dev).toOption
+    val ret = moveslink2.XMLParser.parseXML(fileName, dev).toOption
+    logTime("parseXML")
+    ret
+
   }
 
-  def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int): Seq[Move] = {
+  def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int, timezone: String): Seq[Move] = {
     val doc = XML.load(stream)
 
-    moveslink.XMLParser.parseXML(fileName, doc, maxHR).flatMap(_.toOption)
+    moveslink.XMLParser.parseXML(fileName, doc, maxHR, timezone).flatMap(_.toOption)
   }
 
 }

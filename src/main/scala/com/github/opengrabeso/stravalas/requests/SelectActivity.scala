@@ -32,7 +32,9 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val stravaActivities = Main.recentStravaActivities(auth)
-    val sid: java.lang.Long = System.currentTimeMillis()
+
+    // Strava upload progress session id
+    val sid = System.currentTimeMillis().toString
     session.attribute("sid", sid)
 
     // ignore anything older than oldest of recent Strava activities
@@ -107,6 +109,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                 //day: "numeric",
                 hour: "numeric",
                 minute: "numeric",
+                //timeZoneName: "short"
               }
             ).format(date)
           }

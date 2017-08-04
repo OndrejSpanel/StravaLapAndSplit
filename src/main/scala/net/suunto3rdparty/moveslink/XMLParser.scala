@@ -16,7 +16,8 @@ import scala.util.{Failure, Success, Try}
 
 object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)
-  private val dateFormat = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(DateTimeZone.getDefault)
+  private val dateFormatBase = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
+  private def dateFormatWithZone(timezone: String) = dateFormatBase.withZone(DateTimeZone.forID(timezone))
 
   def parseSamples(fileName: String, header: Header, samples: Node, maxHR: Int): Move = {
     val distanceStr = (samples \ "Distance")(0).text
@@ -81,7 +82,12 @@ object XMLParser {
     new Move(Set(fileName), header.moveHeader, hrStream)
   }
 
-  def parseHeader(headerStr: Node, deviceName: Option[String]) = {
+  def parseTime(timeText: String, timezone: String): ZonedDateTime = {
+    timeToUTC(ZonedDateTime.parse(timeText, dateFormatWithZone(timezone)))
+  }
+
+
+  def parseHeader(headerStr: Node, deviceName: Option[String], timezone: String) = {
 
     val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
 
@@ -100,7 +106,7 @@ object XMLParser {
     }
 
     val timeText = (headerStr \ "Time") (0).text
-    val startTime = parseTime(timeText)
+    val startTime = parseTime(timeText, timezone)
     val durationStr = (headerStr \ "Duration")(0).text
     val matcher = durationPattern.matcher(durationStr)
     val duration = if (matcher.matches) {
@@ -113,11 +119,7 @@ object XMLParser {
     Header(MoveHeader(deviceName.toSet, activityType), startTime, duration, calories, distance)
   }
 
-  def parseTime(timeText: String): ZonedDateTime = {
-    timeToUTC(ZonedDateTime.parse(timeText, dateFormat))
-  }
-
-  def parseXML(fileName: String, document: Elem, maxHR: Int): Seq[Try[Move]] = {
+  def parseXML(fileName: String, document: Elem, maxHR: Int, timezone: String): Seq[Try[Move]] = {
 
     val deviceNodes = document \ "Device" \ "FullName"
 
@@ -131,7 +133,7 @@ object XMLParser {
       try {
         val headerNode = (moveItem \ "Header")(0)
         val samples = (moveItem \ "Samples")(0)
-        val header = parseHeader(headerNode, deviceName)
+        val header = parseHeader(headerNode, deviceName, timezone)
 
         def parseDuration(timeStr: String): Duration = {
           val relTime = LocalTime.parse(timeStr)

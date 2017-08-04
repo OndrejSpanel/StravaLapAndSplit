@@ -29,9 +29,14 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
       def next() = items.next
     }
 
+    var timezone = Option.empty[String]
     itemsIterator.foreach { item =>
-      if (!item.isFormField && "activities" == item.getFieldName) {
-        storeFromStream(auth, item.getName, item.openStream())
+      if (!item.isFormField && item.getFieldName == "activities") {
+        if (item.getName!="") {
+          storeFromStream(auth.userId, item.getName, timezone.get, item.openStream())
+        }
+      } else if (item.isFormField && item.getFieldName == "timezone") {
+        timezone = Some(IOUtils.toString(item.openStream(), "UTF-8"))
       }
     }
 
@@ -39,13 +44,12 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
     Nil
   }
 
-  def storeFromStream(auth: Main.StravaAuthResult, name: String, streamOrig: InputStream) = {
-    import MoveslinkImport._
-    // we may read only once, we need to buffer it
-    val fileBytes = IOUtils.toByteArray(streamOrig)
-    val digest = Main.digest(fileBytes)
 
-    val stream = new ByteArrayInputStream(fileBytes)
+  def storeFromStreamWithDigest(userId: String, name: String, timezone: String, stream: InputStream, digest: String) = {
+    import MoveslinkImport._
+    def now() = System.currentTimeMillis()
+    val start = now()
+    def logTime(msg: String) = println(s"$msg: time ${now()-start}")
 
     val extension = name.split('.').last
     val actData: Seq[Main.ActivityEvents] = extension.toLowerCase match {
@@ -54,8 +58,8 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
       case "sml" =>
         loadSml(name, digest, stream).toSeq.flatMap(loadFromMove(name, digest, _))
       case "xml" =>
-        val maxHR = Settings(auth.userId).maxHR
-        loadXml(name, digest, stream, maxHR).zipWithIndex.flatMap { case (act,index) =>
+        val maxHR = Settings(userId).maxHR
+        loadXml(name, digest, stream, maxHR, timezone).zipWithIndex.flatMap { case (act,index) =>
           // some activities (Quest) have more parts, each part needs a distinct name
           val nameWithIndex = if (index > 0) s"$name-$index" else name
           loadFromMove(nameWithIndex, digest, act)
@@ -63,12 +67,27 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
       case e =>
         Nil
     }
+    logTime("Import file")
     if (actData.nonEmpty) {
       for (act <- actData) {
-        Storage.store(Main.namespace.stage, act.id.id.filename, auth.userId, act, "digest" -> digest)
+        Storage.store(Main.namespace.stage, act.id.id.filename, userId, act, "digest" -> digest)
       }
     } else {
-      Storage.store(Main.namespace.stage, name, auth.userId, NoActivity, "digest" -> digest)
+      Storage.store(Main.namespace.stage, name, userId, NoActivity, "digest" -> digest)
     }
+    logTime("Store file")
   }
+
+  def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream) = {
+    import MoveslinkImport._
+    // we may read only once, we need to buffer it
+
+    val fileBytes = IOUtils.toByteArray(streamOrig)
+    val digest = Main.digest(fileBytes)
+
+    val stream = new ByteArrayInputStream(fileBytes)
+
+    storeFromStreamWithDigest(userId, name, timezone, stream, digest)
+  }
+
 }

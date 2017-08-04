@@ -9,10 +9,10 @@ object IndexHtml extends DefineRequest("/") {
 
   def html(request: Request, resp: Response) = {
     val code = Option(request.cookie("authCode"))
-    if (code.exists(_.nonEmpty)) {
-      resp.redirect(s"/logIn?code=${URLEncoder.encode(code.get, "UTF-8")}")
+    code.map { code =>
+      resp.redirect(s"/login?code=${URLEncoder.encode(code, "UTF-8")}")
       Nil
-    } else {
+    }.getOrElse {
       loginHtml(request, resp)
     }
   }
@@ -30,7 +30,7 @@ object IndexHtml extends DefineRequest("/") {
       val clientId = secret.appId
       val serverUri = scheme + "://" + hostname // Spark hostname seems to include port if needed
       val uri = "https://www.strava.com/oauth/authorize?"
-      val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/logIn&scope=write,view_private&approval_prompt=force"
+      val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/login&scope=write,view_private&approval_prompt=force"
       <h3>Work in progress, use at your own risk.</h3>
         <p>
           This tool allows you to split activity or edit lap information for it.

@@ -14,20 +14,23 @@ lazy val commonLibs = Seq(
 
 val jacksonVersion = "2.8.3"
 
-lazy val uploader = (project in file("uploader")).settings(
-  name := "StravamatUploader",
+lazy val pushUploader = (project in file("push-uploader")).settings(
+  name := "StravamatStart",
   commonSettings,
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.17",
-  libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.5",
+  //libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.3",
+  libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
 
   libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
   libraryDependencies ++= commonLibs
 
 )
 
+
+
 lazy val stravamat = (project in file("."))
-  .aggregate(uploader)
+  .aggregate(pushUploader)
+  .disablePlugins(sbtassembly.AssemblyPlugin)
   .settings(
     appengineSettings,
 
@@ -53,6 +56,8 @@ lazy val stravamat = (project in file("."))
       "com.jsuereth" %% "scala-arm" % "1.4" exclude(
         "org.scala-lang.plugins", "scala-continuations-library_" + scalaBinaryVersion.value
       ),
-      "org.apache.commons" % "commons-math" % "2.1"
+      "org.apache.commons" % "commons-math" % "2.1",
+      "commons-io" % "commons-io" % "2.1"
     )
   )
+
