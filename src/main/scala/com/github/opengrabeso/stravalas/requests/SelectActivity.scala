@@ -33,7 +33,9 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
     val stravaActivities = Main.recentStravaActivities(auth)
 
-    val sid = uniqueSessionId(session)
+    // Strava upload progress session id
+    val sid = System.currentTimeMillis().toString
+    session.attribute("sid", sid)
 
     // ignore anything older than oldest of recent Strava activities
     val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime)
