@@ -63,15 +63,21 @@ object PushStart extends DefineRequest("/push-start") with ActivityRequestHandle
     </html>
   }
 
+  def storedQueryParam(req: Request, prefix: String, name: String): String = {
+    val session = req.session()
+    val p = req.queryParams(name)
+    if (p != null) {
+      session.attribute(prefix + name, p)
+      p
+    } else {
+      session.attribute[String](prefix + name)
+    }
+  }
+
   def html(req: Request, resp: Response) = {
     val session = req.session()
-    val sessionId = uniqueSessionId(session)
-    val sessionPort = session.attribute[String]("push-port")
-    val port = Option(sessionPort).fold[Int] {
-      val p = req.queryParams("port").toInt
-      session.attribute("push-port", p.toString)
-      p
-    }(_.toInt)
+    val sessionId = storedQueryParam(req, "push-", "session")
+    val port = storedQueryParam(req, "push-", "port").toInt
     // check stored oauth cookie
     val code = Option(req.cookie("authCode"))
     code.flatMap { code =>

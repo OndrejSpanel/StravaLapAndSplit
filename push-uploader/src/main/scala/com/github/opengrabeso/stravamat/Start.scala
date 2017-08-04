@@ -119,8 +119,8 @@ object Start extends App {
      - this is captured by authHandler
     - we receive the token and redirect to a page http://stravamat/push-push?token=<XXXX>
     */
-
-    val startPushUrl = s"$stravaMatUrl/push-start?port=$serverPort"
+    val sessionId = System.currentTimeMillis()
+    val startPushUrl = s"$stravaMatUrl/push-start?port=$serverPort&session=$sessionId"
     println(s"Starting browser $startPushUrl")
     Desktop.getDesktop.browse(new URL(startPushUrl).toURI)
   }
@@ -129,7 +129,7 @@ object Start extends App {
   def authHandler(userId: String, since: String, sessionId: String) = {
     // session is authorized, we can continue sending the data
     serverInfo.stop()
-    println(s"Auth done - Stravamat user id $userId")
+    println(s"Auth done - Stravamat user id $userId, session $sessionId")
     val sinceTime = new ZonedDateTime(since)
     val sinceTime2 = ZonedDateTime.parse(since)
     authData = Some(AuthData(userId, sinceTime, sessionId))

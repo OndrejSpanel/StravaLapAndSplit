@@ -24,6 +24,7 @@ object ListPending extends DefineRequest("/push-list-pending") {
     progress.fold {
       unknownProgress
     } { p =>
+      //println(s"Load progress ${p.done}/${p.total} to ${p.session}")
       // now do the matching and list those not matching
       if (sessionId == p.session) {
         <progress>

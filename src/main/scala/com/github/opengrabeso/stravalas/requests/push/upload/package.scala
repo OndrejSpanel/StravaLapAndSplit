@@ -6,6 +6,7 @@ package object upload {
   case class Progress(session: String, total: Int, done: Int)
 
   def saveProgress(userId: String, session: String, totalFiles: Int, doneFiles: Int): Unit = {
+    //println(s"Save progress $doneFiles/$totalFiles to $session")
     Storage.store(Main.namespace.uploadProgress, "progress", userId, Progress(session, totalFiles, doneFiles))
   }
 

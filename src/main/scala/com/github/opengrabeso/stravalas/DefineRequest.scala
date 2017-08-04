@@ -86,14 +86,6 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
   Normal web app session ID is not unique, sessions get reused.
   */
   def uniqueSessionId(session: Session): String = {
-    val ret = session.attribute[String]("sid")
-    if (ret != null) {
-      ret
-    } else {
-      val sid = System.currentTimeMillis().toString
-      session.attribute("sid", sid)
-      sid
-    }
-
+    session.attribute[String]("push-session")
   }
 }
