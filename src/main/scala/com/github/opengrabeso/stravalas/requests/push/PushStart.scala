@@ -65,6 +65,7 @@ object PushStart extends DefineRequest("/push-start") with ActivityRequestHandle
 
   def html(req: Request, resp: Response) = {
     val session = req.session()
+    val sessionId = session.id()
     val sessionPort = session.attribute[String]("push-port")
     val port = Option(sessionPort).fold[Int] {
       val p = req.queryParams("port").toInt
@@ -92,7 +93,7 @@ object PushStart extends DefineRequest("/push-start") with ActivityRequestHandle
 
         resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
         session.attribute("auth", auth)
-        resp.redirect(s"http://localhost:$port/auth?user=${URLEncoder.encode(auth.userId, "UTF-8")}&since=$since")
+        resp.redirect(s"http://localhost:$port/auth?user=${URLEncoder.encode(auth.userId, "UTF-8")}&since=$since&session=$sessionId")
         NodeSeq.Empty
       }
     }.getOrElse {

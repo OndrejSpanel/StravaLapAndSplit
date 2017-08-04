@@ -7,6 +7,7 @@ object ListPending extends DefineRequest("/push-list-pending") {
   def html(req: Request, resp: Response) = {
     val session = req.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
+    val sessionId = session.id()
     //val stravaActivities = session.attribute[Seq[Main.ActivityId]]("stravaActivities")
 
     //val stored = Storage.enumerate(Main.namespace.stage, auth.userId)
@@ -14,16 +15,24 @@ object ListPending extends DefineRequest("/push-list-pending") {
     val progress = Storage.load[upload.Progress](Main.namespace.uploadProgress, "progress", auth.userId)
     // to do the matching we would have to load the stored activities
 
-    progress.fold {
+    def unknownProgress = {
       <progress>
         <unknown></unknown>
       </progress>
+    }
+
+    progress.fold {
+      unknownProgress
     } { p =>
       // now do the matching and list those not matching
-      <progress>
-        <total>{p.total}</total>
-        <done>{p.done}</done>
-      </progress>
+      if (sessionId == p.session) {
+        <progress>
+          <total>{p.total}</total>
+          <done>{p.done}</done>
+        </progress>
+      } else {
+        unknownProgress
+      }
     }
   }
 }

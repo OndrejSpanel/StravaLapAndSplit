@@ -26,7 +26,7 @@ import scala.util.control.NonFatal
 
 object Start extends App {
 
-  case class AuthData(userId: String, since: ZonedDateTime)
+  case class AuthData(userId: String, since: ZonedDateTime, sessionId: String)
 
   private val instanceId = System.currentTimeMillis()
   private var authData = Option.empty[AuthData]
@@ -126,13 +126,13 @@ object Start extends App {
   }
 
 
-  def authHandler(userId: String, since: String) = {
+  def authHandler(userId: String, since: String, sessionId: String) = {
     // session is authorized, we can continue sending the data
     serverInfo.stop()
     println(s"Auth done - Stravamat user id $userId")
     val sinceTime = new ZonedDateTime(since)
     val sinceTime2 = ZonedDateTime.parse(since)
-    authData = Some(AuthData(userId, sinceTime))
+    authData = Some(AuthData(userId, sinceTime, sessionId))
     authDone.countDown()
     val doPushUrl = s"$stravaMatUrl/push-do"
     redirect(doPushUrl, StatusCodes.Found)
@@ -156,8 +156,8 @@ object Start extends App {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val requests = path("auth") {
-      parameters('user, 'since) { (user, since) =>
-        authHandler(user, since)
+      parameters('user, 'since, 'session) { (user, since, session) =>
+        authHandler(user, since, session)
       }
     } ~ path("shutdown") {
       parameter('id) {
@@ -201,14 +201,11 @@ object Start extends App {
 
   def performUpload(data: AuthData) = {
 
-
-    val AuthData(userId, since) = data
+    val AuthData(userId, since, sessionId) = data
 
     val sinceDate = since minusDays 1
 
     import scala.concurrent.ExecutionContext.Implicits.global
-
-    // TODO: push-put-check is just an example, replace with real file processing
 
     val listFiles = MoveslinkFiles.listFiles.toList
     // sort files by timestamp
@@ -224,10 +221,13 @@ object Start extends App {
       // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
 
+      val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
+
       val req = Http().singleRequest(
         HttpRequest(
           uri = s"$stravaMatUrl/push-put-digest?user=$userId&path=$f&$uploadProgress",
           method = HttpMethods.POST,
+          headers = List(sessionCookie),
           entity = HttpEntity(digest)
         )
       ).map { resp =>
@@ -246,6 +246,7 @@ object Start extends App {
             HttpRequest(
               uri = s"$stravaMatUrl/push-put?user=$userId&path=$f&digest=$digest&$uploadProgress",
               method = HttpMethods.POST,
+              headers = List(sessionCookie),
               entity = HttpEntity(fileBytes)
             )
           ).map { resp =>

@@ -9,7 +9,7 @@ object CheckUploadStatus extends DefineRequest.Post("/check-upload-status")  {
     val session = req.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
-    val sessionId = session.attribute[java.lang.Long]("sid").toLong
+    val sessionId = session.attribute[String]("sid")
 
     val uploadNamespace = Main.namespace.upload(sessionId)
     val uploadResultNamespace = Main.namespace.uploadResult(sessionId)

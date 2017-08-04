@@ -41,12 +41,16 @@ object PushDo extends DefineRequest("/push-do") with ActivityRequestHandler {
               dataType: "xml",
               cache: false
             }).done( function(response) {
-              var totalFiles = $(response).find("total").first().text();
-              var doneFiles = $(response).find("done").first().text();
-              $("#total").html(totalFiles);
-              $("#done").html(doneFiles);
-              if (doneFiles < totalFiles) setTimeout(update, 1000);
-              else $("#uploaded").show();
+              var totalElem = $(response).find("total");
+              var doneElem = $(response).find("done");
+              if (/*totalElem && doneElem &&*/ totalElem.length > 0 && doneElem.length > 0) {
+                var totalFiles = parseInt(totalElem.first().text());
+                var doneFiles = parseInt(doneElem.first().text());
+                $("#total").html(totalFiles);
+                $("#done").html(doneFiles);
+                if (doneFiles < totalFiles) setTimeout(update, 1000);
+                else $("#uploaded").show();
+              } else setTimeout(update, 1000);
             });
           }
           update();

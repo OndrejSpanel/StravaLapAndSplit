@@ -32,7 +32,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val stravaActivities = Main.recentStravaActivities(auth)
-    val sid: java.lang.Long = System.currentTimeMillis()
+    val sid = session.id()
     session.attribute("sid", sid)
 
     // ignore anything older than oldest of recent Strava activities

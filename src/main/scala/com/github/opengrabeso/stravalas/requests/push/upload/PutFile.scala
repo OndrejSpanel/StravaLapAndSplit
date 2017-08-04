@@ -16,6 +16,8 @@ object PutFile extends DefineRequest.Post("/push-put") {
     // - note: client has already computed any it because it verified it before sending data to us
     val digest = request.queryParams("digest")
 
+    val sessionId = request.cookie("sessionid")
+
     val totalFiles = request.queryParams("total-files").toInt
     val doneFiles = request.queryParams("done-files").toInt
 
@@ -56,7 +58,7 @@ object PutFile extends DefineRequest.Post("/push-put") {
 
     Upload.storeFromStreamWithDigest(userId, path, input, digest)
 
-    saveProgress(userId, totalFiles, doneFiles)
+    saveProgress(userId, sessionId, totalFiles, doneFiles)
 
     resp.status(200)
 

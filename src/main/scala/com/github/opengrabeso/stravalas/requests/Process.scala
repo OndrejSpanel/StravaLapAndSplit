@@ -15,7 +15,7 @@ import scala.util.{Failure, Success}
 
 object Process extends DefineRequest.Post("/process") {
 
-  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents], sessionId: Long): Int = {
+  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents], sessionId: String): Int = {
     if (toMerge.nonEmpty) {
 
       val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
@@ -130,7 +130,7 @@ object Process extends DefineRequest.Post("/process") {
 
     val session = request.session()
     implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
-    var sessionId = session.attribute[java.lang.Long]("sid").toLong
+    var sessionId = session.attribute[String]("sid")
 
     val fif = new DiskFileItemFactory()
     fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
