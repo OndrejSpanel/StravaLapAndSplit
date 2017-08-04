@@ -107,7 +107,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                 //day: "numeric",
                 hour: "numeric",
                 minute: "numeric",
-                timeZoneName: "short"
+                //timeZoneName: "short"
               }
             ).format(date)
           }

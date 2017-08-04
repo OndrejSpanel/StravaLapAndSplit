@@ -59,7 +59,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
         loadSml(name, digest, stream).toSeq.flatMap(loadFromMove(name, digest, _))
       case "xml" =>
         val maxHR = Settings(userId).maxHR
-        loadXml(name, digest, stream, maxHR).zipWithIndex.flatMap { case (act,index) =>
+        loadXml(name, digest, stream, maxHR, timezone).zipWithIndex.flatMap { case (act,index) =>
           // some activities (Quest) have more parts, each part needs a distinct name
           val nameWithIndex = if (index > 0) s"$name-$index" else name
           loadFromMove(nameWithIndex, digest, act)
