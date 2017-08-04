@@ -55,6 +55,7 @@ lazy val stravamat = (project in file("."))
       "com.jsuereth" %% "scala-arm" % "1.4" exclude(
         "org.scala-lang.plugins", "scala-continuations-library_" + scalaBinaryVersion.value
       ),
-      "org.apache.commons" % "commons-math" % "2.1"
+      "org.apache.commons" % "commons-math" % "2.1",
+      "commons-io" % "commons-io" % "2.1"
     )
   )

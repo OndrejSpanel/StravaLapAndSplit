@@ -32,8 +32,8 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     val stravaActivities = Main.recentStravaActivities(auth)
-    val sid = session.id()
-    session.attribute("sid", sid)
+
+    val sid = uniqueSessionId(session)
 
     // ignore anything older than oldest of recent Strava activities
     val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime)
@@ -107,6 +107,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                 //day: "numeric",
                 hour: "numeric",
                 minute: "numeric",
+                timeZoneName: "short"
               }
             ).format(date)
           }

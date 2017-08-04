@@ -12,6 +12,8 @@ object PutFile extends DefineRequest.Post("/push-put") {
   override def html(request: Request, resp: Response) = {
     val path = request.queryParams("path")
     val userId = request.queryParams("user")
+    val timezone = request.queryParams("timezone")
+
     // we expect to receive digest separately, as this allows us to use the stream incrementally while parsing XML
     // - note: client has already computed any it because it verified it before sending data to us
     val digest = request.queryParams("digest")
@@ -56,7 +58,7 @@ object PutFile extends DefineRequest.Post("/push-put") {
 
     println(s"Received content for $path")
 
-    Upload.storeFromStreamWithDigest(userId, path, input, digest)
+    Upload.storeFromStreamWithDigest(userId, path, timezone, input, digest)
 
     saveProgress(userId, sessionId, totalFiles, doneFiles)
 

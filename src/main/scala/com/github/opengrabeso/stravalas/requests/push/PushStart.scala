@@ -65,7 +65,7 @@ object PushStart extends DefineRequest("/push-start") with ActivityRequestHandle
 
   def html(req: Request, resp: Response) = {
     val session = req.session()
-    val sessionId = session.id()
+    val sessionId = uniqueSessionId(session)
     val sessionPort = session.attribute[String]("push-port")
     val port = Option(sessionPort).fold[Int] {
       val p = req.queryParams("port").toInt

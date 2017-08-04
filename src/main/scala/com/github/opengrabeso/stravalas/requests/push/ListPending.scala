@@ -7,7 +7,7 @@ object ListPending extends DefineRequest("/push-list-pending") {
   def html(req: Request, resp: Response) = {
     val session = req.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
-    val sessionId = session.id()
+    val sessionId = uniqueSessionId(session)
     //val stravaActivities = session.attribute[Seq[Main.ActivityId]]("stravaActivities")
 
     //val stored = Storage.enumerate(Main.namespace.stage, auth.userId)

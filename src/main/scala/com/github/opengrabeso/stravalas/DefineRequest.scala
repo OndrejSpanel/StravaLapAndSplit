@@ -1,6 +1,6 @@
 package com.github.opengrabeso.stravalas
 
-import spark.{Request, Response}
+import spark.{Request, Response, Session}
 
 import scala.xml.NodeSeq
 
@@ -79,5 +79,21 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       <p style="color:#fff">© 2016 <a href="https://github.com/OndrejSpanel" style="color:inherit">Ondřej Španěl</a></p>
       <div/>
     </div>
+  }
+
+  /*
+  We need the ID to be unique for a given user, timestamps seems reasonable for this.
+  Normal web app session ID is not unique, sessions get reused.
+  */
+  def uniqueSessionId(session: Session): String = {
+    val ret = session.attribute[String]("sid")
+    if (ret != null) {
+      ret
+    } else {
+      val sid = System.currentTimeMillis().toString
+      session.attribute("sid", sid)
+      sid
+    }
+
   }
 }

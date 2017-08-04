@@ -46,6 +46,7 @@ object GetFiles extends DefineRequest("/getFiles") {
         {bodyHeader(auth)}<h2>Staging</h2>
 
         <form action="upload" method="post" enctype="multipart/form-data">
+          <input type="hidden" id="timezone" name="timezone" value=""></input>
           <p>Select files to upload
 
             <div id="drop-container" style="border:1px solid black;height:100px;">
@@ -82,6 +83,8 @@ object GetFiles extends DefineRequest("/getFiles") {
           function changeActivity(event, value, id) {
             console.log("changeActivity " + event + ",");
           }
+
+          document.getElementById("timezone").value = Intl.DateTimeFormat().resolvedOptions().timeZone
 
           """
         )}

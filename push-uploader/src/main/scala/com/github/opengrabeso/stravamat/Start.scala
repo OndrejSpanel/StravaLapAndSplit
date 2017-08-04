@@ -1,7 +1,7 @@
 package com.github.opengrabeso.stravamat
 
 import java.awt.Desktop
-import java.net.URL
+import java.net.{URL, URLEncoder}
 import java.security.MessageDigest
 import java.util.concurrent.CountDownLatch
 
@@ -19,7 +19,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, duration}
 import scala.util.{Success, Try}
 import scala.xml.{Elem, XML}
-import org.joda.time.{DateTime => ZonedDateTime}
+import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
 import Util._
 
 import scala.util.control.NonFatal
@@ -213,6 +213,11 @@ object Start extends App {
 
     val sortedFiles = wantedFiles.sortBy(MoveslinkFiles.timestampFromName)
 
+    val localTimeZone = DateTimeZone.getDefault.toString
+
+
+    val requestParams = s"user=$userId&timezone=${URLEncoder.encode(localTimeZone, "UTF-8")}"
+
     for {
       (f, i) <- sortedFiles.zipWithIndex
       fileBytes <- MoveslinkFiles.get(f)
@@ -225,7 +230,7 @@ object Start extends App {
 
       val req = Http().singleRequest(
         HttpRequest(
-          uri = s"$stravaMatUrl/push-put-digest?user=$userId&path=$f&$uploadProgress",
+          uri = s"$stravaMatUrl/push-put-digest?$requestParams&path=$f&$uploadProgress",
           method = HttpMethods.POST,
           headers = List(sessionCookie),
           entity = HttpEntity(digest)
@@ -244,7 +249,7 @@ object Start extends App {
           // digest not matching, we need to send full content
           val uploadReq = Http().singleRequest(
             HttpRequest(
-              uri = s"$stravaMatUrl/push-put?user=$userId&path=$f&digest=$digest&$uploadProgress",
+              uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest&$uploadProgress",
               method = HttpMethods.POST,
               headers = List(sessionCookie),
               entity = HttpEntity(fileBytes)

@@ -29,9 +29,14 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
       def next() = items.next
     }
 
+    var timezone = Option.empty[String]
     itemsIterator.foreach { item =>
-      if (!item.isFormField && "activities" == item.getFieldName) {
-        storeFromStream(auth.userId, item.getName, item.openStream())
+      if (!item.isFormField && item.getFieldName == "activities") {
+        if (item.getName!="") {
+          storeFromStream(auth.userId, item.getName, timezone.get, item.openStream())
+        }
+      } else if (item.isFormField && item.getFieldName == "timezone") {
+        timezone = Some(IOUtils.toString(item.openStream(), "UTF-8"))
       }
     }
 
@@ -40,7 +45,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
   }
 
 
-  def storeFromStreamWithDigest(userId: String, name: String, stream: InputStream, digest: String) = {
+  def storeFromStreamWithDigest(userId: String, name: String, timezone: String, stream: InputStream, digest: String) = {
     import MoveslinkImport._
     def now() = System.currentTimeMillis()
     val start = now()
@@ -73,7 +78,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
     logTime("Store file")
   }
 
-  def storeFromStream(userId: String, name: String, streamOrig: InputStream) = {
+  def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream) = {
     import MoveslinkImport._
     // we may read only once, we need to buffer it
 
@@ -82,7 +87,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
 
     val stream = new ByteArrayInputStream(fileBytes)
 
-    storeFromStreamWithDigest(userId, name, stream, digest)
+    storeFromStreamWithDigest(userId, name, timezone, stream, digest)
   }
 
 }
