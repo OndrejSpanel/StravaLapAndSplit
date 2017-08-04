@@ -167,7 +167,6 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
               processData: false,
               success: function(response) {
                   showResults();
-                  console.log("AJAX submitted");
               },
             });
 
