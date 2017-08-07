@@ -28,6 +28,62 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
   }
 
 
+  def uploadResultsHtml() = {
+    <div id="uploads_table" style="display: none;">
+      <table id="uploaded"></table>
+    </div>
+    <script>
+      {xml.Unparsed(
+      // language=JavaScript
+      """
+    function extractResult(node, tagName, callback) {
+      var n = node.getElementsByTagName(tagName);
+      if (n.length > 0) return callback(n[0].textContent);
+    }
+    function addRow(tableBody, text) {
+      var tr = document.createElement('TR');
+      var td = document.createElement('TD');
+      td.innerHTML = text;
+      tr.appendChild(td);
+      tableBody.appendChild(tr);
+    }
+    function showResults() {
+
+      ajaxAsync("check-upload-status", "", function(response) {
+        var results = response.documentElement.getElementsByTagName("result");
+        var complete = response.documentElement.getElementsByTagName("complete");
+        var tableBody = document.getElementById("uploaded");
+        for (var i = 0; i < results.length; i++) {
+
+          var res = extractResult(results[i], "done", function(text) {
+            // TODO: get Strava user friendly name, or include a time?
+            return "Done <a href=https://www.strava.com/activities/" + text + ">" + text + "</a>";
+          }) || extractResult(results[i], "duplicate", function(text) {
+            if (text ==0) {
+              return "Duplicate";
+            } else {
+              return "Duplicate of <a href=https://www.strava.com/activities/" + text + ">" + text + "</a>";
+            }
+          }) || extractResult(results[i], "error", function(text) {
+            return "Error " + text;
+          });
+          if (res) addRow(tableBody, res);
+        }
+        if (complete.length == 0) {
+          setTimeout(showResults, 1000);
+        } else {
+          addRow(tableBody, '<b>Complete</b>'); // TODO: bold
+        }
+      }, function (failure) {
+        console.log(failure);
+        setTimeout(showResults, 1000);
+      });
+    }
+
+    """)}
+    </script>
+  }
+
   override def html(request: Request, resp: Response) = {
     val session = request.session()
     val auth = session.attribute[StravaAuthResult]("auth")
@@ -235,9 +291,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
           </table>
           <input id="upload_button" type="submit" value="Process..."/>
 
-          <div id="uploads_table" style="display: none;">
-            {Process.uploadResultsHtml()}
-          </div>
+          {uploadResultsHtml()}
         </form>
         {bodyFooter}
         <script>{xml.Unparsed(
