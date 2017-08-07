@@ -169,9 +169,9 @@ object Main {
     // file upload progress
     val uploadProgress = "upload-progress"
     // upload - invisible data, used to hand data to the background upload tasks
-    def upload(session: String) = "upload-" + session.toString
+    def upload(session: String) = "upload-" + session
     // upload results - report upload status and resulting id
-    def uploadResult(session: String) = "upload-result-" + session.toString
+    def uploadResult(session: String) = "upload-result-" + session
     // user settings
     val settings = "settings"
   }

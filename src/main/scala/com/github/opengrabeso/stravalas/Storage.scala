@@ -165,4 +165,20 @@ object Storage {
     }.contains(true)
   }
 
+
+  def cleanup(): Int = {
+    val options = new ListOptions.Builder().setRecursive(true).build()
+    val list = gcsService.list(bucket, options).asScala.toIterable
+
+    val ops = for (i <- list) yield {
+      val md = Option(gcsService.getMetadata(new GcsFilename(bucket, i.getName)))
+      //println(s"enum '$name' - '$userId': md '$m'")
+      val name = i.getName
+      println(s"name $name date ${i.getLastModified()}")
+      0
+    }
+    ops.sum
+
+  }
+
 }

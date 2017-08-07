@@ -4,4 +4,9 @@
     <description>Clean up sessions</description>
     <schedule>every 2 hours</schedule>
   </cron>
+  <cron>
+    <url>/cleanup?perioric</url>
+    <description>Clean up obsolete data</description>
+    <schedule>every 12 hours</schedule>
+  </cron>
 </cronentries>

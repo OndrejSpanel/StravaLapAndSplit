@@ -37,6 +37,8 @@ class ServletRouting extends SparkApplication {
 
       activityOps.Delete,
 
+      Cleanup,
+
       RouteData
     )
 
