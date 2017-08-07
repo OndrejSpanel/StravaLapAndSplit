@@ -554,8 +554,9 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       println(s"Quest offset $bestOffset from distance ${dist.last._2}, confidence $confidence")
     }
     println(s"Offset based on stop time: $endOffset")
+    val useEndOffset = false
     //hrdMove.timeOffset(bestOffset)
-    if (endOffset.abs < 10) {
+    if (useEndOffset && endOffset.abs < 10) {
       // some smart verification between estimated and measured end offset
       (endOffset / 1000.0).round.toInt
     } else {
