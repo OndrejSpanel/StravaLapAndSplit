@@ -130,8 +130,6 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
     val settings = Settings(auth.userId)
     <html>
       <head>
-        {/* allow referer when using redirect to unsafe getSuunto page */}
-        <meta name="referrer" content="unsafe-url"/>
         {headPrefix}<title>Stravamat - {title}</title>
         <style>
           tr.activities:nth-child(even) {{background-color: #f2f2f2}}
@@ -182,12 +180,6 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                 //timeZoneName: "short"
               }
             ).format(date)
-          }
-          function unsafe(uri) {
-              var abs = window.location.href;
-              var http = abs.replace(/^https:/, 'http:');
-              var rel = http.lastIndexOf('/');
-              return http.substring(0, rel + 1) + uri;
           }
           function formatTimeSec(t) {
             var locale = getLocale();
