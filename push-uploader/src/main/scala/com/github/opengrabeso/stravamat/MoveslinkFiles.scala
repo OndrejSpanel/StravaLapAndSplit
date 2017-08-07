@@ -20,9 +20,12 @@ object MoveslinkFiles {
 
   private def placeInFolder(folder: String, filename: String): String = folder + "/" + filename
 
+  // no need to sync Moveslink settings files, we want only activities
+  private def exclude = Seq("library.xml", "settings.xml")
+
   def listQuestFiles: Set[String] = getDataFolder.list.toSet.filter(name => name.endsWith(".xml") && name.toLowerCase.startsWith("quest_"))
 
-  def listMoveslink2Files: Set[String] = getData2Folder.list.toSet.filter(f => f.endsWith(".sml") || f.endsWith(".xml"))
+  def listMoveslink2Files: Set[String] = getData2Folder.list.toSet.filter(f => f.endsWith(".sml") || f.endsWith(".xml") && !exclude.contains(f.toLowerCase))
 
   def listFiles: Set[String] = listQuestFiles.map(placeInFolder(moveslinkFolder, _)) ++ listMoveslink2Files.map(placeInFolder(moveslink2Folder, _))
 

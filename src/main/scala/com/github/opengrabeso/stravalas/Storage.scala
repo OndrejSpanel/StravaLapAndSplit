@@ -53,20 +53,65 @@ object Storage {
     oos.close()
   }
 
-  def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
-    //println(s"load '$filename' - '$userId'")
-    val is = input(userFilename(namespace, filename, userId))
+  def store(namespace: String, filename: String, userId: String, obj1: AnyRef, obj2: AnyRef, metadata: (String, String)*) = {
+    //println(s"store '$filename' - '$userId'")
+    val os = output(userFilename(namespace, filename, userId), metadata)
+    val oos = new ObjectOutputStream(os)
+    oos.writeObject(obj1)
+    oos.writeObject(obj2)
+    oos.close()
+  }
+
+  private def readSingleObject[T: ClassTag](ois: ObjectInputStream) = {
     try {
-      val ois = new ObjectInputStream(is)
       val read = ois.readObject()
       read match {
         case r: T => Some(r)
-        case _ => None // handles readObject returning null as well
+        case null => None
+        case any =>
+          val classTag = implicitly[ClassTag[T]]
+          throw new InvalidClassException(s"Read class ${any.getClass.getName}, expected ${classTag.runtimeClass.getName}")
       }
     } catch {
       case ex: FileNotFoundException =>
         // reading a file which does not exist - return null
         None
+    }
+  }
+
+  def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
+    //println(s"load '$filename' - '$userId'")
+    val is = input(userFilename(namespace, filename, userId))
+    try {
+      val ois = new ObjectInputStream(is)
+      readSingleObject[T](ois)
+    } catch {
+      case ex: FileNotFoundException =>
+        None
+      case x: Exception =>
+        x.printStackTrace()
+        None
+    } finally {
+      is.close()
+    }
+  }
+
+  def load2nd[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
+    //println(s"load '$filename' - '$userId'")
+    load[AnyRef, T](namespace, filename, userId).map(_._2)
+  }
+
+  def load[T1: ClassTag, T2: ClassTag](namespace: String, filename: String, userId: String): Option[(T1, T2)] = {
+    val is = input(userFilename(namespace, filename, userId))
+    try {
+      val ois = new ObjectInputStream(is)
+      val obj1 = readSingleObject[T1](ois)
+      obj1.flatMap { o1 =>
+        val obj2 = readSingleObject[T2](ois)
+        obj2.map(o2 => (o1, o2))
+      }.orElse(None)
+    } finally {
+      is.close()
     }
   }
 

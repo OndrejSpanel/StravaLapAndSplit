@@ -19,7 +19,7 @@ abstract class ProcessFile(value: String) extends DefineRequest(value) {
         val eventsInput = req.raw.getParameterValues("events")
         val splitTime = req.queryParams("time").toInt
 
-        for (events <- Storage.load[Main.ActivityEvents](Main.namespace.stage, id, auth.userId)) {
+        for (events <- Storage.load2nd[Main.ActivityEvents](Main.namespace.stage, id, auth.userId)) {
 
           val adjusted = Main.adjustEvents(events, eventsInput)
 

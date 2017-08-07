@@ -20,9 +20,6 @@ object PutFile extends DefineRequest.Post("/push-put") {
 
     val sessionId = request.cookie("sessionid")
 
-    val totalFiles = request.queryParams("total-files").toInt
-    val doneFiles = request.queryParams("done-files").toInt
-
     val fileContent = request.raw().getInputStream
 
     val logProgress = false
@@ -60,7 +57,7 @@ object PutFile extends DefineRequest.Post("/push-put") {
 
     Upload.storeFromStreamWithDigest(userId, path, timezone, input, digest)
 
-    saveProgress(userId, sessionId, totalFiles, doneFiles)
+    reportProgress(userId, sessionId)
 
     resp.status(200)
 

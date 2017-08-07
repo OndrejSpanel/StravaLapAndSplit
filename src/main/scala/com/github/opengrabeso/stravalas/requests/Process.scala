@@ -1,7 +1,7 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import com.github.opengrabeso.stravalas.Main.ActivityEvents
+import com.github.opengrabeso.stravalas.Main._
 import net.suunto3rdparty.moveslink.MovesLinkUploader
 import spark.{Request, Response, Session}
 import org.apache.commons.fileupload.FileItemStream
@@ -37,35 +37,16 @@ object Process extends DefineRequest.Post("/process") {
       val queue = QueueFactory.getDefaultQueue
       for (upload <- merged) {
 
-        val sync = false
-        if (sync) {
-          // sync version - export and upload here
+        // export here, or in the worker? Both is possible
 
-          val export = FitExport.export(upload)
+        // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
+        val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
+        // are any metadata needed?
+        Storage.store(Main.namespace.upload(sessionId), uniqueName, auth.userId, upload.header, upload)
 
-          val api = new StravaAPI(auth.token)
-          //val ret = api.uploadRawFileGz(export, "fit.gz")
-          val ret = api.uploadRawFile(export, "fit")
-
-          ret match {
-            case Failure(_) =>
-              println("Upload not started")
-            case Success(uploadId) =>
-              println(s"Upload started: $uploadId")
-          }
-
-        } else {
-          // export here, or in the worker? Both is possible
-
-          // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
-          val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
-          // are any metadata needed?
-          Storage.store(Main.namespace.upload(sessionId), uniqueName, auth.userId, upload)
-
-          // using post with param is not recommended, but it should be OK when not using any payload
-          queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth, sessionId))
-          println(s"Queued task $uniqueName")
-        }
+        // using post with param is not recommended, but it should be OK when not using any payload
+        queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth, sessionId))
+        println(s"Queued task $uniqueName")
       }
       merged.size
     } else 0
@@ -163,7 +144,7 @@ object Process extends DefineRequest.Post("/process") {
     }.toVector
 
     val toMerge = ops.flatMap { op =>
-      Storage.load[ActivityEvents](Main.namespace.stage, op.filename, auth.userId)
+      Storage.load[ActivityHeader, ActivityEvents](Main.namespace.stage, op.filename, auth.userId).map(_._2)
     }
 
 

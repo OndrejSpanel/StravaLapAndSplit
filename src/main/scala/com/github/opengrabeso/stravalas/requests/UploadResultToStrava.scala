@@ -45,7 +45,7 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
     val uploadNamespace = Main.namespace.upload(sessionId)
     val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
 
-    for (upload <- Storage.load[Main.ActivityEvents](uploadNamespace, key, auth.userId)) {
+    for (upload <- Storage.load2nd[Main.ActivityEvents](uploadNamespace, key, auth.userId)) {
 
       val export = FitExport.export(upload)
 

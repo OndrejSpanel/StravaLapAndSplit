@@ -158,7 +158,7 @@ object Main {
   def stravaActivitiesNotStaged(auth: StravaAuthResult): Seq[ActivityId] = {
     val stravaActivities = recentStravaActivities(auth)
 
-    val storedActivities = stagedActivities(auth).map(_.id)
+    val storedActivities = stagedActivities(auth)
     // do not display the activities which are already staged
     stravaActivities diff storedActivities
   }
@@ -176,13 +176,12 @@ object Main {
     val settings = "settings"
   }
 
-  def stagedActivities(auth: StravaAuthResult): Seq[ActivityEvents] = {
+  def stagedActivities(auth: StravaAuthResult): Seq[ActivityHeader] = {
     val storedActivities = {
       val d = Storage.enumerate(namespace.stage, auth.userId)
       d.flatMap { a =>
         try {
-          val act = Storage.load[Main.ActivityEvents](namespace.stage, a, auth.userId)
-          act
+          Storage.load[ActivityHeader](namespace.stage, a, auth.userId)
         } catch {
           case x: java.io.InvalidClassException => // bad serialVersionUID
             println(s"load error ${x.getMessage} - $a")
@@ -201,7 +200,12 @@ object Main {
   case object NoActivity
 
   @SerialVersionUID(10L)
+  case class ActivityHeader(id: ActivityId, hasGPS: Boolean, hasAttributes: Boolean)
+
+  @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
+
+    def header: ActivityHeader = ActivityHeader(id, hasGPS, hasAttributes)
 
     def streams = {
       if (hasGPS) dist +: gps +: attributes

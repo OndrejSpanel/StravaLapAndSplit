@@ -70,10 +70,10 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
     logTime("Import file")
     if (actData.nonEmpty) {
       for (act <- actData) {
-        Storage.store(Main.namespace.stage, act.id.id.filename, userId, act, "digest" -> digest)
+        Storage.store(Main.namespace.stage, act.id.id.filename, userId, act.header, act, "digest" -> digest)
       }
     } else {
-      Storage.store(Main.namespace.stage, name, userId, NoActivity, "digest" -> digest)
+      Storage.store(Main.namespace.stage, name, userId, NoActivity, NoActivity, "digest" -> digest)
     }
     logTime("Store file")
   }

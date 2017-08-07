@@ -1,10 +1,8 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import spark.{Request, Response}
-import DateTimeOps._
-import org.joda.time.{DateTime => ZonedDateTime, Seconds}
-import net.suunto3rdparty.Settings
+import Main._
+import org.joda.time.{DateTime => ZonedDateTime}
 
 object ManageActivities extends SelectActivity("/selectActivity") {
   override def title = "select activities to process"
@@ -18,7 +16,7 @@ object ManageActivities extends SelectActivity("/selectActivity") {
     </div>
   }
 
-  override def filterListed(activity: Main.ActivityEvents, strava: Option[Main.ActivityId]) = {
+  override def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = {
     strava.isEmpty
   }
 
