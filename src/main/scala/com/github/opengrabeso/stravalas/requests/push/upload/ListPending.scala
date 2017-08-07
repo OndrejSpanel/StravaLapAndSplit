@@ -1,6 +1,7 @@
 package com.github.opengrabeso.stravalas
 package requests
 package push
+package upload
 import spark.{Request, Response}
 
 object ListPending extends DefineRequest("/push-list-pending") {
@@ -12,7 +13,8 @@ object ListPending extends DefineRequest("/push-list-pending") {
 
     //val stored = Storage.enumerate(Main.namespace.stage, auth.userId)
 
-    val progress = Storage.load[upload.Progress](Main.namespace.uploadProgress, "progress", auth.userId)
+
+    val progress = upload.loadProgress(auth.userId)
     // to do the matching we would have to load the stored activities
 
     def unknownProgress = {

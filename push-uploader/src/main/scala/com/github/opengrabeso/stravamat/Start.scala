@@ -215,57 +215,71 @@ object Start extends App {
 
     val localTimeZone = DateTimeZone.getDefault.toString
 
-
     val requestParams = s"user=$userId&timezone=${URLEncoder.encode(localTimeZone, "UTF-8")}"
 
-    for {
+    val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
+
+    val req = Http().singleRequest(
+      HttpRequest(
+        uri = s"$stravaMatUrl/push-put-start?$requestParams&total-files=${sortedFiles.size}",
+        method = HttpMethods.POST,
+        headers = List(sessionCookie)
+      )
+    ).map { resp =>
+      resp.discardEntityBytes()
+    }
+
+    Await.result(req, Duration.Inf)
+
+    val reqs = for {
       (f, i) <- sortedFiles.zipWithIndex
       fileBytes <- MoveslinkFiles.get(f)
-    } {
-      val uploadProgress = s"total-files=${sortedFiles.size}&done-files=${i+1}"
+    } yield {
       // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
 
-      val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
 
       val req = Http().singleRequest(
         HttpRequest(
-          uri = s"$stravaMatUrl/push-put-digest?$requestParams&path=$f&$uploadProgress",
+          uri = s"$stravaMatUrl/push-put-digest?$requestParams&path=$f",
           method = HttpMethods.POST,
           headers = List(sessionCookie),
           entity = HttpEntity(digest)
         )
-      ).map { resp =>
+      ).flatMap { resp =>
         resp.discardEntityBytes()
-        resp.status
+        println(s"File $f status ${resp.status}")
+        resp.status match {
+          case StatusCodes.NoContent =>
+            Future.successful(())
+          case StatusCodes.OK =>
+            // digest not matching, we need to send full content
+            val uploadReq = Http().singleRequest(
+              HttpRequest(
+                uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest",
+                method = HttpMethods.POST,
+                headers = List(sessionCookie),
+                entity = HttpEntity(fileBytes)
+              )
+            ).map { resp =>
+              resp.discardEntityBytes()
+              resp.status
+            }
+            println(s"  File $f upload started")
+            uploadReq
+
+          case _ => // unexpected - what to do?
+            Future.successful(())
+        }
       }
-      val resp = Await.result(req, Duration.Inf) // Http should handle timeouts on its own as needed
-      println(s"File $f status $resp")
+      f -> req
+    }
 
-      resp match {
-        case StatusCodes.NoContent =>
 
-        case StatusCodes.OK =>
-          // digest not matching, we need to send full content
-          val uploadReq = Http().singleRequest(
-            HttpRequest(
-              uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest&$uploadProgress",
-              method = HttpMethods.POST,
-              headers = List(sessionCookie),
-              entity = HttpEntity(fileBytes)
-            )
-          ).map { resp =>
-            resp.discardEntityBytes()
-            resp.status
-          }
-          println(s"  File $f upload started")
-          val uploadResp = Await.result(uploadReq, Duration.Inf) // Http should handle timeouts on its own as needed
-          // TODO: handle upload failures somehow
-          println(s"File $f upload status $uploadResp")
-
-        case _ => // unexpected - what to do?
-      }
-
+    reqs.foreach { case (f, r) =>
+      Await.result(r, Duration.Inf)
+      // TODO: handle upload failures somehow
+      println(s"File $f upload status $r")
     }
 
     serverInfo.system.terminate()
