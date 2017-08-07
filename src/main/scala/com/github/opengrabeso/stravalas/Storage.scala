@@ -68,7 +68,10 @@ object Storage {
       val read = ois.readObject()
       read match {
         case r: T => Some(r)
-        case _ => None // handles readObject returning null as well
+        case null => None
+        case any =>
+          val classTag = implicitly[ClassTag[T]]
+          throw new InvalidClassException(s"Read class ${any.getClass.getName}, expected ${classTag.runtimeClass.getName}")
       }
     } catch {
       case ex: FileNotFoundException =>
