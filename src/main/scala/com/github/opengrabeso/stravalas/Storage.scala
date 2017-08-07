@@ -3,6 +3,8 @@ package com.github.opengrabeso.stravalas
 import java.io._
 import java.nio.channels.Channels
 
+import org.joda.time.{Days, DateTime => ZonedDateTime}
+import Main.namespace
 import com.google.appengine.tools.cloudstorage._
 
 import scala.reflect.ClassTag
@@ -172,10 +174,36 @@ object Storage {
 
     val ops = for (i <- list) yield {
       val md = Option(gcsService.getMetadata(new GcsFilename(bucket, i.getName)))
-      //println(s"enum '$name' - '$userId': md '$m'")
       val name = i.getName
-      println(s"name $name date ${i.getLastModified()}")
-      0
+      // cleanup requirements different for different namespaces
+      val maxAgeInDays = if (name.contains("/" + namespace.stage + "/")) {
+        Some(90)
+      } else if (name.contains("/" + namespace.settings + "/")) {
+        Some(365)
+      } else if (name.contains("/" + namespace.uploadProgress + "/")) { // must be listed before namespace.upload, that would match more eagerly
+        Some(2)
+      } else if (name.contains("/" + namespace.uploadResult(""))) {
+        Some(2)
+      } else if (name.contains("/" + namespace.upload(""))) {
+        Some(2)
+      } else {
+        None
+      }
+
+      val now = new ZonedDateTime()
+      val cleaned = for (maxDays <- maxAgeInDays) yield {
+        val fileTime = new ZonedDateTime(i.getLastModified)
+        val age = Days.daysBetween(fileTime, now).getDays
+        if (age >= maxDays) {
+          gcsService.delete(new GcsFilename(bucket, name))
+          println(s"Cleaned $name age $age, date ${i.getLastModified}")
+          1
+        } else {
+          0
+        }
+      }
+
+      cleaned.getOrElse(0)
     }
     ops.sum
 
