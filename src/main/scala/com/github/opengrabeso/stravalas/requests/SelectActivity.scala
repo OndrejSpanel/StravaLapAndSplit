@@ -31,6 +31,9 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
   def uploadResultsHtml() = {
     <div id="uploads_table" style="display: none;">
       <table id="uploaded"></table>
+      <h4 id="uploads_process">Processing...</h4>
+      <h4 id="uploads_progress" style="display: none;">Uploading ...</h4>
+      <h4 id="uploads_complete" style="display: none;">Complete</h4>
     </div>
     <script>
       {xml.Unparsed(
@@ -46,6 +49,13 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
       td.innerHTML = text;
       tr.appendChild(td);
       tableBody.appendChild(tr);
+    }
+    function showProgress() {
+      $("#uploads_process").hide();
+      $("#uploads_progress").show();
+      var p = $("#uploads_progress");
+      p.text(p.text() + ".");
+      p.show();
     }
     function showResults() {
 
@@ -70,9 +80,12 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
           if (res) addRow(tableBody, res);
         }
         if (complete.length == 0) {
+          showProgress();
           setTimeout(showResults, 1000);
         } else {
-          addRow(tableBody, '<b>Complete</b>'); // TODO: bold
+          $("#uploads_complete").show();
+          $("#uploads_process").hide();
+          $("#uploads_progress").hide();
         }
       }, function (failure) {
         console.log(failure);
