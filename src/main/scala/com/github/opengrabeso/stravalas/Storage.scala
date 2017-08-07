@@ -53,9 +53,16 @@ object Storage {
     oos.close()
   }
 
-  def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
-    //println(s"load '$filename' - '$userId'")
-    val is = input(userFilename(namespace, filename, userId))
+  def store(namespace: String, filename: String, userId: String, obj1: AnyRef, obj2: AnyRef, metadata: (String, String)*) = {
+    //println(s"store '$filename' - '$userId'")
+    val os = output(userFilename(namespace, filename, userId), metadata)
+    val oos = new ObjectOutputStream(os)
+    oos.writeObject(obj1)
+    oos.writeObject(obj2)
+    oos.close()
+  }
+
+  private def readSingleObject[T: ClassTag](is: InputStream) = {
     try {
       val ois = new ObjectInputStream(is)
       val read = ois.readObject()
@@ -67,6 +74,34 @@ object Storage {
       case ex: FileNotFoundException =>
         // reading a file which does not exist - return null
         None
+    }
+  }
+
+  def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
+    //println(s"load '$filename' - '$userId'")
+    val is = input(userFilename(namespace, filename, userId))
+    try {
+      readSingleObject[T](is)
+    } finally {
+      is.close()
+    }
+  }
+
+  def load2nd[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
+    //println(s"load '$filename' - '$userId'")
+    load[AnyRef, T](namespace, filename, userId).map(_._2)
+  }
+
+  def load[T1: ClassTag, T2: ClassTag](namespace: String, filename: String, userId: String): Option[(T1, T2)] = {
+    val is = input(userFilename(namespace, filename, userId))
+    try {
+      val obj1 = readSingleObject[T1](is)
+      obj1.flatMap { o1 =>
+        val obj2 = readSingleObject[T2](is)
+        obj2.map(o2 => (o1, o2))
+      }.orElse(None)
+    } finally {
+      is.close()
     }
   }
 

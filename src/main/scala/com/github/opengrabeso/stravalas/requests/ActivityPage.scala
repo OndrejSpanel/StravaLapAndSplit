@@ -1,10 +1,9 @@
 package com.github.opengrabeso.stravalas
 package requests
 
-import com.github.opengrabeso.stravalas.Main.ActivityEvents
-import org.joda.time.{DateTime => ZonedDateTime, Seconds}
+import com.github.opengrabeso.stravalas.Main._
+import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 import spark.{Request, Response, Session}
-
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
@@ -31,7 +30,7 @@ trait ActivityRequestHandler {
   import ActivityRequest._
 
   protected def activityHtmlContent(actId: FileId, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
+    val auth = session.attribute[StravaAuthResult]("auth")
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
       <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
@@ -74,8 +73,8 @@ trait ActivityRequestHandler {
         val eTime = activityData.secondsInActivity(t.stamp)
         <tr>
           <td> {xml.Unparsed(t.description)} </td>
-          <td> {Main.displaySeconds(eTime)} </td>
-          <td> {Main.displayDistance(activityData.distanceForTime(t.stamp))} </td>
+          <td> {displaySeconds(eTime)} </td>
+          <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
           <td>
             {val types = t.listTypes
           if (types.length != 1 && !lastTime.contains(t.stamp)) {
@@ -543,12 +542,12 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
   override def html(request: Request, resp: Response) = {
 
     val session = request.session()
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
+    val auth = session.attribute[StravaAuthResult]("auth")
     val actId = request.queryParams("activityId")
 
     val fileId = FileId.parse(actId)
 
-    val activityData = Storage.load[Main.ActivityEvents](Main.namespace.stage, fileId.filename, auth.userId).get
+    val activityData = Storage.load2nd[ActivityEvents](namespace.stage, fileId.filename, auth.userId).get
 
     val content = activityHtmlContent(fileId, activityData, session, resp)
 
@@ -578,12 +577,12 @@ object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandl
 }
 
 object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityRequestHandler {
-  def saveAsNeeded(activityData: ActivityEvents)(implicit auth: Main.StravaAuthResult) = {
+  def saveAsNeeded(activityData: ActivityEvents)(implicit auth: StravaAuthResult) = {
     activityData.id.id match {
       case id: FileId.TempId =>
         // TODO: cleanup obsolete session data
         // TODO: use a different namespace to save processed data
-        Storage.store(Main.namespace.stage, id.filename, auth.userId, activityData)
+        Storage.store(namespace.stage, id.filename, auth.userId, activityData.header, activityData)
       case _ =>
     }
     activityData
@@ -592,7 +591,7 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
   override def html(request: Request, resp: Response) = {
 
     val session = request.session()
-    implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
+    implicit val auth = session.attribute[StravaAuthResult]("auth")
 
     val fif = new DiskFileItemFactory()
     fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
@@ -634,7 +633,7 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
 
     // TODO: create groups, process each group separately
     val toMerge = ops.flatMap { op =>
-      Storage.load[Main.ActivityEvents](Main.namespace.stage, op.filename, auth.userId)
+      Storage.load[ActivityHeader, ActivityEvents](namespace.stage, op.filename, auth.userId).map(_._2)
     }
 
 

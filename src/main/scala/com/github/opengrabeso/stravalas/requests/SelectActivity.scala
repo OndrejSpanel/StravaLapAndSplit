@@ -3,7 +3,8 @@ package requests
 
 import spark.{Request, Response}
 import DateTimeOps._
-import org.joda.time.{Seconds, DateTime => ZonedDateTime}
+import com.github.opengrabeso.stravalas.Main._
+import org.joda.time.{DateTime => ZonedDateTime}
 import net.suunto3rdparty.Settings
 
 import scala.xml.NodeSeq
@@ -12,7 +13,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
   def title: String
   def sources(before: ZonedDateTime): NodeSeq
-  def filterListed(activity: Main.ActivityEvents, strava: Option[Main.ActivityId]) = true
+  def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = true
 
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
@@ -29,9 +30,9 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
   override def html(request: Request, resp: Response) = {
     val session = request.session()
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
+    val auth = session.attribute[StravaAuthResult]("auth")
 
-    val stravaActivities = Main.recentStravaActivities(auth)
+    val stravaActivities = recentStravaActivities(auth)
 
     // Strava upload progress session id
     val sid = System.currentTimeMillis().toString
@@ -214,18 +215,18 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
               for ((actEvents, actStrava) <- recentToStrava) yield {
                 val act = actEvents.id
-                val ignored = mostRecentStrava.exists(_ > actEvents.id.endTime)
+                val ignored = mostRecentStrava.exists(_ > act.endTime)
                 // once any activity is present on Strava, do not offer upload by default any more
                 // (if some earlier is not present, it was probably already uploaded and deleted)
                 <tr>
                   <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}');return false"}>Unstage</button></td>
-                  <td>{jsResult(Main.jsDateRange(act.startTime, act.endTime))}</td>
+                  <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
                   <td>{act.sportName}</td>
                   <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
                   <td>{if (actEvents.hasAttributes) "Rec" else "--"}</td>
                   <td>{act.hrefLink}</td>
-                  <td>{Main.displayDistance(act.distance)} km</td>
-                  <td>{Main.displaySeconds(act.duration)}</td>
+                  <td>{displayDistance(act.distance)} km</td>
+                  <td>{displaySeconds(act.duration)}</td>
                   <td>{htmlActivityAction(act.id, !ignored)}</td>
                   <td>{actStrava.fold(<div>{act.id.toString}</div>)(_.hrefLink)}</td>
                 </tr>
