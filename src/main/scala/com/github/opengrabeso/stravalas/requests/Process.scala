@@ -59,6 +59,8 @@ object Process extends DefineRequest.Post("/process") {
     implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
     val sessionId = session.attribute[String]("sid")
 
+    assert(sessionId != null)
+
     val fif = new DiskFileItemFactory()
     fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
 
