@@ -62,9 +62,8 @@ object Storage {
     oos.close()
   }
 
-  private def readSingleObject[T: ClassTag](is: InputStream) = {
+  private def readSingleObject[T: ClassTag](ois: ObjectInputStream) = {
     try {
-      val ois = new ObjectInputStream(is)
       val read = ois.readObject()
       read match {
         case r: T => Some(r)
@@ -84,7 +83,14 @@ object Storage {
     //println(s"load '$filename' - '$userId'")
     val is = input(userFilename(namespace, filename, userId))
     try {
-      readSingleObject[T](is)
+      val ois = new ObjectInputStream(is)
+      readSingleObject[T](ois)
+    } catch {
+      case ex: FileNotFoundException =>
+        None
+      case x: Exception =>
+        x.printStackTrace()
+        None
     } finally {
       is.close()
     }
@@ -98,9 +104,10 @@ object Storage {
   def load[T1: ClassTag, T2: ClassTag](namespace: String, filename: String, userId: String): Option[(T1, T2)] = {
     val is = input(userFilename(namespace, filename, userId))
     try {
-      val obj1 = readSingleObject[T1](is)
+      val ois = new ObjectInputStream(is)
+      val obj1 = readSingleObject[T1](ois)
       obj1.flatMap { o1 =>
-        val obj2 = readSingleObject[T2](is)
+        val obj2 = readSingleObject[T2](ois)
         obj2.map(o2 => (o1, o2))
       }.orElse(None)
     } finally {
