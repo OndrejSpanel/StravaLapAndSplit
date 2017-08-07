@@ -248,7 +248,7 @@ object Start extends App {
         )
       ).flatMap { resp =>
         resp.discardEntityBytes()
-        println(s"File $f status ${resp.status}")
+        println(s"File status $f = ${resp.status}")
         resp.status match {
           case StatusCodes.NoContent =>
             Future.successful(())
@@ -265,7 +265,7 @@ object Start extends App {
               resp.discardEntityBytes()
               resp.status
             }
-            println(s"  File $f upload started")
+            println(s"  Upload started: $f")
             uploadReq
 
           case _ => // unexpected - what to do?
@@ -279,7 +279,7 @@ object Start extends App {
     reqs.foreach { case (f, r) =>
       Await.result(r, Duration.Inf)
       // TODO: handle upload failures somehow
-      println(s"File $f upload status $r")
+      println(s"  Upload $f status $r")
     }
 
     serverInfo.system.terminate()
