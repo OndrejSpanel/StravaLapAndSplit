@@ -70,8 +70,22 @@ object DStorage {
     val blob = storeToBlob(obj)
 
     objData.setProperty("blob", blob)
+    setModifiedNow(objData)
     datastore.put(t, objData)
   }
+
+  private def setModifiedNowInTransaction(fileKey: Key)(t: Transaction): Unit = {
+    val fileEntity = datastore.get(t, fileKey)
+    setModifiedNow(fileEntity)
+    datastore.put(t, fileEntity)
+
+  }
+
+  private def setModifiedNow(e: Entity): Unit = {
+    val now = new java.util.Date()
+    e.setProperty("modified", now)
+  }
+
 
   private def loadInTransaction[T <: AnyRef : ClassTag](fileKey: Key)(t: Transaction): T = {
     val classTag = implicitly[ClassTag[T]]
