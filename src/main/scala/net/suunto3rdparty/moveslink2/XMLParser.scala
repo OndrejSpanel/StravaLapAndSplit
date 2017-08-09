@@ -14,6 +14,7 @@ import scala.collection.immutable.SortedMap
 import scala.util._
 import scala.xml._
 import Util._
+import com.github.opengrabeso.stravamat.DateTimeOps._
 
 object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)

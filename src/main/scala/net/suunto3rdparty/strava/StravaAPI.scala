@@ -8,8 +8,8 @@ import java.util.zip.GZIPOutputStream
 
 import com.google.api.client.http._
 import resource._
-import Util._
 import com.github.opengrabeso.stravamat.RequestUtils
+import com.github.opengrabeso.stravamat.DateTimeOps._
 
 import scala.util.{Failure, Success, Try}
 

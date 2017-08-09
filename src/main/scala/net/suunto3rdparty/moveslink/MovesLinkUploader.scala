@@ -4,6 +4,7 @@ package moveslink
 import Util._
 import com.github.opengrabeso.stravamat.Main
 import com.github.opengrabeso.stravamat.Main.ActivityEvents
+import com.github.opengrabeso.stravamat.DateTimeOps._
 
 import scala.annotation.tailrec
 

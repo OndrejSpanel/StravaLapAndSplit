@@ -1,9 +1,10 @@
 package net.suunto3rdparty
 
-import org.joda.time.{Period, ReadablePeriod, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.immutable.SortedMap
 import Util._
+import com.github.opengrabeso.stravamat.DateTimeOps._
 
 import scala.annotation.tailrec
 

@@ -3,15 +3,12 @@ package requests
 
 import com.github.opengrabeso.stravamat.Main._
 import net.suunto3rdparty.moveslink.MovesLinkUploader
-import spark.{Request, Response, Session}
+import spark.{Request, Response}
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
 import com.google.appengine.api.taskqueue._
-import net.suunto3rdparty.Util._
-import net.suunto3rdparty.strava.StravaAPI
-
-import scala.util.{Failure, Success}
+import DateTimeOps._
 
 object Process extends DefineRequest.Post("/process") {
 
