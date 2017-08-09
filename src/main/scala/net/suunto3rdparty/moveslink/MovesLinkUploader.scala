@@ -2,8 +2,8 @@ package net.suunto3rdparty
 package moveslink
 
 import Util._
-import com.github.opengrabeso.stravalas.Main
-import com.github.opengrabeso.stravalas.Main.ActivityEvents
+import com.github.opengrabeso.stravamat.Main
+import com.github.opengrabeso.stravamat.Main.ActivityEvents
 
 import scala.annotation.tailrec
 
