@@ -13,8 +13,6 @@ import com.github.opengrabeso.stravalas.RequestUtils
 
 import scala.util.{Failure, Success, Try}
 
-case class StravaAPIParams(appId: Int, clientSecret: String, code: Option[String])
-
 object StravaAPI {
   val localTest = false
 
@@ -70,21 +68,6 @@ class StravaAPI(authString: String) {
     val mostRecentTime = if (times.nonEmpty) Some(times.max) else None
 
     mostRecentTime
-  }
-
-  /*
-    * @return upload id (use to check status with uploads/:id)
-    * */
-  def upload(move: Move): Try[Long] = {
-    val fitFormat = true
-    if (fitFormat) {
-      val moveBytes = fit.Export.toBuffer(move)
-      uploadRawFileGz(moveBytes, "fit.gz")
-    } else {
-      val baos = new ByteArrayOutputStream()
-      managed(new GZIPOutputStream(baos)).foreach(tcx.Export.toOutputStream(_, move))
-      uploadRawFile(baos.toByteArray, "tcx.gz")
-    }
   }
 
   def deleteActivity(id: Long): Unit = {
