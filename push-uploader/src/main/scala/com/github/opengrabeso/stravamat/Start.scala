@@ -2,7 +2,6 @@ package com.github.opengrabeso.stravamat
 
 import java.awt.Desktop
 import java.net.{URL, URLEncoder}
-import java.security.MessageDigest
 import java.util.concurrent.CountDownLatch
 
 import akka.actor.ActorSystem
@@ -15,12 +14,12 @@ import akka.http.scaladsl.server.Route
 import akka.stream.{ActorMaterializer, BindFailedException}
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, duration}
-import scala.util.{Success, Try}
-import scala.xml.{Elem, XML}
+import scala.util.Try
+import scala.xml.Elem
 import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
-import Util._
+import shared.Util._
+import shared.Digest
 
 import scala.util.control.NonFatal
 
