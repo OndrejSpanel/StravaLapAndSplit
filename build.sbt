@@ -14,7 +14,16 @@ lazy val commonLibs = Seq(
 
 val jacksonVersion = "2.8.3"
 
-lazy val pushUploader = (project in file("push-uploader")).settings(
+
+lazy val shared = (project in file("shared")).settings(
+  commonSettings,
+  libraryDependencies ++= commonLibs
+)
+
+
+lazy val pushUploader = (project in file("push-uploader"))
+  .dependsOn(shared)
+  .settings(
   name := "StravamatStart",
   commonSettings,
 
@@ -29,8 +38,8 @@ lazy val pushUploader = (project in file("push-uploader")).settings(
 
 
 lazy val stravamat = (project in file("."))
-  .aggregate(pushUploader)
   .disablePlugins(sbtassembly.AssemblyPlugin)
+  .dependsOn(shared)
   .settings(
     appengineSettings,
 

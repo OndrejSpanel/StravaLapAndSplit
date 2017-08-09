@@ -3,8 +3,7 @@ package com.github.opengrabeso.stravamat
 import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.immutable.SortedMap
-import Util._
-import com.github.opengrabeso.stravamat.DateTimeOps._
+import shared.Util._
 
 import scala.annotation.tailrec
 

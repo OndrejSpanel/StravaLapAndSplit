@@ -11,7 +11,7 @@ import org.joda.time.{Interval, Period, PeriodType, Seconds, DateTime => ZonedDa
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 
 import scala.collection.JavaConverters._
-import DateTimeOps._
+import shared.Util._
 import FileId._
 import com.google.api.client.json.jackson2.JacksonFactory
 

@@ -7,7 +7,7 @@ import MoveHeader.ActivityType._
 
 import scala.collection.immutable.SortedMap
 import org.joda.time.{DateTime => ZonedDateTime}
-import DateTimeOps._
+import shared.Util._
 import FileId._
 
 import scala.xml.{Node, XML}

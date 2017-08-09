@@ -14,8 +14,7 @@ import java.util.logging.Logger
 import scala.collection.immutable.SortedMap
 import scala.util._
 import scala.xml._
-import Util._
-import com.github.opengrabeso.stravamat.DateTimeOps._
+import shared.Util._
 
 object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)
@@ -82,7 +81,7 @@ object XMLParser {
         MoveHeader(deviceName.toSet, MoveHeader.ActivityType.Unknown),
         startTime = timeToUTC(ZonedDateTime.parse(dateTime, dateFormatNoZone)),
         durationMs = ((header \ "Duration")(0).text.toDouble * 1000).toInt,
-        calories = Try(Util.kiloCaloriesFromKilojoules((header \ "Energy")(0).text.toDouble)).getOrElse(0),
+        calories = Try(kiloCaloriesFromKilojoules((header \ "Energy")(0).text.toDouble)).getOrElse(0),
         distance = distance
       )
     }

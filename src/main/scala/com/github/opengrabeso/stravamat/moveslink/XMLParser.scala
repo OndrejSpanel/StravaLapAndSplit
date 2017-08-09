@@ -7,8 +7,7 @@ import java.util.regex.Pattern
 
 import scala.xml._
 import java.util.logging.Logger
-import Util._
-import com.github.opengrabeso.stravamat.DateTimeOps._
+import shared.Util._
 
 import scala.collection.immutable.SortedMap
 import scala.util.{Failure, Success, Try}

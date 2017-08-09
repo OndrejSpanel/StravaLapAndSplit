@@ -9,7 +9,7 @@ import spark.{Request, Response}
 import scala.util.Try
 import scala.xml.{Elem, NodeSeq}
 import org.joda.time.{DateTime => ZonedDateTime}
-import DateTimeOps._
+import shared.Util._
 
 object PushStart extends DefineRequest("/push-start") with ActivityRequestHandler {
 

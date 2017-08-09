@@ -1,9 +1,8 @@
 package com.github.opengrabeso.stravamat
 package moveslink
 
-import Util._
 import Main.ActivityEvents
-import DateTimeOps._
+import shared.Util._
 
 import scala.annotation.tailrec
 

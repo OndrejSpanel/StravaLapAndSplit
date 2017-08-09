@@ -5,7 +5,7 @@ import java.io.InputStream
 import com.garmin.fit._
 import com.github.opengrabeso.stravamat.Main.ActivityEvents
 import org.joda.time.{DateTime => ZonedDateTime}
-import DateTimeOps._
+import shared.Util._
 import FileId._
 
 import scala.collection.immutable.SortedMap

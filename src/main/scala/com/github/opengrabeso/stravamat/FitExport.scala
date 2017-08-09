@@ -4,7 +4,7 @@ import com.garmin.fit
 import com.garmin.fit.{Event => FitEvent, _}
 import Main.ActivityEvents
 
-import DateTimeOps._
+import shared.Util._
 import org.joda.time.{Seconds, DateTime => JodaDateTime}
 
 object FitExport {

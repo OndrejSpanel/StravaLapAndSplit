@@ -10,7 +10,9 @@ import scala.util.Try
 
 object MoveslinkFiles {
 
-  private val suuntoHome = Util.getSuuntoHome
+  import MoveslinkUtils._
+
+  private val suuntoHome = getSuuntoHome
 
   private val moveslinkFolder = "Moveslink"
   private val moveslink2Folder = "Moveslink2"

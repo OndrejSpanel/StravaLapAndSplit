@@ -2,7 +2,7 @@ package com.github.opengrabeso.stravamat
 package requests
 
 import Main._
-import DateTimeOps._
+import shared.Util._
 import spark.{Request, Response}
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory

@@ -1,9 +1,8 @@
 package com.github.opengrabeso.stravamat
 
 import org.joda.time.{Interval, DateTime => ZonedDateTime}
-import com.github.opengrabeso.stravamat.DateTimeOps._
+import shared.Util._
 import scala.reflect._
-import Util._
 
 case class Header(moveHeader: MoveHeader, startTime: ZonedDateTime = ZonedDateTime.now, durationMs: Int = 0, calories: Int = 0, distance: Int = 0)
 

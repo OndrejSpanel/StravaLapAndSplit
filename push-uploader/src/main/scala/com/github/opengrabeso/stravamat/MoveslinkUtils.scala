@@ -2,25 +2,7 @@ package com.github.opengrabeso.stravamat
 
 import java.io.File
 
-import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
-import org.joda.time.format.DateTimeFormat
-
-object Util {
-
-  implicit class MinMaxOptTraversable[T](val seq: Traversable[T]) extends AnyVal {
-    def minOpt(implicit ev: Ordering[T]): Option[T] = if (seq.isEmpty) None else Some(seq.min)
-    def maxOpt(implicit ev: Ordering[T]): Option[T] = if (seq.isEmpty) None else Some(seq.max)
-  }
-
-  def timeToUTC(dateTime: ZonedDateTime) = {
-    dateTime.withZone(DateTimeZone.UTC)
-  }
-
-  def timeDifference(beg: ZonedDateTime, end: ZonedDateTime): Double = {
-    (end.getMillis - beg.getMillis) * 0.001
-  }
-
-  def kiloCaloriesFromKilojoules(kj: Double): Int = (kj / 4184).toInt
+object MoveslinkUtils {
 
   def isWindows: Boolean = {
     val OS = System.getProperty("os.name").toLowerCase
@@ -35,18 +17,19 @@ object Util {
     OS.contains("nix") || OS.contains("nux") || OS.contains("aix")
   }
   def getSuuntoHome: File = {
-    if (Util.isWindows) {
+    if (isWindows) {
       val appData = System.getenv("APPDATA")
       return new File(new File(appData), "Suunto")
     }
-    if (Util.isMac) {
+    if (isMac) {
       val userHome = System.getProperty("user.home")
       return new File(new File(userHome), "Library/Application Support/Suunto/")
     }
-    if (Util.isUnix) {
+    if (isUnix) {
       val userHome = System.getProperty("user.home")
       return new File(new File(userHome), "Suunto")
     }
     throw new UnsupportedOperationException("Unknown operating system")
   }
+
 }

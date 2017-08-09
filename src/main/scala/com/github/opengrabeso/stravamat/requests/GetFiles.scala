@@ -2,7 +2,7 @@ package com.github.opengrabeso.stravamat
 package requests
 
 import spark.{Request, Response}
-import DateTimeOps._
+import shared.Util._
 
 object GetFiles extends DefineRequest("/getFiles") {
 

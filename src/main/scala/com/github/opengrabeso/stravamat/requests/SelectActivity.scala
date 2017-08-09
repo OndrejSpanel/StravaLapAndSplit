@@ -2,8 +2,8 @@ package com.github.opengrabeso.stravamat
 package requests
 
 import spark.{Request, Response}
-import DateTimeOps._
-import com.github.opengrabeso.stravamat.Main._
+import shared.Util._
+import Main._
 import org.joda.time.{DateTime => ZonedDateTime}
 
 import scala.xml.NodeSeq

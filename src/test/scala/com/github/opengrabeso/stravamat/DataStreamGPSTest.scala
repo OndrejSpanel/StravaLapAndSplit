@@ -3,9 +3,6 @@ package com.github.opengrabeso.stravamat
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.collection.immutable.SortedMap
-import Util._
-
 class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
   behavior of "DataStreamGPS"
 
