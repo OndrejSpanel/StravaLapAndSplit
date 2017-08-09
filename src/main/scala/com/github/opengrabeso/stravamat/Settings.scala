@@ -1,6 +1,4 @@
-package net.suunto3rdparty
-
-import com.github.opengrabeso.stravamat.{Main, Storage}
+package com.github.opengrabeso.stravamat
 
 object Settings {
 

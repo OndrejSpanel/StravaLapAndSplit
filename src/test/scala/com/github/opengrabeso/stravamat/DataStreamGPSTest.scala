@@ -1,4 +1,4 @@
-package net.suunto3rdparty
+package com.github.opengrabeso.stravamat
 
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}

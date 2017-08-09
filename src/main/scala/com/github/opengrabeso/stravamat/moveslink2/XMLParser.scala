@@ -1,5 +1,6 @@
-package net.suunto3rdparty
+package com.github.opengrabeso.stravamat
 package moveslink2
+
 
 import java.io._
 

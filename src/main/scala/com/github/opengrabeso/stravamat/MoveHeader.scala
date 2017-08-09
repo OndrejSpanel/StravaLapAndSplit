@@ -1,4 +1,4 @@
-package net.suunto3rdparty
+package com.github.opengrabeso.stravamat
 
 object MoveHeader {
   sealed trait ActivityType

@@ -1,10 +1,10 @@
 package com.github.opengrabeso.stravamat
 
+import com.garmin.fit
 import com.garmin.fit.{Event => FitEvent, _}
 import Main.ActivityEvents
-import com.garmin.fit
+
 import DateTimeOps._
-import net.suunto3rdparty.{DataStreamHR, GPSPoint}
 import org.joda.time.{Seconds, DateTime => JodaDateTime}
 
 object FitExport {

@@ -1,10 +1,7 @@
 package com.github.opengrabeso.stravamat
 package requests
 
-import spark.{Request, Response}
-import DateTimeOps._
-import org.joda.time.{DateTime => ZonedDateTime, Seconds}
-import net.suunto3rdparty.Settings
+import org.joda.time.{DateTime => ZonedDateTime}
 
 object Staging extends SelectActivity("/staging") {
   override def title = "select activities to process"

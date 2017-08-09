@@ -1,4 +1,4 @@
-package net.suunto3rdparty
+package com.github.opengrabeso.stravamat
 package moveslink
 
 import org.joda.time.{DateTime => ZonedDateTime, _}

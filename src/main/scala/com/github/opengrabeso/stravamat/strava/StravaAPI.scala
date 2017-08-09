@@ -1,4 +1,4 @@
-package net.suunto3rdparty
+package com.github.opengrabeso.stravamat
 package strava
 
 import java.io._
@@ -8,8 +8,7 @@ import java.util.zip.GZIPOutputStream
 
 import com.google.api.client.http._
 import resource._
-import com.github.opengrabeso.stravamat.RequestUtils
-import com.github.opengrabeso.stravamat.DateTimeOps._
+import DateTimeOps._
 
 import scala.util.{Failure, Success, Try}
 

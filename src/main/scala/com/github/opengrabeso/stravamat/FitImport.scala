@@ -7,7 +7,6 @@ import com.github.opengrabeso.stravamat.Main.ActivityEvents
 import org.joda.time.{DateTime => ZonedDateTime}
 import DateTimeOps._
 import FileId._
-import net.suunto3rdparty.{DataStreamDist, DataStreamGPS, DataStreamHR, GPSPoint}
 
 import scala.collection.immutable.SortedMap
 import scala.collection.mutable.ArrayBuffer

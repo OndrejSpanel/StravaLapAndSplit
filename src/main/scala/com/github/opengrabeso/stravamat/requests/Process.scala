@@ -1,14 +1,13 @@
 package com.github.opengrabeso.stravamat
 package requests
 
-import com.github.opengrabeso.stravamat.Main._
-import net.suunto3rdparty.moveslink.MovesLinkUploader
+import Main._
+import DateTimeOps._
 import spark.{Request, Response}
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
 import com.google.appengine.api.taskqueue._
-import DateTimeOps._
 
 object Process extends DefineRequest.Post("/process") {
 
@@ -17,7 +16,7 @@ object Process extends DefineRequest.Post("/process") {
 
       val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
 
-      val timeOffset = net.suunto3rdparty.Settings(auth.userId).questTimeOffset
+      val timeOffset = Settings(auth.userId).questTimeOffset
       val ignoreDuration = 30
 
       val attrMoves = attrMovesRaw.map(_.timeOffset(-timeOffset))
@@ -27,7 +26,7 @@ object Process extends DefineRequest.Post("/process") {
       val timelineGPS = gpsMoves.toList.filterNot(filterIgnored).sortBy(_.startTime)
       val timelineAttr = attrMoves.toList.filterNot(filterIgnored).sortBy(_.startTime)
 
-      val merged = MovesLinkUploader.processTimelines(timelineGPS, timelineAttr)
+      val merged = moveslink.MovesLinkUploader.processTimelines(timelineGPS, timelineAttr)
 
       // store everything into a session storage, and make background tasks to upload it to Strava
 

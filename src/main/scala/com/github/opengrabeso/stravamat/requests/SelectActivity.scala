@@ -5,7 +5,6 @@ import spark.{Request, Response}
 import DateTimeOps._
 import com.github.opengrabeso.stravamat.Main._
 import org.joda.time.{DateTime => ZonedDateTime}
-import net.suunto3rdparty.Settings
 
 import scala.xml.NodeSeq
 

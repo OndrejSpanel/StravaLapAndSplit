@@ -3,8 +3,7 @@ package com.github.opengrabeso.stravamat
 import java.io.InputStream
 
 import com.github.opengrabeso.stravamat.Event.Sport
-import net.suunto3rdparty.MoveHeader.ActivityType._
-import net.suunto3rdparty._
+import MoveHeader.ActivityType._
 
 import scala.collection.immutable.SortedMap
 import org.joda.time.{DateTime => ZonedDateTime}

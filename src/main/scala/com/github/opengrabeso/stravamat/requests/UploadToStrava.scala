@@ -2,7 +2,6 @@ package com.github.opengrabeso.stravamat
 package requests
 
 import scala.collection.JavaConverters._
-import net.suunto3rdparty.strava.StravaAPI
 import spark.{Request, Response}
 import RequestUtils._
 
@@ -12,7 +11,7 @@ object UploadToStrava extends ProcessFile("/upload-strava") {
     val session = req.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
-    val api = new StravaAPI(auth.token)
+    val api = new strava.StravaAPI(auth.token)
 
     val ret = api.uploadRawFileGz(export, "fit.gz") // TODO: forward response (at least status)
 

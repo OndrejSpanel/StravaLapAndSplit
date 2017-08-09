@@ -3,8 +3,7 @@ package requests
 
 import java.io.{ByteArrayInputStream, InputStream}
 
-import com.github.opengrabeso.stravamat.Main.NoActivity
-import net.suunto3rdparty.Settings
+import Main.NoActivity
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload

@@ -14,7 +14,6 @@ import scala.collection.JavaConverters._
 import DateTimeOps._
 import FileId._
 import com.google.api.client.json.jackson2.JacksonFactory
-import net.suunto3rdparty._
 
 import scala.collection.immutable.SortedMap
 import scala.xml.Elem

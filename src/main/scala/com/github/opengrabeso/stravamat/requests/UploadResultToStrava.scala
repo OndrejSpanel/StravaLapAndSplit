@@ -1,7 +1,6 @@
 package com.github.opengrabeso.stravamat
 package requests
 
-import net.suunto3rdparty.strava.StravaAPI
 import com.google.api.client.http.HttpResponseException
 import com.google.appengine.api.taskqueue._
 
@@ -40,7 +39,7 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
 
   def run()= {
 
-    val api = new StravaAPI(auth.token)
+    val api = new strava.StravaAPI(auth.token)
 
     val uploadNamespace = Main.namespace.upload(sessionId)
     val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
@@ -98,7 +97,7 @@ case class WaitForStravaUpload(key: String, id: Long, auth: Main.StravaAuthResul
     if (now < eta) {
       retry(eta)
     } else {
-      val api = new StravaAPI(auth.token)
+      val api = new strava.StravaAPI(auth.token)
       val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
       val done = api.activityIdFromUploadId(id)
       done match {

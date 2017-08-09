@@ -1,5 +1,4 @@
-package net.suunto3rdparty
-package fit
+package com.github.opengrabeso.stravamat.fit
 
 import java.io.{FileOutputStream, InputStream, PrintStream}
 

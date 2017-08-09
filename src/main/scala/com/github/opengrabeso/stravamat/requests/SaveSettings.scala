@@ -1,6 +1,5 @@
 package com.github.opengrabeso.stravamat
 package requests
-import net.suunto3rdparty.Settings
 import spark.{Request, Response}
 
 object SaveSettings extends DefineRequest.Post("/save-settings") with ActivityRequestHandler {

@@ -1,9 +1,9 @@
-package net.suunto3rdparty
+package com.github.opengrabeso.stravamat
 
-import net.suunto3rdparty.Util._
 import org.joda.time.{Interval, DateTime => ZonedDateTime}
 import com.github.opengrabeso.stravamat.DateTimeOps._
 import scala.reflect._
+import Util._
 
 case class Header(moveHeader: MoveHeader, startTime: ZonedDateTime = ZonedDateTime.now, durationMs: Int = 0, calories: Int = 0, distance: Int = 0)
 
