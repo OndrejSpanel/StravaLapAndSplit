@@ -16,18 +16,38 @@ object DStorage {
   }
 
 
-  def transaction[T](f: Transaction => T ): T = {
+  def transaction[T](f: Transaction => T): T = {
     val txn = datastore.beginTransaction()
     try {
       val ret = f(txn)
       txn.commit()
       ret
+    } catch {
+      case ex: java.util.ConcurrentModificationException =>
+        // may be contention or optimistic lock failure, we do not care, retry
+        // should we have some upper limit on retries?
+        println(ex.getMessage)
+        if (ex.getMessage.startsWith("too much contention")) {
+          Thread.sleep(500)
+        }
+        transaction[T](f)
+
     } finally {
       if (txn.isActive) txn.rollback()
     }
   }
 
-  private def initializeInTransaction(namespace: String, filename: String, userId: String, t: Transaction): Key = {
+
+  private def storeToBlob(obj: AnyRef) = {
+    val baos = new ByteArrayOutputStream()
+    val os = new ObjectOutputStream(baos)
+    os.writeObject(obj)
+    os.close()
+
+    new Blob(baos.toByteArray)
+  }
+
+  private def initializeInTransaction(namespace: String, filename: String, userId: String)(implicit t: Transaction): Key = {
     val fName = userFilename(namespace, filename, userId)
     // create as needed
     val userIdKey = KeyFactory.createKey("filename", fName)
@@ -41,37 +61,19 @@ object DStorage {
     userIdKey
   }
 
-  def initialize(namespace: String, filename: String, userId: String) = {
-    transaction { t =>
-      initializeInTransaction(namespace, filename, userId, t)
-    }
-  }
-
-
-  private def storeToBlob(obj: AnyRef) = {
-    val baos = new ByteArrayOutputStream()
-    val os = new ObjectOutputStream(baos)
-    os.writeObject(obj)
-    os.close()
-
-    val blob = new Blob(baos.toByteArray)
-    blob
-  }
-
-  private def storeInTransaction(fileKey: Key, obj: AnyRef, t: Transaction) = {
+  private def storeInTransaction(fileKey: Key, obj: AnyRef)(t: Transaction) = {
 
     val cls = obj.getClass.getName
 
     val objData = new Entity(cls, "data", fileKey)
 
-    val blob: Blob = storeToBlob(obj)
+    val blob = storeToBlob(obj)
 
     objData.setProperty("blob", blob)
     datastore.put(t, objData)
   }
 
-  private def loadInTransaction[T <: AnyRef : ClassTag](fileKey: Key, t: Transaction): T = {
-
+  private def loadInTransaction[T <: AnyRef : ClassTag](fileKey: Key)(t: Transaction): T = {
     val classTag = implicitly[ClassTag[T]]
     val cls = classTag.runtimeClass.getName
 
@@ -87,31 +89,28 @@ object DStorage {
   }
 
   def store(namespace: String, filename: String, userId: String, obj: AnyRef) = {
-
     transaction { t =>
-      val key = initializeInTransaction(namespace, filename, userId, t)
-      storeInTransaction(key, obj, t)
+      val key = initializeInTransaction(namespace, filename, userId)(t)
+      storeInTransaction(key, obj)(t)
     }
   }
 
 
   def load[T <: AnyRef: ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
-
     Try {
       transaction { t =>
-        val key = initializeInTransaction(namespace, filename, userId, t)
-        loadInTransaction[T](key, t)
+        val key = initializeInTransaction(namespace, filename, userId)(t)
+        loadInTransaction[T](key)(t)
       }
     }.toOption
   }
 
   def modify[T <: AnyRef: ClassTag](namespace: String, filename: String, userId: String)(mod: T => T) = {
-
     transaction { t =>
-      val key = initializeInTransaction(namespace, filename, userId, t)
-      val obj = loadInTransaction[T](key, t)
+      val key = initializeInTransaction(namespace, filename, userId)(t)
+      val obj = loadInTransaction[T](key)(t)
       val objMod = mod(obj)
-      storeInTransaction(key, objMod, t)
+      storeInTransaction(key, objMod)(t)
     }
   }
 
