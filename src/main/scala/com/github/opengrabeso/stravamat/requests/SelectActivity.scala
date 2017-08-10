@@ -230,9 +230,22 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                   showResults();
               },
             });
-
           }
 
+          function submitDelete() {
+            var form = $("#process-form");
+            $.ajax({
+              type: "post",
+              url: "delete-selected",
+              data: new FormData(form[0]),
+              contentType: false,
+              cache: false,
+              processData: false,
+              success: function(response) {
+                  window.location.reload(false);
+              },
+            });
+          }
           """
         )}
 
@@ -279,7 +292,6 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                 // once any activity is present on Strava, do not offer upload by default any more
                 // (if some earlier is not present, it was probably already uploaded and deleted)
                 <tr>
-                  <td><button onclick={s"ajaxAction('delete?id=${act.id.toString}');return false"}>Unstage</button></td>
                   <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
                   <td>{act.sportName}</td>
                   <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
@@ -297,6 +309,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
           {uploadResultsHtml()}
         </form>
+        <button onclick="submitDelete()">Delete from Stravamat</button>
         {bodyFooter}
         <script>{xml.Unparsed(
           //language=JavaScript

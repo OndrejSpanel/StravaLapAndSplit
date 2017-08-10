@@ -4,12 +4,9 @@ package requests
 import Main._
 import shared.Util._
 import spark.{Request, Response}
-import org.apache.commons.fileupload.FileItemStream
-import org.apache.commons.fileupload.disk.DiskFileItemFactory
-import org.apache.commons.fileupload.servlet.ServletFileUpload
 import com.google.appengine.api.taskqueue._
 
-object Process extends DefineRequest.Post("/process") {
+object Process extends DefineRequest.Post("/process") with ParseFormData {
 
   def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents], sessionId: String): Int = {
     if (toMerge.nonEmpty) {
@@ -57,35 +54,7 @@ object Process extends DefineRequest.Post("/process") {
 
     assert(sessionId != null)
 
-    val fif = new DiskFileItemFactory()
-    fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
-
-    val upload = new ServletFileUpload(fif)
-
-    val items = upload.getItemIterator(request.raw)
-
-    val itemsIterator = new Iterator[FileItemStream] {
-      def hasNext = items.hasNext
-
-      def next() = items.next
-    }
-
-    val ops = itemsIterator.flatMap { item =>
-      if (item.isFormField) {
-        // expect field name id={FileId}
-        val IdPattern = "id=(.*)".r
-        // a single field upload-id
-        val id = item.getFieldName match {
-          case IdPattern(idText) =>
-            Some(FileId.parse(idText))
-          case _ =>
-            None
-        }
-        id
-      } else {
-        None
-      }
-    }.toVector
+    val ops = activities(request)
 
     val toMerge = ops.flatMap { op =>
       Storage.load[ActivityHeader, ActivityEvents](Main.namespace.stage, op.filename, auth.userId).map(_._2)
