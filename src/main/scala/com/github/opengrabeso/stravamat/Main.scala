@@ -137,7 +137,15 @@ object Main {
       val distance = json.path("distance").doubleValue
       val actDigest = digest(json.toString)
 
-      ActivityId(StravaId(id), actDigest, name, time, time.plusSeconds(duration), Event.Sport.withName(sportName), distance)
+      def sportFromName(name: String): Event.Sport = {
+        try {
+          Event.Sport.withName(sportName)
+        } catch {
+          case _: NoSuchElementException => Event.Sport.Workout
+        }
+      }
+
+      ActivityId(StravaId(id), actDigest, name, time, time.plusSeconds(duration), sportFromName(sportName), distance)
     }
   }
 
