@@ -305,10 +305,10 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
               }
             }
           </table>
-          <input id="upload_button" type="submit" value="Process..."/>
 
-          {uploadResultsHtml()}
         </form>
+        <button id="upload_button" onclick="submitProcess()">Process...</button>
+        {uploadResultsHtml()}
         <button onclick="submitDelete()">Delete from Stravamat</button>
         {bodyFooter}
         <script>{xml.Unparsed(
@@ -317,7 +317,6 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
           $("#process-form").submit(function(event) {
             // Stop the browser from submitting the form.
             event.preventDefault();
-            submitProcess();
           });
 
           updateClock()

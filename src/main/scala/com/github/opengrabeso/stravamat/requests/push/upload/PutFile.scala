@@ -4,6 +4,7 @@ package push
 package upload
 
 import java.io.InputStream
+import java.util.zip.GZIPInputStream
 
 import spark.{Request, Response}
 
@@ -18,9 +19,12 @@ object PutFile extends DefineRequest.Post("/push-put") {
     // - note: client has already computed any it because it verified it before sending data to us
     val digest = request.queryParams("digest")
 
+    val encoding = request.headers("Content-Encoding")
+
     val sessionId = request.cookie("sessionid")
 
-    val fileContent = request.raw().getInputStream
+    val rawInputStream = request.raw().getInputStream
+    val fileContent = if (encoding == "gzip") new GZIPInputStream(rawInputStream) else rawInputStream
 
     val logProgress = false
     val input = if (logProgress) {

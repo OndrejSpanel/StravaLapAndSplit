@@ -5,13 +5,16 @@ import java.net.{URL, URLEncoder}
 import java.util.concurrent.CountDownLatch
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.{Http, coding}
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
+import akka.http.scaladsl.coding._
 import akka.http.scaladsl.model.ContentType.WithCharset
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.{ActorMaterializer, BindFailedException}
+import akka.util.ByteString
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, duration}
@@ -217,6 +220,8 @@ object Start extends App {
     val requestParams = s"user=$userId&timezone=${URLEncoder.encode(localTimeZone, "UTF-8")}"
 
     val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
+    val gzipEncoding = headers.`Content-Encoding`(HttpEncodings.gzip)
+    val binaryType = headers.`Content-Type`(ContentTypes.`application/octet-stream`)
 
     val req = Http().singleRequest(
       HttpRequest(
@@ -237,12 +242,13 @@ object Start extends App {
       // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
 
+      def gzipEncoded(bytes: Array[Byte]) = Gzip.encode(ByteString(fileBytes))
 
       val req = Http().singleRequest(
         HttpRequest(
           uri = s"$stravaMatUrl/push-put-digest?$requestParams&path=$f",
           method = HttpMethods.POST,
-          headers = List(sessionCookie),
+          headers = List(sessionCookie), // TODO: just testing, remove
           entity = HttpEntity(digest)
         )
       ).flatMap { resp =>
@@ -257,8 +263,8 @@ object Start extends App {
               HttpRequest(
                 uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest",
                 method = HttpMethods.POST,
-                headers = List(sessionCookie),
-                entity = HttpEntity(fileBytes)
+                headers = List(sessionCookie, binaryType, gzipEncoding),
+                entity = HttpEntity(gzipEncoded(fileBytes))
               )
             ).map { resp =>
               resp.discardEntityBytes()
