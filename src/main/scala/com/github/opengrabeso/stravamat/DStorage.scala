@@ -105,6 +105,7 @@ object DStorage {
   def store(namespace: String, filename: String, userId: String, obj: AnyRef) = {
     transaction { t =>
       val key = initializeInTransaction(namespace, filename, userId)(t)
+      setModifiedNowInTransaction(key)(t)
       storeInTransaction(key, obj)(t)
     }
   }
@@ -122,6 +123,7 @@ object DStorage {
   def modify[T <: AnyRef: ClassTag](namespace: String, filename: String, userId: String)(mod: T => T) = {
     transaction { t =>
       val key = initializeInTransaction(namespace, filename, userId)(t)
+      setModifiedNowInTransaction(key)(t)
       val obj = loadInTransaction[T](key)(t)
       val objMod = mod(obj)
       storeInTransaction(key, objMod)(t)
