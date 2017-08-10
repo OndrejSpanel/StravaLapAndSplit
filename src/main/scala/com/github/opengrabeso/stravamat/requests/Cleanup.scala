@@ -6,7 +6,7 @@ object Cleanup extends DefineRequest("/cleanup") {
   def html(request: Request, resp: Response) = {
     val periodic = request.queryParams("periodic")
     if (periodic != null) {
-      val cleaned = Storage.cleanup()
+      val cleaned = Storage.cleanup() + DStorage.cleanup()
 
       <cleaned><files>{cleaned.toString}</files></cleaned>
     } else {

@@ -171,6 +171,7 @@ object Storage {
   def cleanup(): Int = {
     val options = new ListOptions.Builder().setRecursive(true).build()
     val list = gcsService.list(bucket, options).asScala.toIterable
+    val now = new ZonedDateTime()
 
     val ops = for (i <- list) yield {
       val md = Option(gcsService.getMetadata(new GcsFilename(bucket, i.getName)))
@@ -190,13 +191,12 @@ object Storage {
         None
       }
 
-      val now = new ZonedDateTime()
       val cleaned = for (maxDays <- maxAgeInDays) yield {
         val fileTime = new ZonedDateTime(i.getLastModified)
         val age = Days.daysBetween(fileTime, now).getDays
         if (age >= maxDays) {
           gcsService.delete(new GcsFilename(bucket, name))
-          println(s"Cleaned $name age $age, date ${i.getLastModified}")
+          println(s"Cleaned $name age $age, date $fileTime")
           1
         } else {
           0

@@ -2,10 +2,13 @@ package com.github.opengrabeso.stravamat
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
+import Main._
+import org.joda.time.{Days, DateTime => ZonedDateTime}
 import com.google.appengine.api.datastore._
 
 import scala.reflect.ClassTag
 import scala.util.Try
+import scala.collection.JavaConverters._
 
 object DStorage {
 
@@ -132,5 +135,39 @@ object DStorage {
     }
   }
 
+  def cleanup(): Int = {
+    // DRY: Storage.cleanup
+    val query = new Query("filename")
+    val prepQuery = datastore.prepare(query)
+    val list = prepQuery.asIterable().asScala
+    val now = new ZonedDateTime()
+    for (i <- list) yield {
+      val key = i.getKey
+
+      //println(s"enum '$name' - '$userId': md '$m'")
+      val name = key.getName
+      val maxAgeInDays = if (name.contains("/" + namespace.uploadProgress + "/")) {
+        Some(2)
+      } else None
+
+      val cleaned = for {
+        maxDays <- maxAgeInDays
+        modProp <- Option(i.getProperty("modified").asInstanceOf[java.util.Date])
+      } yield {
+        val fileTime = new ZonedDateTime(modProp)
+        val age = Days.daysBetween(fileTime, now).getDays
+        if (age >= maxDays) {
+          datastore.delete(key)
+          println(s"Cleaned $name age $age, date $fileTime")
+          1
+        } else {
+          0
+        }
+
+
+      }
+    }
+    0
+  }
 
 }
