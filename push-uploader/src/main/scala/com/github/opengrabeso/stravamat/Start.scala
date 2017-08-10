@@ -263,7 +263,7 @@ object Start extends App {
                 uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest",
                 method = HttpMethods.POST,
                 headers = List(sessionCookie, gzipEncoding),
-                entity = HttpEntity(gzipEncoded(fileBytes)).withContentType(ContentTypes.`text/plain(UTF-8)`) // it is XML in fact, but not fully conformant
+                entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, gzipEncoded(fileBytes)) // it is XML in fact, but not fully conformant
               )
             ).map { resp =>
               resp.discardEntityBytes()
