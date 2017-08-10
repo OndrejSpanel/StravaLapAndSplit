@@ -47,17 +47,21 @@ object DStorage {
     new Blob(baos.toByteArray)
   }
 
-  private def initializeInTransaction(namespace: String, filename: String, userId: String)(implicit t: Transaction): Key = {
+  private def initializeInTransaction(namespace: String, filename: String, userId: String, init: Entity => Unit = _ => ())(implicit t: Transaction): Key = {
     val fName = userFilename(namespace, filename, userId)
     // create as needed
     val userIdKey = KeyFactory.createKey("filename", fName)
-    try {
-      datastore.get(userIdKey)
+    val user = try {
+      val user = datastore.get(userIdKey)
+      init(user)
+      user
     } catch {
       case _: EntityNotFoundException =>
         val user = new Entity("filename", fName)
-        datastore.put(t, user)
+        init(user)
+        user
     }
+    datastore.put(t, user)
     userIdKey
   }
 
@@ -104,8 +108,7 @@ object DStorage {
 
   def store(namespace: String, filename: String, userId: String, obj: AnyRef) = {
     transaction { t =>
-      val key = initializeInTransaction(namespace, filename, userId)(t)
-      setModifiedNowInTransaction(key)(t)
+      val key = initializeInTransaction(namespace, filename, userId, setModifiedNow)(t)
       storeInTransaction(key, obj)(t)
     }
   }
@@ -122,8 +125,7 @@ object DStorage {
 
   def modify[T <: AnyRef: ClassTag](namespace: String, filename: String, userId: String)(mod: T => T) = {
     transaction { t =>
-      val key = initializeInTransaction(namespace, filename, userId)(t)
-      setModifiedNowInTransaction(key)(t)
+      val key = initializeInTransaction(namespace, filename, userId, setModifiedNow)(t)
       val obj = loadInTransaction[T](key)(t)
       val objMod = mod(obj)
       storeInTransaction(key, objMod)(t)
