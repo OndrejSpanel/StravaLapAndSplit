@@ -15,25 +15,24 @@ lazy val commonLibs = Seq(
 val jacksonVersion = "2.8.3"
 
 
-lazy val shared = (project in file("shared")).settings(
-  commonSettings,
-  libraryDependencies ++= commonLibs
-)
+lazy val shared = (project in file("shared"))
+  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .settings(
+    commonSettings,
+    libraryDependencies ++= commonLibs
+  )
 
 
 lazy val pushUploader = (project in file("push-uploader"))
+  .enablePlugins(sbtassembly.AssemblyPlugin)
   .dependsOn(shared)
   .settings(
-  name := "StravamatStart",
-  commonSettings,
-
-  //libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.3",
-  libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
-
-  libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
-  libraryDependencies ++= commonLibs
-
-)
+    name := "StravamatStart",
+    commonSettings,
+    libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
+    libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.3",
+    libraryDependencies ++= commonLibs
+  )
 
 
 
