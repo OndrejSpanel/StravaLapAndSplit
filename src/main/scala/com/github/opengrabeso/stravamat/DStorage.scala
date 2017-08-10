@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 import scala.util.Try
 import scala.collection.JavaConverters._
 
-object DStorage {
+object DStorage extends FileStore {
 
   private val datastore = DatastoreServiceFactory.getDatastoreService
 
@@ -135,39 +135,30 @@ object DStorage {
     }
   }
 
-  def cleanup(): Int = {
-    // DRY: Storage.cleanup
+  type FileItem = Entity
+
+  def listAllItems() = {
     val query = new Query("filename")
     val prepQuery = datastore.prepare(query)
-    val list = prepQuery.asIterable().asScala
-    val now = new ZonedDateTime()
-    for (i <- list) yield {
-      val key = i.getKey
-
-      //println(s"enum '$name' - '$userId': md '$m'")
-      val name = key.getName
-      val maxAgeInDays = if (name.contains("/" + namespace.uploadProgress + "/")) {
-        Some(2)
-      } else None
-
-      val cleaned = for {
-        maxDays <- maxAgeInDays
-        modProp <- Option(i.getProperty("modified").asInstanceOf[java.util.Date])
-      } yield {
-        val fileTime = new ZonedDateTime(modProp)
-        val age = Days.daysBetween(fileTime, now).getDays
-        if (age >= maxDays) {
-          datastore.delete(key)
-          println(s"Cleaned $name age $age, date $fileTime")
-          1
-        } else {
-          0
-        }
-
-
-      }
-    }
-    0
+    val list = prepQuery.asIterable.asScala
+    list
   }
 
+  def itemModified(item: FileItem) = Option(item.getProperty("modified").asInstanceOf[java.util.Date])
+
+  def deleteItem(item: FileItem) = {
+    // clean all child entities as well
+    val query = new Query(item.getKey)
+    val children = datastore.prepare(query).asIterable.asScala
+    val keysToDelete = for (ch <- children) yield {
+      //println(s"  ch ${ch.getKey}")
+      ch.getKey
+    }
+    // note: keysToDelete include the key of the item as well
+    transaction { t =>
+      datastore.delete(t, keysToDelete.asJava)
+    }
+  }
+
+  def itemName(item: Entity) = item.getKey.getName
 }

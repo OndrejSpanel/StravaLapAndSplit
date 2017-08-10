@@ -3,14 +3,12 @@ package com.github.opengrabeso.stravamat
 import java.io._
 import java.nio.channels.Channels
 
-import org.joda.time.{Days, DateTime => ZonedDateTime}
-import Main.namespace
 import com.google.appengine.tools.cloudstorage._
 
 import scala.reflect.ClassTag
 import collection.JavaConverters._
 
-object Storage {
+object Storage extends FileStore {
 
   // from https://cloud.google.com/appengine/docs/java/googlecloudstorageclient/read-write-to-cloud-storage
 
@@ -167,46 +165,18 @@ object Storage {
     }.contains(true)
   }
 
+  type FileItem = ListItem
 
-  def cleanup(): Int = {
+  def listAllItems(): Iterable[FileItem] = {
     val options = new ListOptions.Builder().setRecursive(true).build()
     val list = gcsService.list(bucket, options).asScala.toIterable
-    val now = new ZonedDateTime()
-
-    val ops = for (i <- list) yield {
-      val md = Option(gcsService.getMetadata(new GcsFilename(bucket, i.getName)))
-      val name = i.getName
-      // cleanup requirements different for different namespaces
-      val maxAgeInDays = if (name.contains("/" + namespace.stage + "/")) {
-        Some(90)
-      } else if (name.contains("/" + namespace.settings + "/")) {
-        Some(365)
-      } else if (name.contains("/" + namespace.uploadProgress + "/")) { // must be listed before namespace.upload, that would match more eagerly
-        Some(2)
-      } else if (name.contains("/" + namespace.uploadResult(""))) {
-        Some(2)
-      } else if (name.contains("/" + namespace.upload(""))) {
-        Some(2)
-      } else {
-        None
-      }
-
-      val cleaned = for (maxDays <- maxAgeInDays) yield {
-        val fileTime = new ZonedDateTime(i.getLastModified)
-        val age = Days.daysBetween(fileTime, now).getDays
-        if (age >= maxDays) {
-          gcsService.delete(new GcsFilename(bucket, name))
-          println(s"Cleaned $name age $age, date $fileTime")
-          1
-        } else {
-          0
-        }
-      }
-
-      cleaned.getOrElse(0)
-    }
-    ops.sum
-
+    list
   }
+
+  def itemModified(item: FileItem) = Option(item.getLastModified)
+
+  def deleteItem(item: FileItem) = gcsService.delete(new GcsFilename(bucket, item.getName))
+
+  def itemName(item: FileItem): String = item.getName
 
 }
