@@ -9,10 +9,13 @@ object Event {
     // https://strava.github.io/api/v3/uploads/
     //   ride, run, swim, workout, hike, walk, nordicski, alpineski, backcountryski, iceskate, inlineskate, kitesurf,
     //   rollerski, windsurf, workout, snowboard, snowshoe, ebikeride, virtualride
+
     // order by priority, roughly fastest to slowest (prefer faster sport does less harm on segments)
     // Workout (as Unknown) is the last option
     val Ride, Run, Hike, Walk, Swim, NordicSki, AlpineSki, IceSkate, InlineSkate, KiteSurf,
-    RollerSki, WindSurf, Snowboard, Snowshoe, EbikeRide, VirtualRide, Workout = Value
+    RollerSki, WindSurf, Canoeing, Kayaking, Rowing, Surfing, Snowboard, Snowshoe, EbikeRide, VirtualRide, Workout = Value
+
+    // https://support.strava.com/hc/en-us/articles/216919407-Other-Activity-Types-on-Strava
 
   }
   type Sport = Sport.Value

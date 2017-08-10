@@ -155,6 +155,18 @@ object FitExport {
       case Event.Sport.Hike => (Sport.HIKING, SubSport.GENERIC)
       case Event.Sport.Walk => (Sport.WALKING, SubSport.GENERIC)
       case Event.Sport.NordicSki => (Sport.CROSS_COUNTRY_SKIING, SubSport.GENERIC)
+      case Event.Sport.AlpineSki => (Sport.ALPINE_SKIING, SubSport.GENERIC)
+      case Event.Sport.Canoeing => (Sport.PADDLING, SubSport.GENERIC)
+      case Event.Sport.Rowing => (Sport.ROWING, SubSport.GENERIC)
+      case Event.Sport.Surfing => (Sport.SURFING, SubSport.GENERIC)
+      case Event.Sport.IceSkate => (Sport.ICE_SKATING, SubSport.GENERIC)
+      case Event.Sport.InlineSkate => (Sport.INLINE_SKATING, SubSport.GENERIC)
+      case Event.Sport.Kayaking => (Sport.KAYAKING, SubSport.GENERIC)
+      case Event.Sport.WindSurf => (Sport.WINDSURFING, SubSport.GENERIC)
+      case Event.Sport.KiteSurf => (Sport.KITESURFING, SubSport.GENERIC)
+      case Event.Sport.Snowshoe => (Sport.SNOWSHOEING, SubSport.GENERIC)
+      case Event.Sport.EbikeRide => (Sport.E_BIKING, SubSport.GENERIC)
+      //case Event.Sport.WindSurfing => (Sport.SAILING, SubSport.GENERIC)
       case _ => (Sport.GENERIC, SubSport.GENERIC)
     }
 
