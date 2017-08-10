@@ -16,6 +16,7 @@ import FileId._
 import com.google.api.client.json.jackson2.JacksonFactory
 
 import scala.collection.immutable.SortedMap
+import scala.util.Try
 import scala.xml.Elem
 
 object Main {
@@ -187,17 +188,7 @@ object Main {
     val storedActivities = {
       val d = Storage.enumerate(namespace.stage, auth.userId)
       d.flatMap { a =>
-        try {
-          Storage.load[ActivityHeader](namespace.stage, a, auth.userId)
-        } catch {
-          case x: java.io.InvalidClassException => // bad serialVersionUID
-            println(s"load error ${x.getMessage} - $a")
-            Storage.delete(namespace.stage, a, auth.userId)
-            None
-          case x: Exception =>
-            x.printStackTrace()
-            None
-        }
+        Storage.load[ActivityHeader](namespace.stage, a, auth.userId)
       }
     }
     storedActivities.toVector

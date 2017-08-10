@@ -66,6 +66,7 @@ object Storage extends FileStore {
     try {
       val read = ois.readObject()
       read match {
+        case Main.NoActivity => None
         case r: T => Some(r)
         case null => None
         case any =>
@@ -87,6 +88,14 @@ object Storage extends FileStore {
       readSingleObject[T](ois)
     } catch {
       case ex: FileNotFoundException =>
+        None
+      case x: java.io.InvalidClassException => // bad serialVersionUID
+        println(s"load error ${x.getMessage} - $filename")
+        delete(namespace, filename, userId)
+        None
+      case x: ClassNotFoundException => // class / package names changed
+        println(s"load error ${x.getMessage} - $filename")
+        delete(namespace, filename, userId)
         None
       case x: Exception =>
         x.printStackTrace()

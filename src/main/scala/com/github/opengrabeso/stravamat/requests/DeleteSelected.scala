@@ -15,6 +15,7 @@ object DeleteSelected extends DefineRequest.Post("/delete-selected") with ParseF
 
     ops.foreach { op =>
       Storage.delete(Main.namespace.stage, op.filename, auth.userId)
+      println(s"Delete ${Main.namespace.stage} ${op.filename} ${auth.userId}")
     }
 
     <deleted>{ops.size}</deleted>

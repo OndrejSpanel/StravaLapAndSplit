@@ -21,10 +21,15 @@ object PutFile extends DefineRequest.Post("/push-put") {
 
     val encoding = request.headers("Content-Encoding")
 
+    println(s"Put file $path")
+    println(s"  Digest $digest}")
+    println(s"  Encoding ${Option(encoding).getOrElse("null")}")
+
     val sessionId = request.cookie("sessionid")
 
     val rawInputStream = request.raw().getInputStream
-    val fileContent = if (encoding == "gzip") new GZIPInputStream(rawInputStream) else rawInputStream
+    // it seems production App Engine already decodes gziped request body, but development one does not
+    val fileContent = rawInputStream
 
     val logProgress = false
     val input = if (logProgress) {

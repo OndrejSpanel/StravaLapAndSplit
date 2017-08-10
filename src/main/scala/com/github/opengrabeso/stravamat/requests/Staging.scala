@@ -1,6 +1,8 @@
 package com.github.opengrabeso.stravamat
 package requests
 
+import Main._
+import shared.Util._
 import org.joda.time.{DateTime => ZonedDateTime}
 
 object Staging extends SelectActivity("/staging") {
@@ -13,6 +15,10 @@ object Staging extends SelectActivity("/staging") {
       <a href="getFiles">Upload files...</a>
       <hr/>
     </div>
+  }
+
+  override def ignoreBefore(stravaActivities: Seq[ActivityId]) = {
+    new ZonedDateTime() minusMonths 24
   }
 
 }

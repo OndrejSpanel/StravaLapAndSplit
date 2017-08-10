@@ -220,7 +220,8 @@ object Start extends App {
     val requestParams = s"user=$userId&timezone=${URLEncoder.encode(localTimeZone, "UTF-8")}"
 
     val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
-    val gzipEncoding = headers.`Content-Encoding`(HttpEncodings.gzip)
+    val useGzip = !useLocal
+    val gzipEncoding = if (useGzip) Some(headers.`Content-Encoding`(HttpEncodings.gzip)) else None
 
     val req = Http().singleRequest(
       HttpRequest(
@@ -241,7 +242,10 @@ object Start extends App {
       // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
 
-      def gzipEncoded(bytes: Array[Byte]) = Gzip.encode(ByteString(fileBytes))
+      // it seems production App Engine already decodes gziped request body, but development one does not
+      // as I do not see any clean way how to indicate the development server it should do its own decoding
+      // I do no use GZip on development server as a workaround
+      def gzipEncoded(bytes: Array[Byte]) = if (useGzip) Gzip.encode(ByteString(bytes)) else ByteString(bytes)
 
       val req = Http().singleRequest(
         HttpRequest(
@@ -262,7 +266,7 @@ object Start extends App {
               HttpRequest(
                 uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest",
                 method = HttpMethods.POST,
-                headers = List(sessionCookie, gzipEncoding),
+                headers = List(sessionCookie) ++ gzipEncoding,
                 entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, gzipEncoded(fileBytes)) // it is XML in fact, but not fully conformant
               )
             ).map { resp =>

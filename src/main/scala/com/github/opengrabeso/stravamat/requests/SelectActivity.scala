@@ -13,6 +13,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
   def title: String
   def sources(before: ZonedDateTime): NodeSeq
   def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = true
+  def ignoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime
 
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
@@ -106,14 +107,8 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
     val sid = System.currentTimeMillis().toString
     session.attribute("sid", sid)
 
-    // ignore anything older than oldest of recent Strava activities
-    val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime)
-    val ignoreBeforeFirst = stravaActivities.headOption.map(_.startTime minusDays  14)
-    val ignoreBeforeNow = new ZonedDateTime() minusMonths 2
-
-    val before = (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
-
     val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
+    val before = ignoreBefore(stravaActivities)
 
     val recentActivities = stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
 

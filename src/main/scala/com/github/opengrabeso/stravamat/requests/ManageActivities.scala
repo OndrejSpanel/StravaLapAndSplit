@@ -1,8 +1,9 @@
 package com.github.opengrabeso.stravamat
 package requests
 
-import Main._
 import org.joda.time.{DateTime => ZonedDateTime}
+import Main._
+import shared.Util._
 
 object ManageActivities extends SelectActivity("/selectActivity") {
   override def title = "select activities to process"
@@ -20,4 +21,12 @@ object ManageActivities extends SelectActivity("/selectActivity") {
     strava.isEmpty
   }
 
+  override def ignoreBefore(stravaActivities: Seq[ActivityId]) = {
+    // ignore anything older than oldest of recent Strava activities
+    val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime)
+    val ignoreBeforeFirst = stravaActivities.headOption.map(_.startTime minusDays  14)
+    val ignoreBeforeNow = new ZonedDateTime() minusMonths 2
+
+    (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
+  }
 }
