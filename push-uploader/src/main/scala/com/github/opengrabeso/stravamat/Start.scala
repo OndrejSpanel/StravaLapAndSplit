@@ -221,7 +221,6 @@ object Start extends App {
 
     val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
     val gzipEncoding = headers.`Content-Encoding`(HttpEncodings.gzip)
-    val binaryType = headers.`Content-Type`(ContentTypes.`application/octet-stream`)
 
     val req = Http().singleRequest(
       HttpRequest(
@@ -263,8 +262,8 @@ object Start extends App {
               HttpRequest(
                 uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest",
                 method = HttpMethods.POST,
-                headers = List(sessionCookie, binaryType, gzipEncoding),
-                entity = HttpEntity(gzipEncoded(fileBytes))
+                headers = List(sessionCookie, gzipEncoding),
+                entity = HttpEntity(gzipEncoded(fileBytes)).withContentType(ContentTypes.`text/plain(UTF-8)`) // it is XML in fact, but not fully conformant
               )
             ).map { resp =>
               resp.discardEntityBytes()
