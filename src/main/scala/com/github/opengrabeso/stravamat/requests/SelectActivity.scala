@@ -291,7 +291,9 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                   <td>
                     {
                     val detected = Main.detectSportBySpeed(actEvents.stats, act.sportName)
-                    if (detected != act.sportName) {
+                    if (act.sportName == Event.Sport.Workout) {
+                      s"$detected?"
+                    } else if (act.sportName != detected) {
                       s"${act.sportName}->$detected"
                     } else act.sportName
                     }
