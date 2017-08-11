@@ -163,9 +163,9 @@ object DataStreamGPS {
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
 
     object Window {
-      def apply() = new Window(CyclicVector.empty, 0)
+      def apply() = new Window(Vector.empty, 0)
     }
-    case class Window(data: CyclicVector[(ZonedDateTime, Double)], private val totalDistance: Double) {
+    case class Window(data: Vector[(ZonedDateTime, Double)], private val totalDistance: Double) {
       def isEmpty = data.isEmpty
       def begTime = data.head._1
       def endTime = data.last._1
