@@ -426,10 +426,9 @@ object Main {
     def attributes: Seq[DataStream]
   }
 
-  def detectSportBySpeed(speedStats: (Double, Double, Double), defaultName: Event.Sport) = {
-    val (avg, fast, max) = speedStats
-    def detectSport(maxRun: Double, fastRun: Double, avgRun: Double): Event.Sport = {
-      if (avg <= avgRun && fast <= fastRun && max <= maxRun) Event.Sport.Run
+  def detectSportBySpeed(stats: DataStreamGPS.SpeedStats, defaultName: Event.Sport) = {
+    def detectSport(maxRun: Double, fastRun: Double, medianRun: Double): Event.Sport = {
+      if (stats.median <= medianRun && stats.fast <= fastRun && stats.max <= maxRun) Event.Sport.Run
       else Event.Sport.Ride
     }
 
@@ -439,7 +438,7 @@ object Main {
 
     val sport = defaultName match {
       case Event.Sport.Run =>
-        // marked as run, however if clearly contradicting evidence is found, make it ride
+        // marked as run, however if clearly contradicting evidence is found, make it a ride
         detectSport(paceToKmh(2), paceToKmh(2.5), paceToKmh(3)) // 2 - 3 min/km possible
       case Event.Sport.Ride =>
         detectSport(kmh(20), kmh(17), kmh(15)) // 25 - 18 km/h possible

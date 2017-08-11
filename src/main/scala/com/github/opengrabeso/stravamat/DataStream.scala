@@ -108,6 +108,8 @@ object DataStreamGPS {
   private type DistStream  = SortedMap[ZonedDateTime, Double]
   private type DistList  = List[(ZonedDateTime, Double)]
 
+  // median, 80% percentile, max
+  case class SpeedStats(median: Double, fast: Double, max: Double)
   /**
     * Experiments have shown smoothingInterval = 60 gives most accurate results.
     * Perhaps the same smoothing interval is used in the Quest itself?
@@ -230,9 +232,9 @@ object DataStreamGPS {
   }
 
   /**
-    * @return median, average, max
+    * @return median, 80% percentile, max
     * */
-  def speedStats(speedStream: DistStream): (Double, Double, Double) = {
+  def speedStats(speedStream: DistStream): SpeedStats = {
 
     def median(s: Seq[Double])  = {
       val (lower, upper) = s.sorted.splitAt(s.size / 2)
@@ -271,7 +273,7 @@ object DataStreamGPS {
 
     val fast = percentile(80)
     // TODO:
-    (med, fast, max)
+    SpeedStats(med, fast, max)
   }
 
 
