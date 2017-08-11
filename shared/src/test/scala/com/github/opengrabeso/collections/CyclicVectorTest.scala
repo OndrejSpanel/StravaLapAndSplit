@@ -41,6 +41,25 @@ class CyclicVectorTest extends org.scalatest.FlatSpec {
     val e2 = "2nd"
     val c = (empty :+ e1).tail :+ e2
     assert(c.head == e2)
+  }
 
+  final def verifyContent[T](container: CyclicVector[T], expected: T*): Unit = {
+    if (!container.isEmpty || expected.nonEmpty) {
+      assert(container.head == expected.head)
+      verifyContent[T](container.tail, expected.tail:_*)
+    }
+  }
+
+  final def verifyContentAsString(container: CyclicVector[String], expected: String): Unit = {
+    verifyContent[String](container, expected.toList.map(_.toString):_*)
+  }
+
+  "Adding and removing elements around the boundary" should "work as expected" in {
+    val empty = CyclicVector.empty[String]
+    val added = empty :+ "1" :+ "2" :+ "3" :+ "4"
+    val removed = added.tail.tail
+    val addedAgain = removed :+ "5" :+ "6" :+ "7"
+
+    verifyContentAsString(addedAgain, "34567")
   }
 }

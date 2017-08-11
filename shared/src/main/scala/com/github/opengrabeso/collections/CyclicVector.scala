@@ -8,11 +8,12 @@ object CyclicVector {
 
 case class CyclicVector[T](private val data: Vector[T], private val headIndex: Int, size: Int) {
 
-  def modIndex(i: Int) = i % data.size
+  def modIndex(i: Int) = if (data.nonEmpty) i % data.size else 0
 
   def :+ (item: T) = {
-    if (size >= data.size) new CyclicVector[T](data :+ item, headIndex, size + 1)
-    else {
+    if (size >= data.size) {
+      new CyclicVector[T](data.patch(modIndex(headIndex + size), Seq(item), 0), (headIndex + 1) % (data.size + 1), size + 1)
+    } else {
       new CyclicVector[T](data.patch(modIndex(headIndex + size), Seq(item), 1), headIndex, size + 1)
     }
   }
