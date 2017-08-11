@@ -161,24 +161,26 @@ object DataStreamGPS {
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
     // TODO: optimize, this is currently very slow (processing 2 hours or run data takes 30 seconds)
-    def smoothingRecurse(done: DistStream, prev: DistStream, todo: DistStream): DistStream = {
+    type Window = DistList
+    def smoothingRecurse(done: DistList, prev: Window, todo: DistList): DistList = {
       if (todo.isEmpty) done
       else if (prev.isEmpty) {
-        smoothingRecurse(done + todo.head, prev + todo.head, todo.tail)
+        smoothingRecurse(todo.head +: done, prev :+ todo.head, todo.tail)
       } else {
-        def durationWindow(win: DistStream) = Seconds.secondsBetween(win.keys.head, win.keys.last).getSeconds
-        def keepWindow(win: DistStream): DistStream = if (durationWindow(win) <= durationSec) win else keepWindow(win.tail)
-        val newWindow = keepWindow(prev + todo.head)
+        def durationWindow(win: Window) = Seconds.secondsBetween(win.head._1, win.last._1).getSeconds
+        def keepWindow(win: Window): Window = if (durationWindow(win) <= durationSec) win else keepWindow(win.tail)
+        val newWindow = keepWindow(prev :+ todo.head)
         val duration = durationWindow(newWindow)
-        val windowSpeed = if (duration > 0) prev.values.sum / duration else 0.0
+        val windowSpeed = if (duration > 0) prev.map(_._2).sum / duration else 0.0
         val interval = Seconds.secondsBetween(prev.last._1, todo.head._1).getSeconds
         val smoothDist = (windowSpeed * duration + todo.head._2) / ( duration + interval)
-        smoothingRecurse(done + (todo.head._1 -> smoothDist), newWindow, todo.tail)
+        smoothingRecurse((todo.head._1 -> smoothDist) +: done, newWindow, todo.tail)
       }
     }
 
     // fixSpeed(input) was called here, but it was used only because of sample timestamp misunderstanding
-    smoothingRecurse(SortedMap(), SortedMap(), input)
+    val smoothedList = smoothingRecurse(Nil, Nil, input.toList)
+    SortedMap(smoothedList.reverse:_*)
   }
 
   private def pairToDist(ab: (GPSPoint, GPSPoint)) = {
@@ -227,8 +229,10 @@ object DataStreamGPS {
     }
   }
 
-  def computeSpeedStream(dist: DistStream, smoothing: Int = smoothingInterval): DistStream = {
+  def computeSpeedStream(dist: DistStream, smoothing: Int = 10): DistStream = {
+    implicit val start = Timing.Start()
     val smoothedSpeed = smoothSpeed(dist, smoothing)
+    Timing.logTime(s"computeSpeedStream of ${dist.size} samples, smoothing $smoothing")
     smoothedSpeed
   }
 
@@ -444,7 +448,6 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
   }
 
-  def speedStats: SpeedStats = DataStreamGPS.speedStats(computeSpeedStream)
   /*
   * @param 10 sec distance stream (provided by a Quest) */
   private def findOffset(distanceStream: DistStream) = {

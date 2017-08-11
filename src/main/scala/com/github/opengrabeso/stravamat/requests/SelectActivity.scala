@@ -288,7 +288,14 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                 // (if some earlier is not present, it was probably already uploaded and deleted)
                 <tr>
                   <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
-                  <td>{act.sportName}</td>
+                  <td>
+                    {
+                    val detected = Main.detectSportBySpeed(actEvents.stats, act.sportName)
+                    if (detected != act.sportName) {
+                      s"${act.sportName}->$detected"
+                    } else act.sportName
+                    }
+                  </td>
                   <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
                   <td>{if (actEvents.hasAttributes) "Rec" else "--"}</td>
                   <td>{act.hrefLink}</td>

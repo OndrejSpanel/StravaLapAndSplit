@@ -13,9 +13,8 @@ object MovesLinkUploader {
 
 
     def autodetectSport(data: ActivityEvents): ActivityEvents = {
-      val smoothingSec = 10
       // TODO: use differences from data.dist.stream instead of computing data.gps.distStream
-      val speedStream = DataStreamGPS.computeSpeedStream(data.gps.distStream, smoothingSec)
+      val speedStream = DataStreamGPS.computeSpeedStream(data.gps.distStream)
 
       val speedStats = DataStreamGPS.speedStats(speedStream)
 

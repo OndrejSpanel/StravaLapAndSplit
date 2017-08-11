@@ -212,7 +212,7 @@ object Main {
       }
     }
 
-    def computeSpeedStats: SpeedStats = DataStreamGPS.speedStats(computeDistStream)
+    def computeSpeedStats: SpeedStats = DataStreamGPS.speedStats(DataStreamGPS.computeSpeedStream(computeDistStream))
 
     def header: ActivityHeader = ActivityHeader(id, hasGPS, hasAttributes, computeSpeedStats)
 
@@ -470,8 +470,7 @@ object Main {
       DataStreamGPS.distStreamFromRouteStream(act.dist.stream)
     }
 
-    val smoothingSec = 10
-    val speedStream = DataStreamGPS.computeSpeedStream(distStream, smoothingSec)
+    val speedStream = DataStreamGPS.computeSpeedStream(distStream)
     val speedMap = speedStream
 
     // integrate route distance back from smoothed speed stream so that we are processing consistent data
