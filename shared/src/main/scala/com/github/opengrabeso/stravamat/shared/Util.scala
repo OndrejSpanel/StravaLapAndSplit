@@ -43,4 +43,17 @@ object Util {
   }
 
   def kiloCaloriesFromKilojoules(kj: Double): Int = (kj / 4184).toInt
+
+
+  def humanReadableByteCount(bytes: Long): String = {
+    val unit = 1024
+    if (bytes < unit) return bytes + " B"
+    val exp = (Math.log(bytes) / Math.log(unit)).toInt
+    val pre = "kMGTPE".charAt(exp - 1)
+    "%.1f %sB".format(bytes / Math.pow(unit, exp), pre)
+  }
+
+  implicit class HumanReadableByteCount(val bytes: Long) extends AnyVal {
+    def toByteSize: String = humanReadableByteCount(bytes)
+  }
 }

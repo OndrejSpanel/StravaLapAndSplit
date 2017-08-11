@@ -220,7 +220,7 @@ object Start extends App {
     val requestParams = s"user=$userId&timezone=${URLEncoder.encode(localTimeZone, "UTF-8")}"
 
     val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
-    val useGzip = !useLocal
+    val useGzip = true // !useLocal
     val gzipEncoding = if (useGzip) Some(headers.`Content-Encoding`(HttpEncodings.gzip)) else None
 
     val req = Http().singleRequest(
@@ -262,18 +262,19 @@ object Start extends App {
             Future.successful(())
           case StatusCodes.OK =>
             // digest not matching, we need to send full content
+            val bodyBytes = gzipEncoded(fileBytes)
             val uploadReq = Http().singleRequest(
               HttpRequest(
                 uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest",
                 method = HttpMethods.POST,
                 headers = List(sessionCookie) ++ gzipEncoding,
-                entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, gzipEncoded(fileBytes)) // it is XML in fact, but not fully conformant
+                entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, bodyBytes) // it is XML in fact, but not fully conformant
               )
             ).map { resp =>
               resp.discardEntityBytes()
               resp.status
             }
-            println(s"  Upload started: $f")
+            println(s"  Upload started: $f ${fileBytes.length.toByteSize} -> ${bodyBytes.length.toByteSize}")
             uploadReq
 
           case _ => // unexpected - what to do?

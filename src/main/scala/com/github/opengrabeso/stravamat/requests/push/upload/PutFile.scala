@@ -3,12 +3,30 @@ package requests
 package push
 package upload
 
-import java.io.InputStream
+import java.io.{FilterInputStream, InputStream, PushbackInputStream}
 import java.util.zip.GZIPInputStream
 
+import shared.Util._
 import spark.{Request, Response}
 
 object PutFile extends DefineRequest.Post("/push-put") {
+
+
+  /** from https://blog.art-of-coding.eu/compressed-http-requests/
+    * Check if InputStream is gzip'ed by looking at the first two bytes (magic number)
+    * and if it is, return a GZIPInputStream wrapped stream.
+    *
+    * @param input An input stream.
+    * @return The input or GZIIPInputStream(input).
+    */
+  private def decompressStream(input: InputStream): InputStream = {
+    val pushbackInputStream = new PushbackInputStream(input, 2)
+    val signature = new Array[Byte](2)
+    pushbackInputStream.read(signature)
+    pushbackInputStream.unread(signature)
+    if (signature(0) == 0x1f.toByte && signature(1) == 0x8b.toByte) new GZIPInputStream(pushbackInputStream)
+    else pushbackInputStream
+  }
 
   override def html(request: Request, resp: Response) = {
     val path = request.queryParams("path")
@@ -18,18 +36,23 @@ object PutFile extends DefineRequest.Post("/push-put") {
     // we expect to receive digest separately, as this allows us to use the stream incrementally while parsing XML
     // - note: client has already computed any it because it verified it before sending data to us
     val digest = request.queryParams("digest")
+    val contentLength = Option(request.headers("Content-Length"))
 
-    val encoding = request.headers("Content-Encoding")
+    //val encoding = request.headers("Content-Encoding")
 
-    println(s"Put file $path")
-    println(s"  Digest $digest}")
-    println(s"  Encoding ${Option(encoding).getOrElse("null")}")
+    println(s"Put file $path, Digest $digest}")
+    //println(s"  Encoding ${Option(encoding).getOrElse("null")}")
+    for (cl <- contentLength) {
+      println(s"  Size ${cl.toInt.toByteSize}")
+    }
 
     val sessionId = request.cookie("sessionid")
 
+    // note: production App Engine already decodes gziped request body, but development one does not
+
     val rawInputStream = request.raw().getInputStream
-    // it seems production App Engine already decodes gziped request body, but development one does not
-    val fileContent = rawInputStream
+    val fileContent = decompressStream(rawInputStream)
+
 
     val logProgress = false
     val input = if (logProgress) {
@@ -38,7 +61,7 @@ object PutFile extends DefineRequest.Post("/push-put") {
         var reported = 0
         val reportEach = 100000
 
-        def report(chars: Int): Unit = {
+        def report(chars: Int) = {
           progress += chars
           if (progress > reported + reportEach) {
             reported = progress / reportEach * reportEach
@@ -62,7 +85,6 @@ object PutFile extends DefineRequest.Post("/push-put") {
       fileContent
     }
 
-    println(s"Received content for $path")
 
     Upload.storeFromStreamWithDigest(userId, path, timezone, input, digest)
 
