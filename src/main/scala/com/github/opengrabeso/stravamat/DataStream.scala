@@ -163,16 +163,17 @@ object DataStreamGPS {
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
 
     object Window {
-      def apply() = new Window(CyclicVector.empty, 0)
+      def apply() = new Window(Vector.empty, 0)
     }
-    case class Window(data: CyclicVector[(ZonedDateTime, Double)], distance: Double) {
+    case class Window(data: Vector[(ZonedDateTime, Double)], private val totalDistance: Double) {
       def isEmpty = data.isEmpty
       def begTime = data.head._1
       def endTime = data.last._1
       def duration = Seconds.secondsBetween(begTime, endTime).getSeconds
+      def distance = if (isEmpty) 0.0 else totalDistance - data.head._2 // first distance was before the first timestamp
       def speed = if (duration > 0) distance / duration else 0.0
-      def keepSize = if (duration <= durationSec) this else Window(data.tail, distance - data.head._2)
-      def :+ (item: (ZonedDateTime, Double)) = Window(data :+ item, distance + item._2)
+      def keepSize = if (duration <= durationSec) this else Window(data.tail, totalDistance - data.head._2)
+      def :+ (item: (ZonedDateTime, Double)) = Window(data :+ item, totalDistance + item._2)
     }
 
     def smoothingRecurse(done: DistList, prev: Window, todo: DistList): DistList = {
@@ -253,18 +254,13 @@ object DataStreamGPS {
   def speedStats(speedStream: DistStream): SpeedStats = {
     implicit val start = Timing.Start()
 
-    def median(s: Seq[Double])  = {
-      val (lower, upper) = s.sorted.splitAt(s.size / 2)
-      if (s.size % 2 == 0) (lower.last + upper.head) / 2.0 else upper.head
-    }
-
     val toKmh = 3.6
     val speeds = speedStream.map(_._2 * toKmh)
 
     val max = speeds.max
     val min = speeds.min
 
-    val num_bins = 10
+    val num_bins = 40
 
     val histogram = speeds
       .map(x => (((x - min) / (max - min)) * num_bins).floor.toInt)
@@ -272,21 +268,21 @@ object DataStreamGPS {
       .map(x => x._1 -> x._2.size)
       .toSeq
       .sortBy(_._1)
-      .map(_._2)
 
     def percentile(percent: Int) = {
       val countUnder = (percent * 0.01 * speeds.size).toInt
 
-      def percentileRecurse(countLeft: Int, histLeft: Seq[Int], ret: Int): Int = {
-        if (histLeft.isEmpty || histLeft.head >= countLeft) ret
-        else percentileRecurse(countLeft - histLeft.head, histLeft.tail, ret + 1)
+      def percentileRecurse(countLeft: Int, histLeft: Seq[(Int, Int)]): Int = {
+        if (histLeft.isEmpty) num_bins
+        else if (histLeft.head._2 >= countLeft) histLeft.head._1
+        else percentileRecurse(countLeft - histLeft.head._2, histLeft.tail)
       }
-      val slot = percentileRecurse(countUnder, histogram, 0)
+      val slot = percentileRecurse(countUnder, histogram)
       slot.toDouble / num_bins * (max - min) + min
     }
 
 
-    val med = median(speeds.toSeq)
+    val med = percentile(50)
 
     val fast = percentile(80)
 
