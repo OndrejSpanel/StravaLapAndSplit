@@ -8,24 +8,22 @@ import scala.annotation.tailrec
 
 object MovesLinkUploader {
 
+  private def autodetectSport(data: ActivityEvents): ActivityEvents = {
+    // TODO: use differences from data.dist.stream instead of computing data.gps.distStream
+    val speedStream = DataStreamGPS.computeSpeedStream(data.gps.distStream)
+
+    val speedStats = DataStreamGPS.speedStats(speedStream)
+
+    val detectSport = Main.detectSportBySpeed(speedStats, data.id.sportName)
+
+    data.copy(id = data.id.copy(sportName = detectSport))
+
+  }
+
   @tailrec
   private def processTimelinesRecurse(lineGPS: List[ActivityEvents], lineHRD: List[ActivityEvents], processed: List[ActivityEvents]): List[ActivityEvents] = {
-
-
-    def autodetectSport(data: ActivityEvents): ActivityEvents = {
-      // TODO: use differences from data.dist.stream instead of computing data.gps.distStream
-      val speedStream = DataStreamGPS.computeSpeedStream(data.gps.distStream)
-
-      val speedStats = DataStreamGPS.speedStats(speedStream)
-
-      val detectSport = Main.detectSportBySpeed(speedStats, data.id.sportName)
-
-      data.copy(id = data.id.copy(sportName = detectSport))
-
-    }
-
     def prependNonEmpty(move: Option[ActivityEvents], list: List[ActivityEvents]): List[ActivityEvents] = {
-      move.find(!_.isAlmostEmpty(30)).map(autodetectSport).toList ++ list
+      move.find(!_.isAlmostEmpty(30)).toList ++ list
     }
 
     if (lineGPS.isEmpty) {
@@ -98,6 +96,6 @@ object MovesLinkUploader {
   }
 
   def processTimelines(lineGPS: List[ActivityEvents], lineHRD: List[ActivityEvents]): List[ActivityEvents] = {
-    processTimelinesRecurse(lineGPS, lineHRD, Nil).reverse
+    processTimelinesRecurse(lineGPS, lineHRD, Nil).reverse.map(autodetectSport)
   }
 }

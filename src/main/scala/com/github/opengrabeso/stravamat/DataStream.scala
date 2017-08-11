@@ -161,7 +161,7 @@ object DataStreamGPS {
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
     // TODO: optimize, this is currently very slow (processing 2 hours or run data takes 30 seconds)
-    type Window = DistList
+    type Window = Vector[(ZonedDateTime, Double)]
     def smoothingRecurse(done: DistList, prev: Window, todo: DistList): DistList = {
       if (todo.isEmpty) done
       else if (prev.isEmpty) {
@@ -179,7 +179,7 @@ object DataStreamGPS {
     }
 
     // fixSpeed(input) was called here, but it was used only because of sample timestamp misunderstanding
-    val smoothedList = smoothingRecurse(Nil, Nil, input.toList)
+    val smoothedList = smoothingRecurse(Nil, Vector(), input.toList)
     SortedMap(smoothedList.reverse:_*)
   }
 
