@@ -10,8 +10,23 @@ object MovesLinkUploader {
 
   @tailrec
   private def processTimelinesRecurse(lineGPS: List[ActivityEvents], lineHRD: List[ActivityEvents], processed: List[ActivityEvents]): List[ActivityEvents] = {
+
+
+    def autodetectSport(data: ActivityEvents): ActivityEvents = {
+      val smoothingSec = 10
+      // TODO: use differences from data.dist.stream instead of computing data.gps.distStream
+      val speedStream = DataStreamGPS.computeSpeedStream(data.gps.distStream, smoothingSec)
+
+      val speedStats = DataStreamGPS.speedStats(speedStream)
+
+      val detectSport = Main.detectSportBySpeed(speedStats, data.id.sportName)
+
+      data.copy(id = data.id.copy(sportName = detectSport))
+
+    }
+
     def prependNonEmpty(move: Option[ActivityEvents], list: List[ActivityEvents]): List[ActivityEvents] = {
-      move.find(!_.isAlmostEmpty(30)).toList ++ list
+      move.find(!_.isAlmostEmpty(30)).map(autodetectSport).toList ++ list
     }
 
     if (lineGPS.isEmpty) {
@@ -62,15 +77,7 @@ object MovesLinkUploader {
 
             val data = sm._2.merge(hrdAdjusted)
 
-            val smoothingSec = 10
-            // TODO: use differences from data.dist.stream instead of computing data.gps.distStream
-            val speedStream = DataStreamGPS.computeSpeedStream(data.gps.distStream, smoothingSec)
-
-            val speedStats = DataStreamGPS.speedStats(speedStream)
-
-            val detectSport = Main.detectSportBySpeed(speedStats, data.id.sportName)
-
-            data.copy(id = data.id.copy(sportName = detectSport))
+            data
           }
 
           println(s"Merged GPS ${takeGPS.map(_.toLog)} into ${hrdMove.toLog}")
