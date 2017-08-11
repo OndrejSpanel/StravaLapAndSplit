@@ -160,15 +160,18 @@ object DataStreamGPS {
   }
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
-    case class Window(data: Vector[(ZonedDateTime, Double)]) {
+    object Window {
+      def apply() = new Window(Vector.empty, 0)
+    }
 
+    case class Window(data: Vector[(ZonedDateTime, Double)], distance: Double) {
       def isEmpty = data.isEmpty
       def begTime = data.head._1
       def endTime = data.last._1
       def duration = Seconds.secondsBetween(begTime, endTime).getSeconds
-      def speed = if (duration > 0) data.map(_._2).sum / duration else 0.0
-      def keepSize = if (duration <= durationSec) this else Window(data.tail)
-      def append(item: (ZonedDateTime, Double)) = Window(data :+ item)
+      def speed = if (duration > 0) distance / duration else 0.0
+      def keepSize = if (duration <= durationSec) this else Window(data.tail, distance - data.head._2)
+      def append(item: (ZonedDateTime, Double)) = Window(data :+ item, distance + item._2)
     }
 
     def smoothingRecurse(done: DistList, prev: Window, todo: DistList): DistList = {
@@ -186,7 +189,7 @@ object DataStreamGPS {
     }
 
     // fixSpeed(input) was called here, but it was used only because of sample timestamp misunderstanding
-    val smoothedList = smoothingRecurse(Nil, Window(Vector()), input.toList)
+    val smoothedList = smoothingRecurse(Nil, Window(), input.toList)
     SortedMap(smoothedList.reverse:_*)
   }
 
