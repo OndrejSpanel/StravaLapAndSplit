@@ -160,26 +160,33 @@ object DataStreamGPS {
   }
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
-    // TODO: optimize, this is currently very slow (processing 2 hours or run data takes 30 seconds)
-    type Window = Vector[(ZonedDateTime, Double)]
+    case class Window(data: Vector[(ZonedDateTime, Double)]) {
+
+      def isEmpty = data.isEmpty
+      def begTime = data.head._1
+      def endTime = data.last._1
+      def duration = Seconds.secondsBetween(begTime, endTime).getSeconds
+      def speed = if (duration > 0) data.map(_._2).sum / duration else 0.0
+      def keepSize = if (duration <= durationSec) this else Window(data.tail)
+      def append(item: (ZonedDateTime, Double)) = Window(data :+ item)
+    }
+
     def smoothingRecurse(done: DistList, prev: Window, todo: DistList): DistList = {
       if (todo.isEmpty) done
       else if (prev.isEmpty) {
-        smoothingRecurse(todo.head +: done, prev :+ todo.head, todo.tail)
+        smoothingRecurse(todo.head +: done, prev.append(todo.head), todo.tail)
       } else {
-        def durationWindow(win: Window) = Seconds.secondsBetween(win.head._1, win.last._1).getSeconds
-        def keepWindow(win: Window): Window = if (durationWindow(win) <= durationSec) win else keepWindow(win.tail)
-        val newWindow = keepWindow(prev :+ todo.head)
-        val duration = durationWindow(newWindow)
-        val windowSpeed = if (duration > 0) prev.map(_._2).sum / duration else 0.0
-        val interval = Seconds.secondsBetween(prev.last._1, todo.head._1).getSeconds
-        val smoothDist = (windowSpeed * duration + todo.head._2) / ( duration + interval)
+        val newWindow = prev.append(todo.head).keepSize
+        val duration = newWindow.duration
+        val windowSpeed = prev.speed
+        val interval = Seconds.secondsBetween(prev.endTime, todo.head._1).getSeconds
+        val smoothDist = (windowSpeed * duration + todo.head._2) / (duration + interval)
         smoothingRecurse((todo.head._1 -> smoothDist) +: done, newWindow, todo.tail)
       }
     }
 
     // fixSpeed(input) was called here, but it was used only because of sample timestamp misunderstanding
-    val smoothedList = smoothingRecurse(Nil, Vector(), input.toList)
+    val smoothedList = smoothingRecurse(Nil, Window(Vector()), input.toList)
     SortedMap(smoothedList.reverse:_*)
   }
 
