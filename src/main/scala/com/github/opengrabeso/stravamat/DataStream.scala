@@ -4,6 +4,7 @@ import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.immutable.SortedMap
 import shared.Util._
+import shared.Timing
 
 import scala.annotation.tailrec
 
@@ -235,6 +236,7 @@ object DataStreamGPS {
     * @return median, 80% percentile, max
     * */
   def speedStats(speedStream: DistStream): SpeedStats = {
+    implicit val start = Timing.Start()
 
     def median(s: Seq[Double])  = {
       val (lower, upper) = s.sorted.splitAt(s.size / 2)
@@ -272,7 +274,8 @@ object DataStreamGPS {
     val med = median(speeds.toSeq)
 
     val fast = percentile(80)
-    // TODO:
+
+    Timing.logTime(s"Speed of ${speedStream.size} samples")
     SpeedStats(med, fast, max)
   }
 
@@ -441,52 +444,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
   }
 
-
-  /**
-    * @return median, average, max
-    * */
-  def speedStats: (Double, Double, Double) = {
-
-    def median(s: Seq[Double])  = {
-      val (lower, upper) = s.sorted.splitAt(s.size / 2)
-      if (s.size % 2 == 0) (lower.last + upper.head) / 2.0 else upper.head
-    }
-
-    val speedStream = computeSpeedStream // consider lazy value instead
-    val toKmh = 3.6
-    val speeds = speedStream.values.toSeq.map(_ * toKmh)
-
-    val max = speeds.max
-    val min = speeds.min
-
-    val num_bins = 10
-
-    val hist = speeds
-      .map(x => (((x - min) / (max - min)) * num_bins).floor.toInt)
-      .groupBy(identity)
-      .map(x => x._1 -> x._2.size)
-      .toSeq
-      .sortBy(_._1)
-      .map(_._2)
-
-    def percentile(percent: Int) = {
-      val countUnder = (percent * 0.01 * speeds.size).toInt
-
-      def percentileRecurse(countLeft: Int, histLeft: Seq[Int], ret: Int): Int = {
-        if (histLeft.isEmpty || histLeft.head >= countLeft) ret
-        else percentileRecurse(countLeft - histLeft.head, histLeft.tail, ret + 1)
-      }
-      val slot = percentileRecurse(countUnder, hist, 0)
-      slot.toDouble / num_bins * (max - min) + min
-    }
-
-
-    val med = median(speeds)
-
-    val fast = percentile(80)
-    // TODO:
-    (med, fast, max)
-  }
+  def speedStats: SpeedStats = DataStreamGPS.speedStats(computeSpeedStream)
   /*
   * @param 10 sec distance stream (provided by a Quest) */
   private def findOffset(distanceStream: DistStream) = {

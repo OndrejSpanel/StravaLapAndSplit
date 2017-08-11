@@ -275,7 +275,10 @@ object Start extends App {
               resp.status
             }
             println(s"  Upload started: $f ${fileBytes.length.toByteSize} -> ${bodyBytes.length.toByteSize}")
-            uploadReq
+            uploadReq.map { status =>
+              println(s"    Async upload $f status $status")
+              status
+            }
 
           case _ => // unexpected - what to do?
             Future.successful(())
@@ -288,7 +291,7 @@ object Start extends App {
     reqs.foreach { case (f, r) =>
       Await.result(r, Duration.Inf)
       // TODO: handle upload failures somehow
-      println(s"  Upload $f status $r")
+      println(s"  Await upload $f status $r")
     }
 
     serverInfo.system.terminate()

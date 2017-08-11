@@ -13,6 +13,7 @@ import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterB
 import scala.collection.JavaConverters._
 import shared.Util._
 import FileId._
+import com.github.opengrabeso.stravamat.DataStreamGPS.SpeedStats
 import com.google.api.client.json.jackson2.JacksonFactory
 
 import scala.collection.immutable.SortedMap
@@ -197,13 +198,23 @@ object Main {
   @SerialVersionUID(10L)
   case object NoActivity
 
-  @SerialVersionUID(10L)
-  case class ActivityHeader(id: ActivityId, hasGPS: Boolean, hasAttributes: Boolean)
+  @SerialVersionUID(11L)
+  case class ActivityHeader(id: ActivityId, hasGPS: Boolean, hasAttributes: Boolean, stats: SpeedStats)
 
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
 
-    def header: ActivityHeader = ActivityHeader(id, hasGPS, hasAttributes)
+    def computeDistStream = {
+      if (gps.stream.nonEmpty) {
+        gps.distStream
+      } else {
+        DataStreamGPS.distStreamFromRouteStream(dist.stream)
+      }
+    }
+
+    def computeSpeedStats: SpeedStats = DataStreamGPS.speedStats(computeDistStream)
+
+    def header: ActivityHeader = ActivityHeader(id, hasGPS, hasAttributes, computeSpeedStats)
 
     def streams = {
       if (hasGPS) dist +: gps +: attributes

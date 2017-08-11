@@ -4,6 +4,7 @@ package requests
 import java.io.{ByteArrayInputStream, InputStream}
 
 import Main.NoActivity
+import shared.Timing
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
@@ -46,9 +47,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
 
   def storeFromStreamWithDigest(userId: String, name: String, timezone: String, stream: InputStream, digest: String) = {
     import MoveslinkImport._
-    def now() = System.currentTimeMillis()
-    val start = now()
-    def logTime(msg: String) = println(s"$msg: time ${now()-start}")
+    implicit val start = Timing.Start()
 
     val extension = name.split('.').last
     val actData: Seq[Main.ActivityEvents] = extension.toLowerCase match {
@@ -66,7 +65,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
       case e =>
         Nil
     }
-    logTime("Import file")
+    Timing.logTime("Import file")
     if (actData.nonEmpty) {
       for (act <- actData) {
         Storage.store(Main.namespace.stage, act.id.id.filename, userId, act.header, act, "digest" -> digest)
@@ -74,7 +73,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
     } else {
       Storage.store(Main.namespace.stage, name, userId, NoActivity, NoActivity, "digest" -> digest)
     }
-    logTime("Store file")
+    Timing.logTime("Store file")
   }
 
   def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream) = {
