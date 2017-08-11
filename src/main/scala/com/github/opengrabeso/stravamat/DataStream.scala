@@ -1,5 +1,6 @@
 package com.github.opengrabeso.stravamat
 
+import com.github.opengrabeso.collections.CyclicVector
 import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.immutable.SortedMap
@@ -160,26 +161,26 @@ object DataStreamGPS {
   }
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
-    object Window {
-      def apply() = new Window(Vector.empty, 0)
-    }
 
-    case class Window(data: Vector[(ZonedDateTime, Double)], distance: Double) {
+    object Window {
+      def apply() = new Window(CyclicVector.empty, 0)
+    }
+    case class Window(data: CyclicVector[(ZonedDateTime, Double)], distance: Double) {
       def isEmpty = data.isEmpty
       def begTime = data.head._1
       def endTime = data.last._1
       def duration = Seconds.secondsBetween(begTime, endTime).getSeconds
       def speed = if (duration > 0) distance / duration else 0.0
       def keepSize = if (duration <= durationSec) this else Window(data.tail, distance - data.head._2)
-      def append(item: (ZonedDateTime, Double)) = Window(data :+ item, distance + item._2)
+      def :+ (item: (ZonedDateTime, Double)) = Window(data :+ item, distance + item._2)
     }
 
     def smoothingRecurse(done: DistList, prev: Window, todo: DistList): DistList = {
       if (todo.isEmpty) done
       else if (prev.isEmpty) {
-        smoothingRecurse(todo.head +: done, prev.append(todo.head), todo.tail)
+        smoothingRecurse(todo.head +: done, prev :+ todo.head, todo.tail)
       } else {
-        val newWindow = prev.append(todo.head).keepSize
+        val newWindow = (prev :+ todo.head).keepSize
         val duration = newWindow.duration
         val windowSpeed = prev.speed
         val interval = Seconds.secondsBetween(prev.endTime, todo.head._1).getSeconds

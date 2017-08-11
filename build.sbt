@@ -14,12 +14,12 @@ lazy val commonLibs = Seq(
 
 val jacksonVersion = "2.8.3"
 
-
 lazy val shared = (project in file("shared"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .settings(
     commonSettings,
-    libraryDependencies ++= commonLibs
+    libraryDependencies ++= commonLibs,
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
   )
 
 
