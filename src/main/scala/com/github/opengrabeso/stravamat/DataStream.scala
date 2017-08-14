@@ -560,6 +560,19 @@ class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends D
   def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 }
 
+@SerialVersionUID(11L)
+class DataStreamAttrib(val attribName: String, override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream {
+  type Item = Int
+
+  def typeToLog = "attribName"
+
+  override def pickData(data: DataMap) = new DataStreamAttrib(attribName, data)
+  override def isAlmostEmpty = false
+  override def isNeeded = false
+  def dropAlmostEmpty: DataStreamAttrib = this // TODO: drop
+}
+
+
 @SerialVersionUID(10L)
 class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) extends DataStream {
 

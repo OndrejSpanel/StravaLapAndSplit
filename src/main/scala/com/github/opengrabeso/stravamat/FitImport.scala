@@ -37,6 +37,8 @@ object FitImport {
 
       val gpsBuffer = ArrayBuffer[(ZonedDateTime, GPSPoint)]() // Time -> Lat / Long
       val hrBuffer = ArrayBuffer[(ZonedDateTime, Int)]()
+      val cadenceBuffer = ArrayBuffer[(ZonedDateTime, Int)]()
+      val powerBuffer = ArrayBuffer[(ZonedDateTime, Int)]()
       val distanceBuffer = ArrayBuffer[(ZonedDateTime, Double)]()
       val lapBuffer=ArrayBuffer[ZonedDateTime]()
 
@@ -55,6 +57,8 @@ object FitImport {
               val posLat = Option(mesg.getField(RecordMesg.PositionLatFieldNum)).map(_.getIntegerValue)
               val posLong = Option(mesg.getField(RecordMesg.PositionLongFieldNum)).map(_.getIntegerValue)
               val elev = Option(mesg.getField(RecordMesg.AltitudeFieldNum)).map(_.getFloatValue)
+              val cadence = Option(mesg.getField(RecordMesg.CadenceFieldNum)).map(_.getIntegerValue)
+              val power = Option(mesg.getField(RecordMesg.PowerFieldNum)).map(_.getIntegerValue)
 
               for (time <- timestamp) {
                 // time may be seconds or miliseconds, how to know?
@@ -62,13 +66,15 @@ object FitImport {
                 for (lat <- posLat; long <- posLong) {
                   gpsBuffer += jTime -> decodeLatLng(lat, long, elev)
                 }
+                for (d <- distance) {
+                  distanceBuffer += jTime -> d.toDouble
+                }
 
                 for (hr <- heartrate) {
                   hrBuffer += jTime -> hr
                 }
-                for (d <- distance) {
-                  distanceBuffer += jTime -> d.toDouble
-                }
+                for (v <- power) powerBuffer += jTime -> v
+                for (v <- cadence) cadenceBuffer += jTime -> v
               }
             case MesgNum.LAP =>
               val timestamp = Option(mesg.getField(RecordMesg.TimestampFieldNum)).map(_.getLongValue)
@@ -109,6 +115,8 @@ object FitImport {
 
       val gpsStream = SortedMap(gpsBuffer:_*)
       val hrStream = SortedMap(hrBuffer:_*)
+      val powerStream = SortedMap(powerBuffer:_*)
+      val cadenceStream = SortedMap(cadenceBuffer:_*)
 
       val gpsDataStream = new DataStreamGPS(gpsStream)
       val distData = if (distanceBuffer.nonEmpty) {
@@ -134,10 +142,11 @@ object FitImport {
 
         val latlng = gpsDataStream
 
-        def attributes = Seq(
-          // TODO: cadence, temperature and other attributes
-          new DataStreamHR(hrStream)
-        )
+        def attributes = Seq() ++
+          hrStream.headOption.map(_ => new DataStreamHR(hrStream)) ++
+          powerStream.headOption.map(_ => new DataStreamAttrib("watts", powerStream)) ++
+          cadenceStream.headOption.map(_ => new DataStreamAttrib("cadence", cadenceStream))
+          // TODO: add temperature and other attributes
 
       }
 

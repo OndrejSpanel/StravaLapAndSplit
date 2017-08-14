@@ -66,9 +66,13 @@ object FitExport {
       val createAttribEvent: (RecordMesg, Int) => Unit = (msg, value) =>
         attrib match {
           case x: DataStreamHR => msg.setHeartRate(value.toShort)
-          //case "watts" => msg.setPower(value)
-          //case "cadence" => msg.setCadence(value.toShort)
-          //case "temp" => msg.setTemperature(value.toByte)
+          case x: DataStreamAttrib =>
+            x.attribName match {
+              case "watts" => msg.setPower(value)
+              case "cadence" => msg.setCadence(value.toShort)
+              case "temp" => msg.setTemperature(value.toByte)
+              case _ => // unsupported attribute
+            }
           case _ => ???
         }
       attrib.stream.map { case (t, data) =>

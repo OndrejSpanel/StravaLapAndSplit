@@ -624,7 +624,7 @@ object Main {
     object StravaActivityStreams extends ActivityStreams {
       // https://strava.github.io/api/v3/streams/
       //private val allStreams = Seq("time", "latlng", "distance", "altitude", "velocity_smooth", "heartrate", "cadence", "watts", "temp", "moving", "grade_smooth")
-      private val wantStreams = Seq("time", "latlng", "distance", "altitude", "heartrate" /*, "cadence", "watts", "temp"*/)
+      private val wantStreams = Seq("time", "latlng", "distance", "altitude", "heartrate", "cadence", "watts"/*, "temp"*/)
 
       private val streamTypes = wantStreams.mkString(",")
 
@@ -683,7 +683,7 @@ object Main {
       val attributes =  attributeValues.flatMap { case (name, values) =>
           name match {
             case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
-            case _ => None
+            case _ => Some(new DataStreamAttrib(name, SortedMap(timeValues zip values:_*)))
           }
       }
 
