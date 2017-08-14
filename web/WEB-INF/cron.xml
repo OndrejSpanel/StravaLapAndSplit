@@ -5,7 +5,7 @@
     <schedule>every 2 hours</schedule>
   </cron>
   <cron>
-    <url>/cleanup?perioric</url>
+    <url>/cleanup?periodic</url>
     <description>Clean up obsolete data</description>
     <schedule>every 12 hours</schedule>
   </cron>

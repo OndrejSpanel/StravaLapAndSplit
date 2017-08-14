@@ -10,6 +10,7 @@ object Cleanup extends DefineRequest("/cleanup") {
 
       <cleaned><files>{cleaned.toString}</files></cleaned>
     } else {
+      println("Unknown cleanup type")
       resp.status(400) // Bad Request
       <cleaned><error>Syntax error</error></cleaned>
     }
