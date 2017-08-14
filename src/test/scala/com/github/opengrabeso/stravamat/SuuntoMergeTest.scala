@@ -12,7 +12,7 @@ class SuuntoMergeTest extends FlatSpec with Matchers with SuuntoData {
     move.isEmpty shouldBe false
 
     move.foreach { m =>
-      val hr = m.streamGet[DataStreamHRWithDist]
+      val hr = m.streamGet[DataStreamHR]
       hr.isEmpty shouldBe false
 
       m.streamGet[DataStreamLap].isEmpty shouldBe false
@@ -43,7 +43,7 @@ class SuuntoMergeTest extends FlatSpec with Matchers with SuuntoData {
 
   it should "merge GPS + Quest files" in {
     for (hr <- questMove; gps <- gpsPodMove) {
-      val m = gps.addStream(hr, hr.stream[DataStreamHRWithDist])
+      val m = gps.addStream(hr, hr.stream[DataStreamHR])
       m.isEmpty shouldBe false
       m.duration shouldBe 4664.6
       m.isAlmostEmpty(30) shouldBe false

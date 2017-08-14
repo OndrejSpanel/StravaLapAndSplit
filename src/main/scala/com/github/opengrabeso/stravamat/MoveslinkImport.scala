@@ -30,26 +30,14 @@ object MoveslinkImport {
     // Move(fileName: Set[String], header: MoveHeader, streams: Map[Class[_], DataStream[_]]) {
     // ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
-    def distFromHRStream(hr: DataStreamHRWithDist): DataStreamDist = {
-      val stream = hr.mapStreamValues(_.dist)
-      new DataStreamDist(stream)
-    }
-
-    def hrFromHRStream(hr: DataStreamHRWithDist): DataStreamHR = {
-      val stream = hr.mapStreamValues(_.hr)
-      new DataStreamHR(stream)
-    }
-
-    val distStream = move.streamGet[DataStreamDist] orElse move.streamGet[DataStreamHRWithDist].map(distFromHRStream)
-
     val laps = move.streamGet[DataStreamLap]
 
     val gps = move.streamGet[DataStreamGPS].getOrElse(new DataStreamGPS(SortedMap.empty[ZonedDateTime, GPSPoint]))
 
-    val dist = distStream.getOrElse(new DataStreamDist(SortedMap.empty[ZonedDateTime, Double]))
+    val dist = move.streamGet[DataStreamDist].getOrElse(new DataStreamDist(SortedMap.empty[ZonedDateTime, Double]))
 
     // TODO: other attributes
-    val hrStream = move.streamGet[DataStreamHRWithDist].map(hrFromHRStream).getOrElse(new DataStreamHR(SortedMap.empty[ZonedDateTime, Int]))
+    val hrStream = move.streamGet[DataStreamHR].getOrElse(new DataStreamHR(SortedMap.empty[ZonedDateTime, Int]))
 
     for {
       startTime <- move.startTime

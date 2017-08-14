@@ -534,15 +534,6 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
     }
   }
 
-  def adjustHrd(hrdMove: Move): Move = {
-
-    val hrWithDistStream = hrdMove.streamGet[DataStreamHRWithDist]
-    hrWithDistStream.map { dist =>
-      val offset = adjustHrdStream(dist.mapStreamValues(_.dist))
-      hrdMove.timeOffset(offset)
-    }.getOrElse(hrdMove)
-  }
-
 }
 
 @SerialVersionUID(10L)
@@ -555,28 +546,6 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
   override def isAlmostEmpty = false
   override def isNeeded = true
   def dropAlmostEmpty: DataStreamLap = this
-}
-
-@SerialVersionUID(10L)
-class DataStreamHRWithDist(override val stream: SortedMap[ZonedDateTime, HRPoint]) extends DataStream {
-  type Item = HRPoint
-
-  def typeToLog = "HRDist"
-
-  def rebase: DataStream = {
-    if (stream.isEmpty) this
-    else {
-      val base = stream.head._2.dist
-      new DataStreamHRWithDist(mapStreamValues(v => v.copy(dist = v.dist  - base)))
-    }
-  }
-
-  override def isAlmostEmpty = stream.isEmpty || DataStream.distanceIsAlmostEmpty(stream.head._2.dist, stream.last._2.dist, stream.head._1, stream.last._1)
-  override def isNeeded = false
-
-  override def pickData(data: DataMap) = new DataStreamHRWithDist(data).rebase
-  def dropAlmostEmpty: DataStreamHRWithDist = this // TODO: drop
-
 }
 
 @SerialVersionUID(10L)
