@@ -68,16 +68,17 @@ object XMLParser {
 
     def timeMs(ms: Int) = header.startTime.plusMillis(ms)
 
-    val hrWithDist = (validatedHR zip distanceSamples).map{ case (hr, d) => hr.map(s => HRPoint(s, d))}
-
-    val timedMap = (timeRange zip hrWithDist).collect { case (t, Some(s)) =>
+    val timedMapHR = (timeRange zip validatedCleanedHR).collect { case (t, Some(s)) =>
       timeMs(t) -> s
     }
 
-    // TODO: laps
+    val timedMapDist = (timeRange zip distanceSamples).collect { case (t, d) =>
+      timeMs(t) -> d
+    }
 
-    val hrStream = new DataStreamHRWithDist(SortedMap(timedMap:_*))
-    new Move(Set(fileName), header.moveHeader, hrStream)
+    val hrStream = new DataStreamHR(SortedMap(timedMapHR:_*))
+    val distStream = new DataStreamDist(SortedMap(timedMapDist:_*))
+    new Move(Set(fileName), header.moveHeader, hrStream, distStream)
   }
 
   def parseTime(timeText: String, timezone: String): ZonedDateTime = {
