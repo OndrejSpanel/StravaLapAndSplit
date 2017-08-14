@@ -26,6 +26,37 @@ object DataStream {
     // mapValues however creates a copy which is not serializable
     stream.transform((_, v) => f(v))
   }
+
+  // remove any points which contain no useful information
+  def optimize[Data <: DataStream](data: Data): Data = {
+    type ItemWithTime = data.ItemWithTime
+
+    def notNeeded(first: ItemWithTime, second: ItemWithTime) = {
+      // avoid samples being too apart each other, it brings no benefit and could be risky
+      if (timeDifference(first._1, second._1) > 30) {
+        false
+      } else {
+        first._2 == second._2
+      } // Strava seems not to be interpolating HR, it simply reuses the last value seen
+    }
+
+    @tailrec
+    def optimizeRecurse(todo: List[ItemWithTime], done: List[ItemWithTime]): List[ItemWithTime] = {
+      todo match {
+        case first :: second :: tail if notNeeded(first, second) =>
+          optimizeRecurse(first :: tail, done)
+        case head :: tail =>
+          optimizeRecurse(tail, head :: done)
+        case Nil => done
+      }
+    }
+
+    val newStream = SortedMap(optimizeRecurse(data.stream.toList, Nil):_*)
+    data.pickData(newStream).asInstanceOf[Data]
+  }
+
+
+
 }
 @SerialVersionUID(10L)
 sealed abstract class DataStream extends Serializable {
@@ -34,6 +65,8 @@ sealed abstract class DataStream extends Serializable {
   def streamType: Class[_ <: DataStream] = this.getClass
 
   type Item
+
+  type ItemWithTime = (ZonedDateTime, Item)
 
   type DataMap = SortedMap[ZonedDateTime, Item]
 
@@ -76,6 +109,8 @@ sealed abstract class DataStream extends Serializable {
     pickData(adjusted)
   }
 
+  def optimize: DataStream
+
   def toLog = s"$typeToLog: ${startTime.map(_.toLog).getOrElse("")} .. ${endTime.map(_.toLogShort).getOrElse("")}"
 
   override def toString = toLog
@@ -106,6 +141,7 @@ object DataStreamGPS {
     d <= (maxSpeed * duration min 100)
   }
 
+  type GPSPointWithTime = (ZonedDateTime, GPSPoint)
 
   private type DistStream  = SortedMap[ZonedDateTime, Double]
   private type DistList  = List[(ZonedDateTime, Double)]
@@ -325,8 +361,9 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   }
 
   override def isNeeded = false
+
   // drop beginning and end with no activity
-  private type ValueList = List[(ZonedDateTime, GPSPoint)]
+  private type ValueList = List[GPSPointWithTime]
 
   def dropAlmostEmpty: Option[(ZonedDateTime, ZonedDateTime)] = {
     if (stream.nonEmpty) {
@@ -534,6 +571,43 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
     }
   }
 
+
+  override def optimize = {
+
+    //type GPSPointWithTime =
+    def secondNotNeeded(first: GPSPointWithTime, second: GPSPointWithTime, third: GPSPointWithTime) = {
+      // check if second can be obtained by interpolating first and third
+      val secondFactor = timeDifference(first._1, second._1) / timeDifference(first._1, third._1)
+
+      def lerp(value1: Double, value2: Double, f: Double) = value1 + (value2 - value1) * f
+
+      val interpolatedLat = lerp(first._2.latitude, third._2.latitude, secondFactor)
+      val interpolatedLon = lerp(first._2.longitude, third._2.longitude, secondFactor)
+      // ignore elevation, it is too chaotic anyway
+      val secondInterpolated = GPSPoint(latitude = interpolatedLat, longitude = interpolatedLon, elevation = None)
+      val dist = GPS.distance(secondInterpolated.latitude, secondInterpolated.longitude, second._2.latitude, second._2.longitude)
+      val maxDist = 1
+      dist < maxDist
+    }
+
+    // remove unnecessary GPS points
+    val minTimeSpacing = 10 // seconds
+    @tailrec
+    def optimizeGPSRecurse(todo: List[GPSPointWithTime], done: List[GPSPointWithTime]): List[GPSPointWithTime] = {
+      todo match {
+        case first :: second :: third :: tail if timeDifference(first._1, second._1) < minTimeSpacing && secondNotNeeded(first, second, third) =>
+          optimizeGPSRecurse(first :: third :: tail, done)
+        case head :: tail =>
+          optimizeGPSRecurse(tail, head :: done)
+        case Nil =>
+          done
+      }
+    }
+
+    val optimized = optimizeGPSRecurse(stream.toList, Nil)
+
+    pickData(SortedMap(optimized:_*))
+  }
 }
 
 @SerialVersionUID(10L)
@@ -546,6 +620,8 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
   override def isAlmostEmpty = false
   override def isNeeded = true
   def dropAlmostEmpty: DataStreamLap = this
+
+  override def optimize = this // TODO: remove duplicity or very close laps
 }
 
 @SerialVersionUID(10L)
@@ -558,6 +634,8 @@ class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends D
   override def isAlmostEmpty = false
   override def isNeeded = false
   def dropAlmostEmpty: DataStreamHR = this // TODO: drop
+
+  def optimize: DataStreamHR = DataStream.optimize(this)
 }
 
 @SerialVersionUID(11L)
@@ -570,6 +648,8 @@ class DataStreamAttrib(val attribName: String, override val stream: SortedMap[Zo
   override def isAlmostEmpty = false
   override def isNeeded = false
   def dropAlmostEmpty: DataStreamAttrib = this // TODO: drop
+
+  def optimize: DataStreamAttrib = DataStream.optimize(this)
 }
 
 
@@ -608,5 +688,7 @@ class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) exte
 
 
   def dropAlmostEmpty: DataStreamDist = this // TODO: drop
+
+  override def optimize = this // TODO: distance optimization requires interpolation in distanceForTime
 }
 

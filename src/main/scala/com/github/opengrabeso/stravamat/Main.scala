@@ -16,6 +16,7 @@ import FileId._
 import com.github.opengrabeso.stravamat.DataStreamGPS.SpeedStats
 import com.google.api.client.json.jackson2.JacksonFactory
 
+import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.util.Try
 import scala.xml.Elem
@@ -257,9 +258,12 @@ object Main {
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
+    def optimize: ActivityEvents = {
+      // first optimize all attributes
+      this.copy(gps = gps.optimize, dist = dist.optimize, attributes = attributes.map(_.optimize))
+    }
 
-    def optimizeRoute: Seq[(ZonedDateTime, GPSPoint)] = {
-      // TODO: smart optimization based on direction changes and distances
+    def optimizeRouteForMap: Seq[(ZonedDateTime, GPSPoint)] = {
       val maxPoints = 1000
       if (gps.stream.size < maxPoints) gps.stream.toList
       else {
@@ -280,7 +284,7 @@ object Main {
     }
 
     def routeJS: String = {
-      val toSend = optimizeRoute
+      val toSend = optimizeRouteForMap
 
       toSend.map { case (time,g) =>
         val t = id.secondsInActivity(time)
