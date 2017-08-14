@@ -4,4 +4,5 @@
   <version>1</version>
   <threadsafe>true</threadsafe>
   <sessions-enabled>true</sessions-enabled>
+  <instance-class>F2</instance-class>
 </appengine-web-app>
