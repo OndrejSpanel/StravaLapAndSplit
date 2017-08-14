@@ -197,22 +197,19 @@ object XMLParser {
     // ignore elevation: let Strava compute it
     val Unzipped4(timeSeq, distanceSeq, hrSeq, _) = periodicSamples
 
-    val hrDistStream = if (hrSeq.size == distanceSeq.size && hrSeq.exists(_ != 0)) {
-      val hrWithDist = (hrSeq zip distanceSeq).map { case (hr,d) => HRPoint(hr, d) }
-      new DataStreamHRWithDist(SortedMap(timeSeq zip hrWithDist:_*))
-    } else {
-      new DataStreamDist(SortedMap(timeSeq zip distanceSeq:_*))
-    }
+    val hrStream = if (hrSeq.size == distanceSeq.size && hrSeq.exists(_ != 0)) {
+      Some(new DataStreamHR(SortedMap(timeSeq zip hrSeq:_*)))
+    } else None
+
+    val distStream = new DataStreamDist(SortedMap(timeSeq zip distanceSeq:_*))
 
     val gpsStream = new DataStreamGPS(SortedMap(trackPoints:_*))
 
-    val gpsMove = if (lapPoints.nonEmpty) {
-      val lapStream = new DataStreamLap(SortedMap(lapPoints.map(l => l.timestamp -> l.name):_*))
-      new Move(Set(fileName), header.moveHeader, gpsStream, hrDistStream, lapStream)
-    } else {
-      new Move(Set(fileName), header.moveHeader, gpsStream, hrDistStream)
-    }
+    val lapStream = if (lapPoints.nonEmpty) {
+      Some(new DataStreamLap(SortedMap(lapPoints.map(l => l.timestamp -> l.name): _*)))
+    } else None
 
+    val gpsMove = new Move(Set(fileName), header.moveHeader, Seq(gpsStream, distStream) ++ lapStream ++ hrStream:_*)
 
     val gpsDroppedEmpty = gpsStream.dropAlmostEmpty match {
       case Some((keepStart, keepEnd)) =>
