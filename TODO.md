@@ -22,3 +22,10 @@ Optimize XML loading:
 - parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 99852
 - Import file: time 102681
 - Store file: time 108294
+
+## Aalto - minimal sample matching 
+
+- parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 34000
+
+## Aalto - single string matching 
+- parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 37868

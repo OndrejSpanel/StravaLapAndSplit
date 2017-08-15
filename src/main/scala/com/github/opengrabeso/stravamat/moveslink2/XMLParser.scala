@@ -149,6 +149,9 @@ object XMLParser {
   def parseXML(fileName: String, inputStream: InputStream): Try[Move] = {
 
     import SAXParser._
+
+    case class XMLTag(name: String, process: String => Unit, inner: XMLTag*)
+
     object parsed extends Events {
       var rrData = Seq.empty[Int]
       var deviceName = Option.empty[String]
@@ -186,7 +189,26 @@ object XMLParser {
       }
       val samples = ArrayBuffer.empty[Sample]
 
+      def noProcess(s: String): Unit = {}
+      def addSample(s: String) = samples += new Sample
+      def readLatitude(s: String) = samples.last.latitude = Some(s.toDouble * XMLParser.PositionConstant)
+      def readLongitude(s: String) = samples.last.longitude = Some(s.toDouble * XMLParser.PositionConstant)
+
+      case class XMLTag(name: String, process: String => Unit, inner: XMLTag*)
+
+      val grammar = XMLTag("<root>",noProcess,
+        XMLTag("Samples", noProcess,
+          XMLTag("Sample", addSample,
+            XMLTag("Latitude", readLatitude),
+            XMLTag("Longitude", readLongitude)
+          )
+        )
+      )
+
+      var inTags = List(grammar)
+
       def open(path: Seq[String]) = {
+
         path match {
           case _ / "Samples" / "Sample" =>
             samples append new Sample
@@ -196,7 +218,7 @@ object XMLParser {
 
       def read(path: Seq[String], text: String) = {
         path match {
-          case  _ / "Header" / "Device" / "Name" =>
+          case  _ / "Name" =>
             deviceName = Some(text)
           case  _ / "Header" / "Distance" =>
             distance = text.toInt
@@ -209,7 +231,6 @@ object XMLParser {
           case _ / "Events" / "Pause" / "State" =>
             paused = text.equalsIgnoreCase("true")
 
-          // TODO: profile performance of testing "Sample" again and again while inside of the sample
           case _ / "Sample" / "Latitude" =>
             samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)
           case _ / "Sample" / "Longitude" =>
