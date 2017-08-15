@@ -1,16 +1,22 @@
 package com.github.opengrabeso.stravamat
 package moveslink
 
+import java.io.{InputStream, PushbackInputStream}
+
 import org.joda.time.{DateTime => ZonedDateTime, _}
 import org.joda.time.format.{DateTimeFormat, PeriodFormat, PeriodFormatter}
 import java.util.regex.Pattern
 
 import scala.xml._
 import java.util.logging.Logger
+import javax.swing.text.html.HTMLFrameHyperlinkEvent
+
 import shared.Util._
 
 import scala.collection.immutable.SortedMap
+import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Success, Try}
+import scala.xml.pull.XMLEventReader
 
 object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)
@@ -118,12 +124,126 @@ object XMLParser {
     Header(MoveHeader(deviceName.toSet, activityType), startTime, duration, calories, distance)
   }
 
-  def parseXML(fileName: String, document: Elem, maxHR: Int, timezone: String): Seq[Try[Move]] = {
+  def skipMoveslinkDoctype(is: InputStream): InputStream = {
+    val pbStream =  new PushbackInputStream(is, 100)
+    val wantedPrefix = """<?xml version="1.0" encoding="ISO-8859-1"?>"""
+    val prefixToRemove = """<!DOCTYPE xml>"""
 
-    val deviceNodes = document \ "Device" \ "FullName"
+    @scala.annotation.tailrec
+    def skipPrefix(p: List[Byte]): Boolean = {
+      if (p.isEmpty) true
+      else {
+        val c = pbStream.read()
+        if (c == p.head) skipPrefix(p.tail)
+        else {
+          pbStream.unread(c)
+          false
+        }
+      }
+    }
+    @scala.annotation.tailrec
+    def skipEmptyLines(): Unit = {
+      val c = pbStream.read().toChar
+      if (c.isWhitespace) skipEmptyLines()
+      else pbStream.unread(c)
+    }
 
-    val deviceName = deviceNodes.headOption.map(_.text)
+    val wantedPresent = skipPrefix(wantedPrefix.getBytes.toList)
+    skipEmptyLines()
+    skipPrefix(prefixToRemove.getBytes.toList)
+    skipEmptyLines()
 
+    if (wantedPresent) {
+      pbStream.unread(wantedPrefix.getBytes)
+    }
+    pbStream
+  }
+
+  def parseXML(fileName: String, document: XMLEventReader, maxHR: Int, timezone: String): Seq[Try[Move]] = {
+
+    // reverse :: associativity so that paths can be written in a natural order
+    object / {
+      def unapply(arg: Seq[String]): Option[(Seq[String], String)] = {
+        arg match {
+          case head +: tail => Some(tail, head)
+          case _ => None
+        }
+      }
+    }
+
+    object parsed extends SAXParser.Events {
+      var deviceName = Option.empty[String]
+
+      class Move {
+        var calories = Option.empty[Int]
+        var distance = Option.empty[Int]
+        var time = Option.empty[ZonedDateTime]
+        var duration = Option.empty[Int]
+        var activityType = Option.empty[MoveHeader.ActivityType]
+      }
+      val moves = ArrayBuffer.empty[Move]
+
+      def open(path: Seq[String]) = {
+        path match {
+          case _ / "Moves" / "Move" =>
+            moves.append(new Move)
+          case _ =>
+        }
+      }
+
+      def read(path: Seq[String], text: String) = {
+        path match {
+          case _ / "Device" / "FullName" =>
+            parsed.deviceName = Some(text)
+          case _ / "Move" / "Header" / "Calories" =>
+            moves.last.calories = Some(text.toInt)
+          case _ / "Move" / "Header" / "Distance" =>
+            moves.last.distance = Some(text.toInt)
+          case _ / "Move" / "Header" / "Duration" =>
+            val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
+            val matcher = durationPattern.matcher(text)
+            val duration = if (matcher.matches) {
+              val hour = matcher.group(1).toInt
+              val minute = matcher.group(2).toInt
+              val second = matcher.group(3).toInt
+              val ms = if (!matcher.group(4).isEmpty) matcher.group(4).toInt else 0
+              (hour * 3600 + minute * 60 + second) * 1000 + ms
+            } else 0
+            moves.last.duration = Some(duration)
+
+          case _ / "Move" / "Header" / "Time" =>
+            val startTime = parseTime(text, timezone)
+            moves.last.time = Some(startTime)
+          case _ / "Move" / "Header" / "Activity" =>
+            import MoveHeader.ActivityType._
+            val sportType = Try(text.toInt).getOrElse(0)
+            // TODO: add at least most common sports
+            val activityType = sportType match {
+              case 82 => RunningTrail
+              case 75 => Orienteering
+              case 5 => MountainBike
+              case _ => Unknown
+            }
+            moves.last.activityType = Some(activityType)
+          case _ / "Move" / "Samples" / "Distance" =>
+          case _ / "Move" / "Samples" / "Cadence" =>
+          case _ / "Move" / "Samples" / "HR" =>
+
+
+          case _ =>
+        }
+
+      }
+
+      def close(path: Seq[String]) = {
+
+      }
+    }
+
+    SAXParser.parse(document)(parsed)
+
+    ???
+    /*
     val moves = document \ "Moves"
 
     val moveList = moves \ "Move"
@@ -164,6 +284,7 @@ object XMLParser {
       }
     }
     suuntoMoves
+    */
   }
 
 }

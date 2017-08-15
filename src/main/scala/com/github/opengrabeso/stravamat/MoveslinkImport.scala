@@ -10,6 +10,8 @@ import org.joda.time.{DateTime => ZonedDateTime}
 import shared.Util._
 import FileId._
 
+import scala.io.Source
+import scala.xml.pull.XMLEventReader
 import scala.xml.{Node, XML}
 
 object MoveslinkImport {
@@ -92,7 +94,7 @@ object MoveslinkImport {
   }
 
   def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int, timezone: String): Seq[Move] = {
-    val doc = XML.load(stream)
+    val doc = new XMLEventReader(Source.fromInputStream(moveslink.XMLParser.skipMoveslinkDoctype(stream)))
 
     moveslink.XMLParser.parseXML(fileName, doc, maxHR, timezone).flatMap(_.toOption)
   }

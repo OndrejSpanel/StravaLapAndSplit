@@ -2,7 +2,9 @@ package com.github.opengrabeso.stravamat
 
 import org.joda.time.DateTimeZone
 
+import scala.io.Source
 import scala.xml.XML
+import scala.xml.pull.XMLEventReader
 
 trait SuuntoData {
   protected def gpsPodMove = {
@@ -15,7 +17,8 @@ trait SuuntoData {
 
   protected def questMove = {
     val res = getClass.getResourceAsStream("/suuntoMerge/Moveslink/quest.xml")
-    val doc = XML.load(res)
+
+    val doc = new XMLEventReader(Source.fromInputStream(moveslink.XMLParser.skipMoveslinkDoctype(res)))
     val localTimeZone = DateTimeZone.getDefault.toString
 
     val move = moveslink.XMLParser.parseXML("quest.xml", doc, 240, localTimeZone)
