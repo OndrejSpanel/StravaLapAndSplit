@@ -9,6 +9,7 @@ import scala.collection.immutable.SortedMap
 import org.joda.time.{DateTime => ZonedDateTime}
 import shared.Util._
 import FileId._
+import com.github.opengrabeso.stravamat.shared.Timing
 
 import scala.io.Source
 import scala.xml.pull.XMLEventReader
@@ -74,21 +75,13 @@ object MoveslinkImport {
 
   def loadSml(fileName: String, digest: String, stream: InputStream): Option[Move] = {
 
-    def now() = System.currentTimeMillis()
-    val start = now()
-    def logTime(msg: String) = println(s"$msg: time ${now()-start}")
+    implicit val start = Timing.Start()
 
-    def getDeviceLog(doc: Node): Node = (doc \ "DeviceLog") (0)
+    val doc = new XMLEventReader(Source.fromInputStream(stream))
+    Timing.logTime(s"new XMLEventReader $fileName")
 
-    logTime(s"start $fileName")
-    val doc = XML.load(stream)
-    logTime("XML.load")
-
-    val dev = getDeviceLog(doc)
-    logTime("getDeviceLog")
-
-    val ret = moveslink2.XMLParser.parseXML(fileName, dev).toOption
-    logTime("parseXML")
+    val ret = moveslink2.XMLParser.parseXML(fileName, doc).toOption
+    Timing.logTime(s"parseXML $fileName")
     ret
 
   }

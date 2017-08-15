@@ -9,6 +9,17 @@ object SAXParser {
     def read(path: Seq[String], text: String)
     def close(path: Seq[String])
   }
+
+  // reverse :: associativity so that paths can be written in a natural order
+  object / {
+    def unapply(arg: Seq[String]): Option[(Seq[String], String)] = {
+      arg match {
+        case head +: tail => Some(tail, head)
+        case _ => None
+      }
+    }
+  }
+
   def parse(doc: XMLEventReader)(handler: Events) = {
 
     var path = List.empty[String]

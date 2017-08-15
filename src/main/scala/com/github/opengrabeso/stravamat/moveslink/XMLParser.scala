@@ -60,17 +60,8 @@ object XMLParser {
 
   def parseXML(fileName: String, document: XMLEventReader, maxHR: Int, timezone: String): Seq[Move] = {
 
-    // reverse :: associativity so that paths can be written in a natural order
-    object / {
-      def unapply(arg: Seq[String]): Option[(Seq[String], String)] = {
-        arg match {
-          case head +: tail => Some(tail, head)
-          case _ => None
-        }
-      }
-    }
-
-    object parsed extends SAXParser.Events {
+    import SAXParser._
+    object parsed extends Events {
       var deviceName = Option.empty[String]
 
       class Move {
@@ -175,7 +166,7 @@ object XMLParser {
       }
     }
 
-    SAXParser.parse(document)(parsed)
+    parse(document)(parsed)
 
     for (i <- parsed.moves.indices) yield {
       val mi = parsed.moves(i)

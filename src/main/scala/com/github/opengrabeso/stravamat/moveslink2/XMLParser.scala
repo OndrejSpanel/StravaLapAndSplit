@@ -13,8 +13,11 @@ import java.util.logging.Logger
 
 import scala.collection.immutable.SortedMap
 import scala.util._
-import scala.xml._
 import shared.Util._
+
+import scala.collection.mutable.ArrayBuffer
+import scala.io.Source
+import scala.xml.pull.XMLEventReader
 
 object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)
@@ -49,70 +52,14 @@ object XMLParser {
     interpolator.interpolate(timeArray.toArray, hrArray.toArray)
   }
 
-  def getDeviceLog(doc: Elem): Node = (doc \ "DeviceLog") (0)
-
-  def getXMLDocument(xmlFile: File): Elem = {
-    XML.loadFile(xmlFile)
-  }
-
-  def getSMLDocument(xmlFile: File): Node = {
-    val doc = XML.loadFile(xmlFile)
-    getDeviceLog(doc)
-  }
-
-
   def getRRArray(rrData: String): Seq[Int] = {
     val rrArray = rrData.split(" ")
     for (rr <- rrArray) yield rr.toInt
   }
 
-  def parseHeader(doc: Node): Try[Header] = {
-    val header = doc \ "Header"
-
-    val deviceName = (doc \ "Device" \ "Name").headOption.map(_.text)
-    //val moveType = Util.getChildElementValue(header, "ActivityType").toInt
-    Try {
-      val distance = (header \ "Distance")(0).text.toInt
-      if (distance == 0) {
-        throw new UnsupportedOperationException("Zero distance")
-      }
-      val dateTime = (header \ "DateTime")(0).text
-      Header(
-        MoveHeader(deviceName.toSet, MoveHeader.ActivityType.Unknown),
-        startTime = timeToUTC(ZonedDateTime.parse(dateTime, dateFormatNoZone)),
-        durationMs = ((header \ "Duration")(0).text.toDouble * 1000).toInt,
-        calories = Try(kiloCaloriesFromKilojoules((header \ "Energy")(0).text.toDouble)).getOrElse(0),
-        distance = distance
-      )
-    }
-  }
-
-
+  /*
   def parseSamples(fileName: String, header: Header, samples: NodeSeq, rr: Seq[Int]): Move = {
     val sampleList = samples \ "Sample"
-
-    class PauseState {
-      var pausedTime: Double = 0.0
-      var pauseStartTime: Double = 0.0
-      var inPause: Boolean = false
-
-      def trackPause(sample: Node): Unit = {
-        val pauseTry = sample \ "Events" \ "Pause" \ "State"
-        for (pause <- pauseTry) {
-          val time = (sample \ "Time").text.toDouble
-          if (pause(0).text.equalsIgnoreCase("false")) {
-            if (inPause) {
-              pausedTime += time - pauseStartTime
-              inPause = false
-            }
-          } else if (pause(0).text.equalsIgnoreCase("true")) {
-            pauseStartTime = time
-            inPause = true
-          }
-        }
-      }
-    }
-
     val lapPoints = {
       /* GPS Track Pod lap is stored as:
 			<Sample>
@@ -138,26 +85,6 @@ object XMLParser {
         }
 
         lapTime.toOption.flatten.toSeq
-      }
-    }
-
-    val trackPoints = {
-      val paused = new PauseState
-      sampleList.flatMap { sample =>
-        paused.trackPause(sample)
-        if (!paused.inPause) {
-          // GPS Track POD samples contain no "SampleType" children
-          val parseSample = Try {
-            val lat = (sample \ "Latitude")(0).text.toDouble * XMLParser.PositionConstant
-            val lon = (sample \ "Longitude")(0).text.toDouble * XMLParser.PositionConstant
-            val elevation = Try((sample \ "GPSAltitude")(0).text.toInt).toOption
-            val utcStr = (sample \ "UTC")(0).text
-            val utc = ZonedDateTime.parse(utcStr, dateFormat)
-            utc -> GPSPoint(lat, lon, elevation)
-          }
-
-          parseSample.toOption
-        } else None
       }
     }
 
@@ -219,30 +146,80 @@ object XMLParser {
     }
     gpsDroppedEmpty.getOrElse(new Move(Set(fileName), header.moveHeader))
   }
+  */
 
   def parse(fileName: String, xmlFile: File): Try[Move] = {
     XMLParser.log.fine("Parsing " + xmlFile.getName)
 
-    val doc = if (xmlFile.getName.endsWith(".xml")) {
-      getXMLDocument(xmlFile)
-    } else if (xmlFile.getName.endsWith(".sml")) {
-      getSMLDocument(xmlFile)
-    } else throw new UnsupportedOperationException(s"Unknown data format ${xmlFile.getName}")
+    val file = Source.fromFile(xmlFile)
+    val doc = new XMLEventReader(file)
+
     parseXML(fileName, doc)
   }
 
-  def parseXML(fileName: String, doc: Node): Try[Move] = {
-    // optimize: using Jackson or scala.xml.pull, working with xml dom model is very slow
-    val samples = doc \ "Samples"
-    val rrData = Try((doc \ "R-R" \ "Data")(0))
-    val rr = rrData.map(node => getRRArray(node.text))
-    val moves = for {
-      h <- parseHeader(doc)
-    } yield {
-      parseSamples(fileName, h, samples, rr.getOrElse(Seq()))
-    }
+  def parseXML(fileName: String, doc: XMLEventReader): Try[Move] = {
 
-    moves
+    import SAXParser._
+    object parsed extends Events {
+      var rrData = Seq.empty[Int]
+      var deviceName = Option.empty[String]
+      var startTime = Option.empty[ZonedDateTime]
+      var distance: Int = 0
+      var durationMs: Int = 0
+      var paused: Boolean = false
+      var pauseStartTime = Option.empty[ZonedDateTime]
+      class Sample{
+        var time = Option.empty[ZonedDateTime]
+        var distance = Option.empty[Double]
+        var latitude = Option.empty[Double]
+        var longitude = Option.empty[Double]
+        var elevation: Option[Int] = None
+        var hr: Option[Int] = None
+      }
+      val samples = ArrayBuffer.empty[Sample]
+
+      def open(path: Seq[String]) = {
+        path match {
+          case _ / "Samples" / "Sample" =>
+            samples append new Sample
+          case _ =>
+        }
+      }
+
+      def read(path: Seq[String], text: String) = {
+        path match {
+          case  _ / "Header" / "Device" / "Name" =>
+            deviceName = Some(text)
+          case  _ / "Header" / "Distance" =>
+            distance = text.toInt
+          case  _ / "Header" / "DateTime" =>
+            startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))
+          case  _ / "Header" / "Duration" =>
+            durationMs = (text.toDouble * 1000).toInt
+          case _ / "R-R" / "Data" =>
+            rrData = getRRArray(text)
+          case _ / "Events" / "Pause" / "State" =>
+            paused = text.equalsIgnoreCase("true")
+
+          // TODO: profile performance of testing "Sample" again and again while inside of the sample
+          case _ / "Sample" / "Latitude" =>
+            samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)
+          case _ / "Sample" / "Longitude" =>
+            samples.last.longitude = Some(text.toDouble * XMLParser.PositionConstant)
+          case _ / "Sample" / "GPSAltitude" =>
+            samples.last.elevation = Some(text.toInt)
+          case _ / "Sample" / "UTC" =>
+            samples.last.time = Some(ZonedDateTime.parse(text))
+
+          case _ =>
+        }
+      }
+
+      def close(path: Seq[String]) = {}
+    }
+    SAXParser.parse(doc)(parsed)
+
+    ???
   }
 
 }

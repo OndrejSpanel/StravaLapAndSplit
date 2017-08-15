@@ -11,7 +11,7 @@ trait SuuntoData {
   protected def gpsPodMove: Try[Move] = {
     val res = getClass.getResourceAsStream("/suuntoMerge/Moveslink2/gps.sml")
 
-    val doc = moveslink2.XMLParser.getDeviceLog(XML.load(res))
+    val doc = new XMLEventReader(Source.fromInputStream(res))
     val move = moveslink2.XMLParser.parseXML("gps.sml", doc)
     move
   }
