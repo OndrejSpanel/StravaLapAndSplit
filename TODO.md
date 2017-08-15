@@ -15,3 +15,10 @@ Optimize XML loading:
 - Source.fromInputStream Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 0
 - parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 311666
 - Import file: time 314477
+
+## Aalto
+
+- Source.fromInputStream Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 0
+- parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 99852
+- Import file: time 102681
+- Store file: time 108294

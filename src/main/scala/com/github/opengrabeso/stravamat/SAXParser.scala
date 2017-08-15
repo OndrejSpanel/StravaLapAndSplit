@@ -1,8 +1,14 @@
 package com.github.opengrabeso.stravamat
 
-import scala.io.Source
-import scala.xml.{MetaData, NamespaceBinding, NodeSeq}
-import scala.xml.parsing.{ExternalSources, MarkupHandler, MarkupParser}
+import java.io.InputStream
+
+import com.fasterxml.aalto.sax.SAXParserFactoryImpl
+import org.xml.sax.Attributes
+import org.xml.sax.helpers.DefaultHandler
+//import org.xml.sax.Attributes
+//import org.xml.sax.helpers.DefaultHandler
+
+import scala.collection.mutable.ArrayBuffer
 
 object SAXParser {
 
@@ -22,49 +28,37 @@ object SAXParser {
     }
   }
 
-  def parse(doc: Source)(handler: Events) = {
+  def parse(doc: InputStream)(handler: Events) = {
 
     var path = List.empty[String]
 
-    class XMLSAXParser(override val input: Source) extends MarkupHandler with MarkupParser with ExternalSources {
-      override def elem(pos: Int, pre: String, label: String, attrs: MetaData, scope: NamespaceBinding, empty: Boolean, args: NodeSeq) = {
-        NodeSeq.Empty
-      }
+    object SaxHandler extends DefaultHandler {
 
-      override def elemStart(pos: Int, pre: String, label: String, attrs: MetaData, scope: NamespaceBinding) {
-        path = label :: path
+      val elementStack = ArrayBuffer.empty[StringBuilder]
+      override def startElement(uri: String, localName: String, qName: String, attributes: Attributes) = {
+        path = localName :: path
+        elementStack += new StringBuilder()
         handler.open(path)
       }
-      override def elemEnd(pos: Int, pre: String, label: String): Unit = {
-        if (path.headOption.contains(label)) {
+
+      override def endElement(uri: String, localName: String, qName: String) = {
+        if (path.headOption.contains(localName)) {
+          val text = elementStack.remove(elementStack.size - 1)
+          handler.read(path, text.mkString)
           handler.close(path)
           path = path.tail
         } else {
-          throw new UnsupportedOperationException(s"Unexpected tag end `$label`")
+          throw new UnsupportedOperationException(s"Unexpected tag end `$localName`")
         }
-
       }
 
-      override def text(pos: Int, text: String) = {
-        handler.read(path, text)
-        NodeSeq.Empty
-      }
-
-      override def procInstr(pos: Int, target: String, txt: String) = NodeSeq.Empty
-
-      override def comment(pos: Int, comment: String) = NodeSeq.Empty
-
-      override def entityRef(pos: Int, n: String) = NodeSeq.Empty
-
-      override val preserveWS = true
-
-      def parse() = {
-        nextch()
-        document()
+      override def characters(ch: Array[Char], start: Int, length: Int) = {
+        elementStack.last ++= ch.slice(start, start + length)
       }
     }
 
-    val p = new XMLSAXParser(doc)
-    p.parse()
+    val factory = SAXParserFactoryImpl.newInstance()
+    val p = factory.newSAXParser()
+    p.parse(doc, SaxHandler)
   }
 }

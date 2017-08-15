@@ -11,8 +11,6 @@ import shared.Util._
 import FileId._
 import com.github.opengrabeso.stravamat.shared.Timing
 
-import scala.io.Source
-
 object MoveslinkImport {
 
 
@@ -75,17 +73,16 @@ object MoveslinkImport {
 
     implicit val start = Timing.Start()
 
-    val doc = Source.fromInputStream(stream)
     Timing.logTime(s"Source.fromInputStream $fileName")
 
-    val ret = moveslink2.XMLParser.parseXML(fileName, doc).toOption
+    val ret = moveslink2.XMLParser.parseXML(fileName, stream).toOption
     Timing.logTime(s"parseXML $fileName")
     ret
 
   }
 
   def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int, timezone: String): Seq[Move] = {
-    val doc = Source.fromInputStream(moveslink.XMLParser.skipMoveslinkDoctype(stream))
+    val doc = moveslink.XMLParser.skipMoveslinkDoctype(stream) // TODO: most likely not needed with aalto
 
     moveslink.XMLParser.parseXML(fileName, doc, maxHR, timezone)
   }

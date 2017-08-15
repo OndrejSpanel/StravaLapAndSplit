@@ -16,8 +16,6 @@ import scala.util._
 import shared.Util._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.io.Source
-import scala.xml.pull.XMLEventReader
 
 object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)
@@ -148,15 +146,7 @@ object XMLParser {
   }
   */
 
-  def parse(fileName: String, xmlFile: File): Try[Move] = {
-    XMLParser.log.fine("Parsing " + xmlFile.getName)
-
-    val file = Source.fromFile(xmlFile)
-
-    parseXML(fileName, file)
-  }
-
-  def parseXML(fileName: String, doc: Source): Try[Move] = {
+  def parseXML(fileName: String, inputStream: InputStream): Try[Move] = {
 
     import SAXParser._
     object parsed extends Events {
@@ -240,7 +230,7 @@ object XMLParser {
 
       def close(path: Seq[String]) = {}
     }
-    SAXParser.parse(doc)(parsed)
+    SAXParser.parse(inputStream)(parsed)
 
     // convert to distance, GPS and HR streams
     // TODO: add other properties (power, cadence, temperature ...)
