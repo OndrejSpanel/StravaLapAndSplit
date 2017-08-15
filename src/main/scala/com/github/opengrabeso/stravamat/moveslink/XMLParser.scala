@@ -4,124 +4,23 @@ package moveslink
 import java.io.{InputStream, PushbackInputStream}
 
 import org.joda.time.{DateTime => ZonedDateTime, _}
-import org.joda.time.format.{DateTimeFormat, PeriodFormat, PeriodFormatter}
+import org.joda.time.format.DateTimeFormat
 import java.util.regex.Pattern
-
-import scala.xml._
-import java.util.logging.Logger
-import javax.swing.text.html.HTMLFrameHyperlinkEvent
 
 import shared.Util._
 
 import scala.collection.immutable.SortedMap
 import scala.collection.mutable.ArrayBuffer
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 import scala.xml.pull.XMLEventReader
 
 object XMLParser {
-  private val log = Logger.getLogger(XMLParser.getClass.getName)
   private val dateFormatBase = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
   private def dateFormatWithZone(timezone: String) = dateFormatBase.withZone(DateTimeZone.forID(timezone))
 
-  def parseSamples(fileName: String, header: Header, samples: Node, maxHR: Int): Move = {
-    val distanceStr = (samples \ "Distance")(0).text
-    val heartRateStr = (samples \ "HR")(0).text
-    def insertZeroHead(strs: Seq[String]) = {
-      if (strs.head.isEmpty) "0" +: strs.tail
-      else strs
-    }
-    def duplicateHead(strs: Seq[String]) = {
-      if (strs.head.isEmpty) strs.tail.head +: strs.tail
-      else strs
-    }
-
-    var currentSum: Double = 0
-    val distanceSamples = for {
-      distance <- insertZeroHead(distanceStr.split(" "))
-    } yield {
-      currentSum += distance.toDouble
-      currentSum
-    }
-    val heartRateSamples = for {
-      heartRate <- duplicateHead(heartRateStr.split(" "))
-    } yield {
-      heartRate.toInt
-    }
-
-    val validatedHR = heartRateSamples.map {
-      hr =>
-        if (hr > maxHR) None // TODO: remove neighbouring samples as well
-        else Some(hr)
-    }
-
-    // drop two samples around each None
-
-    def slidingRepeatHeadTail[T](s: Seq[T], slide: Int) = {
-      val prefix = Seq.fill(slide / 2)(s.head)
-      val postfix = Seq.fill(slide - 1 - slide / 2)(s.last)
-      val slideSource = prefix ++ s ++ postfix
-      slideSource.sliding(slide)
-    }
-
-    val slide5 = slidingRepeatHeadTail(validatedHR, 5)
-
-    val validatedCleanedHR = slide5.map {
-      case s5 if !s5.contains(None) => s5(2)
-      case _ => None
-    }.toIndexedSeq
-
-    val timeRange = 0 until header.durationMs by 10000
-
-    def timeMs(ms: Int) = header.startTime.plusMillis(ms)
-
-    val timedMapHR = (timeRange zip validatedCleanedHR).collect { case (t, Some(s)) =>
-      timeMs(t) -> s
-    }
-
-    val timedMapDist = (timeRange zip distanceSamples).collect { case (t, d) =>
-      timeMs(t) -> d
-    }
-
-    val hrStream = new DataStreamHR(SortedMap(timedMapHR:_*))
-    val distStream = new DataStreamDist(SortedMap(timedMapDist:_*))
-    new Move(Set(fileName), header.moveHeader, hrStream, distStream)
-  }
 
   def parseTime(timeText: String, timezone: String): ZonedDateTime = {
     timeToUTC(ZonedDateTime.parse(timeText, dateFormatWithZone(timezone)))
-  }
-
-
-  def parseHeader(headerStr: Node, deviceName: Option[String], timezone: String) = {
-
-    val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
-
-    val calories = (headerStr \ "Calories")(0).text.toInt
-    val distance = (headerStr \ "Distance")(0).text.toInt
-
-    val sportType = Try((headerStr \ "Activity")(0).text.toInt).getOrElse(0)
-
-    import MoveHeader.ActivityType._
-    // TODO: add at least most common sports
-    val activityType = sportType match {
-      case 82 => RunningTrail
-      case 75 => Orienteering
-      case 5 => MountainBike
-      case _ => Unknown
-    }
-
-    val timeText = (headerStr \ "Time") (0).text
-    val startTime = parseTime(timeText, timezone)
-    val durationStr = (headerStr \ "Duration")(0).text
-    val matcher = durationPattern.matcher(durationStr)
-    val duration = if (matcher.matches) {
-      val hour = matcher.group(1).toInt
-      val minute = matcher.group(2).toInt
-      val second = matcher.group(3).toInt
-      val ms = if (!matcher.group(4).isEmpty) matcher.group(4).toInt else 0
-      (hour * 3600 + minute * 60 + second) * 1000 + ms
-    } else 0
-    Header(MoveHeader(deviceName.toSet, activityType), startTime, duration, calories, distance)
   }
 
   def skipMoveslinkDoctype(is: InputStream): InputStream = {
@@ -159,7 +58,7 @@ object XMLParser {
     pbStream
   }
 
-  def parseXML(fileName: String, document: XMLEventReader, maxHR: Int, timezone: String): Seq[Try[Move]] = {
+  def parseXML(fileName: String, document: XMLEventReader, maxHR: Int, timezone: String): Seq[Move] = {
 
     // reverse :: associativity so that paths can be written in a natural order
     object / {
@@ -175,12 +74,16 @@ object XMLParser {
       var deviceName = Option.empty[String]
 
       class Move {
-        var calories = Option.empty[Int]
-        var distance = Option.empty[Int]
-        var time = Option.empty[ZonedDateTime]
-        var duration = Option.empty[Int]
-        var activityType = Option.empty[MoveHeader.ActivityType]
+        //var calories = Option.empty[Int]
+        //var distance = Option.empty[Int]
+        var startTime = Option.empty[ZonedDateTime]
+        var durationMs: Int = 0
+        var activityType: MoveHeader.ActivityType = MoveHeader.ActivityType.Unknown
+        var lapDurations = ArrayBuffer.empty[Duration]
+        var distanceSamples = Seq.empty[Double]
+        var heartRateSamples = Seq.empty[Int]
       }
+
       val moves = ArrayBuffer.empty[Move]
 
       def open(path: Seq[String]) = {
@@ -195,10 +98,12 @@ object XMLParser {
         path match {
           case _ / "Device" / "FullName" =>
             parsed.deviceName = Some(text)
+          /* never used, no need to parse
           case _ / "Move" / "Header" / "Calories" =>
             moves.last.calories = Some(text.toInt)
           case _ / "Move" / "Header" / "Distance" =>
             moves.last.distance = Some(text.toInt)
+          */
           case _ / "Move" / "Header" / "Duration" =>
             val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
             val matcher = durationPattern.matcher(text)
@@ -209,11 +114,11 @@ object XMLParser {
               val ms = if (!matcher.group(4).isEmpty) matcher.group(4).toInt else 0
               (hour * 3600 + minute * 60 + second) * 1000 + ms
             } else 0
-            moves.last.duration = Some(duration)
+            moves.last.durationMs = duration
 
           case _ / "Move" / "Header" / "Time" =>
             val startTime = parseTime(text, timezone)
-            moves.last.time = Some(startTime)
+            moves.last.startTime = Some(startTime)
           case _ / "Move" / "Header" / "Activity" =>
             import MoveHeader.ActivityType._
             val sportType = Try(text.toInt).getOrElse(0)
@@ -224,10 +129,40 @@ object XMLParser {
               case 5 => MountainBike
               case _ => Unknown
             }
-            moves.last.activityType = Some(activityType)
+            moves.last.activityType = activityType
           case _ / "Move" / "Samples" / "Distance" =>
+
+            def insertZeroHead(strs: Seq[String]) = {
+              if (strs.head.isEmpty) "0" +: strs.tail
+              else strs
+            }
+
+            var currentSum: Double = 0
+            moves.last.distanceSamples = for (distance <- insertZeroHead(text.split(" "))) yield {
+              currentSum += distance.toDouble
+              currentSum
+            }
+
           case _ / "Move" / "Samples" / "Cadence" =>
           case _ / "Move" / "Samples" / "HR" =>
+
+            def duplicateHead(strs: Seq[String]) = {
+              if (strs.head.isEmpty) strs.tail.head +: strs.tail
+              else strs
+            }
+
+            moves.last.heartRateSamples = for (heartRate <- duplicateHead(text.split(" "))) yield {
+              heartRate.toInt
+            }
+
+          case _ / "Move" / "Marks" / "Mark" / "Time" =>
+            def parseDuration(timeStr: String): Duration = {
+              val relTime = LocalTime.parse(timeStr)
+              val ms = relTime.getMillisOfDay
+              new Duration(ms)
+            }
+
+            moves.last.lapDurations appendAll Try(parseDuration(text)).toOption
 
 
           case _ =>
@@ -242,49 +177,56 @@ object XMLParser {
 
     SAXParser.parse(document)(parsed)
 
-    ???
-    /*
-    val moves = document \ "Moves"
-
-    val moveList = moves \ "Move"
-    XMLParser.log.fine(moveList.size + " move elements in this file")
-    val suuntoMoves = moveList.zipWithIndex.map { case (moveItem, i) =>
-      try {
-        val headerNode = (moveItem \ "Header")(0)
-        val samples = (moveItem \ "Samples")(0)
-        val header = parseHeader(headerNode, deviceName, timezone)
-
-        def parseDuration(timeStr: String): Duration = {
-          val relTime = LocalTime.parse(timeStr)
-          val ms = relTime.getMillisOfDay
-          new Duration(ms)
-        }
-
-        val lapDurations = for {
-          mark <- moveItem \ "Marks" \ "Mark"
-          lapDuration <- Try (parseDuration((mark \ "Time")(0).text)).toOption
-        } yield {
-          lapDuration
-        }
-
-        val laps = lapDurations.scanLeft(header.startTime) { (time, duration) => time.plus(duration)}
-
-        val suuntoMove = parseSamples(fileName, header, samples, maxHR)
-
-        val moveWithLaps = if (laps.nonEmpty) {
-          suuntoMove.addStream(suuntoMove, new DataStreamLap(SortedMap(laps.map(time => time -> "Manual"): _*)))
-        } else suuntoMove
-        Success(moveWithLaps)
+    for (i <- parsed.moves.indices) yield {
+      val mi = parsed.moves(i)
+      val validatedHR = mi.heartRateSamples.map {
+        hr =>
+          if (hr > maxHR) None
+          else Some(hr)
       }
-      catch {
-        case ex: Exception =>
-          XMLParser.log.info(s"Data invalid in the no. ${i + 1} of the moves")
-          //println(ex.printStackTrace)
-          Failure(ex)
+
+      // drop two samples around each None
+
+      def slidingRepeatHeadTail[T](s: Seq[T], slide: Int) = {
+        val prefix = Seq.fill(slide / 2)(s.head)
+        val postfix = Seq.fill(slide - 1 - slide / 2)(s.last)
+        val slideSource = prefix ++ s ++ postfix
+        slideSource.sliding(slide)
+      }
+
+      val slide5 = slidingRepeatHeadTail(validatedHR, 5)
+
+      val validatedCleanedHR = slide5.map {
+        case s5 if !s5.contains(None) => s5(2)
+        case _ => None
+      }.toIndexedSeq
+
+      val timeRange = 0 until mi.durationMs by 10000
+
+      def timeMs(ms: Int) = mi.startTime.get.plusMillis(ms)
+
+      val timedMapHR = (timeRange zip validatedCleanedHR).collect { case (t, Some(s)) =>
+        timeMs(t) -> s
+      }
+
+      val timedMapDist = (timeRange zip mi.distanceSamples).collect { case (t, d) =>
+        timeMs(t) -> d
+      }
+
+      val header = new MoveHeader(parsed.deviceName.toSet, mi.activityType)
+      val hrStream = new DataStreamHR(SortedMap(timedMapHR: _*))
+      val distStream = new DataStreamDist(SortedMap(timedMapDist: _*))
+
+      val laps = mi.lapDurations.scanLeft(mi.startTime.get) { (time, duration) => time.plus(duration)}
+
+      val move = new Move(Set(fileName), header, hrStream, distStream)
+      if (laps.nonEmpty) {
+        move.addStream(move, new DataStreamLap(SortedMap(laps.map(time => time -> "Manual"): _*)))
+      } else {
+        move
       }
     }
-    suuntoMoves
-    */
+
   }
 
 }
