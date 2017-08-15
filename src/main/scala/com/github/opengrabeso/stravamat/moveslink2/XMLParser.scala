@@ -152,12 +152,11 @@ object XMLParser {
     XMLParser.log.fine("Parsing " + xmlFile.getName)
 
     val file = Source.fromFile(xmlFile)
-    val doc = new XMLEventReader(file)
 
-    parseXML(fileName, doc)
+    parseXML(fileName, file)
   }
 
-  def parseXML(fileName: String, doc: XMLEventReader): Try[Move] = {
+  def parseXML(fileName: String, doc: Source): Try[Move] = {
 
     import SAXParser._
     object parsed extends Events {

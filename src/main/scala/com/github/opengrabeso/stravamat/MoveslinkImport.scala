@@ -12,8 +12,6 @@ import FileId._
 import com.github.opengrabeso.stravamat.shared.Timing
 
 import scala.io.Source
-import scala.xml.pull.XMLEventReader
-import scala.xml.{Node, XML}
 
 object MoveslinkImport {
 
@@ -77,8 +75,8 @@ object MoveslinkImport {
 
     implicit val start = Timing.Start()
 
-    val doc = new XMLEventReader(Source.fromInputStream(stream))
-    Timing.logTime(s"new XMLEventReader $fileName")
+    val doc = Source.fromInputStream(stream)
+    Timing.logTime(s"Source.fromInputStream $fileName")
 
     val ret = moveslink2.XMLParser.parseXML(fileName, doc).toOption
     Timing.logTime(s"parseXML $fileName")
@@ -87,7 +85,7 @@ object MoveslinkImport {
   }
 
   def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int, timezone: String): Seq[Move] = {
-    val doc = new XMLEventReader(Source.fromInputStream(moveslink.XMLParser.skipMoveslinkDoctype(stream)))
+    val doc = Source.fromInputStream(moveslink.XMLParser.skipMoveslinkDoctype(stream))
 
     moveslink.XMLParser.parseXML(fileName, doc, maxHR, timezone)
   }

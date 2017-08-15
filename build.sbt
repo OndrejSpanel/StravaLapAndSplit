@@ -54,8 +54,12 @@ lazy val stravamat = (project in file("."))
 
       "javax.servlet" % "servlet-api" % "2.5" % "provided",
       "org.mortbay.jetty" % "jetty" % "6.1.22" % "container",
+
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
       "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+
+      "com.fasterxml" % "aalto-xml" % "1.0.0",
+
       "org.scala-lang.modules" %% "scala-xml" % "1.0.6",
       "com.sparkjava" % "spark-core" % "1.1.1" excludeAll ExclusionRule(organization = "org.eclipse.jetty"),
       "org.slf4j" % "slf4j-simple" % "1.6.1",

@@ -1,6 +1,8 @@
 package com.github.opengrabeso.stravamat
 
-import scala.xml.pull._
+import scala.io.Source
+import scala.xml.{MetaData, NamespaceBinding, NodeSeq}
+import scala.xml.parsing.{ExternalSources, MarkupHandler, MarkupParser}
 
 object SAXParser {
 
@@ -20,25 +22,49 @@ object SAXParser {
     }
   }
 
-  def parse(doc: XMLEventReader)(handler: Events) = {
+  def parse(doc: Source)(handler: Events) = {
 
     var path = List.empty[String]
-    while (doc.hasNext) {
-      val ev = doc.next()
-      ev match {
-        case EvElemStart(_, tag, _, _) =>
-          path = tag :: path
-          handler.open(path)
-        case EvText(text) =>
-          handler.read(path, text)
-        case EvElemEnd(_, tag) if path.headOption.contains(tag) =>
+
+    class XMLSAXParser(override val input: Source) extends MarkupHandler with MarkupParser with ExternalSources {
+      override def elem(pos: Int, pre: String, label: String, attrs: MetaData, scope: NamespaceBinding, empty: Boolean, args: NodeSeq) = {
+        NodeSeq.Empty
+      }
+
+      override def elemStart(pos: Int, pre: String, label: String, attrs: MetaData, scope: NamespaceBinding) {
+        path = label :: path
+        handler.open(path)
+      }
+      override def elemEnd(pos: Int, pre: String, label: String): Unit = {
+        if (path.headOption.contains(label)) {
           handler.close(path)
           path = path.tail
-        case EvElemEnd(_, tag) =>
-          throw new UnsupportedOperationException(s"Unexpected tag end `$tag`")
-        case x =>
-          println(s"Unexpected $x")
+        } else {
+          throw new UnsupportedOperationException(s"Unexpected tag end `$label`")
+        }
+
+      }
+
+      override def text(pos: Int, text: String) = {
+        handler.read(path, text)
+        NodeSeq.Empty
+      }
+
+      override def procInstr(pos: Int, target: String, txt: String) = NodeSeq.Empty
+
+      override def comment(pos: Int, comment: String) = NodeSeq.Empty
+
+      override def entityRef(pos: Int, n: String) = NodeSeq.Empty
+
+      override val preserveWS = true
+
+      def parse() = {
+        nextch()
+        document()
       }
     }
+
+    val p = new XMLSAXParser(doc)
+    p.parse()
   }
 }

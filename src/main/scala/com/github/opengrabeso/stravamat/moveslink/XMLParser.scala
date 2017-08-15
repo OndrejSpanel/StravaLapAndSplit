@@ -11,8 +11,8 @@ import shared.Util._
 
 import scala.collection.immutable.SortedMap
 import scala.collection.mutable.ArrayBuffer
+import scala.io.Source
 import scala.util.Try
-import scala.xml.pull.XMLEventReader
 
 object XMLParser {
   private val dateFormatBase = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
@@ -58,7 +58,7 @@ object XMLParser {
     pbStream
   }
 
-  def parseXML(fileName: String, document: XMLEventReader, maxHR: Int, timezone: String): Seq[Move] = {
+  def parseXML(fileName: String, document: Source, maxHR: Int, timezone: String): Seq[Move] = {
 
     import SAXParser._
     object parsed extends Events {
