@@ -95,7 +95,7 @@ sealed abstract class DataStream extends Serializable {
   }
 
   def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStream = {
-
+    // TODO: optimize: stream is sorted, no need to filter, we can use search instead
     val subData = stream.filter(i => i._1 >= timeBeg && i._1 <= timeEnd)
 
     pickData(subData)
@@ -326,6 +326,58 @@ object DataStreamGPS {
     SpeedStats(med, fast, max)
   }
 
+  type ValueList = List[GPSPointWithTime]
+  @tailrec
+  private def detectEmptyPrefix(begTime: ZonedDateTime, rect: GPSRect, stream: ValueList, ret: Option[(ZonedDateTime, GPSRect)]): Option[(ZonedDateTime, GPSRect)] = {
+    stream match {
+      case Nil => ret
+      case head :: tail =>
+        val newRect = rect merge head._2
+        val newRet = if (rectAlmostEmpty(rect, begTime, head._1)) Some((head._1, newRect)) else ret
+        detectEmptyPrefix(begTime, newRect, tail, newRet)
+    }
+  }
+
+  def dropEmptyPrefix(stream: ValueList, timeOffset: ReadablePeriod, compare: (ZonedDateTime, ZonedDateTime) => Boolean): ZonedDateTime = {
+    val prefixTime = detectEmptyPrefix(stream.head._1, new GPSRect(stream.head._2), stream, None)
+    prefixTime.map { case (prefTime, prefRect) =>
+      // trace back the prefix rectangle size
+      val backDistance = prefRect.size
+
+      val prefixRaw = stream.takeWhile(t => compare(t._1, prefTime))
+
+      val gpsDist = DataStreamGPS.distStreamFromGPSList(prefixRaw.map(_._2)).reverse
+
+      def trackBackDistance(distances: Seq[Double], trace: Double, ret: Int): Int = {
+        if (trace <=0 || distances.isEmpty) ret
+        else {
+          trackBackDistance(distances.tail, trace - distances.head, ret + 1)
+        }
+      }
+
+      val backDistanceEnd = trackBackDistance(gpsDist, backDistance, 0)
+      val prefixValidated = prefixRaw.dropRight(backDistanceEnd)
+
+      val timeValidated = prefixValidated.last._1
+
+      val offsetPrefTime = timeValidated.plus(timeOffset)
+      val edgeTime = if (compare(offsetPrefTime, stream.head._1)) stream.head._1 else offsetPrefTime
+      edgeTime
+    }.getOrElse(stream.head._1)
+  }
+
+  // drop beginning and end with no activity
+  def dropAlmostEmpty(stream: ValueList): Option[(ZonedDateTime, ZonedDateTime)] = {
+    if (stream.nonEmpty) {
+      val droppedPrefixTime = dropEmptyPrefix(stream, Seconds.seconds(-10), _ <= _)
+      val droppedPostfixTime = dropEmptyPrefix(stream.reverse, Seconds.seconds(+10), _ >= _)
+      if (droppedPrefixTime >= droppedPostfixTime) None
+      else Some((droppedPrefixTime, droppedPostfixTime))
+    } else None
+  }
+
+
+
 
 }
 
@@ -361,59 +413,6 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   }
 
   override def isNeeded = false
-
-  // drop beginning and end with no activity
-  private type ValueList = List[GPSPointWithTime]
-
-  def dropAlmostEmpty: Option[(ZonedDateTime, ZonedDateTime)] = {
-    if (stream.nonEmpty) {
-
-      @tailrec
-      def detectEmptyPrefix(begTime: ZonedDateTime, rect: GPSRect, stream: ValueList, ret: Option[(ZonedDateTime, GPSRect)]): Option[(ZonedDateTime, GPSRect)] = {
-        stream match {
-          case Nil => ret
-          case head :: tail =>
-            val newRect = rect merge head._2
-            val newRet = if (rectAlmostEmpty(rect, begTime, head._1)) Some((head._1, newRect)) else ret
-            detectEmptyPrefix(begTime, newRect, tail, newRet)
-        }
-      }
-
-      def dropEmptyPrefix(stream: ValueList, timeOffset: ReadablePeriod, compare: (ZonedDateTime, ZonedDateTime) => Boolean): (ZonedDateTime, ZonedDateTime) = {
-        val prefixTime = detectEmptyPrefix(stream.head._1, new GPSRect(stream.head._2), stream, None)
-        prefixTime.map { case (prefTime, prefRect) =>
-          // trace back the prefix rectangle size
-          val backDistance = prefRect.size
-
-          val prefixRaw = stream.takeWhile(t => compare(t._1, prefTime))
-
-          val gpsDist = DataStreamGPS.distStreamFromGPSList(prefixRaw.map(_._2)).reverse
-
-          def trackBackDistance(distances: Seq[Double], trace: Double, ret: Int): Int = {
-            if (trace <=0 || distances.isEmpty) ret
-            else {
-              trackBackDistance(distances.tail, trace - distances.head, ret + 1)
-            }
-          }
-
-          val backDistanceEnd = trackBackDistance(gpsDist, backDistance, 0)
-          val prefixValidated = prefixRaw.dropRight(backDistanceEnd)
-
-          val timeValidated = prefixValidated.last._1
-
-          val offsetPrefTime = timeValidated.plus(timeOffset)
-          val edgeTime = if (compare(offsetPrefTime, stream.head._1)) stream.head._1 else offsetPrefTime
-          (edgeTime, stream.last._1)
-        }.getOrElse((stream.head._1, stream.last._1))
-      }
-
-      val droppedPrefixTime = dropEmptyPrefix(stream.toList, Seconds.seconds(-10), _ <= _)
-      val droppedPostfixTime = dropEmptyPrefix(stream.toList.reverse, Seconds.seconds(+10), _ >= _)
-      if (droppedPrefixTime._1 >= droppedPostfixTime._1) None
-      else Some((droppedPrefixTime._1, droppedPostfixTime._1))
-    } else None
-  }
-
 
   private def distStreamToCSV(ds: DistStream): String = {
     val times = ds.map(_._1)

@@ -11,6 +11,8 @@ import org.apache.commons.math.analysis.interpolation.SplineInterpolator
 import org.apache.commons.math.analysis.polynomials.PolynomialSplineFunction
 import java.util.logging.Logger
 
+import Main._
+
 import scala.collection.immutable.SortedMap
 import scala.util._
 import shared.Util._
@@ -146,7 +148,7 @@ object XMLParser {
   }
   */
 
-  def parseXML(fileName: String, inputStream: InputStream): Try[Move] = {
+  def parseXML(fileName: String, inputStream: InputStream, digest: String): Option[ActivityEvents] = {
 
     import SAXParser._
 
@@ -228,13 +230,6 @@ object XMLParser {
     SAXParser.parse(inputStream)(parsed)
 
     // always check time last, as this is present in almost each entry. We want first check to filter out as much as possible
-    val distSamples = for {
-      s <- parsed.samples
-      distance <- s.distance
-      time <- s.time
-    } yield {
-      time -> distance
-    }
     val gpsSamples = for {
       s <- parsed.samples
       longitude <- s.longitude
@@ -244,39 +239,65 @@ object XMLParser {
       time -> GPSPoint(latitude, longitude, s.elevation)
     }
 
-    val hrSamples = for {
-      s <- parsed.samples
-      v <- s.heartRate
-      time <- s.time
-    } yield {
-      time -> v
+    val ret = for (gpsInterestingRange <- DataStreamGPS.dropAlmostEmpty(gpsSamples.toList)) yield {
+
+      def inRange(t: ZonedDateTime) = t >= gpsInterestingRange._1 && t <= gpsInterestingRange._2
+
+      val distSamples = for {
+        s <- parsed.samples
+        distance <- s.distance
+        time <- s.time if inRange(time)
+      } yield {
+        time -> distance
+      }
+      val hrSamples = for {
+        s <- parsed.samples
+        v <- s.heartRate
+        time <- s.time if inRange(time)
+      } yield {
+        time -> v
+      }
+
+
+      val gpsStream = new DataStreamGPS(SortedMap(gpsSamples.filter(s => inRange(s._1)): _*))
+      val distStream = new DataStreamDist(SortedMap(distSamples: _*))
+
+      val hrStream = if (hrSamples.exists(_._2 != 0)) Some(new DataStreamHR(SortedMap(hrSamples: _*))) else None
+
+      val lapStream = Option.empty[DataStream]
+      /*
+      val lapStream = if (lapPoints.nonEmpty) {
+        Some(new DataStreamLap(SortedMap(lapPoints.map(l => l.timestamp -> l.name): _*)))
+      } else None
+      */
+
+      // TODO: read ActivityType from XML
+      val sport = Event.Sport.Workout
+
+      val allStreams = Seq(distStream, gpsStream) ++ hrStream ++ lapStream
+
+      val activity = for {
+        startTime <- allStreams.flatMap(_.startTime).minOpt
+        endTime <- allStreams.flatMap(_.endTime).maxOpt
+        d <- distStream.stream.lastOption.map(_._2)
+      } yield {
+
+        val id = ActivityId(FileId.FilenameId(fileName), digest, "Activity", startTime, endTime, sport, d)
+
+        val events = Array[Event](BegEvent(id.startTime, sport), EndEvent(id.endTime))
+
+        // TODO: avoid duplicate timestamp events
+        val lapEvents = lapStream.toList.flatMap(_.stream.keys.map(LapEvent))
+
+        val allEvents = (events ++ lapEvents).sortBy(_.stamp)
+
+        ActivityEvents(id, allEvents, distStream, gpsStream, hrStream.toSeq)
+      }
+      activity
     }
 
-    val distStream = new DataStreamDist(SortedMap(distSamples:_*))
 
-    val gpsStream = new DataStreamGPS(SortedMap(gpsSamples:_*))
-
-    val hrStream = if (hrSamples.exists(_._2 != 0)) Some(new DataStreamHR(SortedMap(hrSamples:_*))) else None
-
-    val lapStream = Option.empty[DataStream]
-    /*
-    val lapStream = if (lapPoints.nonEmpty) {
-      Some(new DataStreamLap(SortedMap(lapPoints.map(l => l.timestamp -> l.name): _*)))
-    } else None
-    */
-
-    // TODO: read ActivityType from XML
-    val header = new MoveHeader(parsed.deviceName.toSet, MoveHeader.ActivityType.Unknown)
-    // TODO: construct ActivityEvents directly
-    val gpsMove = new Move(Set(fileName), header, Seq(gpsStream, distStream) ++ lapStream ++ hrStream:_*)
-
-    val gpsDroppedEmpty = gpsStream.dropAlmostEmpty match {
-      case Some((keepStart, keepEnd)) =>
-        gpsMove.span(keepStart)._2.flatMap(_.span(keepEnd)._1)
-      case None =>
-        None
-    }
-    Success(gpsDroppedEmpty.getOrElse(new Move(Set(fileName), header)))
+    ret.flatten
 
   }
 

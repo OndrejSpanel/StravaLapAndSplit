@@ -10,8 +10,8 @@ class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
   it should "Handle missing samples correctly" in {
     val move = gpsPodMove
     for (m <- move) {
-      val gps = m.stream[DataStreamGPS]
-      val dist = m.stream[DataStreamDist]
+      val gps = m.gps
+      val dist = m.dist
 
       val t = gps.startTime.get
       // sample 271 missing in the GPS stream

@@ -69,13 +69,13 @@ object MoveslinkImport {
     }
   }
 
-  def loadSml(fileName: String, digest: String, stream: InputStream): Option[Move] = {
+  def loadSml(fileName: String, digest: String, stream: InputStream): Option[Main.ActivityEvents] = {
 
     implicit val start = Timing.Start()
 
     Timing.logTime(s"Source.fromInputStream $fileName")
 
-    val ret = moveslink2.XMLParser.parseXML(fileName, stream).toOption
+    val ret = moveslink2.XMLParser.parseXML(fileName, stream, digest)
     Timing.logTime(s"parseXML $fileName")
     ret
 
