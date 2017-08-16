@@ -5,7 +5,6 @@ import java.io.{InputStream, PushbackInputStream}
 
 import org.joda.time.{DateTime => ZonedDateTime, _}
 import org.joda.time.format.DateTimeFormat
-import java.util.regex.Pattern
 
 import shared.Util._
 
@@ -90,15 +89,17 @@ object XMLParser {
           moves += new Move,
           "Header" tag (
             "Duration" text {text =>
-              val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
-              val matcher = durationPattern.matcher(text)
-              val duration = if (matcher.matches) {
-                val hour = matcher.group(1).toInt
-                val minute = matcher.group(2).toInt
-                val second = matcher.group(3).toInt
-                val ms = if (!matcher.group(4).isEmpty) matcher.group(4).toInt else 0
-                (hour * 3600 + minute * 60 + second) * 1000 + ms
-              } else 0
+              val DurationPattern = "(\\d+):(\\d+):(\\d+)\\.?(\\d*)".r
+              object Int {
+                // handle s == null correctly, handles missing milliseconds
+                def unapply(s : String) : Option[Int] = Option(s).map(_.toInt)
+              }
+
+              val duration: Int = text match {
+                case DurationPattern(Int(hour), Int(minute), Int(second), Int(ms)) =>
+                  (hour * 3600 + minute * 60 + second) * 1000 + ms
+                case _ => 0
+              }
               moves.last.durationMs = duration
             },
             "Time" text { text =>
