@@ -6,9 +6,6 @@ import java.io._
 
 import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
 import org.joda.time.format.DateTimeFormat
-import org.apache.commons.math.ArgumentOutsideDomainException
-import org.apache.commons.math.analysis.interpolation.SplineInterpolator
-import org.apache.commons.math.analysis.polynomials.PolynomialSplineFunction
 
 import Main._
 
@@ -22,127 +19,10 @@ object XMLParser {
 
   private val dateFormatNoZone = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(DateTimeZone.getDefault)
 
-  def interpolate(spline: PolynomialSplineFunction, x: Double): Double = {
-    try {
-      spline.value(x)
-    }
-    catch {
-      case _: ArgumentOutsideDomainException =>
-        val knots = spline.getKnots
-        spline.value(knots(if (x < knots(0)) 0 else spline.getN - 1))
-    }
-  }
-  def generateTimeToDistanceSplineFunction(timeArray: Seq[Double], distanceArray: Seq[Double]): PolynomialSplineFunction = {
-    val interpolator = new SplineInterpolator
-    interpolator.interpolate(timeArray.toArray, distanceArray.toArray)
-  }
-  def populateDistanceArray(distanceList: Seq[Double]): Seq[Double] = {
-    for (d <- distanceList) yield d
-  }
-
-  def populateHRArray(hrList: Seq[Double]): Seq[Double] = {
-    for (hr <- hrList) yield hr * 60
-  }
-  def generateTimeToHRSplineFunction(timeArray: Seq[Double], hrArray: Seq[Double]): PolynomialSplineFunction = {
-    val interpolator = new SplineInterpolator
-    interpolator.interpolate(timeArray.toArray, hrArray.toArray)
-  }
-
   def getRRArray(rrData: String): Seq[Int] = {
     val rrArray = rrData.split(" ")
     for (rr <- rrArray) yield rr.toInt
   }
-
-  /*
-  def parseSamples(fileName: String, header: Header, samples: NodeSeq, rr: Seq[Int]): Move = {
-    val sampleList = samples \ "Sample"
-    val lapPoints = {
-      /* GPS Track Pod lap is stored as:
-			<Sample>
-				<UTC>2016-03-18T10:19:31</UTC>
-				<Time>24.891</Time>
-      	<Events>
-					<Lap>
-						<Type>Manual</Type>
-						<Duration>24.9</Duration>
-						<Distance>15</Distance>
-					</Lap>
-				</Events>
-			</Sample>
-      */
-      sampleList.toList.flatMap { sample =>
-        val lapTime = Try {
-          //noinspection ScalaUnusedSymbol
-          for (lap <- (sample \ "Events" \ "Lap" \ "Type").headOption) yield {
-            val timestamp = (sample \ "UTC") (0).text
-            val utc = timeToUTC(ZonedDateTime.parse(timestamp, dateFormatNoZone))
-            Lap(lap.text, utc)
-          }
-        }
-
-        lapTime.toOption.flatten.toSeq
-      }
-    }
-
-    val periodicSamples = {
-      val paused = new PauseState
-      sampleList.flatMap { sample =>
-        paused.trackPause(sample)
-        if (!paused.inPause) {
-          val periodicSample = for {
-            sampleType <- Try((sample \ "SampleType")(0).text) if sampleType.equalsIgnoreCase("periodic")
-            distanceStr <- Try((sample \ "Distance")(0).text)
-            timeStr <- Try((sample \ "Time")(0).text)
-            time = timeStr.toDouble - paused.pausedTime
-          } yield {
-            val hrTry = Try((sample \ "HR")(0).text)
-            val elevationTry = Try((sample \ "Altitude")(0).text)
-            val timeTry = Try(ZonedDateTime.parse((sample \ "UTC")(0).text))
-            val timeSim = header.startTime.plusMillis((time * 1000).toInt)
-            // prefer UTC when present
-            val timeUtc = timeTry.getOrElse(timeSim)
-            // replace missing values with zeroes - this is what Quest is recording on failure anyway
-            val hr = hrTry.map(_.toInt).getOrElse(0)
-            val elevation = elevationTry.map(_.toInt).toOption
-            (timeUtc, distanceStr.toDouble, hr, elevation)
-          }
-          periodicSample.toOption
-        } else None
-      }
-    }
-
-    object Unzipped4 {
-      def unapply[A, B, C, D](ts: Seq[(A, B, C, D)]): Some[(Seq[A], Seq[B], Seq[C], Seq[D])] =
-        Some((ts.map(_._1), ts.map(_._2), ts.map(_._3), ts.map(_._4)))
-
-    }
-
-    // ignore elevation: let Strava compute it
-    val Unzipped4(timeSeq, distanceSeq, hrSeq, _) = periodicSamples
-
-    val hrStream = if (hrSeq.size == distanceSeq.size && hrSeq.exists(_ != 0)) {
-      Some(new DataStreamHR(SortedMap(timeSeq zip hrSeq:_*)))
-    } else None
-
-    val distStream = new DataStreamDist(SortedMap(timeSeq zip distanceSeq:_*))
-
-    val gpsStream = new DataStreamGPS(SortedMap(trackPoints:_*))
-
-    val lapStream = if (lapPoints.nonEmpty) {
-      Some(new DataStreamLap(SortedMap(lapPoints.map(l => l.timestamp -> l.name): _*)))
-    } else None
-
-    val gpsMove = new Move(Set(fileName), header.moveHeader, Seq(gpsStream, distStream) ++ lapStream ++ hrStream:_*)
-
-    val gpsDroppedEmpty = gpsStream.dropAlmostEmpty match {
-      case Some((keepStart, keepEnd)) =>
-        gpsMove.span(keepStart)._2.flatMap(_.span(keepEnd)._1)
-      case None =>
-        None
-    }
-    gpsDroppedEmpty.getOrElse(new Move(Set(fileName), header.moveHeader))
-  }
-  */
 
   def parseXML(fileName: String, inputStream: InputStream, digest: String): Option[ActivityEvents] = {
 
