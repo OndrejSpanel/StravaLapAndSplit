@@ -68,7 +68,12 @@ object SAXParser {
     def text(s: String) = ()
     def close() = ()
   }
-  class XMLTag(val name: String, val inner: XMLTag*) extends TagHandler
+  class XMLTag(val name: String, val inner: XMLTag*) extends TagHandler {
+
+    val tagMap: Map[String, XMLTag] = inner.map(tag => tag.name -> tag)(collection.breakOut)
+
+    def findInner(tag: String): Option[XMLTag] = tagMap.get(tag)
+  }
 
   class ProcessText(name: String, process: String => Unit) extends XMLTag(name) {
     override def text(s: String) = process(s)
@@ -84,7 +89,7 @@ object SAXParser {
 
     def open(path: Seq[String]) = {
 
-      val descendInto = inTags.head.inner.find(_.name == path.head) // TODO: optimize using Map
+      val descendInto = inTags.head.findInner(path.head)
       for (into <- descendInto) {
         inTags = into :: inTags
         into.open()
@@ -103,6 +108,7 @@ object SAXParser {
         assert(inTags.head.name == path.head)
         inTags.head.close()
         inTags = inTags.tail
+        assert(inTags.nonEmpty)
       }
       known = known.tail
     }

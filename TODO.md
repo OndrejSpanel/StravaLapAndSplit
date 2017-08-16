@@ -32,3 +32,7 @@ Optimize XML loading:
 
 ## Aalto - grammar matching
 - parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 68243
+
+## Aalto - grammar matching with Maps
+- parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 60944
+- Import file: time 63727

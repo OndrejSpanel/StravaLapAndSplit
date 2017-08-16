@@ -191,7 +191,7 @@ object XMLParser {
       def readLatitude(s: String) = samples.last.latitude = Some(s.toDouble * XMLParser.PositionConstant)
       def readLongitude(s: String) = samples.last.longitude = Some(s.toDouble * XMLParser.PositionConstant)
 
-      val grammar = new XMLTag("<root>",
+      def grammar = new XMLTag("<root>",
         new XMLTag("Device",
           new ProcessText("Name", text => deviceName = Some(text))
         ),
