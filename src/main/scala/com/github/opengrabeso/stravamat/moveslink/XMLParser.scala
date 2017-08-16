@@ -22,6 +22,12 @@ object XMLParser {
     timeToUTC(ZonedDateTime.parse(timeText, dateFormatWithZone(timezone)))
   }
 
+  def parseDuration(timeStr: String): Duration = {
+    val relTime = LocalTime.parse(timeStr)
+    val ms = relTime.getMillisOfDay
+    new Duration(ms)
+  }
+
   def skipMoveslinkDoctype(is: InputStream): InputStream = {
     val pbStream =  new PushbackInputStream(is, 100)
     val wantedPrefix = """<?xml version="1.0" encoding="ISO-8859-1"?>"""
@@ -60,7 +66,7 @@ object XMLParser {
   def parseXML(fileName: String, document: InputStream, maxHR: Int, timezone: String): Seq[Move] = {
 
     import SAXParser._
-    object parsed extends Events {
+    object parsed extends SAXParserWithGrammar {
       var deviceName = Option.empty[String]
 
       class Move {
@@ -76,95 +82,83 @@ object XMLParser {
 
       val moves = ArrayBuffer.empty[Move]
 
-      def open(path: Seq[String]) = {
-        path match {
-          case _ / "Moves" / "Move" =>
-            moves.append(new Move)
-          case _ =>
-        }
-      }
+      def grammar = new XMLTag("<root>",
+        new XMLTag("Device",
+          new ProcessText("FullName", text => parsed.deviceName = Some(text))
+        ),
+        new XMLTag("Move",
+          new XMLTag("Header",
+            new ProcessText("Duration", {text =>
+              val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
+              val matcher = durationPattern.matcher(text)
+              val duration = if (matcher.matches) {
+                val hour = matcher.group(1).toInt
+                val minute = matcher.group(2).toInt
+                val second = matcher.group(3).toInt
+                val ms = if (!matcher.group(4).isEmpty) matcher.group(4).toInt else 0
+                (hour * 3600 + minute * 60 + second) * 1000 + ms
+              } else 0
+              moves.last.durationMs = duration
+            }),
+            new ProcessText("Time", { text =>
+              val startTime = parseTime(text, timezone)
+              moves.last.startTime = Some(startTime)
+            }),
+            new ProcessText("Activity", {text =>
+              import MoveHeader.ActivityType._
+              val sportType = Try(text.toInt).getOrElse(0)
+              // TODO: add at least most common sports
+              val activityType = sportType match {
+                case 82 => RunningTrail
+                case 75 => Orienteering
+                case 5 => MountainBike
+                case _ => Unknown
+              }
+              moves.last.activityType = activityType
+            })
+            /* never used, no need to parse
+            case _ / "Move" / "Header" / "Calories" =>
+              moves.last.calories = Some(text.toInt)
+            case _ / "Move" / "Header" / "Distance" =>
+              moves.last.distance = Some(text.toInt)
+            */
 
-      def wantText = true
+          ),
+          new XMLTag("Samples",
+            new ProcessText("Distance", {text =>
+              def insertZeroHead(strs: Seq[String]) = {
+                if (strs.head.isEmpty) "0" +: strs.tail
+                else strs
+              }
 
-      def read(path: Seq[String], text: String) = {
-        path match {
-          case _ / "Device" / "FullName" =>
-            parsed.deviceName = Some(text)
-          /* never used, no need to parse
-          case _ / "Move" / "Header" / "Calories" =>
-            moves.last.calories = Some(text.toInt)
-          case _ / "Move" / "Header" / "Distance" =>
-            moves.last.distance = Some(text.toInt)
-          */
-          case _ / "Move" / "Header" / "Duration" =>
-            val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
-            val matcher = durationPattern.matcher(text)
-            val duration = if (matcher.matches) {
-              val hour = matcher.group(1).toInt
-              val minute = matcher.group(2).toInt
-              val second = matcher.group(3).toInt
-              val ms = if (!matcher.group(4).isEmpty) matcher.group(4).toInt else 0
-              (hour * 3600 + minute * 60 + second) * 1000 + ms
-            } else 0
-            moves.last.durationMs = duration
+              var currentSum: Double = 0
+              moves.last.distanceSamples = for (distance <- insertZeroHead(text.split(" "))) yield {
+                currentSum += distance.toDouble
+                currentSum
+              }
+            }),
+            new ProcessText("HR", {text =>
+              def duplicateHead(strs: Seq[String]) = {
+                if (strs.head.isEmpty) strs.tail.head +: strs.tail
+                else strs
+              }
 
-          case _ / "Move" / "Header" / "Time" =>
-            val startTime = parseTime(text, timezone)
-            moves.last.startTime = Some(startTime)
-          case _ / "Move" / "Header" / "Activity" =>
-            import MoveHeader.ActivityType._
-            val sportType = Try(text.toInt).getOrElse(0)
-            // TODO: add at least most common sports
-            val activityType = sportType match {
-              case 82 => RunningTrail
-              case 75 => Orienteering
-              case 5 => MountainBike
-              case _ => Unknown
-            }
-            moves.last.activityType = activityType
-          case _ / "Move" / "Samples" / "Distance" =>
-
-            def insertZeroHead(strs: Seq[String]) = {
-              if (strs.head.isEmpty) "0" +: strs.tail
-              else strs
-            }
-
-            var currentSum: Double = 0
-            moves.last.distanceSamples = for (distance <- insertZeroHead(text.split(" "))) yield {
-              currentSum += distance.toDouble
-              currentSum
-            }
-
-          case _ / "Move" / "Samples" / "Cadence" =>
-          case _ / "Move" / "Samples" / "HR" =>
-
-            def duplicateHead(strs: Seq[String]) = {
-              if (strs.head.isEmpty) strs.tail.head +: strs.tail
-              else strs
-            }
-
-            moves.last.heartRateSamples = for (heartRate <- duplicateHead(text.split(" "))) yield {
-              heartRate.toInt
-            }
-
-          case _ / "Move" / "Marks" / "Mark" / "Time" =>
-            def parseDuration(timeStr: String): Duration = {
-              val relTime = LocalTime.parse(timeStr)
-              val ms = relTime.getMillisOfDay
-              new Duration(ms)
-            }
-
-            moves.last.lapDurations appendAll Try(parseDuration(text)).toOption
-
-
-          case _ =>
+              moves.last.heartRateSamples = for (heartRate <- duplicateHead(text.split(" "))) yield {
+                heartRate.toInt
+              }
+            })
+            // TODO: Cadence, Power, Temperature ...
+          ),
+          new XMLTag("Marks",
+            new XMLTag("Mark",
+              new ProcessText("Time", text => moves.last.lapDurations appendAll Try(parseDuration(text)).toOption)
+            )
+          )
+        ) {
+          override def open() = moves += new Move
         }
 
-      }
-
-      def close(path: Seq[String]) = {
-
-      }
+      )
     }
 
     parse(document)(parsed)
