@@ -82,12 +82,12 @@ object XMLParser {
 
       val moves = ArrayBuffer.empty[Move]
 
-      def grammar = new XMLTag("<root>",
-        new XMLTag("Device",
+      def grammar = root(
+        tag("Device",
           "FullName" text (text => parsed.deviceName = Some(text))
         ),
-        new XMLTag("Move",
-          new XMLTag("Header",
+        tag("Move",
+          tag("Header",
             "Duration" text {text =>
               val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
               val matcher = durationPattern.matcher(text)
@@ -124,7 +124,7 @@ object XMLParser {
             */
 
           ),
-          new XMLTag("Samples",
+          tag("Samples",
             "Distance" text {text =>
               moves.last.distanceSamples = text.split(" ").dropWhile(_ == "").scanLeft(0.0)(_ + _.toDouble)
             },
@@ -138,14 +138,12 @@ object XMLParser {
             }
             // TODO: Cadence, Power, Temperature ...
           ),
-          new XMLTag("Marks",
-            new XMLTag("Mark",
+          tag("Marks",
+            tag("Mark",
               "Time" text (text => moves.last.lapDurations appendAll Try(parseDuration(text)).toOption)
             )
           )
-        ) {
-          override def open() = moves += new Move
-        }
+        ).withOpen(moves += new Move)
 
       )
     }

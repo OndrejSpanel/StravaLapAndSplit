@@ -9,10 +9,8 @@ import org.joda.time.format.DateTimeFormat
 import org.apache.commons.math.ArgumentOutsideDomainException
 import org.apache.commons.math.analysis.interpolation.SplineInterpolator
 import org.apache.commons.math.analysis.polynomials.PolynomialSplineFunction
-import java.util.logging.Logger
 
 import Main._
-import com.github.opengrabeso.stravamat.SAXParser.ProcessText
 
 import scala.collection.immutable.SortedMap
 import shared.Util._
@@ -20,7 +18,6 @@ import shared.Util._
 import scala.collection.mutable.ArrayBuffer
 
 object XMLParser {
-  private val log = Logger.getLogger(XMLParser.getClass.getName)
   private val PositionConstant = 57.2957795131
 
   private val dateFormatNoZone = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(DateTimeZone.getDefault)
@@ -189,16 +186,16 @@ object XMLParser {
       val samples = ArrayBuffer.empty[Sample]
       val laps = ArrayBuffer.empty[Lap]
 
-      def grammar = new XMLTag("<root>",
-        new XMLTag("Device", "Name" text (text => deviceName = Some(text))),
-        new XMLTag("Header",
+      def grammar = root(
+        tag("Device", "Name" text (text => deviceName = Some(text))),
+        tag("Header",
           "Distance" text (text => distance = text.toInt),
           "DateTime" text (text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
           "Duration" text (text => durationMs = (text.toDouble * 1000).toInt)
         ),
-        new XMLTag("R-R", "Data" text (text => rrData = getRRArray(text))),
-        new XMLTag("Samples",
-          new XMLTag("Sample",
+        tag("R-R", "Data" text (text => rrData = getRRArray(text))),
+        tag("Samples",
+          tag("Sample",
             "Latitude" text (text => samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)),
             "Longitude" text (text => samples.last.longitude = Some(text.toDouble * XMLParser.PositionConstant)),
             "GPSAltitude" text (text => samples.last.elevation = Some(text.toInt)),
@@ -208,9 +205,9 @@ object XMLParser {
             "HR" text (text => samples.last.heartRate = Some(text.toInt)),
             // TODO: add other properties (power, cadence, temperature ...)
 
-            new XMLTag("Events",
-              new XMLTag("Pause", "State" text (text => paused = text.equalsIgnoreCase("true"))),
-              new XMLTag("Lap",
+            tag("Events",
+              tag("Pause", "State" text (text => paused = text.equalsIgnoreCase("true"))),
+              tag("Lap",
                 "Type" text { text =>
                   val lastTime = samples.reverseIterator.flatMap(_.time) //.find(_.isDefined)
                   for (timestamp <- lastTime.toIterable.headOption) {
@@ -222,8 +219,7 @@ object XMLParser {
                 //ProcessText("Distance", ???)
               )
             )
-
-          ) {override def open() = samples += new Sample}
+          ).withOpen(samples += new Sample)
         )
       )
     }
