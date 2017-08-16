@@ -227,26 +227,27 @@ object XMLParser {
 
     SAXParser.parse(inputStream)(parsed)
 
+    // always check time last, as this is present in almost each entry. We want first check to filter out as much as possible
     val distSamples = for {
       s <- parsed.samples
-      time <- s.time
       distance <- s.distance
+      time <- s.time
     } yield {
       time -> distance
     }
     val gpsSamples = for {
       s <- parsed.samples
-      time <- s.time
       longitude <- s.longitude
       latitude <- s.latitude
+      time <- s.time
     } yield {
       time -> GPSPoint(latitude, longitude, s.elevation)
     }
 
     val hrSamples = for {
       s <- parsed.samples
-      time <- s.time
       v <- s.heartRate
+      time <- s.time
     } yield {
       time -> v
     }

@@ -15,6 +15,7 @@ object SAXParser {
   trait Events {
     def open(path: Seq[String])
     def read(path: Seq[String], text: String)
+    def wantText: Boolean
     def close(path: Seq[String])
   }
 
@@ -53,7 +54,10 @@ object SAXParser {
       }
 
       override def characters(ch: Array[Char], start: Int, length: Int) = {
-        elementStack.last ++= ch.slice(start, start + length)
+        // optimization: do not build a text string when nobody is interested about it
+        if (handler.wantText) {
+          elementStack.last.appendAll(ch, start, length)
+        }
       }
     }
 
@@ -67,6 +71,7 @@ object SAXParser {
     def open() = ()
     def text(s: String) = ()
     def close() = ()
+    def wantText = false
   }
   class XMLTag(val name: String, val inner: XMLTag*) extends TagHandler {
 
@@ -77,6 +82,7 @@ object SAXParser {
 
   class ProcessText(name: String, process: String => Unit) extends XMLTag(name) {
     override def text(s: String) = process(s)
+    override def wantText = true
   }
 
 
@@ -86,6 +92,7 @@ object SAXParser {
     var inTags = List(grammar)
     // when closing, we need to know for which tags open was called
     var known = List.empty[Boolean]
+
 
     def open(path: Seq[String]) = {
 
@@ -102,6 +109,8 @@ object SAXParser {
         inTags.head.text(text)
       }
     }
+
+    def wantText = known.head && inTags.head.wantText
 
     def close(path: Seq[String]) = {
       if (known.head) {

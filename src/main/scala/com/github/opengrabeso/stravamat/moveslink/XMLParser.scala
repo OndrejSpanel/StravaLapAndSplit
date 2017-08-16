@@ -84,6 +84,8 @@ object XMLParser {
         }
       }
 
+      def wantText = true
+
       def read(path: Seq[String], text: String) = {
         path match {
           case _ / "Device" / "FullName" =>
