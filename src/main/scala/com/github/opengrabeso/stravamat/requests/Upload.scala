@@ -54,7 +54,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler 
       case "fit" =>
         FitImport(name, stream).toSeq
       case "sml" =>
-        loadSml(name, digest, stream).toSeq.flatMap(loadFromMove(name, digest, _))
+        loadSml(name, digest, stream).toSeq
       case "xml" =>
         val maxHR = Settings(userId).maxHR
         loadXml(name, digest, stream, maxHR, timezone).zipWithIndex.flatMap { case (act,index) =>

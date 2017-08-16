@@ -5,22 +5,23 @@ package moveslink2
 import java.io._
 
 import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
-import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
+import org.joda.time.format.DateTimeFormat
 import org.apache.commons.math.ArgumentOutsideDomainException
 import org.apache.commons.math.analysis.interpolation.SplineInterpolator
 import org.apache.commons.math.analysis.polynomials.PolynomialSplineFunction
 import java.util.logging.Logger
 
+import Main._
+
 import scala.collection.immutable.SortedMap
-import scala.util._
-import scala.xml._
 import shared.Util._
+
+import scala.collection.mutable.ArrayBuffer
 
 object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)
   private val PositionConstant = 57.2957795131
 
-  private val dateFormat = ISODateTimeFormat.dateTimeNoMillis
   private val dateFormatNoZone = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(DateTimeZone.getDefault)
 
   def interpolate(spline: PolynomialSplineFunction, x: Double): Double = {
@@ -49,70 +50,14 @@ object XMLParser {
     interpolator.interpolate(timeArray.toArray, hrArray.toArray)
   }
 
-  def getDeviceLog(doc: Elem): Node = (doc \ "DeviceLog") (0)
-
-  def getXMLDocument(xmlFile: File): Elem = {
-    XML.loadFile(xmlFile)
-  }
-
-  def getSMLDocument(xmlFile: File): Node = {
-    val doc = XML.loadFile(xmlFile)
-    getDeviceLog(doc)
-  }
-
-
   def getRRArray(rrData: String): Seq[Int] = {
     val rrArray = rrData.split(" ")
     for (rr <- rrArray) yield rr.toInt
   }
 
-  def parseHeader(doc: Node): Try[Header] = {
-    val header = doc \ "Header"
-
-    val deviceName = (doc \ "Device" \ "Name").headOption.map(_.text)
-    //val moveType = Util.getChildElementValue(header, "ActivityType").toInt
-    Try {
-      val distance = (header \ "Distance")(0).text.toInt
-      if (distance == 0) {
-        throw new UnsupportedOperationException("Zero distance")
-      }
-      val dateTime = (header \ "DateTime")(0).text
-      Header(
-        MoveHeader(deviceName.toSet, MoveHeader.ActivityType.Unknown),
-        startTime = timeToUTC(ZonedDateTime.parse(dateTime, dateFormatNoZone)),
-        durationMs = ((header \ "Duration")(0).text.toDouble * 1000).toInt,
-        calories = Try(kiloCaloriesFromKilojoules((header \ "Energy")(0).text.toDouble)).getOrElse(0),
-        distance = distance
-      )
-    }
-  }
-
-
+  /*
   def parseSamples(fileName: String, header: Header, samples: NodeSeq, rr: Seq[Int]): Move = {
     val sampleList = samples \ "Sample"
-
-    class PauseState {
-      var pausedTime: Double = 0.0
-      var pauseStartTime: Double = 0.0
-      var inPause: Boolean = false
-
-      def trackPause(sample: Node): Unit = {
-        val pauseTry = sample \ "Events" \ "Pause" \ "State"
-        for (pause <- pauseTry) {
-          val time = (sample \ "Time").text.toDouble
-          if (pause(0).text.equalsIgnoreCase("false")) {
-            if (inPause) {
-              pausedTime += time - pauseStartTime
-              inPause = false
-            }
-          } else if (pause(0).text.equalsIgnoreCase("true")) {
-            pauseStartTime = time
-            inPause = true
-          }
-        }
-      }
-    }
-
     val lapPoints = {
       /* GPS Track Pod lap is stored as:
 			<Sample>
@@ -138,26 +83,6 @@ object XMLParser {
         }
 
         lapTime.toOption.flatten.toSeq
-      }
-    }
-
-    val trackPoints = {
-      val paused = new PauseState
-      sampleList.flatMap { sample =>
-        paused.trackPause(sample)
-        if (!paused.inPause) {
-          // GPS Track POD samples contain no "SampleType" children
-          val parseSample = Try {
-            val lat = (sample \ "Latitude")(0).text.toDouble * XMLParser.PositionConstant
-            val lon = (sample \ "Longitude")(0).text.toDouble * XMLParser.PositionConstant
-            val elevation = Try((sample \ "GPSAltitude")(0).text.toInt).toOption
-            val utcStr = (sample \ "UTC")(0).text
-            val utc = ZonedDateTime.parse(utcStr, dateFormat)
-            utc -> GPSPoint(lat, lon, elevation)
-          }
-
-          parseSample.toOption
-        } else None
       }
     }
 
@@ -219,30 +144,166 @@ object XMLParser {
     }
     gpsDroppedEmpty.getOrElse(new Move(Set(fileName), header.moveHeader))
   }
+  */
 
-  def parse(fileName: String, xmlFile: File): Try[Move] = {
-    XMLParser.log.fine("Parsing " + xmlFile.getName)
+  def parseXML(fileName: String, inputStream: InputStream, digest: String): Option[ActivityEvents] = {
 
-    val doc = if (xmlFile.getName.endsWith(".xml")) {
-      getXMLDocument(xmlFile)
-    } else if (xmlFile.getName.endsWith(".sml")) {
-      getSMLDocument(xmlFile)
-    } else throw new UnsupportedOperationException(s"Unknown data format ${xmlFile.getName}")
-    parseXML(fileName, doc)
-  }
+    import SAXParser._
 
-  def parseXML(fileName: String, doc: Node): Try[Move] = {
-    // optimize: using Jackson or scala.xml.pull, working with xml dom model is very slow
-    val samples = doc \ "Samples"
-    val rrData = Try((doc \ "R-R" \ "Data")(0))
-    val rr = rrData.map(node => getRRArray(node.text))
-    val moves = for {
-      h <- parseHeader(doc)
-    } yield {
-      parseSamples(fileName, h, samples, rr.getOrElse(Seq()))
+    object parsed extends SAXParserWithGrammar {
+      var rrData = Seq.empty[Int]
+      var deviceName = Option.empty[String]
+      var startTime = Option.empty[ZonedDateTime]
+      var distance: Int = 0
+      var durationMs: Int = 0
+      var paused: Boolean = false
+      var pauseStartTime = Option.empty[ZonedDateTime]
+      class Sample{
+        /* GPS Track Pod example:
+        <Sample>
+          <Latitude>0.86923005364868888</Latitude>
+          <Longitude>0.24759951117797119</Longitude>
+          <GPSAltitude>416</GPSAltitude>
+          <GPSHeading>1.4116222990130136</GPSHeading>
+          <EHPE>4</EHPE>
+          <Time>2534</Time>
+          <UTC>2016-10-21T07:28:14Z</UTC>
+        </Sample>
+        <Sample>
+          <VerticalSpeed>0</VerticalSpeed>
+          <Distance>7868</Distance>
+          <Speed>3.9399999999999999</Speed>
+          <Time>2534.6120000000001</Time>
+          <SampleType>periodic</SampleType>
+          <UTC>2016-10-21T07:28:14.612Z</UTC>
+        </Sample>
+        */
+        var time = Option.empty[ZonedDateTime]
+        var distance = Option.empty[Double]
+        var latitude = Option.empty[Double]
+        var longitude = Option.empty[Double]
+        var elevation: Option[Int] = None
+        var heartRate: Option[Int] = None
+      }
+      val samples = ArrayBuffer.empty[Sample]
+      val laps = ArrayBuffer.empty[Lap]
+
+      def addSample(s: String) = samples += new Sample
+      def readLatitude(s: String) = samples.last.latitude = Some(s.toDouble * XMLParser.PositionConstant)
+      def readLongitude(s: String) = samples.last.longitude = Some(s.toDouble * XMLParser.PositionConstant)
+
+      def grammar = new XMLTag("<root>",
+        new XMLTag("Device",
+          new ProcessText("Name", text => deviceName = Some(text))
+        ),
+        new XMLTag("Header",
+          new ProcessText("Distance", text => distance = text.toInt),
+          new ProcessText("DateTime", text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
+          new ProcessText("Duration", text => durationMs = (text.toDouble * 1000).toInt)
+        ),
+        new XMLTag("R-R",
+          new ProcessText("Data", text => rrData = getRRArray(text))
+        ),
+        new XMLTag("Samples",
+          new XMLTag("Sample",
+            new ProcessText("Latitude", readLatitude),
+            new ProcessText("Longitude", readLongitude),
+            new ProcessText("GPSAltitude", text => samples.last.elevation = Some(text.toInt)),
+            // TODO: handle relative time when UTC is not present
+            new ProcessText("UTC", text => samples.last.time = Some(ZonedDateTime.parse(text))),
+            new ProcessText("Distance", text => samples.last.distance = Some(text.toDouble)),
+            new ProcessText("HR", text => samples.last.heartRate = Some(text.toInt)),
+            // TODO: add other properties (power, cadence, temperature ...)
+
+            new XMLTag("Events",
+              new XMLTag("Pause",
+                new ProcessText("State", text => paused = text.equalsIgnoreCase("true"))
+              ),
+              new XMLTag("Lap",
+                new ProcessText("Type", { text =>
+                  val lastTime = samples.reverseIterator.flatMap(_.time) //.find(_.isDefined)
+                  for (timestamp <- lastTime.toIterable.headOption) {
+                    laps += Lap(text, timestamp)
+                  }
+                })
+                // we are not interested about any Lap properties
+                //new ProcessText("Duration", ???),
+                //new ProcessText("Distance", ???)
+              )
+            )
+
+          ) {override def open() = samples += new Sample}
+        )
+      )
     }
 
-    moves
+    SAXParser.parse(inputStream)(parsed)
+
+    // always check time last, as this is present in almost each entry. We want first check to filter out as much as possible
+    val gpsSamples = for {
+      s <- parsed.samples
+      longitude <- s.longitude
+      latitude <- s.latitude
+      time <- s.time
+    } yield {
+      time -> GPSPoint(latitude, longitude, s.elevation)
+    }
+
+    val ret = for (gpsInterestingRange <- DataStreamGPS.dropAlmostEmpty(gpsSamples.toList)) yield {
+
+      def inRange(t: ZonedDateTime) = t >= gpsInterestingRange._1 && t <= gpsInterestingRange._2
+
+      val distSamples = for {
+        s <- parsed.samples
+        distance <- s.distance
+        time <- s.time if inRange(time)
+      } yield {
+        time -> distance
+      }
+      val hrSamples = for {
+        s <- parsed.samples
+        v <- s.heartRate
+        time <- s.time if inRange(time)
+      } yield {
+        time -> v
+      }
+
+
+      val gpsStream = new DataStreamGPS(SortedMap(gpsSamples.filter(s => inRange(s._1)): _*))
+      val distStream = new DataStreamDist(SortedMap(distSamples: _*))
+
+      val hrStream = if (hrSamples.exists(_._2 != 0)) Some(new DataStreamHR(SortedMap(hrSamples: _*))) else None
+
+      val lapTimes = parsed.laps.map(_.timestamp).filter(inRange)
+
+      // TODO: read ActivityType from XML
+      val sport = Event.Sport.Workout
+
+      val allStreams = Seq(distStream, gpsStream) ++ hrStream
+
+      val activity = for {
+        startTime <- allStreams.flatMap(_.startTime).minOpt
+        endTime <- allStreams.flatMap(_.endTime).maxOpt
+        d <- distStream.stream.lastOption.map(_._2)
+      } yield {
+
+        val id = ActivityId(FileId.FilenameId(fileName), digest, "Activity", startTime, endTime, sport, d)
+
+        val events = Array[Event](BegEvent(id.startTime, sport), EndEvent(id.endTime))
+
+        // TODO: avoid duplicate timestamp events
+        val lapEvents = lapTimes.map(LapEvent)
+
+        val allEvents = (events ++ lapEvents).sortBy(_.stamp)
+
+        ActivityEvents(id, allEvents, distStream, gpsStream, hrStream.toSeq)
+      }
+      activity
+    }
+
+
+    ret.flatten
+
   }
 
 }

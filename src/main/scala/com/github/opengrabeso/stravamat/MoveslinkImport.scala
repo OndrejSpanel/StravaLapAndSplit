@@ -9,8 +9,7 @@ import scala.collection.immutable.SortedMap
 import org.joda.time.{DateTime => ZonedDateTime}
 import shared.Util._
 import FileId._
-
-import scala.xml.{Node, XML}
+import com.github.opengrabeso.stravamat.shared.Timing
 
 object MoveslinkImport {
 
@@ -70,31 +69,22 @@ object MoveslinkImport {
     }
   }
 
-  def loadSml(fileName: String, digest: String, stream: InputStream): Option[Move] = {
+  def loadSml(fileName: String, digest: String, stream: InputStream): Option[Main.ActivityEvents] = {
 
-    def now() = System.currentTimeMillis()
-    val start = now()
-    def logTime(msg: String) = println(s"$msg: time ${now()-start}")
+    implicit val start = Timing.Start()
 
-    def getDeviceLog(doc: Node): Node = (doc \ "DeviceLog") (0)
+    Timing.logTime(s"Source.fromInputStream $fileName")
 
-    logTime(s"start $fileName")
-    val doc = XML.load(stream)
-    logTime("XML.load")
-
-    val dev = getDeviceLog(doc)
-    logTime("getDeviceLog")
-
-    val ret = moveslink2.XMLParser.parseXML(fileName, dev).toOption
-    logTime("parseXML")
+    val ret = moveslink2.XMLParser.parseXML(fileName, stream, digest)
+    Timing.logTime(s"parseXML $fileName")
     ret
 
   }
 
   def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int, timezone: String): Seq[Move] = {
-    val doc = XML.load(stream)
+    val doc = moveslink.XMLParser.skipMoveslinkDoctype(stream) // TODO: most likely not needed with aalto
 
-    moveslink.XMLParser.parseXML(fileName, doc, maxHR, timezone).flatMap(_.toOption)
+    moveslink.XMLParser.parseXML(fileName, doc, maxHR, timezone)
   }
 
 }

@@ -4,7 +4,7 @@ import org.joda.time.{Interval, DateTime => ZonedDateTime}
 import shared.Util._
 import scala.reflect._
 
-case class Header(moveHeader: MoveHeader, startTime: ZonedDateTime = ZonedDateTime.now, durationMs: Int = 0, calories: Int = 0, distance: Int = 0)
+case class Header(moveHeader: MoveHeader, startTime: ZonedDateTime = ZonedDateTime.now, durationMs: Int = 0)
 
 case class Lap(name: String, timestamp: ZonedDateTime)
 

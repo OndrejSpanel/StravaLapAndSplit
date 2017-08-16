@@ -26,26 +26,25 @@ class SuuntoMergeTest extends FlatSpec with Matchers with SuuntoData {
   it should "load GPS pod file" in {
     val move = gpsPodMove
 
-    move.isFailure shouldBe false
+    move.isEmpty shouldBe false
 
     move.foreach { m =>
-      val gps = m.streamGet[DataStreamGPS]
-      gps.isEmpty shouldBe false
+      val gps = m.gps
+      gps.stream.isEmpty shouldBe false
 
       val t = ISODateTimeFormat.dateTimeNoMillis.parseDateTime("2016-10-21T06:46:01Z")
-      m.startTime.contains(t)
-      m.duration shouldBe 4664.6
-
-
+      m.startTime.compareTo(t) should equal (0)
+      m.duration shouldBe 4664.6 +- 0.5
     }
 
   }
 
   it should "merge GPS + Quest files" in {
     for (hr <- questMove; gps <- gpsPodMove) {
-      val m = gps.addStream(hr, hr.stream[DataStreamHR])
-      m.isEmpty shouldBe false
-      m.duration shouldBe 4664.6
+      val hrActivity = MoveslinkImport.loadFromMove("quest.xml", "", hr)
+      val m = gps.merge(hrActivity.get)
+      m.hasAttributes shouldBe true
+      m.duration shouldBe 4664.6 +- 0.5
       m.isAlmostEmpty(30) shouldBe false
 
     }
