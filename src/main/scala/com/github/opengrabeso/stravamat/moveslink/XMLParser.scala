@@ -180,7 +180,7 @@ object XMLParser {
 
       def timeMs(ms: Int) = mi.startTime.get.plusMillis(ms)
 
-      val timedMapHR = (timeRange zip validatedCleanedHR).collect { case (t, Some(s)) =>
+      val timedMapHR = (timeRange zip validatedCleanedHR).collect { case (t, Some(s)) if s > 0 =>
         timeMs(t) -> s
       }
 

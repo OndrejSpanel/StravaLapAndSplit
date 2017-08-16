@@ -130,7 +130,7 @@ object XMLParser {
       }
       val hrSamples = for {
         s <- parsed.samples
-        v <- s.heartRate
+        v <- s.heartRate if v != 0
         time <- s.time if inRange(time)
       } yield {
         time -> v
