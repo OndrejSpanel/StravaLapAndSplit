@@ -126,16 +126,7 @@ object XMLParser {
           ),
           new XMLTag("Samples",
             new ProcessText("Distance", {text =>
-              def insertZeroHead(strs: Seq[String]) = {
-                if (strs.head.isEmpty) "0" +: strs.tail
-                else strs
-              }
-
-              var currentSum: Double = 0
-              moves.last.distanceSamples = for (distance <- insertZeroHead(text.split(" "))) yield {
-                currentSum += distance.toDouble
-                currentSum
-              }
+              moves.last.distanceSamples = text.split(" ").dropWhile(_ == "").scanLeft(0.0)(_ + _.toDouble)
             }),
             new ProcessText("HR", {text =>
               def duplicateHead(strs: Seq[String]) = {
@@ -143,9 +134,7 @@ object XMLParser {
                 else strs
               }
 
-              moves.last.heartRateSamples = for (heartRate <- duplicateHead(text.split(" "))) yield {
-                heartRate.toInt
-              }
+              moves.last.heartRateSamples = duplicateHead(text.split(" ")).map(_.toInt)
             })
             // TODO: Cadence, Power, Temperature ...
           ),
