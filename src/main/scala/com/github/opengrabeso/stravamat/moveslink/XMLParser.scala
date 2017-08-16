@@ -84,11 +84,11 @@ object XMLParser {
 
       def grammar = new XMLTag("<root>",
         new XMLTag("Device",
-          ProcessText("FullName")(text => parsed.deviceName = Some(text))
+          "FullName" text (text => parsed.deviceName = Some(text))
         ),
         new XMLTag("Move",
           new XMLTag("Header",
-            ProcessText("Duration") {text =>
+            "Duration" text {text =>
               val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
               val matcher = durationPattern.matcher(text)
               val duration = if (matcher.matches) {
@@ -100,11 +100,11 @@ object XMLParser {
               } else 0
               moves.last.durationMs = duration
             },
-            ProcessText("Time") { text =>
+            "Time" text { text =>
               val startTime = parseTime(text, timezone)
               moves.last.startTime = Some(startTime)
             },
-            ProcessText("Activity") {text =>
+            "Activity" text {text =>
               import MoveHeader.ActivityType._
               val sportType = Try(text.toInt).getOrElse(0)
               // TODO: add at least most common sports
@@ -125,10 +125,10 @@ object XMLParser {
 
           ),
           new XMLTag("Samples",
-            ProcessText("Distance") {text =>
+            "Distance" text {text =>
               moves.last.distanceSamples = text.split(" ").dropWhile(_ == "").scanLeft(0.0)(_ + _.toDouble)
             },
-            ProcessText("HR") {text =>
+            "HR" text {text =>
               def duplicateHead(strs: Seq[String]) = {
                 if (strs.head.isEmpty) strs.tail.head +: strs.tail
                 else strs
@@ -140,7 +140,7 @@ object XMLParser {
           ),
           new XMLTag("Marks",
             new XMLTag("Mark",
-              ProcessText("Time")(text => moves.last.lapDurations appendAll Try(parseDuration(text)).toOption)
+              "Time" text (text => moves.last.lapDurations appendAll Try(parseDuration(text)).toOption)
             )
           )
         ) {

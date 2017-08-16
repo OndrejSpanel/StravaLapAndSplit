@@ -80,12 +80,13 @@ object SAXParser {
     def findInner(tag: String): Option[XMLTag] = tagMap.get(tag)
   }
 
-  object ProcessText {
-    def apply(name: String)(process: String => Unit): ProcessText = new ProcessText(name, process)
-  }
   class ProcessText(name: String, process: String => Unit) extends XMLTag(name) {
     override def text(s: String) = process(s)
     override def wantText = true
+  }
+
+  implicit class DSL(name: String) {
+    def text(process: String => Unit): ProcessText = new ProcessText(name, process)
   }
 
 

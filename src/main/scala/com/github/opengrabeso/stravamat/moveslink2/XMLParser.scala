@@ -12,6 +12,7 @@ import org.apache.commons.math.analysis.polynomials.PolynomialSplineFunction
 import java.util.logging.Logger
 
 import Main._
+import com.github.opengrabeso.stravamat.SAXParser.ProcessText
 
 import scala.collection.immutable.SortedMap
 import shared.Util._
@@ -189,28 +190,28 @@ object XMLParser {
       val laps = ArrayBuffer.empty[Lap]
 
       def grammar = new XMLTag("<root>",
-        new XMLTag("Device", ProcessText("Name")(text => deviceName = Some(text))),
+        new XMLTag("Device", "Name" text (text => deviceName = Some(text))),
         new XMLTag("Header",
-          ProcessText("Distance")(text => distance = text.toInt),
-          ProcessText("DateTime")(text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
-          ProcessText("Duration")(text => durationMs = (text.toDouble * 1000).toInt)
+          "Distance" text (text => distance = text.toInt),
+          "DateTime" text (text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
+          "Duration" text (text => durationMs = (text.toDouble * 1000).toInt)
         ),
-        new XMLTag("R-R", ProcessText("Data")(text => rrData = getRRArray(text))),
+        new XMLTag("R-R", "Data" text (text => rrData = getRRArray(text))),
         new XMLTag("Samples",
           new XMLTag("Sample",
-            ProcessText("Latitude")(text => samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)),
-            ProcessText("Longitude")(text => samples.last.longitude = Some(text.toDouble * XMLParser.PositionConstant)),
-            ProcessText("GPSAltitude")(text => samples.last.elevation = Some(text.toInt)),
+            "Latitude" text (text => samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)),
+            "Longitude" text (text => samples.last.longitude = Some(text.toDouble * XMLParser.PositionConstant)),
+            "GPSAltitude" text (text => samples.last.elevation = Some(text.toInt)),
             // TODO: handle relative time when UTC is not present
-            ProcessText("UTC")(text => samples.last.time = Some(ZonedDateTime.parse(text))),
-            ProcessText("Distance")(text => samples.last.distance = Some(text.toDouble)),
-            ProcessText("HR")(text => samples.last.heartRate = Some(text.toInt)),
+            "UTC" text (text => samples.last.time = Some(ZonedDateTime.parse(text))),
+            "Distance" text (text => samples.last.distance = Some(text.toDouble)),
+            "HR" text (text => samples.last.heartRate = Some(text.toInt)),
             // TODO: add other properties (power, cadence, temperature ...)
 
             new XMLTag("Events",
-              new XMLTag("Pause", ProcessText("State")(text => paused = text.equalsIgnoreCase("true"))),
+              new XMLTag("Pause", "State" text (text => paused = text.equalsIgnoreCase("true"))),
               new XMLTag("Lap",
-                ProcessText("Type") { text =>
+                "Type" text { text =>
                   val lastTime = samples.reverseIterator.flatMap(_.time) //.find(_.isDefined)
                   for (timestamp <- lastTime.toIterable.headOption) {
                     laps += Lap(text, timestamp)
