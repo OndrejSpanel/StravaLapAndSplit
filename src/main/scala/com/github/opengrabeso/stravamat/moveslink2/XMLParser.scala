@@ -187,15 +187,16 @@ object XMLParser {
       val laps = ArrayBuffer.empty[Lap]
 
       def grammar = root(
-        tag("Device", "Name" text (text => deviceName = Some(text))),
-        tag("Header",
+        "Device" tag ("Name" text (text => deviceName = Some(text))),
+        "Header" tag (
           "Distance" text (text => distance = text.toInt),
           "DateTime" text (text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
           "Duration" text (text => durationMs = (text.toDouble * 1000).toInt)
         ),
-        tag("R-R", "Data" text (text => rrData = getRRArray(text))),
-        tag("Samples",
-          tag("Sample",
+        "R-R" tag ("Data" text (text => rrData = getRRArray(text))),
+        "Samples" tag (
+          "Sample" tagWithOpen (
+            samples += new Sample,
             "Latitude" text (text => samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)),
             "Longitude" text (text => samples.last.longitude = Some(text.toDouble * XMLParser.PositionConstant)),
             "GPSAltitude" text (text => samples.last.elevation = Some(text.toInt)),
@@ -205,9 +206,9 @@ object XMLParser {
             "HR" text (text => samples.last.heartRate = Some(text.toInt)),
             // TODO: add other properties (power, cadence, temperature ...)
 
-            tag("Events",
-              tag("Pause", "State" text (text => paused = text.equalsIgnoreCase("true"))),
-              tag("Lap",
+            "Events" tag (
+              "Pause" tag ("State" text (text => paused = text.equalsIgnoreCase("true"))),
+              "Lap" tag (
                 "Type" text { text =>
                   val lastTime = samples.reverseIterator.flatMap(_.time) //.find(_.isDefined)
                   for (timestamp <- lastTime.toIterable.headOption) {
@@ -219,7 +220,7 @@ object XMLParser {
                 //ProcessText("Distance", ???)
               )
             )
-          ).withOpen(samples += new Sample)
+          )
         )
       )
     }

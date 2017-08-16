@@ -77,18 +77,11 @@ object SAXParser {
   object root {
     def apply(inner: XMLTag*): XMLTag = new XMLTag("--root--", inner:_*)
   }
-  object tag {
-    def apply(name: String, inner: XMLTag*): XMLTag = new XMLTag(name, inner:_*)
-  }
   class XMLTag(val name: String, val inner: XMLTag*) extends TagHandler {
 
     val tagMap: Map[String, XMLTag] = inner.map(tag => tag.name -> tag)(collection.breakOut)
 
     def findInner(tag: String): Option[XMLTag] = tagMap.get(tag)
-
-    def withOpen(openFunc: => Unit): XMLTag = {
-      new XMLTagWithOpen(name, openFunc, inner:_*)
-    }
   }
   private class XMLTagWithOpen(name: String, openFunc: => Unit, inner: XMLTag*) extends XMLTag(name, inner:_*) {
     override def open() = openFunc
@@ -101,6 +94,8 @@ object SAXParser {
 
   implicit class DSL(name: String) {
     def text(process: String => Unit): ProcessText = new ProcessText(name, process)
+    def tag(inner: XMLTag*): XMLTag = new XMLTag(name, inner:_*)
+    def tagWithOpen(open: => Unit, inner: XMLTag*): XMLTag = new XMLTagWithOpen(name, open, inner:_*)
   }
 
 
