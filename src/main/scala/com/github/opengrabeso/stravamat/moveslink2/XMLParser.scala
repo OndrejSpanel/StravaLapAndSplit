@@ -5,7 +5,7 @@ package moveslink2
 import java.io._
 
 import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
-import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
+import org.joda.time.format.DateTimeFormat
 import org.apache.commons.math.ArgumentOutsideDomainException
 import org.apache.commons.math.analysis.interpolation.SplineInterpolator
 import org.apache.commons.math.analysis.polynomials.PolynomialSplineFunction
@@ -14,7 +14,6 @@ import java.util.logging.Logger
 import Main._
 
 import scala.collection.immutable.SortedMap
-import scala.util._
 import shared.Util._
 
 import scala.collection.mutable.ArrayBuffer
@@ -23,7 +22,6 @@ object XMLParser {
   private val log = Logger.getLogger(XMLParser.getClass.getName)
   private val PositionConstant = 57.2957795131
 
-  private val dateFormat = ISODateTimeFormat.dateTimeNoMillis
   private val dateFormatNoZone = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(DateTimeZone.getDefault)
 
   def interpolate(spline: PolynomialSplineFunction, x: Double): Double = {
@@ -188,6 +186,7 @@ object XMLParser {
         var heartRate: Option[Int] = None
       }
       val samples = ArrayBuffer.empty[Sample]
+      val laps = ArrayBuffer.empty[Lap]
 
       def addSample(s: String) = samples += new Sample
       def readLatitude(s: String) = samples.last.latitude = Some(s.toDouble * XMLParser.PositionConstant)
@@ -219,6 +218,17 @@ object XMLParser {
             new XMLTag("Events",
               new XMLTag("Pause",
                 new ProcessText("State", text => paused = text.equalsIgnoreCase("true"))
+              ),
+              new XMLTag("Lap",
+                new ProcessText("Type", { text =>
+                  val lastTime = samples.reverseIterator.flatMap(_.time) //.find(_.isDefined)
+                  for (timestamp <- lastTime.toIterable.headOption) {
+                    laps += Lap(text, timestamp)
+                  }
+                })
+                // we are not interested about any Lap properties
+                //new ProcessText("Duration", ???),
+                //new ProcessText("Distance", ???)
               )
             )
 
@@ -264,17 +274,12 @@ object XMLParser {
 
       val hrStream = if (hrSamples.exists(_._2 != 0)) Some(new DataStreamHR(SortedMap(hrSamples: _*))) else None
 
-      val lapStream = Option.empty[DataStream]
-      /*
-      val lapStream = if (lapPoints.nonEmpty) {
-        Some(new DataStreamLap(SortedMap(lapPoints.map(l => l.timestamp -> l.name): _*)))
-      } else None
-      */
+      val lapTimes = parsed.laps.map(_.timestamp).filter(inRange)
 
       // TODO: read ActivityType from XML
       val sport = Event.Sport.Workout
 
-      val allStreams = Seq(distStream, gpsStream) ++ hrStream ++ lapStream
+      val allStreams = Seq(distStream, gpsStream) ++ hrStream
 
       val activity = for {
         startTime <- allStreams.flatMap(_.startTime).minOpt
@@ -287,7 +292,7 @@ object XMLParser {
         val events = Array[Event](BegEvent(id.startTime, sport), EndEvent(id.endTime))
 
         // TODO: avoid duplicate timestamp events
-        val lapEvents = lapStream.toList.flatMap(_.stream.keys.map(LapEvent))
+        val lapEvents = lapTimes.map(LapEvent)
 
         val allEvents = (events ++ lapEvents).sortBy(_.stamp)
 
