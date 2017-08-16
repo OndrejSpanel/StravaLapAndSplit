@@ -150,9 +150,7 @@ object XMLParser {
 
     import SAXParser._
 
-    case class XMLTag(name: String, process: String => Unit, inner: XMLTag*)
-
-    object parsed extends Events {
+    object parsed extends SAXParserWithGrammar {
       var rrData = Seq.empty[Int]
       var deviceName = Option.empty[String]
       var startTime = Option.empty[ZonedDateTime]
@@ -189,73 +187,45 @@ object XMLParser {
       }
       val samples = ArrayBuffer.empty[Sample]
 
-      def noProcess(s: String): Unit = {}
       def addSample(s: String) = samples += new Sample
       def readLatitude(s: String) = samples.last.latitude = Some(s.toDouble * XMLParser.PositionConstant)
       def readLongitude(s: String) = samples.last.longitude = Some(s.toDouble * XMLParser.PositionConstant)
 
-      case class XMLTag(name: String, process: String => Unit, inner: XMLTag*)
+      val grammar = new XMLTag("<root>",
+        new XMLTag("Device",
+          new ProcessText("Name", text => deviceName = Some(text))
+        ),
+        new XMLTag("Header",
+          new ProcessText("Distance", text => distance = text.toInt),
+          new ProcessText("DateTime", text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
+          new ProcessText("Duration", text => durationMs = (text.toDouble * 1000).toInt)
+        ),
+        new XMLTag("R-R",
+          new ProcessText("Data", text => rrData = getRRArray(text))
+        ),
+        new XMLTag("Samples",
+          new XMLTag("Sample",
+            new ProcessText("Latitude", readLatitude),
+            new ProcessText("Longitude", readLongitude),
+            new ProcessText("GPSAltitude", text => samples.last.elevation = Some(text.toInt)),
+            // TODO: handle relative time when UTC is not present
+            new ProcessText("UTC", text => samples.last.time = Some(ZonedDateTime.parse(text))),
+            new ProcessText("Distance", text => samples.last.distance = Some(text.toDouble)),
+            new ProcessText("HR", text => samples.last.heartRate = Some(text.toInt)),
+            // TODO: add other properties (power, cadence, temperature ...)
 
-      val grammar = XMLTag("<root>",noProcess,
-        XMLTag("Samples", noProcess,
-          XMLTag("Sample", addSample,
-            XMLTag("Latitude", readLatitude),
-            XMLTag("Longitude", readLongitude)
-          )
+            new XMLTag("Events",
+              new XMLTag("Pause",
+                new ProcessText("State", text => paused = text.equalsIgnoreCase("true"))
+              )
+            )
+
+          ) {override def open() = samples += new Sample}
         )
       )
-
-      var inTags = List(grammar)
-
-      def open(path: Seq[String]) = {
-
-        path match {
-          case _ / "Samples" / "Sample" =>
-            samples append new Sample
-          case _ =>
-        }
-      }
-
-      def read(path: Seq[String], text: String) = {
-        path match {
-          case  _ / "Name" =>
-            deviceName = Some(text)
-          case  _ / "Header" / "Distance" =>
-            distance = text.toInt
-          case  _ / "Header" / "DateTime" =>
-            startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))
-          case  _ / "Header" / "Duration" =>
-            durationMs = (text.toDouble * 1000).toInt
-          case _ / "R-R" / "Data" =>
-            rrData = getRRArray(text)
-          case _ / "Events" / "Pause" / "State" =>
-            paused = text.equalsIgnoreCase("true")
-
-          case _ / "Sample" / "Latitude" =>
-            samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)
-          case _ / "Sample" / "Longitude" =>
-            samples.last.longitude = Some(text.toDouble * XMLParser.PositionConstant)
-          case _ / "Sample" / "GPSAltitude" =>
-            samples.last.elevation = Some(text.toInt)
-          case _ / "Sample" / "UTC" =>
-            samples.last.time = Some(ZonedDateTime.parse(text))
-          case _ / "Sample" / "Distance" =>
-            // expected in SampleType == periodic
-            samples.last.distance = Some(text.toDouble)
-          case _ / "Sample" / "HR" =>
-            samples.last.heartRate = Some(text.toInt)
-
-          case _ =>
-        }
-      }
-
-      def close(path: Seq[String]) = {}
     }
-    SAXParser.parse(inputStream)(parsed)
 
-    // convert to distance, GPS and HR streams
-    // TODO: add other properties (power, cadence, temperature ...)
-    // TODO: handle relative time when UTC is not present
+    SAXParser.parse(inputStream)(parsed)
 
     val distSamples = for {
       s <- parsed.samples

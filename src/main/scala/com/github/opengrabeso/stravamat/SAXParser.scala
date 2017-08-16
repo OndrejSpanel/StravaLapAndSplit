@@ -61,4 +61,52 @@ object SAXParser {
     val p = factory.newSAXParser()
     p.parse(doc, SaxHandler)
   }
+
+
+  trait TagHandler {
+    def open() = ()
+    def text(s: String) = ()
+    def close() = ()
+  }
+  class XMLTag(val name: String, val inner: XMLTag*) extends TagHandler
+
+  class ProcessText(name: String, process: String => Unit) extends XMLTag(name) {
+    override def text(s: String) = process(s)
+  }
+
+
+  trait SAXParserWithGrammar extends Events {
+    def grammar: XMLTag
+
+    var inTags = List(grammar)
+    // when closing, we need to know for which tags open was called
+    var known = List.empty[Boolean]
+
+    def open(path: Seq[String]) = {
+
+      val descendInto = inTags.head.inner.find(_.name == path.head) // TODO: optimize using Map
+      for (into <- descendInto) {
+        inTags = into :: inTags
+        into.open()
+      }
+      known = descendInto.isDefined :: known
+    }
+
+    def read(path: Seq[String], text: String) = {
+      if (known.head) {
+        inTags.head.text(text)
+      }
+    }
+
+    def close(path: Seq[String]) = {
+      if (known.head) {
+        assert(inTags.head.name == path.head)
+        inTags.head.close()
+        inTags = inTags.tail
+      }
+      known = known.tail
+    }
+
+
+  }
 }

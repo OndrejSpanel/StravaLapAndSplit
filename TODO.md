@@ -29,3 +29,6 @@ Optimize XML loading:
 
 ## Aalto - single string matching 
 - parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 37868
+
+## Aalto - grammar matching
+- parseXML Moveslink2/34FB984612000700-2017-08-14T06_49_23-0.sml: time 68243
