@@ -84,11 +84,11 @@ object XMLParser {
 
       def grammar = new XMLTag("<root>",
         new XMLTag("Device",
-          new ProcessText("FullName", text => parsed.deviceName = Some(text))
+          ProcessText("FullName")(text => parsed.deviceName = Some(text))
         ),
         new XMLTag("Move",
           new XMLTag("Header",
-            new ProcessText("Duration", {text =>
+            ProcessText("Duration") {text =>
               val durationPattern = Pattern.compile("(\\d+):(\\d+):(\\d+)\\.?(\\d*)")
               val matcher = durationPattern.matcher(text)
               val duration = if (matcher.matches) {
@@ -99,12 +99,12 @@ object XMLParser {
                 (hour * 3600 + minute * 60 + second) * 1000 + ms
               } else 0
               moves.last.durationMs = duration
-            }),
-            new ProcessText("Time", { text =>
+            },
+            ProcessText("Time") { text =>
               val startTime = parseTime(text, timezone)
               moves.last.startTime = Some(startTime)
-            }),
-            new ProcessText("Activity", {text =>
+            },
+            ProcessText("Activity") {text =>
               import MoveHeader.ActivityType._
               val sportType = Try(text.toInt).getOrElse(0)
               // TODO: add at least most common sports
@@ -115,7 +115,7 @@ object XMLParser {
                 case _ => Unknown
               }
               moves.last.activityType = activityType
-            })
+            }
             /* never used, no need to parse
             case _ / "Move" / "Header" / "Calories" =>
               moves.last.calories = Some(text.toInt)
@@ -125,22 +125,22 @@ object XMLParser {
 
           ),
           new XMLTag("Samples",
-            new ProcessText("Distance", {text =>
+            ProcessText("Distance") {text =>
               moves.last.distanceSamples = text.split(" ").dropWhile(_ == "").scanLeft(0.0)(_ + _.toDouble)
-            }),
-            new ProcessText("HR", {text =>
+            },
+            ProcessText("HR") {text =>
               def duplicateHead(strs: Seq[String]) = {
                 if (strs.head.isEmpty) strs.tail.head +: strs.tail
                 else strs
               }
 
               moves.last.heartRateSamples = duplicateHead(text.split(" ")).map(_.toInt)
-            })
+            }
             // TODO: Cadence, Power, Temperature ...
           ),
           new XMLTag("Marks",
             new XMLTag("Mark",
-              new ProcessText("Time", text => moves.last.lapDurations appendAll Try(parseDuration(text)).toOption)
+              ProcessText("Time")(text => moves.last.lapDurations appendAll Try(parseDuration(text)).toOption)
             )
           )
         ) {

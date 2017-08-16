@@ -188,47 +188,37 @@ object XMLParser {
       val samples = ArrayBuffer.empty[Sample]
       val laps = ArrayBuffer.empty[Lap]
 
-      def addSample(s: String) = samples += new Sample
-      def readLatitude(s: String) = samples.last.latitude = Some(s.toDouble * XMLParser.PositionConstant)
-      def readLongitude(s: String) = samples.last.longitude = Some(s.toDouble * XMLParser.PositionConstant)
-
       def grammar = new XMLTag("<root>",
-        new XMLTag("Device",
-          new ProcessText("Name", text => deviceName = Some(text))
-        ),
+        new XMLTag("Device", ProcessText("Name")(text => deviceName = Some(text))),
         new XMLTag("Header",
-          new ProcessText("Distance", text => distance = text.toInt),
-          new ProcessText("DateTime", text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
-          new ProcessText("Duration", text => durationMs = (text.toDouble * 1000).toInt)
+          ProcessText("Distance")(text => distance = text.toInt),
+          ProcessText("DateTime")(text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
+          ProcessText("Duration")(text => durationMs = (text.toDouble * 1000).toInt)
         ),
-        new XMLTag("R-R",
-          new ProcessText("Data", text => rrData = getRRArray(text))
-        ),
+        new XMLTag("R-R", ProcessText("Data")(text => rrData = getRRArray(text))),
         new XMLTag("Samples",
           new XMLTag("Sample",
-            new ProcessText("Latitude", readLatitude),
-            new ProcessText("Longitude", readLongitude),
-            new ProcessText("GPSAltitude", text => samples.last.elevation = Some(text.toInt)),
+            ProcessText("Latitude")(text => samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)),
+            ProcessText("Longitude")(text => samples.last.longitude = Some(text.toDouble * XMLParser.PositionConstant)),
+            ProcessText("GPSAltitude")(text => samples.last.elevation = Some(text.toInt)),
             // TODO: handle relative time when UTC is not present
-            new ProcessText("UTC", text => samples.last.time = Some(ZonedDateTime.parse(text))),
-            new ProcessText("Distance", text => samples.last.distance = Some(text.toDouble)),
-            new ProcessText("HR", text => samples.last.heartRate = Some(text.toInt)),
+            ProcessText("UTC")(text => samples.last.time = Some(ZonedDateTime.parse(text))),
+            ProcessText("Distance")(text => samples.last.distance = Some(text.toDouble)),
+            ProcessText("HR")(text => samples.last.heartRate = Some(text.toInt)),
             // TODO: add other properties (power, cadence, temperature ...)
 
             new XMLTag("Events",
-              new XMLTag("Pause",
-                new ProcessText("State", text => paused = text.equalsIgnoreCase("true"))
-              ),
+              new XMLTag("Pause", ProcessText("State")(text => paused = text.equalsIgnoreCase("true"))),
               new XMLTag("Lap",
-                new ProcessText("Type", { text =>
+                ProcessText("Type") { text =>
                   val lastTime = samples.reverseIterator.flatMap(_.time) //.find(_.isDefined)
                   for (timestamp <- lastTime.toIterable.headOption) {
                     laps += Lap(text, timestamp)
                   }
-                })
+                }
                 // we are not interested about any Lap properties
-                //new ProcessText("Duration", ???),
-                //new ProcessText("Distance", ???)
+                //ProcessText("Duration", ???),
+                //ProcessText("Distance", ???)
               )
             )
 
