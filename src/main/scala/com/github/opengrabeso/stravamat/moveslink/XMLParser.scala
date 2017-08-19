@@ -92,7 +92,10 @@ object XMLParser {
               val DurationPattern = "(\\d+):(\\d+):(\\d+)\\.?(\\d*)".r
               object Int {
                 // handle s == null correctly, handles missing milliseconds
-                def unapply(s : String) : Option[Int] = Option(s).map(_.toInt)
+                def unapply(s : String) : Option[Int] = Option(s).map {
+                  case "" => 0
+                  case x => x.toInt
+                }
               }
 
               val duration: Int = text match {
