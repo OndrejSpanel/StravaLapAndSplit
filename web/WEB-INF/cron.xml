@@ -2,7 +2,7 @@
   <cron>
     <url>/_ah/sessioncleanup?clear</url>
     <description>Clean up sessions</description>
-    <schedule>every 2 hours</schedule>
+    <schedule>every 6 hours</schedule>
   </cron>
   <cron>
     <url>/cleanup?periodic</url>
