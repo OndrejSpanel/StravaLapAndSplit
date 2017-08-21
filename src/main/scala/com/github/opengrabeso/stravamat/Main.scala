@@ -269,19 +269,25 @@ object Main {
       val maxPoints = 1000
       if (gps.stream.size < maxPoints) gps.stream.toList
       else {
-        val ratio = gps.stream.size / maxPoints
-        val gpsSeq = gps.stream.toList
+        // first apply generic GPS optimization
+        val data = gps.optimize
 
-        val groups = gpsSeq.grouped(ratio).toList
+        if (data.stream.size < maxPoints) data.stream.toList
+        else {
+          val ratio = (data.stream.size / maxPoints.toDouble).ceil.toInt
+          val gpsSeq = data.stream.toList
 
-        // take each n-th
-        val allButLast = groups.dropRight(1).map(_.head)
-        // always take the last one
-        val lastGroup = groups.last
-        val last = if (lastGroup.lengthCompare(1) > 0) lastGroup.take(1) ++ lastGroup.takeRight(1)
-        else lastGroup
+          val groups = gpsSeq.grouped(ratio).toList
 
-        allButLast ++ last
+          // take each n-th
+          val allButLast = groups.dropRight(1).map(_.head)
+          // always take the last one
+          val lastGroup = groups.last
+          val last = if (lastGroup.lengthCompare(1) > 0) lastGroup.take(1) ++ lastGroup.takeRight(1)
+          else lastGroup
+
+          allButLast ++ last
+        }
       }
     }
 
@@ -686,7 +692,7 @@ object Main {
 
       val dist = new DataStreamDist(SortedMap(timeValues zip distValues:_*))
       val latlng = new DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
-      val attributes =  attributeValues.flatMap { case (name, values) =>
+      val attributes =  attributeValues.flatMap { case (name, values) if values.nonEmpty =>
           name match {
             case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
             case _ => Some(new DataStreamAttrib(name, SortedMap(timeValues zip values:_*)))
