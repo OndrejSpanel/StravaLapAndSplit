@@ -176,6 +176,8 @@ object Main {
   object namespace {
     // stage are data visible to the user
     val stage = "stage"
+    // stage are data visible to the user
+    val edit = "edit"
     // file upload progress
     val uploadProgress = "upload-progress"
     // upload - invisible data, used to hand data to the background upload tasks

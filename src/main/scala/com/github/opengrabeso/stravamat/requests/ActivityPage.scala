@@ -537,54 +537,10 @@ trait ActivityRequestHandler {
   }
 }
 
-object ActivityPage extends DefineRequest("/activity") with ActivityRequestHandler {
 
-  override def html(request: Request, resp: Response) = {
-
-    val session = request.session()
-    val auth = session.attribute[StravaAuthResult]("auth")
-    val actId = request.queryParams("activityId")
-
-    val fileId = FileId.parse(actId)
-
-    val activityData = Storage.load2nd[ActivityEvents](namespace.stage, fileId.filename, auth.userId).get
-
-    val content = activityHtmlContent(fileId, activityData, session, resp)
-
-    <html>
-      <head>
-        <title>Stravamat</title>
-        {headPrefix}
-        {content.head}
-      </head>
-      <body>
-        {bodyHeader(auth)}
-        {activityData.id.hrefLink}
-
-        <form action ="download" method="get">
-          <input type="hidden" name="id" value={activityData.id.id.toString}/>
-          <input type="hidden" name="auth_token" value={auth.token.toString}/>
-          <input type="hidden" name="operation" value="copy"/>
-          <input type="submit" value="Backup original activity"/>
-        </form>
-        {content.body}
-        {bodyFooter}
-      </body>
-    </html>
-  }
-
-
-}
-
-object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityRequestHandler {
+object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
   def saveAsNeeded(activityData: ActivityEvents)(implicit auth: StravaAuthResult) = {
-    activityData.id.id match {
-      case id: FileId.TempId =>
-        // TODO: cleanup obsolete session data
-        // TODO: use a different namespace to save processed data
-        Storage.store(namespace.stage, id.filename, auth.userId, activityData.header, activityData)
-      case _ =>
-    }
+    Storage.store(namespace.edit, activityData.id.id.filename, auth.userId, activityData.header, activityData)
     activityData
   }
 
@@ -640,9 +596,34 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
     if (toMerge.nonEmpty) {
       val activityData = saveAsNeeded(toMerge.reduceLeft(_ merge _))
 
-      // merged content
-      val content = activityHtmlContent(activityData.id.id, activityData, session, resp)
+      // report back the edited ID
+      <activity>
+        <id>
+          {activityData.id.id}
+        </id>
+      </activity>
+    }
+    else {
+      <activity>
+        <none>
+        </none>
+      </activity>
+    }
+  }
 
+}
+
+
+object EditActivity extends DefineRequest("edit-activity") with ActivityRequestHandler {
+  override def html(req: Request, resp: Response) = {
+
+    val session = req.session()
+    implicit val auth = session.attribute[StravaAuthResult]("auth")
+    val id = req.queryParams("id")
+    val actId = FileId.parse(id)
+
+    Storage.load2nd[Main.ActivityEvents](Main.namespace.edit, actId.filename, auth.userId).map { activityData =>
+      val content = activityHtmlContent(actId, activityData, session, resp)
       <html>
         <head>
           <title>Stravamat</title>{headPrefix}{content.head}
@@ -651,17 +632,22 @@ object ActivityPagePost extends DefineRequest.Post("/activity") with ActivityReq
           {bodyHeader(auth)}{activityData.id.hrefLink}{content.body}{bodyFooter}
         </body>
       </html>
-    }
-    else {
+
+    }.getOrElse {
       <html>
         <head>
           <title>Stravamat</title>{headPrefix}
         </head>
         <body>
-          Empty - no activity selected
+          {bodyHeader(auth)}
+            No activity data
+          {bodyFooter}
         </body>
       </html>
-    }
-  }
 
+    }
+
+
+
+  }
 }

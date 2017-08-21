@@ -13,6 +13,8 @@ trait FileStore {
       Some(90)
     } else if (name.contains("/" + namespace.settings + "/")) {
       Some(365)
+    } else if (name.contains("/" + namespace.edit + "/")) {
+      Some(14)
     } else if (name.contains("/" + namespace.uploadProgress + "/")) { // must be listed before namespace.upload, that would match more eagerly
       Some(maxSessionAge)
     } else if (name.contains("/" + namespace.uploadResult(""))) {

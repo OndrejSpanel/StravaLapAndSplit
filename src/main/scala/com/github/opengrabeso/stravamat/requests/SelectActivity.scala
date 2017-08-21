@@ -237,7 +237,27 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
               cache: false,
               processData: false,
               success: function(response) {
+                  // response is XML id code of the activity to redirect to
+
                   window.location.reload(false);
+              },
+            });
+          }
+
+          function submitEdit() {
+            var form = $("#process-form");
+            $.ajax({
+              type: "post",
+              url: "merge-activity",
+              data: new FormData(form[0]),
+              contentType: false,
+              cache: false,
+              processData: false,
+              success: function(response) {
+                var idElem = $(response).find("id");
+                if (idElem.length > 0) {
+                  window.location = "edit-activity?id=" + idElem.first().text().trim()
+                }
               },
             });
           }
@@ -314,6 +334,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
         <button id="upload_button" onclick="submitProcess()">Process...</button>
         {uploadResultsHtml()}
         <button onclick="submitDelete()">Delete from Stravamat</button>
+        <button onclick="submitEdit()">Merge and edit...</button>
         {bodyFooter}
         <script>{xml.Unparsed(
           //language=JavaScript
