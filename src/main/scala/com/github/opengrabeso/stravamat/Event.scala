@@ -39,7 +39,7 @@ sealed abstract class Event {
   protected def listSplitTypes: Seq[EventKind] = {
     Sport.values.map { s =>
       val sport = s.toString
-      EventKind(s"split$sport", s"Activity: $sport")
+      EventKind(s"split$sport", s"- $sport")
     }(collection.breakOut)
   }
 
@@ -108,7 +108,7 @@ case class EndEvent(stamp: ZonedDateTime) extends Event {
 @SerialVersionUID(10)
 case class BegEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
-  def description = "<b>*** Start activity</b>"
+  def description = "<b>Start</b>"
   def defaultEvent = s"split${sport.toString}"
   def isSplit = true
 

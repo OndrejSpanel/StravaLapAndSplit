@@ -142,7 +142,7 @@ trait ActivityRequestHandler {
     function splitLink(id, event) {
       var time = event[1];
       var downloadButton = linkWithEvents(id, time, "download", "Download");
-      var uploadButton = linkWithEvents(id, time, "upload-strava", "Upload to Strava");
+      var uploadButton = linkWithEvents(id, time, "upload-strava", "To Strava");
 
       var nextSplit = null;
       events.forEach( function(e) {
