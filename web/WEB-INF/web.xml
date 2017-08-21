@@ -49,7 +49,7 @@
 
 
   <context-param>
-    <param-name>org.mortbay.jetty.servlet.SessionURL</param-name>
+    <param-name>org.eclipse.jetty.servlet.SessionIdPathParameterName</param-name>
     <param-value>none</param-value>
   </context-param>
 </web-app>
