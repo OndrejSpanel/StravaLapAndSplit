@@ -49,11 +49,11 @@ lazy val stravamat = (project in file("."))
     libraryDependencies ++= commonLibs ++ Seq(
       "com.google.http-client" % "google-http-client-appengine" % "1.22.0",
       "com.google.http-client" % "google-http-client-jackson2" % "1.22.0",
-      "com.google.apis" % "google-api-services-storage" % "v1-rev92-1.22.0",
+      "com.google.apis" % "google-api-services-storage" % "v1-rev110-1.22.0",
       "com.google.appengine.tools" % "appengine-gcs-client" % "0.6",
 
       "javax.servlet" % "servlet-api" % "2.5" % "provided",
-      "org.mortbay.jetty" % "jetty" % "6.1.22" % "container",
+      "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406" % "container",
 
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
       "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
