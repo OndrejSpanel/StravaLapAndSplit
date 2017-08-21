@@ -3,7 +3,7 @@ package requests
 
 import spark.{Request, Response}
 
-object ActivityFromStrava extends DefineRequest("/activityFromStrava") with ActivityRequestHandler {
+object ActivityFromStrava extends DefineRequest("/activityFromStrava") {
 
   override def html(request: Request, resp: Response) = {
     val session = request.session()

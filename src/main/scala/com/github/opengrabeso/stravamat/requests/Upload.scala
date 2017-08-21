@@ -11,7 +11,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload
 import org.apache.commons.io.IOUtils
 import spark.{Request, Response}
 
-object Upload extends DefineRequest.Post("/upload") with ActivityRequestHandler {
+object Upload extends DefineRequest.Post("/upload") {
   override def html(request: Request, resp: Response) = {
     val session = request.session
     val auth = session.attribute[Main.StravaAuthResult]("auth")

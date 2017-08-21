@@ -11,7 +11,7 @@ import scala.xml.{Elem, NodeSeq}
 import org.joda.time.{DateTime => ZonedDateTime}
 import shared.Util._
 
-object PushStart extends DefineRequest("/push-start") with ActivityRequestHandler {
+object PushStart extends DefineRequest("/push-start") {
 
   override def urlPrefix = "push-"
 

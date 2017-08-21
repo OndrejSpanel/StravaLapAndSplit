@@ -2,7 +2,7 @@ package com.github.opengrabeso.stravamat
 package requests
 import spark.{Request, Response}
 
-object SaveSettings extends DefineRequest.Post("/save-settings") with ActivityRequestHandler {
+object SaveSettings extends DefineRequest.Post("/save-settings") {
   def html(request: Request, resp: Response) = {
     val session = request.session
     val auth = session.attribute[Main.StravaAuthResult]("auth")
