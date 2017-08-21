@@ -692,7 +692,7 @@ object Main {
 
       val dist = new DataStreamDist(SortedMap(timeValues zip distValues:_*))
       val latlng = new DataStreamGPS(SortedMap(timeValues zip latLngAltValues:_*))
-      val attributes =  attributeValues.flatMap { case (name, values) if values.nonEmpty =>
+      val attributes =  attributeValues.filter(_._2.nonEmpty).flatMap { case (name, values) =>
           name match {
             case "heartrate" => Some(new DataStreamHR(SortedMap(timeValues zip values:_*)))
             case _ => Some(new DataStreamAttrib(name, SortedMap(timeValues zip values:_*)))
