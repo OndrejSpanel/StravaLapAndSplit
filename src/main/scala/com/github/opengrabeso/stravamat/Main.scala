@@ -202,7 +202,9 @@ object Main {
   case object NoActivity
 
   @SerialVersionUID(11L)
-  case class ActivityHeader(id: ActivityId, hasGPS: Boolean, hasAttributes: Boolean, stats: SpeedStats)
+  case class ActivityHeader(id: ActivityId, hasGPS: Boolean, hasAttributes: Boolean, stats: SpeedStats) {
+    override def toString = id.toString
+  }
 
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {

@@ -110,7 +110,11 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
     val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
     val before = ignoreBefore(stravaActivities)
 
+    //println(s"Ignore before $before")
+
     val recentActivities = stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
+    //println(s"Staged ${stagedActivities.mkString("\n  ")}")
+    //println(s"Recent ${recentActivities.mkString("\n  ")}")
 
     // match recent activities against Strava activities
     // a significant overlap means a match
@@ -302,6 +306,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
               val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
 
               for ((actEvents, actStrava) <- recentToStrava) yield {
+                //println(s"  act $actEvents $actStrava")
                 val act = actEvents.id
                 val ignored = mostRecentStrava.exists(_ > act.endTime)
                 // once any activity is present on Strava, do not offer upload by default any more
@@ -316,6 +321,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                     } else if (act.sportName != detected) {
                       s"${act.sportName}->$detected"
                     } else act.sportName
+                    //println(s"    $detected")
                     }
                   </td>
                   <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
