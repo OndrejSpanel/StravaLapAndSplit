@@ -81,19 +81,23 @@ object Storage extends FileStore {
   }
 
   def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
+    object FormatChanged {
+      def unapply(arg: Exception): Option[Exception] = arg match {
+        case _: java.io.InvalidClassException => Some(arg) // bad serialVersionUID
+        case _: ClassNotFoundException => Some(arg) // class / package names changed
+        case _: ClassCastException => Some(arg) // class changed (like Joda time -> java.time)
+        case _ => None
+      }
+    }
     //println(s"load '$filename' - '$userId'")
     val is = input(userFilename(namespace, filename, userId))
     try {
       val ois = new ObjectInputStream(is)
       readSingleObject[T](ois)
     } catch {
-      case ex: FileNotFoundException =>
+      case _: FileNotFoundException =>
         None
-      case x: java.io.InvalidClassException => // bad serialVersionUID
-        println(s"load error ${x.getMessage} - $filename")
-        delete(namespace, filename, userId)
-        None
-      case x: ClassNotFoundException => // class / package names changed
+      case FormatChanged(x) =>
         println(s"load error ${x.getMessage} - $filename")
         delete(namespace, filename, userId)
         None
