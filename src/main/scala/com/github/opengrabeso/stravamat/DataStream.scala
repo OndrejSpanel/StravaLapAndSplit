@@ -11,7 +11,7 @@ import scala.annotation.tailrec
 @SerialVersionUID(-4477339787979943124L)
 case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(in_accuracy: Option[Double]) {
   @transient
-  val accuracy: Option[Double] = if (in_accuracy != null) in_accuracy else None
+  def accuracy: Option[Double] = if (in_accuracy != null) in_accuracy else None
 }
 
 case class HRPoint(hr: Int, dist: Double)
