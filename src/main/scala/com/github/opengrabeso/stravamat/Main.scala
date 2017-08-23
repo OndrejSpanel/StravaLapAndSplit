@@ -624,28 +624,24 @@ object Main {
 
       @tailrec
       def cleanAccuracy(
-        todoGPS: List[gps.ItemWithTime], todoDist: List[dist.ItemWithTime],
-        doneGPS: List[gps.ItemWithTime], doneDist: List[dist.ItemWithTime]
-      ): (List[gps.ItemWithTime], List[dist.ItemWithTime]) = {
+        todoGPS: List[gps.ItemWithTime], droppedGPS: List[ZonedDateTime]
+      ): List[ZonedDateTime] = {
         // TODO: skip only longer parts
         todoGPS match {
           case firstGPS :: secondGPS :: tailGPS if canBeSkipped(firstGPS, secondGPS) =>
-            val (firstDist, secondTailDist) = todoDist.span(_._1 <= firstGPS._1)
-            val (_, tailDist) = secondTailDist.span(_._1 <= secondGPS._1)
-            cleanAccuracy(firstGPS :: tailGPS, firstDist.reverse ++ tailDist, doneGPS, doneDist)
+            cleanAccuracy(firstGPS :: tailGPS, secondGPS._1 :: droppedGPS)
           case headGPS :: tailGPS =>
-            val (headDist, tailDist) = todoDist.span(_._1 <= headGPS._1)
-            cleanAccuracy(tailGPS, tailDist, headGPS :: doneGPS, headDist.reverse ++ doneDist)
+            cleanAccuracy(tailGPS, droppedGPS)
           case _ =>
-            (doneGPS, doneDist ++ todoDist.reverse)
+            droppedGPS
         }
       }
 
-      val distRoute = DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
-      val (cleanGPS, cleanDistRoute) = cleanAccuracy(gps.stream.toList, distRoute.toList, Nil, Nil)
-      val cleanDist = DataStreamGPS.routeStreamFromDistStream(cleanDistRoute.reverse)
+      //val distRoute = DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
+      val cleanGPS = cleanAccuracy(gps.stream.toList, Nil)
+      //val cleanDist = DataStreamGPS.routeStreamFromDistStream(cleanDistRoute.reverse)
 
-      copy(gps = gps.pickData(SortedMap(cleanGPS:_*)), dist = dist.pickData(cleanDist))
+      //copy(gps = gps.pickData(SortedMap(cleanGPS:_*)), dist = dist.pickData(cleanDist))
       this
 
     }
