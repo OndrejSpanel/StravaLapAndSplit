@@ -227,7 +227,7 @@ object DataStreamGPS {
         val duration = newWindow.duration
         val windowSpeed = prev.speed
         val interval = Seconds.secondsBetween(prev.endTime, todo.head._1).getSeconds
-        val smoothDist = (windowSpeed * duration + todo.head._2) / (duration + interval)
+        val smoothDist = if (duration + interval > 0) (windowSpeed * duration + todo.head._2) / (duration + interval) else 0
         smoothingRecurse((todo.head._1 -> smoothDist) +: done, newWindow, todo.tail)
       }
     }
