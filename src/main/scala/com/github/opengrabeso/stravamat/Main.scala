@@ -213,7 +213,7 @@ object Main {
       if (gps.stream.nonEmpty) {
         gps.distStream
       } else {
-        DataStreamGPS.distStreamFromRouteStream(dist.stream)
+        DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
       }
     }
 
@@ -446,7 +446,7 @@ object Main {
       //val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
       val distStream = if (this.dist.nonEmpty) {
-        DataStreamGPS.distStreamFromRouteStream(this.dist.stream)
+        DataStreamGPS.distStreamFromRouteStream(this.dist.stream.toSeq)
       } else {
         this.gps.distStream
       }
@@ -610,17 +610,42 @@ object Main {
       copy(events = cleanedEvents.toArray)
     }
 
+
     def cleanPositionErrors: ActivityEvents = {
 
       // find parts where the movement is less then accuracy (EHPE)
-
-      def cleanAccuracy(todo: List[gps.ItemWithTime], done: List[gps.ItemWithTime]): List[gps.ItemWithTime] = {
-        ???
+      def canBeSkipped(first: (ZonedDateTime, GPSPoint), second: (ZonedDateTime, GPSPoint)) = {
+        val gpsA = first._2
+        val gpsB = second._2
+        val dist = gpsA distance gpsB
+        val accuracy = gpsA.accuracy + gpsB.accuracy
+        dist <= accuracy
       }
 
-      val cleanGPS = cleanAccuracy(gps.stream.toList, Nil)
+      @tailrec
+      def cleanAccuracy(
+        todoGPS: List[gps.ItemWithTime], todoDist: List[dist.ItemWithTime],
+        doneGPS: List[gps.ItemWithTime], doneDist: List[dist.ItemWithTime]
+      ): (List[gps.ItemWithTime], List[dist.ItemWithTime]) = {
+        // TODO: skip only longer parts
+        todoGPS match {
+          case firstGPS :: secondGPS :: tailGPS if canBeSkipped(firstGPS, secondGPS) =>
+            val (firstDist, secondTailDist) = todoDist.span(_._1 <= firstGPS._1)
+            val (_, tailDist) = secondTailDist.span(_._1 <= secondGPS._1)
+            cleanAccuracy(firstGPS :: tailGPS, firstDist.reverse ++ tailDist, doneGPS, doneDist)
+          case headGPS :: tailGPS =>
+            val (headDist, tailDist) = todoDist.span(_._1 <= headGPS._1)
+            cleanAccuracy(tailGPS, tailDist, headGPS :: doneGPS, headDist.reverse ++ doneDist)
+          case _ =>
+            (doneGPS, doneDist ++ todoDist.reverse)
+        }
+      }
 
-      copy(gps = gps.pickData(SortedMap(cleanGPS:_*)))
+      val distRoute = DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
+      val (cleanGPS, cleanDistRoute) = cleanAccuracy(gps.stream.toList, distRoute.toList, Nil, Nil)
+      val cleanDist = DataStreamGPS.routeStreamFromDistStream(cleanDistRoute.reverse)
+
+      copy(gps = gps.pickData(SortedMap(cleanGPS:_*)), dist = dist.pickData(cleanDist))
       this
 
     }
@@ -724,7 +749,7 @@ object Main {
 
       val latLngAltValues = if (altValues.isEmpty) latlngValues else {
         (latlngValues zip altValues).map { case (gps,alt) =>
-            gps.copy(elevation = Some(alt.toInt))(gps.accuracy)
+            gps.copy(elevation = Some(alt.toInt))(Some(gps.accuracy))
         }
       }
 

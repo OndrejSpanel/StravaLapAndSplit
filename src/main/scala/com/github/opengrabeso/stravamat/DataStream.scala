@@ -11,7 +11,11 @@ import scala.annotation.tailrec
 @SerialVersionUID(-4477339787979943124L)
 case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(in_accuracy: Option[Double]) {
   @transient
-  def accuracy: Option[Double] = if (in_accuracy != null) in_accuracy else None
+  def accuracy: Double = if (in_accuracy != null) in_accuracy.getOrElse(0) else 0
+
+  def distance(that: GPSPoint): Double = {
+    GPS.distance(this.latitude, this.longitude, that.latitude, that.longitude)
+  }
 }
 
 case class HRPoint(hr: Int, dist: Double)
@@ -256,16 +260,16 @@ object DataStreamGPS {
     SortedMap((gpsKeys.head -> 0.0) +: gpsDistances:_*)
   }
 
-  def routeStreamFromDistStream(distDeltas: DistStream): DistStream = {
+  def routeStreamFromDistStream(distDeltas: Seq[(ZonedDateTime, Double)]): DistStream = {
     val route = distDeltas.scanLeft(0d) { case (sum, (_, d)) => sum + d }
     // scanLeft adds initial value as a first element - use tail to drop it
     val ret = distDeltas.map(_._1) zip route.tail
     SortedMap(ret.toSeq:_*)
   }
 
-  def distStreamFromRouteStream(dist: DistStream): DistStream = {
-    val times = dist.map(_._1).toSeq
-    val routeValues = dist.map(_._2).toSeq
+  def distStreamFromRouteStream(dist: Seq[(ZonedDateTime, Double)]): DistStream = {
+    val times = dist.map(_._1)
+    val routeValues = dist.map(_._2)
     val distValues = 0.0 +: (routeValues zip routeValues.drop(1)).map(p => p._2 - p._1)
     val ret = times zip distValues
     SortedMap(ret:_*)
@@ -590,7 +594,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       val interpolatedLon = lerp(first._2.longitude, third._2.longitude, secondFactor)
       // ignore elevation, it is too chaotic anyway
       val secondInterpolated = GPSPoint(latitude = interpolatedLat, longitude = interpolatedLon, elevation = None)(None)
-      val dist = GPS.distance(secondInterpolated.latitude, secondInterpolated.longitude, second._2.latitude, second._2.longitude)
+      val dist = secondInterpolated distance second._2
       val maxDist = 1
       dist < maxDist
     }
