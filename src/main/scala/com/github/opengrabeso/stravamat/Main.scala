@@ -610,6 +610,21 @@ object Main {
       copy(events = cleanedEvents.toArray)
     }
 
+    def cleanPositionErrors: ActivityEvents = {
+
+      // find parts where the movement is less then accuracy (EHPE)
+
+      def cleanAccuracy(todo: List[gps.ItemWithTime], done: List[gps.ItemWithTime]): List[gps.ItemWithTime] = {
+        ???
+      }
+
+      val cleanGPS = cleanAccuracy(gps.stream.toList, Nil)
+
+      copy(gps = gps.pickData(SortedMap(cleanGPS:_*)))
+      this
+
+    }
+
   }
 
   trait ActivityStreams {
