@@ -669,7 +669,7 @@ object Main {
         val elements = gpsItem.elements
         val lat = elements.next.asDouble
         val lng = elements.next.asDouble
-        GPSPoint(lat, lng, None)
+        GPSPoint(lat, lng, None)(None)
       }
 
       val timeRelValues = getDataByName("time", _.asInt)
@@ -679,7 +679,7 @@ object Main {
 
       val latLngAltValues = if (altValues.isEmpty) latlngValues else {
         (latlngValues zip altValues).map { case (gps,alt) =>
-            gps.copy(elevation = Some(alt.toInt))
+            gps.copy(elevation = Some(alt.toInt))(gps.accuracy)
         }
       }
 

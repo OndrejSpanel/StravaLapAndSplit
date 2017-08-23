@@ -36,7 +36,7 @@ object XMLParser {
       var durationMs: Int = 0
       var paused: Boolean = false
       var pauseStartTime = Option.empty[ZonedDateTime]
-      class Sample{
+      class Sample {
         /* GPS Track Pod example:
         <Sample>
           <Latitude>0.86923005364868888</Latitude>
@@ -60,6 +60,7 @@ object XMLParser {
         var distance = Option.empty[Double]
         var latitude = Option.empty[Double]
         var longitude = Option.empty[Double]
+        var accuracy = Option.empty[Double]
         var elevation: Option[Int] = None
         var heartRate: Option[Int] = None
       }
@@ -80,6 +81,7 @@ object XMLParser {
             "Latitude" text (text => samples.last.latitude = Some(text.toDouble * XMLParser.PositionConstant)),
             "Longitude" text (text => samples.last.longitude = Some(text.toDouble * XMLParser.PositionConstant)),
             "GPSAltitude" text (text => samples.last.elevation = Some(text.toInt)),
+            "EHPE" text (text => samples.last.accuracy = Some(text.toInt)),
             // TODO: handle relative time when UTC is not present
             "UTC" text (text => samples.last.time = Some(ZonedDateTime.parse(text))),
             "Distance" text (text => samples.last.distance = Some(text.toDouble)),
@@ -114,7 +116,7 @@ object XMLParser {
       latitude <- s.latitude
       time <- s.time
     } yield {
-      time -> GPSPoint(latitude, longitude, s.elevation)
+      time -> GPSPoint(latitude, longitude, s.elevation)(s.accuracy)
     }
 
     val ret = for (gpsInterestingRange <- DataStreamGPS.dropAlmostEmpty(gpsSamples.toList)) yield {

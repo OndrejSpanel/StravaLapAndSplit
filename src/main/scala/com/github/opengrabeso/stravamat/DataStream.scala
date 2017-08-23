@@ -1,6 +1,5 @@
 package com.github.opengrabeso.stravamat
 
-import com.github.opengrabeso.collections.CyclicVector
 import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.immutable.SortedMap
@@ -9,7 +8,12 @@ import shared.Timing
 
 import scala.annotation.tailrec
 
-case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])
+@SerialVersionUID(-4477339787979943124L)
+case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(in_accuracy: Option[Double]) {
+  @transient
+  val accuracy: Option[Double] = if (in_accuracy != null) in_accuracy else None
+}
+
 case class HRPoint(hr: Int, dist: Double)
 
 object DataStream {
@@ -583,7 +587,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       val interpolatedLat = lerp(first._2.latitude, third._2.latitude, secondFactor)
       val interpolatedLon = lerp(first._2.longitude, third._2.longitude, secondFactor)
       // ignore elevation, it is too chaotic anyway
-      val secondInterpolated = GPSPoint(latitude = interpolatedLat, longitude = interpolatedLon, elevation = None)
+      val secondInterpolated = GPSPoint(latitude = interpolatedLat, longitude = interpolatedLon, elevation = None)(None)
       val dist = GPS.distance(secondInterpolated.latitude, secondInterpolated.longitude, second._2.latitude, second._2.longitude)
       val maxDist = 1
       dist < maxDist

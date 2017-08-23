@@ -27,7 +27,7 @@ object FitImport {
 
   private def decodeLatLng(lat: Int, lng: Int, elev: Option[java.lang.Float]): GPSPoint = {
     val longLatScale = (1L << 31).toDouble / 180
-    GPSPoint(lat / longLatScale, lng / longLatScale, elev.map(_.toInt))
+    GPSPoint(lat / longLatScale, lng / longLatScale, elev.map(_.toInt))(None)
   }
 
 
