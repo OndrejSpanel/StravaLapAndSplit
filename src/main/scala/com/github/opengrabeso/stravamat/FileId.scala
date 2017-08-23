@@ -4,6 +4,7 @@ package com.github.opengrabeso.stravamat
 trait FileId {
   def filename: String
   def stravaId: String
+  def toReadableString: String = toString
 }
 
 object FileId {
@@ -35,6 +36,7 @@ object FileId {
   case class FilenameId(id: String) extends FileId {
     def filename = id
     def stravaId = ""
+    override def toReadableString: String = id
   }
 
   @SerialVersionUID(10L)

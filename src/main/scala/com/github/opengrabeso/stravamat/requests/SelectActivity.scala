@@ -330,7 +330,8 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                   <td>{displayDistance(act.distance)} km</td>
                   <td>{displaySeconds(act.duration)}</td>
                   <td>{htmlActivityAction(act.id, !ignored)}</td>
-                  <td>{actStrava.fold(<div>{act.id.toString}</div>)(_.hrefLink)}</td>
+                  <td>{actStrava.map(_.hrefLink).getOrElse(NodeSeq.Empty)}</td>
+                  <td>{act.id.toReadableString}</td>
                 </tr>
               }
             }
