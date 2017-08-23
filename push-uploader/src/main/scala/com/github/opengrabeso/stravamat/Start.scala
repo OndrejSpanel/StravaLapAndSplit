@@ -221,7 +221,11 @@ object Start extends App {
 
     val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
     val useGzip = true // !useLocal
-    val gzipEncoding = if (useGzip) Some(headers.`Content-Encoding`(HttpEncodings.gzip)) else None
+    // do not use encoding headers, as we want to encode / decoce on own own
+    // this was done to keep payload small as a workaround for https://issuetracker.google.com/issues/63371955
+    val gzipCustom = true
+    val encodingHeader = if (useGzip && !gzipCustom) Some(headers.`Content-Encoding`(HttpEncodings.gzip)) else None
+    val contentType = if (useGzip && gzipCustom) ContentTypes.`application/octet-stream` else ContentTypes.`text/plain(UTF-8)` // it is XML in fact, but not fully conformant
 
     val req = Http().singleRequest(
       HttpRequest(
@@ -251,7 +255,7 @@ object Start extends App {
         HttpRequest(
           uri = s"$stravaMatUrl/push-put-digest?$requestParams&path=$f",
           method = HttpMethods.POST,
-          headers = List(sessionCookie), // TODO: just testing, remove
+          headers = List(sessionCookie),
           entity = HttpEntity(digest)
         )
       ).flatMap { resp =>
@@ -267,8 +271,8 @@ object Start extends App {
               HttpRequest(
                 uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest",
                 method = HttpMethods.POST,
-                headers = List(sessionCookie) ++ gzipEncoding,
-                entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, bodyBytes) // it is XML in fact, but not fully conformant
+                headers = List(sessionCookie) ++ encodingHeader,
+                entity = HttpEntity(contentType, bodyBytes)
               )
             ).map { resp =>
               resp.discardEntityBytes()
