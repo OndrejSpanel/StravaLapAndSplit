@@ -88,6 +88,8 @@ sealed abstract class DataStream extends Serializable {
   }
 
   // should be discarded
+  def isEmpty: Boolean = stream.isEmpty
+  def nonEmpty: Boolean = stream.nonEmpty
   def isAlmostEmpty: Boolean
 
   // must not be discarded

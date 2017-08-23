@@ -540,7 +540,8 @@ trait ActivityRequestHandler {
 
 object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
   def saveAsNeeded(activityData: ActivityEvents)(implicit auth: StravaAuthResult) = {
-    Storage.store(namespace.edit, activityData.id.id.filename, auth.userId, activityData.header, activityData)
+    val prepare = activityData.processPausesAndEvents
+    Storage.store(namespace.edit, prepare.id.id.filename, auth.userId, prepare.header, prepare)
     activityData
   }
 
