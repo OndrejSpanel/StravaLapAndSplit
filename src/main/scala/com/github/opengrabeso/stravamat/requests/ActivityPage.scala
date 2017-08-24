@@ -542,7 +542,7 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
   def saveAsNeeded(activityData: ActivityEvents)(implicit auth: StravaAuthResult) = {
     val prepare = activityData.cleanPositionErrors.processPausesAndEvents
     Storage.store(namespace.edit, prepare.id.id.filename, auth.userId, prepare.header, prepare)
-    activityData
+    prepare
   }
 
   override def html(request: Request, resp: Response) = {

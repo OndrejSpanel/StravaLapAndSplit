@@ -619,30 +619,42 @@ object Main {
         val gpsB = second._2
         val dist = gpsA distance gpsB
         val accuracy = gpsA.accuracy + gpsB.accuracy
-        dist <= accuracy
+        val maxResult = 100.0
+        if (accuracy >= dist * maxResult) maxResult else accuracy / dist
       }
 
       @tailrec
-      def cleanAccuracy(
-        todoGPS: List[gps.ItemWithTime], droppedGPS: List[ZonedDateTime]
-      ): List[ZonedDateTime] = {
-        // TODO: skip only longer parts
+      def cleanAccuracy(todoGPS: List[gps.ItemWithTime], done: List[(ZonedDateTime, Double)]): List[(ZonedDateTime, Double)] = {
+        /* value 1.0 means the sample should be kept, 0.0 means it should be dropped */
         todoGPS match {
-          case firstGPS :: secondGPS :: tailGPS if canBeSkipped(firstGPS, secondGPS) =>
-            cleanAccuracy(firstGPS :: tailGPS, secondGPS._1 :: droppedGPS)
-          case headGPS :: tailGPS =>
-            cleanAccuracy(tailGPS, droppedGPS)
+          case first :: second :: tail =>
+            val v = canBeSkipped(first, second)
+            cleanAccuracy(second :: tail, (first._1, v) :: done)
+          case head :: tail =>
+            cleanAccuracy(tail, (head._1, 0.0) :: done)
           case _ =>
-            droppedGPS
+            done
         }
       }
 
-      //val distRoute = DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
-      val cleanGPS = cleanAccuracy(gps.stream.toList, Nil)
-      //val cleanDist = DataStreamGPS.routeStreamFromDistStream(cleanDistRoute.reverse)
+      val samplesToDrop = cleanAccuracy(gps.stream.toList, Nil).reverse
 
-      //copy(gps = gps.pickData(SortedMap(cleanGPS:_*)), dist = dist.pickData(cleanDist))
-      this
+      import Function._
+      // TODO: implement Gaussian blur instead of plain linear smoothing
+      val smoothToDrop = smoothing(samplesToDrop, 20)
+
+
+      // drop everything where smoothToDrop is above a threshold
+      val threshold = 15 // empirical, based on 34FB984612000700-2017-08-23T09_25_06-0.sml
+      val toDropIntervals = toIntervals(smoothToDrop, _ > threshold)
+
+      val gpsClean = dropIntervals(gps.stream, toDropIntervals)
+
+      val distRoute = DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
+      val distRouteClean = dropIntervals(distRoute, toDropIntervals)
+      val cleanDist = DataStreamGPS.routeStreamFromDistStream(distRouteClean.reverse)
+
+      copy(gps = gps.pickData(SortedMap(gpsClean:_*)), dist = dist.pickData(cleanDist))
 
     }
 

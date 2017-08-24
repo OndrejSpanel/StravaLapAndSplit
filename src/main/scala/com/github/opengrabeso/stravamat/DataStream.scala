@@ -208,47 +208,15 @@ object DataStreamGPS {
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
 
-    object Window {
-      def apply() = new Window(Vector.empty, 0)
-    }
-    case class Window(data: Vector[(ZonedDateTime, Double)], private val totalDistance: Double) {
-      def isEmpty = data.isEmpty
-      def begTime = data.head._1
-      def endTime = data.last._1
-      def duration = Seconds.secondsBetween(begTime, endTime).getSeconds
-      def distance = if (isEmpty) 0.0 else totalDistance - data.head._2 // first distance was before the first timestamp
-      def speed = if (duration > 0) distance / duration else 0.0
-      def keepSize = if (duration <= durationSec) this else Window(data.tail, totalDistance - data.head._2)
-      def :+ (item: (ZonedDateTime, Double)) = Window(data :+ item, totalDistance + item._2)
-    }
-
-    def smoothingRecurse(done: DistList, prev: Window, todo: DistList): DistList = {
-      if (todo.isEmpty) done
-      else if (prev.isEmpty) {
-        smoothingRecurse(todo.head +: done, prev :+ todo.head, todo.tail)
-      } else {
-        val newWindow = (prev :+ todo.head).keepSize
-        val duration = newWindow.duration
-        val windowSpeed = prev.speed
-        val interval = Seconds.secondsBetween(prev.endTime, todo.head._1).getSeconds
-        val smoothDist = if (duration + interval > 0) (windowSpeed * duration + todo.head._2) / (duration + interval) else 0
-        smoothingRecurse((todo.head._1 -> smoothDist) +: done, newWindow, todo.tail)
-      }
-    }
+    import Function._
 
     // fixSpeed(input) was called here, but it was used only because of sample timestamp misunderstanding
-    val smoothedList = smoothingRecurse(Nil, Window(), input.toList)
-    SortedMap(smoothedList.reverse:_*)
-  }
-
-  private def pairToDist(ab: (GPSPoint, GPSPoint)) = {
-    val (a, b) = ab
-    val rect = new GPSRect(a).merge(b)
-    rect.size
+    val smoothedList = smoothing(input.toList, durationSec)
+    SortedMap(smoothedList:_*)
   }
 
   def distStreamFromGPSList(gps: Seq[GPSPoint]): Seq[Double] = {
-    val gpsDistances = (gps zip gps.tail).map(pairToDist)
+    val gpsDistances = (gps zip gps.drop(1)).map {case (a,b) => a distance b}
     gpsDistances
   }
 
@@ -256,7 +224,7 @@ object DataStreamGPS {
     val gpsKeys = gps.keys.toSeq // toSeq needed to preserve order
     val gpsValues = gps.values.toSeq
     val gpsPairs = gpsKeys.drop(1) zip (gpsValues zip gpsValues.drop(1))
-    val gpsDistances = gpsPairs.map { case (t, p) => t -> pairToDist(p) }
+    val gpsDistances = gpsPairs.map { case (t, (pa, pb)) => t -> (pa distance pb) }
     SortedMap((gpsKeys.head -> 0.0) +: gpsDistances:_*)
   }
 
