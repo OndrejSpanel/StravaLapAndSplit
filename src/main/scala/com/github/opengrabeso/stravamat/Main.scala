@@ -476,7 +476,8 @@ object Main {
 
       //val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
-      val distStream = if (this.dist.nonEmpty) {
+      // prefer GPS, as this is already cleaned for accuracy error
+      val distStream = if (this.gps.isEmpty) {
         DataStreamGPS.distStreamFromRouteStream(this.dist.stream.toSeq)
       } else {
         this.gps.distStream
@@ -672,20 +673,55 @@ object Main {
 
       import Function._
       // TODO: implement Gaussian blur instead of plain linear smoothing
-      val smoothToDrop = smoothing(samplesToDrop, 20)
+      val smoothToDrop = smoothing(samplesToDrop, 5)
 
 
       // drop everything where smoothToDrop is above a threshold
-      val threshold = 15 // empirical, based on 34FB984612000700-2017-08-23T09_25_06-0.sml
+      val threshold = 2 // empirical, based on 34FB984612000700-2017-08-23T09_25_06-0.sml
       val toDropIntervals = toIntervals(smoothToDrop, _ > threshold)
 
       val gpsClean = dropIntervals(gps.stream, toDropIntervals)
+      val gpsStream = gps.pickData(SortedMap(gpsClean:_*))
 
-      val distRoute = DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
-      val distRouteClean = dropIntervals(distRoute, toDropIntervals)
-      val cleanDist = DataStreamGPS.routeStreamFromDistStream(distRouteClean.reverse)
+      // leave the dist measurement untouched, Strava should take care of that
+      // TODO: handle at least a special case of long removed pauses
+      val dropDist = false
+      val cleanDist = if (dropDist) {
+        val distDiff = DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
+        val distDiffClean = dropIntervals(distDiff, toDropIntervals)
 
-      copy(gps = gps.pickData(SortedMap(gpsClean:_*)), dist = dist.pickData(cleanDist))
+        //val origDist = distDiff.values.toSeq.sum
+        //val newDist = distDiffClean.map(_._2).sum
+        //println(s"Original distance $origDist, new distance $newDist")
+
+        //val removed = distDiff.keys.toSet diff distDiffClean.map(_._1).toSet
+
+        //val removedValues = distDiff.filter(removed contains _._1)
+
+        val gpsLowerBound = false
+        val fixedDistDiff = if (gpsLowerBound) {
+          val cleanDistFromGPS = gpsStream.distStream.toSeq
+          val cleanRouteFromGPS = DataStreamGPS.routeStreamFromDistStream(cleanDistFromGPS)
+
+          val ds = new DataStreamDist(gpsStream.distStream)
+
+          // use GPS based distance as a lower bound for sensor based distance, this should compensate for dropped samples
+          val distTimes = distDiffClean.map(_._1)
+          for (((beg, dist), end) <- distDiffClean zip distTimes.drop(1)) yield {
+            val distBeg = ds.distanceForTime(beg)
+            val distEnd = ds.distanceForTime(end)
+            beg -> ((distEnd - distBeg) max dist)
+          }
+        } else {
+          distDiffClean
+        }
+        val routeStream = DataStreamGPS.routeStreamFromDistStream(fixedDistDiff)
+        dist.pickData(routeStream)
+      } else {
+        this.dist
+      }
+
+      copy(gps = gpsStream, dist = cleanDist)
 
     }
 

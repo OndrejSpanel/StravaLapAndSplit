@@ -74,7 +74,7 @@ object Function {
           todoStream.toList.reverse ++ done
       }
     }
-    recurse(stream, toDropIntervals, Nil)
+    recurse(stream, toDropIntervals, Nil).reverse
   }
 
 }
