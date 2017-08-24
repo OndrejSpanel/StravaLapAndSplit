@@ -206,8 +206,21 @@ object Main {
     override def toString = id.toString
   }
 
+  object ActivityEvents {
+    def mergeAttributes(thisAttributes: Seq[DataStream], thatAttributes: Seq[DataStream]): Seq[DataStream] = {
+      val mergedAttr = thisAttributes.map { a =>
+        val aThat = thatAttributes.find(_.streamType == a.streamType)
+        val aStream = aThat.map(a.stream ++ _.stream).getOrElse(a.stream)
+        a.pickData(aStream.asInstanceOf[a.DataMap])
+      }
+      val notMergedFromThat = thatAttributes.find(ta => !thisAttributes.exists(_.streamType == ta.streamType))
+      mergedAttr ++ notMergedFromThat
+    }
+  }
+
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
+    import ActivityEvents._
 
     def computeDistStream = {
       if (gps.stream.nonEmpty) {
@@ -324,27 +337,45 @@ object Main {
 
       val eventsAndSportsSorted = (begsAdjusted ++ rest :+ ends.maxBy(_.stamp)).sortBy(_.stamp)
 
-      val mergedGPS = gps.pickData(gps.stream ++ that.gps.stream)
+      val startBegTimes = Seq(this.startTime, this.endTime, that.startTime, that.endTime).sorted
 
-      val (distFirst, distSecond) = if (dist.stream.head._1 < that.dist.stream.head._1) (dist, that.dist) else (that.dist, dist)
+      val timeIntervals = startBegTimes zip startBegTimes.tail
 
-      val offsetSecond = if (distSecond.stream.nonEmpty && distFirst.stream.nonEmpty) {
-        val offset = distFirst.distanceForTime(distSecond.stream.head._1)
-        distSecond.offsetDist(offset)
-      } else {
-        distSecond
+      val streams = for (timeRange <- timeIntervals) yield {
+        // do not merge overlapping distances, prefer distance from a GPS source
+        val thisGpsPart = this.gps.slice(timeRange._1, timeRange._2)
+        val thatGpsPart = that.gps.slice(timeRange._1, timeRange._2)
+
+        val thisDistPart = this.dist.slice(timeRange._1, timeRange._2)
+        val thatDistPart = that.dist.slice(timeRange._1, timeRange._2)
+
+        val thisAttrPart = this.attributes.map(_.slice(timeRange._1, timeRange._2))
+        val thatAttrPart = that.attributes.map(_.slice(timeRange._1, timeRange._2))
+
+        (
+          if (thisGpsPart.stream.size > thatGpsPart.stream.size) thisGpsPart else thatGpsPart,
+          if (thisDistPart.stream.size > thatDistPart.stream.size) thisDistPart else thatDistPart,
+          // assume we can use attributes from both sources, do not prefer one over another
+          mergeAttributes(thisAttrPart, thatAttrPart)
+        )
       }
 
-      val mergedDist = dist.pickData(distFirst.stream ++ offsetSecond.stream)
-      val mergedAttr = attributes.map { a =>
-        val aThat = that.attributes.find(_.streamType == a.streamType)
-        val aStream = aThat.map(a.stream ++ _.stream).getOrElse(a.stream)
-        a.pickData(aStream.asInstanceOf[a.DataMap])
-      }
-      val notMergedFromThat = that.attributes.find(ta => !attributes.exists(_.streamType == ta.streamType))
-      // if something was not merged,
+      // distance streams need offsetting
+      // when some part missing a distance stream, we need to compute the offset from GPS
 
-      ActivityEvents(mergedId, eventsAndSportsSorted, mergedDist, mergedGPS, mergedAttr ++ notMergedFromThat)
+      var offset = 0.0
+      val offsetStreams = for ((gps, dist, attr) <- streams) yield {
+        val partDist = dist.stream.lastOption.fold(gps.distStream.lastOption.fold(0.0)(_._2))(_._2)
+        val startOffset = offset
+        offset += partDist
+        (gps.stream, dist.offsetDist(startOffset).stream, attr)
+      }
+
+      val totals = offsetStreams.fold(offsetStreams.head) { case ((totGps, totDist, totAttr), (iGps, iDist, iAttr)) =>
+        (totGps ++ iGps, totDist ++ iDist, mergeAttributes(totAttr, iAttr))
+      }
+
+      ActivityEvents(mergedId, eventsAndSportsSorted, dist.pickData(totals._2), gps.pickData(totals._1), totals._3)
     }
 
     def editableEvents: Array[EditableEvent] = {
