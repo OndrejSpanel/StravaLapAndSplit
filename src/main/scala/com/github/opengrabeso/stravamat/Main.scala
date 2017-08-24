@@ -491,7 +491,7 @@ object Main {
 
       // find pause candidates: times when smoothed speed is very low
       val speedPauseMax = 0.7
-      val speedPauseAvg = 0.2
+      val speedPauseAvg = 0.4
 
       // select samples which are slow and the following is also slow (can be in the middle of the pause)
       type PauseStream = Seq[(ZonedDateTime, ZonedDateTime, Double)]
@@ -523,26 +523,34 @@ object Main {
         avgSpeed.getOrElse(0)
       }
 
+
       // take a pause candidate and reduce its size until we get a real pause (or nothing)
-      def extractPause(beg: ZonedDateTime, end: ZonedDateTime): Option[(ZonedDateTime, ZonedDateTime)] = {
-        if (beg >= end) {
-          None
-        } else {
-          val spd = avgSpeedDuring(beg, end)
-          if (spd < speedPauseAvg) Some((beg, end))
-          else {
-            val spdBeg = speedMap(beg)
-            val spdEnd = speedMap(end)
-            // heuristic approach: remove a border sample with greater speed
-            if (spdBeg > spdEnd) {
-              val afterBeg = speedMap.from(beg).tail.head._1
-              extractPause(afterBeg, end)
-            } else {
-              val beforeEnd = speedMap.until(end).last._1
-              extractPause(beg, beforeEnd)
-            }
+      def extractPause(beg: ZonedDateTime, end: ZonedDateTime): List[(ZonedDateTime, ZonedDateTime)] = {
+        // locate a point which is under required avg speed, this is guaranteed to serve as a pause center
+
+        val pauseArea = speedStream.range(beg, end)
+
+        val candidate = pauseArea.find(_._2 < speedPauseAvg).map(_._1)
+
+        def extendPause(b: ZonedDateTime, e: ZonedDateTime): (ZonedDateTime, ZonedDateTime) = {
+          // try extending beg first
+          val prevB = pauseArea.to(b minusMillis 1).lastOption.map(_._1) // TODO: replace minusMillis with dropRight / drop
+          val nextE = pauseArea.from(e plusMillis 1).headOption.map(_._1)
+
+          if (prevB.isDefined && avgSpeedDuring(prevB.get, e) < speedPauseAvg) {
+            extendPause(prevB.get, e)
+          } else if (nextE.isDefined && avgSpeedDuring(b, nextE.get) < speedPauseAvg) {
+            extendPause(b, nextE.get)
+          } else {
+            (beg, end)
           }
         }
+
+        val candidatePause = candidate.toList.flatMap { c =>
+          val cp = extendPause(c, c)
+          cp :: extractPause(cp._2 plusMillis 1, end)
+        }
+        candidatePause
       }
 
       val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2)).map {case (b, e) =>
