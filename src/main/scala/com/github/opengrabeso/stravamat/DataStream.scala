@@ -128,7 +128,7 @@ sealed abstract class DataStream extends Serializable {
 }
 
 object DataStreamGPS {
-  private final case class GPSRect(latMin: Double, latMax: Double, lonMin: Double, lonMax: Double) {
+  case class GPSRect(latMin: Double, latMax: Double, lonMin: Double, lonMax: Double) {
     def this(item: GPSPoint) = {
       this(item.latitude, item.latitude, item.longitude, item.longitude)
     }
@@ -266,7 +266,7 @@ object DataStreamGPS {
     * @return median, 80% percentile, max
     * */
   def speedStats(speedStream: DistStream): SpeedStats = {
-    implicit val start = Timing.Start()
+    //implicit val start = Timing.Start()
 
     val toKmh = 3.6
     val speeds = speedStream.map(_._2 * toKmh)
@@ -300,7 +300,7 @@ object DataStreamGPS {
 
     val fast = percentile(80)
 
-    Timing.logTime(s"Speed of ${speedStream.size} samples")
+    //Timing.logTime(s"Speed of ${speedStream.size} samples")
     SpeedStats(med, fast, max)
   }
 
@@ -355,8 +355,13 @@ object DataStreamGPS {
   }
 
 
-
-
+  private def distStreamToCSV(ds: DistStream): String = {
+    val times = ds.keys.toSeq
+    val diffs = 0L +: (times zip times.drop(1)).map { case (t1, t2) => t2.getMillis - t1.getMillis }
+    (ds zip diffs).map { case (kv, duration) =>
+      s"${kv._1},${duration/1000.0},${kv._2}"
+    }.mkString("\n")
+  }
 }
 
 @SerialVersionUID(10L)
@@ -391,14 +396,6 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   }
 
   override def isNeeded = false
-
-  private def distStreamToCSV(ds: DistStream): String = {
-    val times = ds.map(_._1)
-    val diffs = 0L +: (times zip times.drop(1)).map { case (t1, t2) => t2.getMillis - t1.getMillis }.toSeq
-    (ds zip diffs).map { case (kv, duration) =>
-      s"${kv._1},${duration/1000.0},${kv._2}"
-    }.mkString("\n")
-  }
 
   lazy val distStream: DistStream = distStreamFromGPS(stream)
 

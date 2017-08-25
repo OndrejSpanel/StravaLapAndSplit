@@ -14,6 +14,7 @@ import scala.collection.JavaConverters._
 import shared.Util._
 import FileId._
 import com.github.opengrabeso.stravamat.DataStreamGPS.SpeedStats
+import com.github.opengrabeso.stravamat.shared.Timing
 import com.google.api.client.json.jackson2.JacksonFactory
 
 import scala.annotation.tailrec
@@ -473,7 +474,7 @@ object Main {
     }
 
     def processPausesAndEvents: ActivityEvents = {
-
+      implicit val start = Timing.Start()
       //val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
       // prefer GPS, as this is already cleaned for accuracy error
@@ -483,27 +484,35 @@ object Main {
         this.gps.distStream
       }
 
+      Timing.logTime("distStream")
+
       val speedStream = DataStreamGPS.computeSpeedStream(distStream)
       val speedMap = speedStream
 
       // integrate route distance back from smoothed speed stream so that we are processing consistent data
       val routeDistance = DataStreamGPS.routeStreamFromSpeedStream(speedStream)
 
+      Timing.logTime("routeDistance")
+
       // find pause candidates: times when smoothed speed is very low
       val speedPauseMax = 0.7
       val speedPauseAvg = 0.4
+      val minPause = 10 // minimal pause to record
+      val minLongPause = 20 // minimal pause to introduce end pause event
+      val minSportChangePause = 50  // minimal pause to introduce automatic transition between sports
+      val minSportDuration = 15 * 60 // do not change sport too often, assume at least 15 minutes of activity
 
       // select samples which are slow and the following is also slow (can be in the middle of the pause)
-      type PauseStream = Seq[(ZonedDateTime, ZonedDateTime, Double)]
+      type PauseStream = List[(ZonedDateTime, ZonedDateTime, Double)]
       val pauseSpeeds: PauseStream = (speedStream zip speedStream.drop(1)).collect {
         case ((t1, s1), (t2, s2)) if s1 < speedPauseMax && s2< speedPauseMax => (t1, t2, s1)
-      }.toSeq
+      }.toList
       // aggregate pause intervals - merge all
       def mergePauses(pauses: PauseStream, done: PauseStream): PauseStream = {
         pauses match {
-          case head +: next +: tail =>
+          case head :: next :: tail =>
             if (head._2 == next._1) { // extend head with next and repeat
-              mergePauses(head.copy(_2 = next._2) +: tail, done)
+              mergePauses(head.copy(_2 = next._2) :: tail, done)
             } else { // head can no longer be extended, use it, continue processing
               mergePauses(next +: tail, head +: done)
             }
@@ -512,6 +521,8 @@ object Main {
       }
 
       val mergedPauses = mergePauses(pauseSpeeds, Nil).reverse
+
+      Timing.logTime("mergePauses")
 
       def avgSpeedDuring(beg: ZonedDateTime, end: ZonedDateTime): Double = {
         val findBeg = routeDistance.to(beg).lastOption
@@ -523,38 +534,105 @@ object Main {
         avgSpeed.getOrElse(0)
       }
 
+      type Pause = (ZonedDateTime, ZonedDateTime)
+      def pauseDuration(p: Pause) = timeDifference(p._1, p._2)
+
       // take a pause candidate and reduce its size until we get a real pause (or nothing)
-      def extractPause(beg: ZonedDateTime, end: ZonedDateTime): Option[(ZonedDateTime, ZonedDateTime)] = {
-        if (beg >= end) {
-          None
-        } else {
-          val spd = avgSpeedDuring(beg, end)
-          if (spd < speedPauseAvg) Some((beg, end))
-          else {
-            val spdBeg = speedMap(beg)
-            val spdEnd = speedMap(end)
-            // heuristic approach: remove a border sample with greater speed
-            if (spdBeg > spdEnd) {
-              val afterBeg = speedMap.from(beg).tail.head._1
-              extractPause(afterBeg, end)
-            } else {
-              val beforeEnd = speedMap.until(end).last._1
-              extractPause(beg, beforeEnd)
-            }
+      def extractPause(beg: ZonedDateTime, end: ZonedDateTime): List[Pause] = {
+
+        val pauseArea = speedStream.from(beg).to(end)
+
+        // locate a point which is under required avg speed, this is guaranteed to serve as a possible pause center
+        val (_, candidateStart) = pauseArea.span(_._2 > speedPauseAvg)
+        val (candidate, left) = candidateStart.span(_._2 <= speedPauseAvg)
+        // now take all under the speed
+
+        def isPauseDuring(b: ZonedDateTime, e: ZonedDateTime, rect: DataStreamGPS.GPSRect) = {
+          val gpsRange = gps.stream.from(b).to(e)
+
+          val extendRect = for {
+            gpsBeg <- gpsRange.headOption
+            gpsEnd <- gpsRange.lastOption
+          } yield {
+            rect.merge(gpsBeg._2).merge(gpsEnd._2)
+          }
+          val extendedRect = extendRect.getOrElse(rect)
+          val rectSize = extendedRect.size
+          val rectDuration = Seconds.secondsBetween(b, e).getSeconds
+          val rectSpeed = if (rectDuration > 0) rectSize / rectDuration else 0
+          // until the pause is long enough, do not evaluate its speed
+          (rectSpeed < speedPauseAvg || rectDuration < minPause, extendedRect)
+        }
+
+        def extendPause(b: ZonedDateTime, e: ZonedDateTime, rect: DataStreamGPS.GPSRect): Pause = {
+          // try extending beg first
+          // b .. e is inclusive
+          val prevB = pauseArea.to(b).dropRight(1).lastOption.map(_._1)
+          val nextE = pauseArea.from(e).drop(1).headOption.map(_._1)
+
+          val pauseB = prevB.map(isPauseDuring(_, e, rect))
+          val pauseE = nextE.map(isPauseDuring(b, _, rect))
+          if (pauseB.isDefined && pauseB.get._1) {
+            extendPause(prevB.get, e, pauseB.get._2)
+          } else if (pauseE.isDefined && pauseE.get._1) {
+            extendPause(b, nextE.get, pauseE.get._2)
+          } else {
+            (beg, end)
           }
         }
+
+        val candidateRange = for {
+          b <- candidate.headOption
+          e <- candidate.lastOption
+        } yield {
+          (b._1, e._1)
+        }
+
+        val candidatePause = candidateRange.toList.flatMap { case (cb, ce) =>
+          val gpsRange = gps.stream.from(cb).to(ce)
+          val gpsRect = gpsRange.foldLeft(new DataStreamGPS.GPSRect(gpsRange.head._2))((rect, p) => rect merge p._2)
+          val cp = extendPause(cb, ce, gpsRect)
+          // skip the extended pause
+          val next = pauseArea.from(cp._2).drop(1).headOption
+          next.map(n => cp :: extractPause(n._1, end)).getOrElse(List(cp))
+        }
+        candidatePause
       }
 
-      val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2)).map {case (b, e) =>
-        val duration = Seconds.secondsBetween(b, e).getSeconds
-        (b, e, duration)
+      def cleanPauses(ps: List[Pause]): List[Pause] = {
+        // when pauses are too close to each other, delete them or merge them
+        def recurse(todo: List[Pause], done: List[Pause]): List[Pause] = {
+          def shouldBeMerged(first: (ZonedDateTime, ZonedDateTime), second: (ZonedDateTime, ZonedDateTime)) = {
+            timeDifference(first._2, second._1) < 120 && avgSpeedDuring(first._2, second._1) < 2
+          }
+
+          def shouldBeDiscardedFirst(first: (ZonedDateTime, ZonedDateTime), second: (ZonedDateTime, ZonedDateTime)) = {
+            timeDifference(first._2, second._1) < 240
+          }
+
+          todo match {
+            case first :: second :: tail if shouldBeMerged(first, second) =>
+              recurse((first._1, second._2) :: tail, done)
+            case first :: second :: tail if shouldBeDiscardedFirst(first, second) =>
+              val longer = Seq(first, second).maxBy(pauseDuration)
+              recurse(longer :: tail, done)
+            case head :: tail =>
+              recurse(tail, head :: done)
+            case _ =>
+              done
+          }
+        }
+        recurse(ps, Nil).reverse
       }
 
-      val minPause = 10
-      val minLongPause = 20
-      val minSportChangePause = 50
+      val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2))
 
-      val pauseEvents = extractedPauses.flatMap { case (tBeg, tEnd, duration) =>
+      Timing.logTime("extractedPauses")
+
+      val cleanedPauses = cleanPauses(extractedPauses)
+
+      val pauseEvents = cleanedPauses.flatMap { case (tBeg, tEnd) =>
+        val duration = Seconds.secondsBetween(tBeg, tEnd).getSeconds
         if (duration > minLongPause) {
           Seq(PauseEvent(duration, tBeg), PauseEndEvent(duration, tEnd))
         } else if (duration > minPause) {
@@ -562,9 +640,21 @@ object Main {
         } else Seq()
       }
 
-      val sportChangePauses = extractedPauses.collect {
-        case (tBeg, tEnd, duration) if duration > minSportChangePause => (tBeg, tEnd)
+      def collectSportChanges(todo: List[Pause], done: List[Pause]): List[Pause] = {
+        todo match {
+          case first :: second :: tail if timeDifference(first._2, second._1) < minSportDuration =>
+            val longer = Seq(first, second).maxBy(pauseDuration)
+            collectSportChanges(longer :: tail, done)
+          case head :: tail if timeDifference(head._1, head._2) > minSportChangePause =>
+            collectSportChanges(tail, head :: done)
+          case head :: tail =>
+            collectSportChanges(tail, done)
+          case _ =>
+            done
+        }
       }
+
+      val sportChangePauses = collectSportChanges(cleanedPauses, Nil).reverse
 
       val sportChangeTimes = sportChangePauses.flatMap(p => Seq(p._1, p._2))
 
@@ -638,6 +728,8 @@ object Main {
       val allEvents = eventsByTime ++ ees
 
       val cleanedEvents = cleanupEvents(allEvents.sortBy(_.stamp).toList, Nil).reverse
+
+      Timing.logTime("extractPause done")
 
       copy(events = cleanedEvents.toArray)
     }
