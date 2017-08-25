@@ -497,10 +497,10 @@ object Main {
       // find pause candidates: times when smoothed speed is very low
       val speedPauseMax = 0.7
       val speedPauseAvg = 0.4
-      val minPause = 10
-      val minLongPause = 20
-      val minSportChangePause = 50
-
+      val minPause = 10 // minimal pause to record
+      val minLongPause = 20 // minimal pause to introduce end pause event
+      val minSportChangePause = 50  // minimal pause to introduce automatic transition between sports
+      val minSportDuration = 15 * 60 // do not change sport too often, assume at least 15 minutes of activity
 
       // select samples which are slow and the following is also slow (can be in the middle of the pause)
       type PauseStream = List[(ZonedDateTime, ZonedDateTime, Double)]
@@ -535,6 +535,8 @@ object Main {
       }
 
       type Pause = (ZonedDateTime, ZonedDateTime)
+      def pauseDuration(p: Pause) = timeDifference(p._1, p._2)
+
       // take a pause candidate and reduce its size until we get a real pause (or nothing)
       def extractPause(beg: ZonedDateTime, end: ZonedDateTime): List[Pause] = {
 
@@ -612,7 +614,7 @@ object Main {
             case first :: second :: tail if shouldBeMerged(first, second) =>
               recurse((first._1, second._2) :: tail, done)
             case first :: second :: tail if shouldBeDiscardedFirst(first, second) =>
-              val longer = Seq(first, second).maxBy(p => timeDifference(p._1, p._2))
+              val longer = Seq(first, second).maxBy(pauseDuration)
               recurse(longer :: tail, done)
             case head :: tail =>
               recurse(tail, head :: done)
@@ -638,9 +640,21 @@ object Main {
         } else Seq()
       }
 
-      val sportChangePauses = extractedPauses.collect {
-        case (tBeg, tEnd) if timeDifference(tBeg, tEnd) > minSportChangePause => (tBeg, tEnd)
+      def collectSportChanges(todo: List[Pause], done: List[Pause]): List[Pause] = {
+        todo match {
+          case first :: second :: tail if timeDifference(first._2, second._1) < minSportDuration =>
+            val longer = Seq(first, second).maxBy(pauseDuration)
+            collectSportChanges(longer :: tail, done)
+          case head :: tail if timeDifference(head._1, head._2) > minSportChangePause =>
+            collectSportChanges(tail, head :: done)
+          case head :: tail =>
+            collectSportChanges(tail, done)
+          case _ =>
+            done
+        }
       }
+
+      val sportChangePauses = collectSportChanges(cleanedPauses, Nil).reverse
 
       val sportChangeTimes = sportChangePauses.flatMap(p => Seq(p._1, p._2))
 
