@@ -221,18 +221,22 @@ object DataStreamGPS {
   }
 
   def distStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): DistStream = {
-    val gpsKeys = gps.keys.toSeq // toSeq needed to preserve order
-    val gpsValues = gps.values.toSeq
-    val gpsPairs = gpsKeys.drop(1) zip (gpsValues zip gpsValues.drop(1))
-    val gpsDistances = gpsPairs.map { case (t, (pa, pb)) => t -> (pa distance pb) }
-    SortedMap((gpsKeys.head -> 0.0) +: gpsDistances:_*)
+    if (gps.nonEmpty) {
+      val gpsKeys = gps.keys.toSeq // toSeq needed to preserve order
+      val gpsValues = gps.values.toSeq
+      val gpsPairs = gpsKeys.drop(1) zip (gpsValues zip gpsValues.drop(1))
+      val gpsDistances = gpsPairs.map { case (t, (pa, pb)) => t -> (pa distance pb) }
+      SortedMap((gpsKeys.head -> 0.0) +: gpsDistances: _*)
+    } else {
+      SortedMap()
+    }
   }
 
   def routeStreamFromDistStream(distDeltas: Seq[(ZonedDateTime, Double)]): DistStream = {
     val route = distDeltas.scanLeft(0d) { case (sum, (_, d)) => sum + d }
     // scanLeft adds initial value as a first element - use tail to drop it
     val ret = distDeltas.map(_._1) zip route.tail
-    SortedMap(ret.toSeq:_*)
+    SortedMap(ret:_*)
   }
 
   def distStreamFromRouteStream(dist: Seq[(ZonedDateTime, Double)]): DistStream = {
