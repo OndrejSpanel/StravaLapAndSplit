@@ -24,6 +24,22 @@ object Event {
   def sportPriority(sport: Sport): Int = sport.id
 }
 
+object EventPriority {
+  val seq: IndexedSeq[Class[_]] = IndexedSeq(
+    BegEvent.getClass, EndEvent.getClass,
+    SplitEvent.getClass,
+    PauseEvent.getClass, PauseEndEvent.getClass,
+    LapEvent.getClass
+  )
+
+  def apply(e: Event) = {
+    val find = seq.indexOf(e.getClass)
+    if (find<0) seq.size // not listed means lowest possible priority
+    else find
+  }
+}
+
+
 @SerialVersionUID(10)
 sealed abstract class Event {
 
@@ -32,6 +48,7 @@ sealed abstract class Event {
   def stamp: ZonedDateTime
   def description: String
   def isSplit: Boolean // splits need to be known when exporting
+  lazy val order: Int = EventPriority(this)// higher order means less important
   def timeOffset(offset: Int): Event
 
   def defaultEvent: String
@@ -79,6 +96,7 @@ case class PauseEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def description = s"Pause ${Events.niceDuration(duration)}"
   def defaultEvent = if (duration>=30) "lap" else ""
   def isSplit = false
+  def priority = 20
 }
 @SerialVersionUID(10)
 case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {

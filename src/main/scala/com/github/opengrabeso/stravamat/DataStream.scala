@@ -11,7 +11,11 @@ import scala.annotation.tailrec
 @SerialVersionUID(-4477339787979943124L)
 case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(in_accuracy: Option[Double]) {
   @transient
-  val accuracy: Option[Double] = if (in_accuracy != null) in_accuracy else None
+  def accuracy: Double = if (in_accuracy != null) in_accuracy.getOrElse(0) else 0
+
+  def distance(that: GPSPoint): Double = {
+    GPS.distance(this.latitude, this.longitude, that.latitude, that.longitude)
+  }
 }
 
 case class HRPoint(hr: Int, dist: Double)
@@ -88,6 +92,8 @@ sealed abstract class DataStream extends Serializable {
   }
 
   // should be discarded
+  def isEmpty: Boolean = stream.isEmpty
+  def nonEmpty: Boolean = stream.nonEmpty
   def isAlmostEmpty: Boolean
 
   // must not be discarded
@@ -122,7 +128,7 @@ sealed abstract class DataStream extends Serializable {
 }
 
 object DataStreamGPS {
-  private final case class GPSRect(latMin: Double, latMax: Double, lonMin: Double, lonMax: Double) {
+  case class GPSRect(latMin: Double, latMax: Double, lonMin: Double, lonMax: Double) {
     def this(item: GPSPoint) = {
       this(item.latitude, item.latitude, item.longitude, item.longitude)
     }
@@ -202,47 +208,15 @@ object DataStreamGPS {
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
 
-    object Window {
-      def apply() = new Window(Vector.empty, 0)
-    }
-    case class Window(data: Vector[(ZonedDateTime, Double)], private val totalDistance: Double) {
-      def isEmpty = data.isEmpty
-      def begTime = data.head._1
-      def endTime = data.last._1
-      def duration = Seconds.secondsBetween(begTime, endTime).getSeconds
-      def distance = if (isEmpty) 0.0 else totalDistance - data.head._2 // first distance was before the first timestamp
-      def speed = if (duration > 0) distance / duration else 0.0
-      def keepSize = if (duration <= durationSec) this else Window(data.tail, totalDistance - data.head._2)
-      def :+ (item: (ZonedDateTime, Double)) = Window(data :+ item, totalDistance + item._2)
-    }
-
-    def smoothingRecurse(done: DistList, prev: Window, todo: DistList): DistList = {
-      if (todo.isEmpty) done
-      else if (prev.isEmpty) {
-        smoothingRecurse(todo.head +: done, prev :+ todo.head, todo.tail)
-      } else {
-        val newWindow = (prev :+ todo.head).keepSize
-        val duration = newWindow.duration
-        val windowSpeed = prev.speed
-        val interval = Seconds.secondsBetween(prev.endTime, todo.head._1).getSeconds
-        val smoothDist = (windowSpeed * duration + todo.head._2) / (duration + interval)
-        smoothingRecurse((todo.head._1 -> smoothDist) +: done, newWindow, todo.tail)
-      }
-    }
+    import Function._
 
     // fixSpeed(input) was called here, but it was used only because of sample timestamp misunderstanding
-    val smoothedList = smoothingRecurse(Nil, Window(), input.toList)
-    SortedMap(smoothedList.reverse:_*)
-  }
-
-  private def pairToDist(ab: (GPSPoint, GPSPoint)) = {
-    val (a, b) = ab
-    val rect = new GPSRect(a).merge(b)
-    rect.size
+    val smoothedList = smoothing(input.toList, durationSec)
+    SortedMap(smoothedList:_*)
   }
 
   def distStreamFromGPSList(gps: Seq[GPSPoint]): Seq[Double] = {
-    val gpsDistances = (gps zip gps.tail).map(pairToDist)
+    val gpsDistances = (gps zip gps.drop(1)).map {case (a,b) => a distance b}
     gpsDistances
   }
 
@@ -250,20 +224,20 @@ object DataStreamGPS {
     val gpsKeys = gps.keys.toSeq // toSeq needed to preserve order
     val gpsValues = gps.values.toSeq
     val gpsPairs = gpsKeys.drop(1) zip (gpsValues zip gpsValues.drop(1))
-    val gpsDistances = gpsPairs.map { case (t, p) => t -> pairToDist(p) }
+    val gpsDistances = gpsPairs.map { case (t, (pa, pb)) => t -> (pa distance pb) }
     SortedMap((gpsKeys.head -> 0.0) +: gpsDistances:_*)
   }
 
-  def routeStreamFromDistStream(distDeltas: DistStream): DistStream = {
+  def routeStreamFromDistStream(distDeltas: Seq[(ZonedDateTime, Double)]): DistStream = {
     val route = distDeltas.scanLeft(0d) { case (sum, (_, d)) => sum + d }
     // scanLeft adds initial value as a first element - use tail to drop it
     val ret = distDeltas.map(_._1) zip route.tail
     SortedMap(ret.toSeq:_*)
   }
 
-  def distStreamFromRouteStream(dist: DistStream): DistStream = {
-    val times = dist.map(_._1).toSeq
-    val routeValues = dist.map(_._2).toSeq
+  def distStreamFromRouteStream(dist: Seq[(ZonedDateTime, Double)]): DistStream = {
+    val times = dist.map(_._1)
+    val routeValues = dist.map(_._2)
     val distValues = 0.0 +: (routeValues zip routeValues.drop(1)).map(p => p._2 - p._1)
     val ret = times zip distValues
     SortedMap(ret:_*)
@@ -292,7 +266,7 @@ object DataStreamGPS {
     * @return median, 80% percentile, max
     * */
   def speedStats(speedStream: DistStream): SpeedStats = {
-    implicit val start = Timing.Start()
+    //implicit val start = Timing.Start()
 
     val toKmh = 3.6
     val speeds = speedStream.map(_._2 * toKmh)
@@ -326,7 +300,7 @@ object DataStreamGPS {
 
     val fast = percentile(80)
 
-    Timing.logTime(s"Speed of ${speedStream.size} samples")
+    //Timing.logTime(s"Speed of ${speedStream.size} samples")
     SpeedStats(med, fast, max)
   }
 
@@ -381,8 +355,13 @@ object DataStreamGPS {
   }
 
 
-
-
+  private def distStreamToCSV(ds: DistStream): String = {
+    val times = ds.keys.toSeq
+    val diffs = 0L +: (times zip times.drop(1)).map { case (t1, t2) => t2.getMillis - t1.getMillis }
+    (ds zip diffs).map { case (kv, duration) =>
+      s"${kv._1},${duration/1000.0},${kv._2}"
+    }.mkString("\n")
+  }
 }
 
 @SerialVersionUID(10L)
@@ -417,14 +396,6 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   }
 
   override def isNeeded = false
-
-  private def distStreamToCSV(ds: DistStream): String = {
-    val times = ds.map(_._1)
-    val diffs = 0L +: (times zip times.drop(1)).map { case (t1, t2) => t2.getMillis - t1.getMillis }.toSeq
-    (ds zip diffs).map { case (kv, duration) =>
-      s"${kv._1},${duration/1000.0},${kv._2}"
-    }.mkString("\n")
-  }
 
   lazy val distStream: DistStream = distStreamFromGPS(stream)
 
@@ -588,7 +559,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       val interpolatedLon = lerp(first._2.longitude, third._2.longitude, secondFactor)
       // ignore elevation, it is too chaotic anyway
       val secondInterpolated = GPSPoint(latitude = interpolatedLat, longitude = interpolatedLon, elevation = None)(None)
-      val dist = GPS.distance(secondInterpolated.latitude, secondInterpolated.longitude, second._2.latitude, second._2.longitude)
+      val dist = secondInterpolated distance second._2
       val maxDist = 1
       dist < maxDist
     }

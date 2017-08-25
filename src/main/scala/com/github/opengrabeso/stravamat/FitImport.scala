@@ -124,7 +124,7 @@ object FitImport {
       } else {
         val distanceDeltas = gpsDataStream.distStream
 
-        val distances = DataStreamGPS.routeStreamFromDistStream(distanceDeltas)
+        val distances = DataStreamGPS.routeStreamFromDistStream(distanceDeltas.toSeq)
 
         distances
       }
