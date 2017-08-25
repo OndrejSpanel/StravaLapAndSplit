@@ -268,40 +268,45 @@ object DataStreamGPS {
   def speedStats(speedStream: DistStream): SpeedStats = {
     //implicit val start = Timing.Start()
 
-    val toKmh = 3.6
-    val speeds = speedStream.map(_._2 * toKmh)
+    if (speedStream.isEmpty) SpeedStats(0,0,0)
+    else {
 
-    val max = speeds.max
-    val min = speeds.min
+      val toKmh = 3.6
+      val speeds = speedStream.map(_._2 * toKmh)
 
-    val num_bins = 40
+      val max = speeds.max
+      val min = speeds.min
 
-    val histogram = speeds
-      .map(x => (((x - min) / (max - min)) * num_bins).floor.toInt)
-      .groupBy(identity)
-      .map(x => x._1 -> x._2.size)
-      .toSeq
-      .sortBy(_._1)
+      val num_bins = 40
 
-    def percentile(percent: Int) = {
-      val countUnder = (percent * 0.01 * speeds.size).toInt
+      val histogram = speeds
+        .map(x => (((x - min) / (max - min)) * num_bins).floor.toInt)
+        .groupBy(identity)
+        .map(x => x._1 -> x._2.size)
+        .toSeq
+        .sortBy(_._1)
 
-      def percentileRecurse(countLeft: Int, histLeft: Seq[(Int, Int)]): Int = {
-        if (histLeft.isEmpty) num_bins
-        else if (histLeft.head._2 >= countLeft) histLeft.head._1
-        else percentileRecurse(countLeft - histLeft.head._2, histLeft.tail)
+      def percentile(percent: Int) = {
+        val countUnder = (percent * 0.01 * speeds.size).toInt
+
+        def percentileRecurse(countLeft: Int, histLeft: Seq[(Int, Int)]): Int = {
+          if (histLeft.isEmpty) num_bins
+          else if (histLeft.head._2 >= countLeft) histLeft.head._1
+          else percentileRecurse(countLeft - histLeft.head._2, histLeft.tail)
+        }
+
+        val slot = percentileRecurse(countUnder, histogram)
+        slot.toDouble / num_bins * (max - min) + min
       }
-      val slot = percentileRecurse(countUnder, histogram)
-      slot.toDouble / num_bins * (max - min) + min
+
+
+      val med = percentile(50)
+
+      val fast = percentile(80)
+
+      //Timing.logTime(s"Speed of ${speedStream.size} samples")
+      SpeedStats(med, fast, max)
     }
-
-
-    val med = percentile(50)
-
-    val fast = percentile(80)
-
-    //Timing.logTime(s"Speed of ${speedStream.size} samples")
-    SpeedStats(med, fast, max)
   }
 
   type ValueList = List[GPSPointWithTime]
