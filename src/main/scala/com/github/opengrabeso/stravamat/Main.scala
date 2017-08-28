@@ -751,10 +751,11 @@ object Main {
             val v1 = vecFromGPS(gps1)
             val v2 = vecFromGPS(gps2)
 
-            val maxDist = second._2.accuracy
+            val maxDist = second._2.accuracy * 2 // * 2 is empirical, tested activity looks good with this value
             val dist = gps1 distance gps2
+            // move as far from v2 (as close to v1) as accuracy allows
             if (dist > maxDist) {
-              val clamped = (v1 - v2) * (maxDist / dist) + v2 // move as far from v2 as accuracy allows
+              val clamped = (v1 - v2) * (maxDist / dist) + v2
               val gpsClamped = gps1.copy(clamped.x, clamped.y)(None)
               cleanGPS(second.copy(_2 = gpsClamped) :: tail, first :: done)
             } else {
