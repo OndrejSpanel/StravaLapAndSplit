@@ -737,83 +737,40 @@ object Main {
 
     def cleanPositionErrors: ActivityEvents = {
 
-      // find parts where the movement is less then accuracy (EHPE)
-      def canBeSkipped(first: (ZonedDateTime, GPSPoint), second: (ZonedDateTime, GPSPoint)) = {
-        val gpsA = first._2
-        val gpsB = second._2
-        val dist = gpsA distance gpsB
-        val accuracy = gpsA.accuracy + gpsB.accuracy
-        val maxResult = 100.0
-        if (accuracy >= dist * maxResult) maxResult else accuracy / dist
-      }
+      def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
+      def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
 
       @tailrec
-      def cleanAccuracy(todoGPS: List[gps.ItemWithTime], done: List[(ZonedDateTime, Double)]): List[(ZonedDateTime, Double)] = {
+      def cleanGPS(todoGPS: List[gps.ItemWithTime], done: List[gps.ItemWithTime]): List[gps.ItemWithTime] = {
         /* value 1.0 means the sample should be kept, 0.0 means it should be dropped */
         todoGPS match {
-          case first :: second :: tail =>
-            val v = canBeSkipped(first, second)
-            cleanAccuracy(second :: tail, (first._1, v) :: done)
+          case first :: second :: tail if second._2.accuracy > 8 =>
+            // move second as little as possible to stay within GPS accuracy error
+            val gps1 = first._2
+            val gps2 = second._2
+            val v1 = vecFromGPS(gps1)
+            val v2 = vecFromGPS(gps2)
+
+            val maxDist = second._2.accuracy
+            val dist = gps1 distance gps2
+            if (dist > maxDist) {
+              val clamped = (v1 - v2) * (maxDist / dist) + v2 // move as far from v2 as accuracy allows
+              val gpsClamped = gps1.copy(clamped.x, clamped.y)(None)
+              cleanGPS(second.copy(_2 = gpsClamped) :: tail, first :: done)
+            } else {
+              cleanGPS(second.copy(_2 = first._2) :: tail, first :: done)
+            }
           case head :: tail =>
-            cleanAccuracy(tail, (head._1, 0.0) :: done)
+            cleanGPS(tail, head :: done)
           case _ =>
             done
         }
       }
 
-      val samplesToDrop = cleanAccuracy(gps.stream.toList, Nil).reverse
-
-      import Function._
-      // TODO: implement Gaussian blur instead of plain linear smoothing
-      val smoothToDrop = smoothing(samplesToDrop, 5)
-
-
-      // drop everything where smoothToDrop is above a threshold
-      val threshold = 2 // empirical, based on 34FB984612000700-2017-08-23T09_25_06-0.sml
-      val toDropIntervals = toIntervals(smoothToDrop, _ > threshold)
-
-      val gpsClean = dropIntervals(gps.stream, toDropIntervals)
+      val gpsClean = cleanGPS(gps.stream.toList, Nil).reverse
       val gpsStream = gps.pickData(SortedMap(gpsClean:_*))
 
-      // leave the dist measurement untouched, Strava should take care of that
-      // TODO: handle at least a special case of long removed pauses
-      val dropDist = false
-      val cleanDist = if (dropDist) {
-        val distDiff = DataStreamGPS.distStreamFromRouteStream(dist.stream.toSeq)
-        val distDiffClean = dropIntervals(distDiff, toDropIntervals)
-
-        //val origDist = distDiff.values.toSeq.sum
-        //val newDist = distDiffClean.map(_._2).sum
-        //println(s"Original distance $origDist, new distance $newDist")
-
-        //val removed = distDiff.keys.toSet diff distDiffClean.map(_._1).toSet
-
-        //val removedValues = distDiff.filter(removed contains _._1)
-
-        val gpsLowerBound = false
-        val fixedDistDiff = if (gpsLowerBound) {
-          val cleanDistFromGPS = gpsStream.distStream.toSeq
-          val cleanRouteFromGPS = DataStreamGPS.routeStreamFromDistStream(cleanDistFromGPS)
-
-          val ds = new DataStreamDist(gpsStream.distStream)
-
-          // use GPS based distance as a lower bound for sensor based distance, this should compensate for dropped samples
-          val distTimes = distDiffClean.map(_._1)
-          for (((beg, dist), end) <- distDiffClean zip distTimes.drop(1)) yield {
-            val distBeg = ds.distanceForTime(beg)
-            val distEnd = ds.distanceForTime(end)
-            beg -> ((distEnd - distBeg) max dist)
-          }
-        } else {
-          distDiffClean
-        }
-        val routeStream = DataStreamGPS.routeStreamFromDistStream(fixedDistDiff)
-        dist.pickData(routeStream)
-      } else {
-        this.dist
-      }
-
-      copy(gps = gpsStream, dist = cleanDist)
+      copy(gps = gpsStream)
 
     }
 
