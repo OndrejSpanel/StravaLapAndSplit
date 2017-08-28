@@ -122,10 +122,6 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
       r -> stravaActivities.find(_ isMatching r.id)
     }.filter((filterListed _).tupled)
 
-    // detect activity groups - any overlapping activities should be one group, unless
-    //val activityGroups =
-
-    val settings = Settings(auth.userId)
     <html>
       <head>
         {headPrefix}<title>Stravamat - {title}</title>
@@ -134,85 +130,11 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
           tr.activities:hover {{background-color: #f0f0e0}}
         </style>
         <script src="static/ajaxUtils.js"></script>
+        <script src="static/timeUtils.js"></script>
         <script src="static/jquery-3.2.1.min.js"></script>
         <script>{xml.Unparsed(
           //language=JavaScript
           """
-          /** @return {string} */
-          function getLocale() {
-            return navigator.languages[0] || navigator.language;
-          }
-          /**
-          * @param {string} t
-          * @return {string}
-          */
-          function formatDateTime(t) {
-            var locale = getLocale();
-            var date = new Date(t);
-            return new Intl.DateTimeFormat(
-              locale,
-              {
-                year: "numeric",
-                month: "numeric",
-                day: "numeric",
-                hour: "numeric",
-                minute: "numeric",
-              }
-            ).format(date)
-          }
-          /**
-          * @param {string} t
-          * @return {string}
-          */
-          function formatTime(t) {
-            var locale = getLocale();
-            var date = new Date(t);
-            return new Intl.DateTimeFormat(
-              locale,
-              {
-                //year: "numeric",
-                //month: "numeric",
-                //day: "numeric",
-                hour: "numeric",
-                minute: "numeric",
-                //timeZoneName: "short"
-              }
-            ).format(date)
-          }
-          function formatTimeSec(t) {
-            var locale = getLocale();
-            var date = new Date(t);
-            return new Intl.DateTimeFormat(
-              locale,
-              {
-                //year: "numeric",
-                //month: "numeric",
-                //day: "numeric",
-                hour: "numeric",
-                minute: "numeric",
-                second: "numeric"
-              }
-            ).format(date)
-          }
-          function currentQuestTime(d) {
-            var offset = parseInt(document.getElementById("quest_time_offset").value);
-            return formatTimeSec(new Date(d.getTime() + 1000*offset));
-          }
-          function updateClock() {
-            var d = new Date();
-            document.getElementById("time").innerHTML = formatTimeSec(d);
-            document.getElementById("timeQuest").innerHTML = currentQuestTime(d);
-            setTimeout(function () {
-              updateClock();
-            }, 1000);
-          }
-          function settingsChanged() {
-            // send the new settings to the server
-            var questOffset = parseInt(document.getElementById("quest_time_offset").value);
-            var maxHR = parseInt(document.getElementById("max_hr").value);
-            ajaxAsync("save-settings?quest_time_offset=" + questOffset + "&max_hr=" + maxHR, "", function(response) {});
-
-          }
           function submitProcess() {
             document.getElementById("upload_button").style.display = "none";
             document.getElementById("uploads_table").style.display = "block";
@@ -275,29 +197,6 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
 
         {sources(before)}
 
-        <h2>Settings</h2>
-        <table>
-          <tr><td>
-            Max HR</td><td><input type="number" name="max_hr" id="max_hr" min="100" max="260" value={settings.maxHR.toString} onchange="settingsChanged()"></input>
-          </td></tr>
-          <tr><td>
-            Quest time offset</td><td> <input type="number" id="quest_time_offset" name="quest_time_offset" min="-60" max="60" value={settings.questTimeOffset.toString} onchange="settingsChanged()"></input>
-          </td>
-            <td>Adjust up or down so that Quest time below matches the time on your watch</td>
-          </tr>
-
-          <tr>
-            <td>Current time</td>
-            <td id="time"></td>
-          </tr>
-          <tr>
-            <td>Quest time</td>
-            <td><b id="timeQuest"></b></td>
-          </tr>
-        </table>
-
-
-
         <h2>Activities</h2>
         <form id="process-form" action="process" method="post" enctype="multipart/form-data">
           <table class="activities">
@@ -350,8 +249,6 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
             // Stop the browser from submitting the form.
             event.preventDefault();
           });
-
-          updateClock()
           """)}
         </script>
       </body>

@@ -13,6 +13,7 @@ object ManageActivities extends SelectActivity("/selectActivity") {
       <h2>Data sources</h2>
       <a href="getFiles">Upload files...</a>
       <a href="staging">Staging...</a>
+      <a href="settings">Settings...</a>
       <hr/>
     </div>
   }

@@ -4,11 +4,12 @@ package push
 
 import spark.{Request, Response}
 
-object PushDo extends DefineRequest("/push-do") {
+object PushDo extends DefineRequest("/push-do") with ChangeSettings {
   override def urlPrefix = "push-"
   def html(req: Request, resp: Response) = {
     val session = req.session
     val auth = session.attribute[Main.StravaAuthResult]("auth")
+    val settings = Settings(auth.userId)
     // display push progress, once done, let user to process it
     <html>
       <head>
@@ -25,12 +26,7 @@ object PushDo extends DefineRequest("/push-do") {
         <p>
           <span id="done">--</span> of <span id="total">--</span>
         </p>
-        <div id="uploaded" style="display: none;">
-          {
-          // TODO: integrate selectActivity functionality here
-          }
-          <a href="selectActivity">Select activity</a>
-        </div>
+        {suuntoSettings(settings)}
         <script>
           {xml.Unparsed(
           //language=JavaScript
@@ -54,8 +50,16 @@ object PushDo extends DefineRequest("/push-do") {
             });
           }
           update();
+          updateClock();
           """)}
         </script>
+        <div id="uploaded" style="display: none;">
+          <h2>Done</h2>
+          {
+          // TODO: integrate selectActivity functionality here
+          }
+          <a href="selectActivity">Select activity</a>
+        </div>
 
       </body>
     </html>

@@ -33,7 +33,7 @@ class ServletRouting extends SparkApplication {
 
       Process, DeleteSelected, CheckUploadStatus,
 
-      SaveSettings,
+      SaveSettings, SettingsPage,
 
       Cleanup,
 
