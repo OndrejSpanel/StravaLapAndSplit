@@ -1,5 +1,6 @@
 package com.github.opengrabeso.stravamat
 
+import Main._
 import spark.{Request, Response, Session}
 
 import scala.xml.NodeSeq
@@ -81,11 +82,23 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     </div>
   }
 
-  /*
-  We need the ID to be unique for a given user, timestamps seems reasonable for this.
-  Normal web app session ID is not unique, sessions get reused.
-  */
   def uniqueSessionId(session: Session): String = {
+    // stored using storedQueryParam
     session.attribute[String]("push-session")
   }
+
+  def withAuth(req: Request, resp: Response)(body: StravaAuthResult => NodeSeq): NodeSeq = {
+    val session = req.session()
+    val auth = session.attribute[StravaAuthResult]("auth")
+    if (auth == null) {
+      // OAuth dance needed
+      // TODO: smarter redirection
+      resp.redirect("/")
+      NodeSeq.Empty
+    } else {
+      body(auth)
+    }
+  }
+
+
 }

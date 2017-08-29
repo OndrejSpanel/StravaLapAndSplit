@@ -14,34 +14,36 @@ import spark.{Request, Response}
 object Upload extends DefineRequest.Post("/upload") {
   override def html(request: Request, resp: Response) = {
     val session = request.session
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
+    withAuth(request, resp) { auth =>
 
-    val fif = new DiskFileItemFactory()
-    val maxMB = 32
-    fif.setSizeThreshold(maxMB * 1024 * 1024)
+      val fif = new DiskFileItemFactory()
+      val maxMB = 32
+      fif.setSizeThreshold(maxMB * 1024 * 1024)
 
-    val upload = new ServletFileUpload(fif)
+      val upload = new ServletFileUpload(fif)
 
-    val items = upload.getItemIterator(request.raw)
+      val items = upload.getItemIterator(request.raw)
 
-    val itemsIterator = new Iterator[FileItemStream] {
-      def hasNext = items.hasNext
-      def next() = items.next
-    }
+      val itemsIterator = new Iterator[FileItemStream] {
+        def hasNext = items.hasNext
 
-    var timezone = Option.empty[String]
-    itemsIterator.foreach { item =>
-      if (!item.isFormField && item.getFieldName == "activities") {
-        if (item.getName!="") {
-          storeFromStream(auth.userId, item.getName, timezone.get, item.openStream())
-        }
-      } else if (item.isFormField && item.getFieldName == "timezone") {
-        timezone = Some(IOUtils.toString(item.openStream(), "UTF-8"))
+        def next() = items.next
       }
-    }
 
-    resp.redirect("/selectActivity")
-    Nil
+      var timezone = Option.empty[String]
+      itemsIterator.foreach { item =>
+        if (!item.isFormField && item.getFieldName == "activities") {
+          if (item.getName != "") {
+            storeFromStream(auth.userId, item.getName, timezone.get, item.openStream())
+          }
+        } else if (item.isFormField && item.getFieldName == "timezone") {
+          timezone = Some(IOUtils.toString(item.openStream(), "UTF-8"))
+        }
+      }
+
+      resp.redirect("/selectActivity")
+      Nil
+    }
   }
 
 

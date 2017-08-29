@@ -15,7 +15,7 @@ object PushStart extends DefineRequest("/push-start") {
 
   override def urlPrefix = "push-"
 
-  private def retryLogin(request: Request, resp: Response): Elem = {
+  private def retryLogin(request: Request, resp: Response, afterLogin: String): Elem = {
     resp.cookie("authCode", "", 0) // delete the cookie
     <html>
       <head>
@@ -30,7 +30,7 @@ object PushStart extends DefineRequest("/push-start") {
           val clientId = secret.appId
           val serverUri = scheme + "://" + hostname // Spark hostname seems to include port if needed
           val uri = "https://www.strava.com/oauth/authorize?"
-          val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/push-login&scope=write,view_private&approval_prompt=force"
+          val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + serverUri + "/" + afterLogin + "&scope=write,view_private&approval_prompt=force"
           <h3>Work in progress, use at your own risk.</h3>
             <p>
               Automated uploading and processing of Suunto data to Strava
@@ -76,6 +76,8 @@ object PushStart extends DefineRequest("/push-start") {
 
   def html(req: Request, resp: Response) = {
     val session = req.session()
+    // We need the ID to be unique for a given user, timestamps seems reasonable for this.
+    // Normal web app session ID is not unique, sessions get reused.
     val sessionId = storedQueryParam(req, "push-", "session")
     val port = storedQueryParam(req, "push-", "port").toInt
     // check stored oauth cookie
@@ -103,7 +105,7 @@ object PushStart extends DefineRequest("/push-start") {
         NodeSeq.Empty
       }
     }.getOrElse {
-      retryLogin(req, resp)
+      retryLogin(req, resp, "push-login")
     }
   }
 }

@@ -4,9 +4,7 @@ package requests
 import spark.{Request, Response}
 
 object LoadFromStrava extends DefineRequest("/loadFromStrava") {
-  override def html(request: Request, resp: Response) = {
-    val session = request.session()
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
+  override def html(request: Request, resp: Response) = withAuth(request, resp) { auth =>
     val activities = Main.stravaActivitiesNotStaged(auth)
     <html>
       <head>
