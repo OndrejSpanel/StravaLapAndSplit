@@ -2,7 +2,6 @@ package com.github.opengrabeso.stravamat
 package requests
 
 import Main._
-import shared.Util._
 import org.joda.time.{DateTime => ZonedDateTime}
 
 object Staging extends SelectActivity("/staging") {

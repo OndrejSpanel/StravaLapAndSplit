@@ -1,8 +1,11 @@
 package com.github.opengrabeso.stravamat
 
+import java.net.URLEncoder
+
 import Main._
 import spark.{Request, Response, Session}
 
+import scala.util.Try
 import scala.xml.NodeSeq
 
 sealed trait Method
@@ -23,7 +26,6 @@ object DefineRequest {
 abstract class DefineRequest(val handleUri: String, val method: Method = Method.Get) {
 
   // some actions (logout) may have their URL prefixed to provide a specific functionality
-  def urlPrefix: String = ""
 
   def apply(request: Request, resp: Response): AnyRef = {
     println(s"Request ${request.url()}")
@@ -62,7 +64,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       </a>
       </td>
       <td>
-      <form action={urlPrefix + "logout"}>
+      <form action={"logout"}>
         <input type="submit" value ="Log Out"/>
       </form>
       </td></tr>
@@ -87,18 +89,98 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     session.attribute[String]("push-session")
   }
 
+  def performAuth(code: String, resp: Response, session: Session): Try[StravaAuthResult] = {
+    val authResult = Try(Main.stravaAuth(code))
+    authResult.foreach { auth =>
+      resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
+      session.attribute("auth", auth)
+    }
+    authResult
+
+  }
+
   def withAuth(req: Request, resp: Response)(body: StravaAuthResult => NodeSeq): NodeSeq = {
     val session = req.session()
     val auth = session.attribute[StravaAuthResult]("auth")
     if (auth == null) {
-      // OAuth dance needed
-      // TODO: smarter redirection
-      resp.redirect("/")
-      NodeSeq.Empty
+      val codePar = Option(req.queryParams("code"))
+      val statePar = Option(req.queryParams("state")).filter(_.nonEmpty)
+      codePar.fold{
+        val code = Option(req.cookie("authCode"))
+        code.flatMap { code =>
+          performAuth(code, resp, session).toOption.map(body)
+        }.getOrElse(
+          loginPage(req, resp, req.url, Option(req.queryString))
+        )
+      } { code =>
+        if (performAuth(code, resp, session).isSuccess) {
+          resp.redirect(req.url() + statePar.fold("")("?" + _))
+          NodeSeq.Empty
+        } else {
+          loginPage(req, resp, req.url, statePar)
+        }
+      }
     } else {
       body(auth)
     }
   }
 
+  def loginPage(request: Request, resp: Response, afterLogin: String, afterLoginParams: Option[String]): NodeSeq = {
+    resp.cookie("authCode", "", 0) // delete the cookie
+    <html>
+      <head>
+        {headPrefix}
+        <title>Stravamat</title>
+      </head>
+      <body>
+        {
+        val secret = Main.secret
+        val clientId = secret.appId
+        val uri = "https://www.strava.com/oauth/authorize?"
+        val state = afterLoginParams.fold("")(pars => "&state=" + URLEncoder.encode(pars, "UTF-8"))
+        val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + afterLogin + state + "&scope=write,view_private&approval_prompt=force"
+        <h3>Work in progress, use at your own risk.</h3>
+          <p>
+            Automated uploading and processing of Suunto data to Strava
+          </p>
+
+
+          <h4>Suunto Upload</h4>
+          <p>
+            If you want to upload Suunto files, start the Stravamat Start application
+            which will open a new web page with the upload progress.
+          </p>
+          <p>
+            The application can be downloaded from <a href="https://github.com/OndrejSpanel/Stravamat/releases">GitHub Stravamat Releases page</a>.
+          </p>
+
+          <h4>Working</h4>
+          <ul>
+            <li>Merges Quest and GPS Track Pod data</li>
+            <li>Splits GPS data as needed between Quest activities</li>
+            <li>Corrects quest watch time inaccuracies</li>
+          </ul>
+          <h4>Work in progress</h4>
+          <ul>
+            <li>Merge activities</li>
+            <li>Edit lap information</li>
+            <li>Show activity map</li>
+            <li>Split activities</li>
+          </ul> :+ {
+          if (!clientId.isEmpty) {
+            <a href={action}>
+              <img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"></img>
+            </a>
+          } else {
+            <p>Error:
+              {secret.error}
+            </p>
+          }
+        }
+        }
+        {bodyFooter}
+      </body>
+    </html>
+  }
 
 }

@@ -2,35 +2,11 @@ package com.github.opengrabeso.stravamat
 package requests
 
 import spark.{Request, Response}
-import shared.Util._
 
 object GetFiles extends DefineRequest("/getFiles") {
 
-  override def html(request: Request, resp: Response) = {
-    val session = request.session()
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
+  override def html(request: Request, resp: Response) = withAuth(request, resp) { auth =>
 
-    val stravaActivities = Main.recentStravaActivities(auth)
-
-    // ignore anything older than oldest of recent Strava activities
-    val ignoreBefore = stravaActivities.lastOption.map(_.startTime)
-
-    val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
-
-    val recentActivities = ignoreBefore.fold(stagedActivities) { before =>
-      stagedActivities.filter(_.id.startTime > before)
-    }.sortBy(_.id.startTime)
-
-    // match recent activities against Strava activities
-    // a significant overlap means a match
-    val recentToStrava = recentActivities.map { r =>
-      r -> stravaActivities.find(_ isMatching r.id)
-    }
-
-    // detect activity groups - any overlapping activities should be one group, unless
-    //val activityGroups =
-
-    var ignored = false
     <html>
       <head>
         {headPrefix}<title>Stravamat - upload files</title>

@@ -13,7 +13,6 @@ import spark.{Request, Response}
 
 object Upload extends DefineRequest.Post("/upload") {
   override def html(request: Request, resp: Response) = {
-    val session = request.session
     withAuth(request, resp) { auth =>
 
       val fif = new DiskFileItemFactory()
@@ -80,9 +79,6 @@ object Upload extends DefineRequest.Post("/upload") {
   }
 
   def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream) = {
-    import MoveslinkImport._
-    // we may read only once, we need to buffer it
-
     val fileBytes = IOUtils.toByteArray(streamOrig)
     val digest = Main.digest(fileBytes)
 

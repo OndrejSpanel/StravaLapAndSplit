@@ -5,7 +5,6 @@ package push
 import spark.{Request, Response}
 
 object PushDo extends DefineRequest("/push-do") with ChangeSettings {
-  override def urlPrefix = "push-"
   def html(req: Request, resp: Response) = {
 
     withAuth(req, resp) { auth =>

@@ -6,7 +6,6 @@ import spark.{Request, Response}
 object ActivityFromStrava extends DefineRequest("/activityFromStrava") {
 
   override def html(request: Request, resp: Response) = {
-    val session = request.session()
     withAuth(request, resp) { auth =>
       val actId = request.queryParams("activityId")
 
