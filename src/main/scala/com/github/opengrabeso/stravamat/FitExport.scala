@@ -80,27 +80,39 @@ object FitExport {
       }
     }
 
-    object LapAutoClose {
-      var openLap = false
-      var lapCounter = 0
-      var lastLapStart = events.id.startTime
+    trait AutoClose {
+      def emitMsg(time: JodaDateTime, endTime: JodaDateTime)
 
+      private var isOpen = false
+      private var counter = 0
+      private var lastStart = events.id.startTime
+
+      def count: Int = counter
+
+      def openLap(time: JodaDateTime): Unit = {
+        lastStart = time
+        isOpen = true
+      }
       def closeLap(time: JodaDateTime): Unit = {
-        if (openLap && time > lastLapStart) {
-          val myMsg = new LapMesg()
-          myMsg.setEvent(FitEvent.LAP)
-          myMsg.setEventType(EventType.STOP)
-          myMsg.setStartTime(toTimestamp(lastLapStart))
-          myMsg.setTimestamp(toTimestamp(time))
-          myMsg.setMessageIndex(lapCounter)
-          val lapDurationSec = Seconds.secondsBetween(lastLapStart, time).getSeconds.toFloat
-          lapCounter += 1
-          myMsg.setTotalElapsedTime(lapDurationSec)
-          myMsg.setTotalTimerTime(lapDurationSec)
-          encoder.onMesg(myMsg)
+        if (isOpen && time > lastStart) {
+          emitMsg(lastStart, time)
+          counter += 1
         }
-        lastLapStart = time
-        openLap = true
+        openLap(time)
+      }
+    }
+    object LapAutoClose extends AutoClose {
+      def emitMsg(startTime: JodaDateTime, endTime: JodaDateTime): Unit = {
+        val myMsg = new LapMesg()
+        myMsg.setEvent(FitEvent.LAP)
+        myMsg.setEventType(EventType.STOP)
+        myMsg.setStartTime(toTimestamp(startTime))
+        myMsg.setTimestamp(toTimestamp(endTime))
+        myMsg.setMessageIndex(count)
+        val lapDurationSec = Seconds.secondsBetween(startTime, endTime).getSeconds.toFloat
+        myMsg.setTotalElapsedTime(lapDurationSec)
+        myMsg.setTotalTimerTime(lapDurationSec)
+        encoder.onMesg(myMsg)
       }
     }
 
@@ -144,7 +156,7 @@ object FitExport {
 
     encodeHeader(encoder)
 
-    LapAutoClose.closeLap(timeBeg)
+    LapAutoClose.openLap(timeBeg)
     allEvents.foreach(_.encode(encoder))
 
     val durationSec = Seconds.secondsBetween(timeBeg, timeEnd).getSeconds
@@ -184,7 +196,7 @@ object FitExport {
       myMsg.setTotalTimerTime(durationSec.toFloat)
       myMsg.setMessageIndex(0)
       myMsg.setFirstLapIndex(0)
-      myMsg.setNumLaps(LapAutoClose.lapCounter + 1)
+      myMsg.setNumLaps(LapAutoClose.count + 1)
 
       myMsg.setEvent(FitEvent.SESSION)
       myMsg.setEventType(EventType.STOP)
