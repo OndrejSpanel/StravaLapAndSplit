@@ -336,7 +336,22 @@ object Main {
       val begsSorted = begs.sortBy(_.stamp).map(_.asInstanceOf[BegEvent])
       val begsAdjusted = begsSorted.take(1) ++ begsSorted.drop(1).map(e => SplitEvent(e.stamp, e.sport))
 
-      val eventsAndSportsSorted = (begsAdjusted ++ rest :+ ends.maxBy(_.stamp)).sortBy(_.stamp)
+      // when activities follow each other, insert a lap or a pause between them
+      val lastBeg = begs.map(_.stamp).max
+      val firstEnd = ends.map(_.stamp).min
+
+      val transitionEvents = if (firstEnd <= lastBeg) {
+        val duration = timeDifference(firstEnd, lastBeg).toInt
+        if (duration < 60) {
+          Seq(LapEvent(firstEnd), LapEvent(lastBeg))
+        } else {
+          Seq(PauseEvent(duration, firstEnd), PauseEndEvent(duration, lastBeg))
+        }
+      } else {
+        Nil
+      }
+
+      val eventsAndSportsSorted = (begsAdjusted ++ rest ++ transitionEvents :+ ends.maxBy(_.stamp) ).sortBy(_.stamp)
 
       val startBegTimes = Seq(this.startTime, this.endTime, that.startTime, that.endTime).sorted
 
