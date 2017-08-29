@@ -26,14 +26,15 @@ object Event {
 
 object EventPriority {
   val seq: IndexedSeq[Class[_]] = IndexedSeq(
-    BegEvent.getClass, EndEvent.getClass,
-    SplitEvent.getClass,
-    PauseEvent.getClass, PauseEndEvent.getClass,
-    LapEvent.getClass
+    classOf[BegEvent], classOf[EndEvent],
+    classOf[SplitEvent],
+    classOf[PauseEvent], classOf[PauseEndEvent],
+    classOf[LapEvent]
   )
 
   def apply(e: Event) = {
     val find = seq.indexOf(e.getClass)
+    //println(s"Find order of ${e.getClass} as $find")
     if (find<0) seq.size // not listed means lowest possible priority
     else find
   }

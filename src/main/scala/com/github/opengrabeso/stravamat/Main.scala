@@ -697,18 +697,22 @@ object Main {
       }
 
       // process existing events
+      val inheritEvents = this.events.filterNot(_.isSplit)
 
-      val events = (BegEvent(id.startTime, findSport(id.startTime)) +: EndEvent(id.endTime) +: this.events) ++ pauseEvents
+      val events = (BegEvent(id.startTime, findSport(id.startTime)) +: EndEvent(id.endTime) +: inheritEvents) ++ pauseEvents
       val eventsByTime = events.sortBy(_.stamp)
 
       val sports = eventsByTime.map(x => findSport(x.stamp))
 
       // insert / modify splits on edges
       val sportChange = (("" +: sports) zip sports).map(ab => ab._1 != ab._2)
-      val ees = (eventsByTime, sports, sportChange).zipped.map { case (e1, sport,change) =>
+      val allEvents = (eventsByTime, sports, sportChange).zipped.map { case (ev, sport,change) =>
         // TODO: handle multiple events at the same time
-        if (change) SplitEvent(e1.stamp, sport)
-        else e1
+        if (change) {
+          if (ev.isInstanceOf[BegEvent]) BegEvent(ev.stamp, sport)
+          else SplitEvent(ev.stamp, sport)
+        }
+        else ev
       }
 
       // when there are multiple events at the same time, use only the most important one
@@ -724,8 +728,6 @@ object Main {
             ret
         }
       }
-
-      val allEvents = eventsByTime ++ ees
 
       val cleanedEvents = cleanupEvents(allEvents.sortBy(_.stamp).toList, Nil).reverse
 

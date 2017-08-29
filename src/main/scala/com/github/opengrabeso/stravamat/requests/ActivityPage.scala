@@ -545,10 +545,7 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
     prepare
   }
 
-  override def html(request: Request, resp: Response) = {
-
-    val session = request.session()
-    implicit val auth = session.attribute[StravaAuthResult]("auth")
+  override def html(request: Request, resp: Response) = withAuth(request, resp) { implicit auth =>
 
     val fif = new DiskFileItemFactory()
     fif.setSizeThreshold(1 * 1024) // we do not expect any files, only form parts
@@ -616,10 +613,9 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
 
 
 object EditActivity extends DefineRequest("edit-activity") with ActivityRequestHandler {
-  override def html(req: Request, resp: Response) = {
+  override def html(req: Request, resp: Response) = withAuth(req, resp ){ implicit auth =>
 
     val session = req.session()
-    implicit val auth = session.attribute[StravaAuthResult]("auth")
     val id = req.queryParams("id")
     val actId = FileId.parse(id)
 
