@@ -60,7 +60,7 @@ object PushDo extends DefineRequest("/push-do") with ChangeSettings {
           }
           <a href="selectActivity">Select activity</a>
         </div>
-
+        {bodyFooter}
       </body>
     </html>
 
