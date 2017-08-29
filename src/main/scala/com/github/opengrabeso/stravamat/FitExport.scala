@@ -127,17 +127,15 @@ object FitExport {
     }
 
 
-    class LapEvent(val time: JodaDateTime) extends FitEvent {
+    class LapFitEvent(val time: JodaDateTime) extends FitEvent {
       override def encode(encoder: Encoder): Unit = {
         LapAutoClose.closeLap(time)
       }
     }
 
-    val lapsAsEvents = events.events.flatMap {
+    val lapsAsEvents = events.events.collect {
       case LapEvent(time) =>
-        Some(new LapEvent(time))
-      case _ =>
-        None
+        new LapFitEvent(time)
     }
 
     val allEvents = (gpsAsEvents ++ attributesAsEvents ++ lapsAsEvents).toVector.sortBy(_.time)
