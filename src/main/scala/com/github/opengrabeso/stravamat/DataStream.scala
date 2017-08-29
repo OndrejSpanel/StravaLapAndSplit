@@ -105,9 +105,7 @@ sealed abstract class DataStream extends Serializable {
   }
 
   def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStream = {
-    // TODO: optimize: stream is sorted, no need to filter, we can use search instead
-    val subData = stream.filter(i => i._1 >= timeBeg && i._1 <= timeEnd)
-
+    val subData = stream.from(timeBeg).to(timeEnd)
     pickData(subData)
   }
 
