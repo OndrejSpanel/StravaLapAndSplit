@@ -49,6 +49,7 @@ sealed abstract class Event {
   def stamp: ZonedDateTime
   def description: String
   def isSplit: Boolean // splits need to be known when exporting
+  def sportChange: Option[Event.Sport] = None
   lazy val order: Int = EventPriority(this)// higher order means less important
   def timeOffset(offset: Int): Event
 
@@ -130,6 +131,7 @@ case class BegEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
   def description = "<b>Start</b>"
   def defaultEvent = s"split${sport.toString}"
   def isSplit = true
+  override def sportChange: Option[Event.Sport] = Some(sport)
 
   override def listTypes = listSplitTypes.toArray
 }
@@ -140,6 +142,7 @@ case class SplitEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
   def description = "Split"
   def defaultEvent = s"split${sport.toString}"
   def isSplit = true
+  override def sportChange: Option[Event.Sport] = Some(sport)
 }
 
 trait SegmentTitle {

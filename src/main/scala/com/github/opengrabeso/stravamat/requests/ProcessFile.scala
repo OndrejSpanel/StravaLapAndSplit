@@ -7,12 +7,10 @@ abstract class ProcessFile(value: String) extends DefineRequest(value) {
 
   def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit
 
-  override def html(req: Request, resp: Response) = {
+  override def html(req: Request, resp: Response) = withAuth(req, resp) { auth =>
 
     val id = req.queryParams("id")
     val op = req.queryParams("operation")
-    val session = req.session
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
 
     op match {
       case "split" =>

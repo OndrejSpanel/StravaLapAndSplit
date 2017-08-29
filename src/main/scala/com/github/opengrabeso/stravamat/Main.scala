@@ -433,7 +433,9 @@ object Main {
           attr.slice(begTime, endTime)
         }
 
-        val act = ActivityEvents(id.copy(startTime = begTime), eventsRange, distRange, gpsRange, attrRange)
+        val sport = beg.sportChange.getOrElse(id.sportName)
+
+        val act = ActivityEvents(id.copy(startTime = begTime, sportName = sport), eventsRange, distRange, gpsRange, attrRange)
 
         act
       }
