@@ -210,6 +210,7 @@ abstract class SelectActivity(name: String) extends DefineRequest(name) {
                   // once any activity is present on Strava, do not offer upload by default any more
                   // (if some earlier is not present, it was probably already uploaded and deleted)
                   <tr>
+                    <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
                     <td>
                       {
                       val detected = Main.detectSportBySpeed(actEvents.stats, act.sportName)
