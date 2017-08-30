@@ -141,6 +141,8 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     }
   }
 
+  def showSuuntoUploadInstructions = true
+
   def loginPage(request: Request, resp: Response, afterLogin: String, afterLoginParams: Option[String]): NodeSeq = {
     resp.cookie("authCode", "", 0) // delete the cookie
     <html>
@@ -158,18 +160,21 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
         <h3>Work in progress, use at your own risk.</h3>
           <p>
             Automated uploading and processing of Suunto data to Strava
-          </p>
-
-
-          <h4>Suunto Upload</h4>
-          <p>
-            If you want to upload Suunto files, start the Stravamat Start application
-            which will open a new web page with the upload progress.
-          </p>
-          <p>
-            The application can be downloaded from <a href="https://github.com/OndrejSpanel/Stravamat/releases">GitHub Stravamat Releases page</a>.
-          </p>
-
+          </p> ++
+          {
+            if (showSuuntoUploadInstructions) {
+              <h4>Suunto Upload</h4>
+                <p>
+                If you want to upload Suunto files, start the Stravamat Start application
+                which will open a new web page with the upload progress.
+              </p>
+              <p>
+                The application can be downloaded from
+                <a href="https://github.com/OndrejSpanel/Stravamat/releases">GitHub Stravamat Releases page</a>
+                .
+              </p>
+            } else NodeSeq.Empty
+          } ++
           <h4>Working</h4>
           <ul>
             <li>Merges Quest and GPS Track Pod data</li>
