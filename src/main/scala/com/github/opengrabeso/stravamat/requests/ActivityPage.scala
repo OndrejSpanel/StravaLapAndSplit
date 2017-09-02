@@ -166,34 +166,43 @@ trait ActivityRequestHandler {
     }
 
     function initEvents() {
+      //console.log("initEvents " + events.toString());
       events.forEach(function(e){
         if (e[0].lastIndexOf("split",0) == 0) {
           addEvent(e);
+        } else {
+          removeEvent(e[1])
         }
+        selectOption(e);
       });
     }
 
     function selectOption(e) {
+      //console.log("selectOption " + e[1]);
       var tableOption = document.getElementById(e[1]);
-      // select appropriate option
-      tableOption.value = e[0];
+      if (tableOption) {
+        // select appropriate option
+        tableOption.value = e[0];
 
-      // we need to update the table source, because it is used to create map popups
-      // http://stackoverflow.com/a/40766724/16673
-      var opts = tableOption.getElementsByTagName('option');
-      for (var i = 0; i < opts.length; i++)
-          opts[i].removeAttribute('selected');
-      var checked = tableOption.querySelector('option:checked');
-      checked.setAttribute('selected', 'selected');
+        // we need to update the table source, because it is used to create map popups
+        // http://stackoverflow.com/a/40766724/16673
+        var opts = tableOption.getElementsByTagName('option');
+        for (var i = 0; i < opts.length; i++)
+            opts[i].removeAttribute('selected');
+        var checked = tableOption.querySelector('option:checked');
+        checked.setAttribute('selected', 'selected');
+      }
     }
 
     function addEvent(e) {
+      //console.log("Add event " + e[1]);
       var tableLink = document.getElementById("link" + e[1]);
       tableLink.innerHTML = splitLink(id, e);
     }
 
     /** @param {String} time */
     function removeEvent(time) {
+      //console.log("Remove event " + time);
       var tableLink = document.getElementById("link" + time);
       tableLink.innerHTML = "";
     }
@@ -204,6 +213,7 @@ trait ActivityRequestHandler {
     * @param {String} itemTime
     * */
     function changeEvent(item, newValue, itemTime) {
+      //console.log("changeEvent", item, newValue, itemTime)
       events.forEach(function(e) {
         if (e[1] == itemTime) {
           e[0] = newValue;
@@ -215,7 +225,7 @@ trait ActivityRequestHandler {
         if (e[1] == itemTime && e[0].lastIndexOf("split", 0) === 0){
           addEvent(e);
         } else {
-          removeEvent(itemTime);
+          removeEvent(e[1])
         }
       });
 

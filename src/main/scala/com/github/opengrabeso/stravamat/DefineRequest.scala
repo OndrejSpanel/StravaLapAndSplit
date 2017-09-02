@@ -57,17 +57,33 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
   def bodyHeader(auth: Main.StravaAuthResult): NodeSeq = {
     <div id="header" style="background-color:#fca;overflow:auto">
     <table>
-      <tr><td>
-      Athlete:
-      <a href={s"https://www.strava.com/athletes/${auth.id}"}>
-        {auth.name}
-      </a>
-      </td>
-      <td>
-      <form action={"logout"}>
-        <input type="submit" value ="Log Out"/>
-      </form>
-      </td></tr>
+      <tr>
+        <td>
+          <a href="/"><img src="static/stravaUpload32.png"></img></a>
+        </td>
+        <td>
+          <table>
+            <tr>
+              <td>
+                <a href="/">Stravamat</a>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Athlete:
+                <a href={s"https://www.strava.com/athletes/${auth.id}"}>
+                  {auth.name}
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td>
+        <form action={"logout"}>
+          <input type="submit" value ="Log Out"/>
+        </form>
+        </td>
+      </tr>
     </table>
     </div>
     <p></p>
@@ -79,7 +95,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       <a href="http://labs.strava.com/" id="powered_by_strava" rel="nofollow">
         <img align="left" src="static/api_logo_pwrdBy_strava_horiz_white.png" style="max-height:46px"/>
       </a>
-      <p style="color:#fff">© 2016 <a href="https://github.com/OndrejSpanel" style="color:inherit">Ondřej Španěl</a></p>
+      <p style="color:#fff">© 2016 - 2017 <a href="https://github.com/OndrejSpanel/Stravamat" style="color:inherit">Ondřej Španěl</a></p>
       <div/>
     </div>
   }
@@ -125,6 +141,8 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     }
   }
 
+  def showSuuntoUploadInstructions = true
+
   def loginPage(request: Request, resp: Response, afterLogin: String, afterLoginParams: Option[String]): NodeSeq = {
     resp.cookie("authCode", "", 0) // delete the cookie
     <html>
@@ -142,18 +160,21 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
         <h3>Work in progress, use at your own risk.</h3>
           <p>
             Automated uploading and processing of Suunto data to Strava
-          </p>
-
-
-          <h4>Suunto Upload</h4>
-          <p>
-            If you want to upload Suunto files, start the Stravamat Start application
-            which will open a new web page with the upload progress.
-          </p>
-          <p>
-            The application can be downloaded from <a href="https://github.com/OndrejSpanel/Stravamat/releases">GitHub Stravamat Releases page</a>.
-          </p>
-
+          </p> ++
+          {
+            if (showSuuntoUploadInstructions) {
+              <h4>Suunto Upload</h4>
+                <p>
+                If you want to upload Suunto files, start the Stravamat Start application
+                which will open a new web page with the upload progress.
+              </p>
+              <p>
+                The application can be downloaded from
+                <a href="https://github.com/OndrejSpanel/Stravamat/releases">GitHub Stravamat Releases page</a>
+                .
+              </p>
+            } else NodeSeq.Empty
+          } ++
           <h4>Working</h4>
           <ul>
             <li>Merges Quest and GPS Track Pod data</li>

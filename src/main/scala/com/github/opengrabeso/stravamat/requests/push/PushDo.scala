@@ -5,6 +5,7 @@ package push
 import spark.{Request, Response}
 
 object PushDo extends DefineRequest("/push-do") with ChangeSettings {
+  override def showSuuntoUploadInstructions = false // no need to show this, user already launched it
   def html(req: Request, resp: Response) = {
 
     withAuth(req, resp) { auth =>

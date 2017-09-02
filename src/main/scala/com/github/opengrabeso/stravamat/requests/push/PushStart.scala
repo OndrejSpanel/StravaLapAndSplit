@@ -11,6 +11,7 @@ import org.joda.time.{DateTime => ZonedDateTime}
 import shared.Util._
 
 object PushStart extends DefineRequest("/push-start") {
+  override def showSuuntoUploadInstructions = false // no need to show this, user already launched it
 
   def storedQueryParam(req: Request, prefix: String, name: String): String = {
     val session = req.session()
