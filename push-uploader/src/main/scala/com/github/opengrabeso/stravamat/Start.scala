@@ -17,7 +17,7 @@ import akka.stream.{ActorMaterializer, BindFailedException}
 import akka.util.ByteString
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future, duration}
+import scala.concurrent.{Await, Future, Promise, duration}
 import scala.util.Try
 import scala.xml.Elem
 import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
@@ -109,6 +109,73 @@ object Start extends App {
     // try communicating with the local Stravamat, if not responding, use the remote one
     useLocal = localTest && Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS))).isSuccess
     useLocal
+  }
+
+  private object Tray {
+    import java.awt.{SystemTray, TrayIcon, AWTException, Image}
+    import javax.swing.SwingUtilities
+
+    private def showImpl() = {
+      assert(SwingUtilities.isEventDispatchThread)
+      import javax.imageio.ImageIO
+      // https://docs.oracle.com/javase/7/docs/api/java/awt/SystemTray.html
+
+      if (SystemTray.isSupported) {
+        val tray = SystemTray.getSystemTray
+        val iconSize = tray.getTrayIconSize
+        val imageFile = if ((iconSize.height max iconSize.width) > 16) "/stravaUpload32.png" else "/stravaUpload16.png"
+        val is = getClass.getResourceAsStream(imageFile)
+
+        val image = ImageIO.read(is)
+        val imageSized = image.getScaledInstance(iconSize.width, iconSize.height, Image.SCALE_SMOOTH)
+
+        val trayIcon = new TrayIcon(imageSized, "Stravamat")
+        try {
+          tray.add(trayIcon)
+        } catch  {
+          case e: AWTException =>
+            e.printStackTrace()
+        }
+        Some(trayIcon)
+      } else {
+        None
+      }
+    }
+
+    private def removeImpl(icon: TrayIcon): Unit = {
+      assert(SwingUtilities.isEventDispatchThread)
+      if (SystemTray.isSupported) {
+        val tray = SystemTray.getSystemTray
+        tray.remove(icon)
+      }
+    }
+
+    private def changeStateImpl(icon: TrayIcon, state: =>String): Unit = {
+      assert(SwingUtilities.isEventDispatchThread)
+      val title = "Stravamat"
+      val text = if (state.isEmpty) title else title + ": " + state
+      icon.setToolTip(text)
+    }
+
+    def show(): Option[TrayIcon] = {
+      val p = Promise[Option[TrayIcon]]
+      SwingUtilities.invokeLater(new Runnable {
+        override def run() = p.success(showImpl())
+      })
+      Await.result(p.future, Duration.Inf)
+    }
+
+    def remove(icon: TrayIcon): Unit = {
+      SwingUtilities.invokeLater(new Runnable {
+        override def run() = removeImpl(icon)
+      })
+    }
+
+    def changeState(icon: TrayIcon, state: =>String): Unit = {
+      SwingUtilities.invokeLater(new Runnable {
+        override def run() = changeStateImpl(icon, state)
+      })
+    }
   }
 
   private def startBrowser() = {
@@ -213,6 +280,8 @@ object Start extends App {
     // sort files by timestamp
     val wantedFiles = listFiles.filter(MoveslinkFiles.timestampFromName(_).forall(_ > sinceDate))
 
+    reportProgress(wantedFiles.size)
+
     val sortedFiles = wantedFiles.sortBy(MoveslinkFiles.timestampFromName)
 
     val localTimeZone = DateTimeZone.getDefault.toString
@@ -291,15 +360,25 @@ object Start extends App {
       f -> req
     }
 
+    reportProgress(reqs.size)
 
-    reqs.foreach { case (f, r) =>
+    reqs.zipWithIndex.foreach { case ((f, r), i) =>
       Await.result(r, Duration.Inf)
       // TODO: handle upload failures somehow
       println(s"  Await upload $f status $r")
+      reportProgress(reqs.size + 1 - i)
     }
 
     serverInfo.system.terminate()
 
+  }
+
+  val icon = Tray.show()
+
+  def reportProgress(i: Int): Unit = {
+    def localSuffix = if (useLocal) " to local server" else ""
+    def state = s"Uploading $i files" + localSuffix
+    icon.foreach(Tray.changeState(_, state))
   }
 
   checkLocalStravamat()
@@ -318,5 +397,5 @@ object Start extends App {
 
   Await.result(serverInfo.system.whenTerminated, Duration.Inf)
   println("System stopped")
-
+  icon.foreach(Tray.remove)
 }

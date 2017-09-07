@@ -59,7 +59,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     <table>
       <tr>
         <td>
-          <a href="/"><img src="static/stravaUpload32.png"></img></a>
+          <a href="/"><img src="static/stravaUpload64.png"></img></a>
         </td>
         <td>
           <table>
