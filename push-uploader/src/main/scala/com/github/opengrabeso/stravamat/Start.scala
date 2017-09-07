@@ -166,7 +166,7 @@ object Start extends App {
     }
 
     def remove(icon: TrayIcon): Unit = {
-      SwingUtilities.invokeLater(new Runnable {
+      SwingUtilities.invokeAndWait(new Runnable {
         override def run() = removeImpl(icon)
       })
     }
@@ -211,6 +211,7 @@ object Start extends App {
     val response = if (id !=instanceId) {
       println(s"Shutdown - stop server $instanceId, received $id")
       serverInfo.shutdown()
+      authDone.countDown()
       <result>Done</result>
     } else {
       println(s"Shutdown ignored - same instance")
