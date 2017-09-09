@@ -7,7 +7,7 @@ import org.joda.time.{DateTime => ZonedDateTime}
 import java.util.zip.GZIPOutputStream
 
 import com.google.api.client.http._
-import resource._
+import resource.managed
 import shared.Util._
 
 import scala.util.{Failure, Success, Try}
