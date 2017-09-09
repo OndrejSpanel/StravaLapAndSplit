@@ -112,8 +112,11 @@ object Start extends App {
   }
 
   private object Tray {
-    import java.awt.{SystemTray, TrayIcon, AWTException, Image}
-    import javax.swing.SwingUtilities
+    import java.awt._
+    import java.awt.event._
+    import javax.swing._
+
+    private var state: String = ""
 
     private def showImpl() = {
       assert(SwingUtilities.isEventDispatchThread)
@@ -121,6 +124,12 @@ object Start extends App {
       // https://docs.oracle.com/javase/7/docs/api/java/awt/SystemTray.html
 
       if (SystemTray.isSupported) {
+        try {
+          UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName)
+        } catch {
+          case _: Exception =>
+        }
+
         val tray = SystemTray.getSystemTray
         val iconSize = tray.getTrayIconSize
         val imageFile = if ((iconSize.height max iconSize.width) > 16) "/stravaUpload32.png" else "/stravaUpload16.png"
@@ -129,8 +138,24 @@ object Start extends App {
         val image = ImageIO.read(is)
         val imageSized = image.getScaledInstance(iconSize.width, iconSize.height, Image.SCALE_SMOOTH)
 
-        val trayIcon = new TrayIcon(imageSized, "Stravamat")
+        val popup = new PopupMenu()
+
+        def addItem(title: String, action: => Unit) = {
+          val listener = new ActionListener() {
+            def actionPerformed(e: ActionEvent) = action
+          }
+          val exit = new MenuItem(title)
+          exit.addActionListener(listener)
+          popup.add(exit)
+        }
+
+        addItem("Login...", startBrowser())
+        popup.add(new MenuItem("-"))
+        addItem("Exit", doShutdown())
+
+        val trayIcon = new TrayIcon(imageSized, "Stravamat", popup)
         try {
+
           tray.add(trayIcon)
         } catch  {
           case e: AWTException =>
@@ -150,12 +175,18 @@ object Start extends App {
       }
     }
 
-    private def changeStateImpl(icon: TrayIcon, state: =>String): Unit = {
+    private def changeStateImpl(icon: TrayIcon, s: String): Unit = {
       assert(SwingUtilities.isEventDispatchThread)
+      state = s
       val title = "Stravamat"
       val text = if (state.isEmpty) title else title + ": " + state
       icon.setToolTip(text)
     }
+
+    private def loginDoneImpl(icon: TrayIcon): Unit = {
+      icon.setPopupMenu(null)
+    }
+
 
     def show(): Option[TrayIcon] = {
       val p = Promise[Option[TrayIcon]]
@@ -171,9 +202,15 @@ object Start extends App {
       })
     }
 
-    def changeState(icon: TrayIcon, state: =>String): Unit = {
+    def loginDone(icon: TrayIcon): Unit = {
+      SwingUtilities.invokeAndWait(new Runnable {
+        override def run() = loginDoneImpl(icon)
+      })
+    }
+
+    def changeState(icon: TrayIcon, s: String): Unit = {
       SwingUtilities.invokeLater(new Runnable {
-        override def run() = changeStateImpl(icon, state)
+        override def run() = changeStateImpl(icon, s)
       })
     }
   }
@@ -200,18 +237,21 @@ object Start extends App {
     serverInfo.stop()
     println(s"Auth done - Stravamat user id $userId, session $sessionId")
     val sinceTime = new ZonedDateTime(since)
-    val sinceTime2 = ZonedDateTime.parse(since)
     authData = Some(AuthData(userId, sinceTime, sessionId))
     authDone.countDown()
     val doPushUrl = s"$stravaMatUrl/push-do"
     redirect(doPushUrl, StatusCodes.Found)
   }
 
+  private def doShutdown(): Unit = {
+    serverInfo.shutdown()
+    authDone.countDown()
+  }
+
   def shutdownHandler(id: Long): HttpResponse = {
     val response = if (id !=instanceId) {
       println(s"Shutdown - stop server $instanceId, received $id")
-      serverInfo.shutdown()
-      authDone.countDown()
+      doShutdown()
       <result>Done</result>
     } else {
       println(s"Shutdown ignored - same instance")
@@ -257,9 +297,8 @@ object Start extends App {
   }
 
   private def waitForServerToStop(serverInfo: ServerInfo) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
     try {
-      val binding = Await.result(serverInfo.binding, Duration.Inf)
+      val _ = Await.result(serverInfo.binding, Duration.Inf)
       authDone.await()
 
     } catch {
@@ -310,7 +349,7 @@ object Start extends App {
     Await.result(req, Duration.Inf)
 
     val reqs = for {
-      (f, i) <- sortedFiles.zipWithIndex
+      f <- sortedFiles
       fileBytes <- MoveslinkFiles.get(f)
     } yield {
       // consider async processing here - a few requests in parallel could improve throughput
@@ -386,12 +425,13 @@ object Start extends App {
 
   private val serverInfo = startHttpServer(serverPort)
 
-  // TODO: we need to reset upload progress somehow before showing the page
   startBrowser()
 
   waitForServerToStop(serverInfo)
-
   // server is stopped once auth information is received into authUserId, or when another instance has forced a shutdown
+
+  icon.foreach(Tray.loginDone)
+
   for (data <- authData) {
     performUpload(data)
   }
