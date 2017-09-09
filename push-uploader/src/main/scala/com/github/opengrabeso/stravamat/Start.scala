@@ -113,8 +113,8 @@ object Start extends App {
 
   private object Tray {
     import java.awt._
-    import java.awt.event._
     import javax.swing._
+    import java.awt.event._
 
     private var state: String = ""
 
@@ -138,24 +138,42 @@ object Start extends App {
         val image = ImageIO.read(is)
         val imageSized = image.getScaledInstance(iconSize.width, iconSize.height, Image.SCALE_SMOOTH)
 
-        val popup = new PopupMenu()
+
+        val trayIcon = new TrayIcon(imageSized, "Stravamat")
+
+        import java.awt.event.MouseAdapter
+
+        val popup = new JPopupMenu
 
         def addItem(title: String, action: => Unit) = {
           val listener = new ActionListener() {
             def actionPerformed(e: ActionEvent) = action
           }
-          val exit = new MenuItem(title)
-          exit.addActionListener(listener)
-          popup.add(exit)
+          val item = new JMenuItem(title)
+          item.addActionListener(listener)
+          popup.add(item)
         }
 
         addItem("Login...", startBrowser())
-        popup.add(new MenuItem("-"))
+        popup.addSeparator()
         addItem("Exit", doShutdown())
 
-        val trayIcon = new TrayIcon(imageSized, "Stravamat", popup)
-        try {
 
+        trayIcon addMouseListener new MouseAdapter {
+          override def mouseReleased(e: MouseEvent) = maybeShowPopup(e)
+
+          override def mousePressed(e: MouseEvent) = maybeShowPopup(e)
+
+          def maybeShowPopup(e: MouseEvent) = {
+            if (e.isPopupTrigger) {
+              popup.setLocation(e.getX, e.getY)
+              popup.setInvoker(popup)
+              popup.setVisible(true)
+            }
+          }
+        }
+
+        try {
           tray.add(trayIcon)
         } catch  {
           case e: AWTException =>
