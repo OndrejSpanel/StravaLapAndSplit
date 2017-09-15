@@ -33,8 +33,9 @@ trait ActivityRequestHandler {
     val auth = session.attribute[StravaAuthResult]("auth")
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+      <script src="static/jquery-3.2.1.min.js"></script>
       <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
-        <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
+      <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
 
       <style>
         .activityTable {{
@@ -56,7 +57,9 @@ trait ActivityRequestHandler {
 
       <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
-    val bodyContent = <table class="activityTable">
+    val bodyContent =
+      <form id="activity_form" action="upload-strava" method="post">
+      <table class="activityTable">
       <tr>
         <th>Event</th>
         <th>Time</th>
@@ -87,15 +90,19 @@ trait ActivityRequestHandler {
           </td>
           <td class="cellNoBorder" id={s"link${eTime.toString}"}> </td>
         </tr>
+        <input type="hidden" name="id" value={actId.filename}/>
       }}
-    </table> ++ {
+    </table></form>
+    <button onclick="submitProcess()">Process selected</button>
+    <button onclick="submitDownload()">Download as files</button> ++ {
       if (activityData.hasGPS) {
         <div id='map'></div>
           <script>
             {mapJS(activityData, auth.mapboxToken)}
           </script>
       } else <div></div>
-    } :+ <script type="text/javascript">initEvents()</script>
+    } ++ <script type="text/javascript">initEvents()</script>
+    //{uploadResultsHtml()}
 
     ActivityContent(headContent, bodyContent)
   }
@@ -116,33 +123,12 @@ trait ActivityRequestHandler {
 
     /**
      * @param {String} id
-     * @param {String} time
-     * @param {String} action
-     * @param {String} value
-     * @return {String}
-     */
-    function linkWithEvents(id, time, action, value) {
-      var splitWithEvents =
-              '  <input type="hidden" name="id" value="' + id + '"/>' +
-              '  <input type="hidden" name="operation" value="split"/>' +
-              '  <input type="hidden" name="time" value="' + time + '"/>' +
-              '  <input type="submit" value="' + value + '"/>';
-
-      events.forEach( function(e) {
-        splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
-      });
-
-      return '<form action="' + action + '" method="get" style="display:inline-block">' + splitWithEvents  + '</form>';
-    }
-    /**
-     * @param {String} id
      * @param event
      * @return {String}
      */
     function splitLink(id, event) {
       var time = event[1];
-      var downloadButton = linkWithEvents(id, time, "download", "Download");
-      var uploadButton = linkWithEvents(id, time, "upload-strava", "To Strava");
+      var selectCheckbox = '<input type="checkbox" name="process_time=' + time + '"} checked=true></input>';
 
       var nextSplit = null;
       events.forEach( function(e) {
@@ -161,7 +147,7 @@ trait ActivityRequestHandler {
         var speedKmH = duration > 0 ? km * 3600 / duration : 0;
         description = km.toFixed(2) + " km / " + paceMinKm.toFixed(2) + " min/km / " + speedKmH.toFixed(1) + " km/h";
       }
-      return downloadButton  + uploadButton + description;
+      return selectCheckbox + description;
 
     }
 
@@ -240,6 +226,44 @@ trait ActivityRequestHandler {
       // execute the callback
       onEventsChanged();
     }
+
+    function showResults() {
+       console.log("showResults")
+    }
+
+    function submitProcess() {
+      //document.getElementById("upload_button").style.display = "none";
+      //document.getElementById("uploads_table").style.display = "block";
+
+      var form = $$("#activity_form");
+      $$.ajax({
+        type: form.attr("method"),
+        url: form.attr("action"),
+        data: new FormData(form[0]),
+        contentType: false,
+        cache: false,
+        processData: false,
+        success: function(response) {
+          showResults();
+        },
+      });
+    }
+
+    function submitDownload() {
+      var form = $$("#activity_form");
+      $$.ajax({
+        type: form.attr("method"),
+        url: "download",
+        data: new FormData(form[0]),
+        contentType: false,
+        cache: false,
+        processData: false,
+        success: function(response) {
+          showResults();
+        },
+      });
+    }
+
     """)
   }
 
@@ -622,7 +646,7 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
 }
 
 
-object EditActivity extends DefineRequest("edit-activity") with ActivityRequestHandler {
+object EditActivity extends DefineRequest("/edit-activity") with ActivityRequestHandler {
   override def html(req: Request, resp: Response) = withAuth(req, resp ){ implicit auth =>
 
     val session = req.session()

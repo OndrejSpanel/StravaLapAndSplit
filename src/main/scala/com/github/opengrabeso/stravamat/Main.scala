@@ -954,7 +954,7 @@ object Main {
 
   }
 
-  def adjustEvents(events: ActivityEvents, eventsInput: Array[String]): ActivityEvents = {
+  def adjustEvents(events: ActivityEvents, eventsInput: Seq[String]): ActivityEvents = {
     val ee = events.events zip eventsInput
 
     val lapsAndSplits: Array[Event] = ee.flatMap { case (e, ei) =>

@@ -75,7 +75,7 @@ object Process extends DefineRequest.Post("/process") with ParseFormData {
 
     assert(sessionId != null)
 
-    val ops = activities(request)
+    val ops = activities(request)._1
 
     val toMerge = ops.flatMap { op =>
       Storage.load[ActivityHeader, ActivityEvents](Main.namespace.stage, op.filename, auth.userId).map(_._2)
