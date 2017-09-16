@@ -57,7 +57,8 @@ abstract class ProcessFile(value: String) extends DefineRequest.Post(value) with
 
           val export = FitExport.export(save)
 
-          process(req, resp, export, s"attachment;filename=split_${id}_$splitTime.fit")
+          //process(req, resp, export, s"attachment;filename=split_${id}_$splitTime.fit")
+          process(req, resp, export, s"split_${id}_$splitTime.fit")
         }
       }
     }

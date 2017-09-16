@@ -34,6 +34,7 @@ trait ActivityRequestHandler {
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
       <script src="static/jquery-3.2.1.min.js"></script>
+      <script src="static/download.js"></script>
       <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
       <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
 
@@ -251,17 +252,14 @@ trait ActivityRequestHandler {
 
     function submitDownload() {
       var form = $$("#activity_form");
-      $$.ajax({
-        type: form.attr("method"),
-        url: "download",
-        data: new FormData(form[0]),
-        contentType: false,
-        cache: false,
-        processData: false,
-        success: function(response) {
-          showResults();
-        },
-      });
+
+      var ajax = new XMLHttpRequest();
+      ajax.open( "POST", "/download", true);
+      ajax.responseType = 'blob';
+      ajax.onload = function(e){
+        download(e.target.response, ajax.getResponseHeader("Content-Disposition"), ajax.getResponseHeader("content-type"));
+      };
+      ajax.send(new FormData(form[0]))
     }
 
     """)
