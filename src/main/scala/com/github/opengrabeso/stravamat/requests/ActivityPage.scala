@@ -34,6 +34,7 @@ trait ActivityRequestHandler {
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
       <script src="static/jquery-3.2.1.min.js"></script>
+      <script src="static/jquery.mpAjax.js"></script>
       <script src="static/download.js"></script>
       <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
       <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
