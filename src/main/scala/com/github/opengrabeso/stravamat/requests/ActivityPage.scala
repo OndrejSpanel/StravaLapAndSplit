@@ -26,7 +26,7 @@ object ActivityRequest {
 
 }
 
-trait ActivityRequestHandler {
+trait ActivityRequestHandler extends UploadResults {
   import ActivityRequest._
 
   protected def activityHtmlContent(actId: FileId, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
@@ -36,6 +36,7 @@ trait ActivityRequestHandler {
       <script src="static/jquery-3.2.1.min.js"></script>
       <script src="static/jquery.mpAjax.js"></script>
       <script src="static/download.js"></script>
+      <script src="static/ajaxUtils.js"></script>
       <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
       <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
 
@@ -84,17 +85,17 @@ trait ActivityRequestHandler {
           </table></form>
           <button onclick="submitProcess()">Process selected</button>
           <button onclick="submitDownload()">Download as files</button>
+          {uploadResultsHtml()}
         </div>
         {if (activityData.hasGPS) {
         <div class="map clearfix" id='map'>
           <script>{mapJS(activityData, auth.mapboxToken)}</script>
-          {/*uploadResultsHtml()*/}
-          <script type="text/javascript">initEvents()</script>
         </div>
       } else {
         <div></div>
       }}
       </div>
+      <script type="text/javascript">initEvents()</script>
     ActivityContent(headContent, bodyContent)
   }
 
@@ -218,13 +219,9 @@ trait ActivityRequestHandler {
       onEventsChanged();
     }
 
-    function showResults() {
-       console.log("showResults")
-    }
-
     function submitProcess() {
       //document.getElementById("upload_button").style.display = "none";
-      //document.getElementById("uploads_table").style.display = "block";
+      document.getElementById("uploads_table").style.display = "block";
 
       var form = $$("#activity_form");
       $$.ajax({

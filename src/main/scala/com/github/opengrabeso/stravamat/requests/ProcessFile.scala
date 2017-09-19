@@ -7,6 +7,7 @@ import org.apache.commons.io.IOUtils
 import spark.{Request, Response}
 
 import scala.collection.mutable.ArrayBuffer
+import scala.xml.NodeSeq
 
 abstract class ProcessFile(value: String) extends DefineRequest.Post(value) with ParseFormDataGen[Int] {
 
@@ -38,32 +39,32 @@ abstract class ProcessFile(value: String) extends DefineRequest.Post(value) with
 
   def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit
 
+  def processAll(split: Seq[(Int, Main.ActivityEvents)], id: String)(req: Request, resp: Response): NodeSeq = {
+    split.foreach { case (splitTime, save) =>
+
+      val export = FitExport.export(save)
+
+      //process(req, resp, export, s"attachment;filename=split_${id}_$splitTime.fit")
+      process(req, resp, export, s"split_${id}_$splitTime.fit")
+    }
+    Nil
+  }
+
   override def html(req: Request, resp: Response) = withAuth(req, resp) { auth =>
 
     val (splits, pars) = activities(req)
     val id = pars.id
 
-    for (splitTime <- splits) {
-
-      val eventsInput = pars.events
-
-      for (events <- Storage.load2nd[Main.ActivityEvents](Main.namespace.edit, id, auth.userId)) {
-
-        val adjusted = Main.adjustEvents(events, eventsInput)
-
-        val split = adjusted.split(splitTime)
-
-        split.foreach { save =>
-
-          val export = FitExport.export(save)
-
-          //process(req, resp, export, s"attachment;filename=split_${id}_$splitTime.fit")
-          process(req, resp, export, s"split_${id}_$splitTime.fit")
-        }
-      }
+    val splitFragments = for {
+      splitTime <- splits
+      events <- Storage.load2nd[Main.ActivityEvents](Main.namespace.edit, id, auth.userId)
+      adjusted = Main.adjustEvents(events, pars.events)
+      split <- adjusted.split(splitTime)
+    } yield {
+      splitTime -> split
     }
+    processAll(splitFragments, id)(req, resp)
 
-    Nil
 
   }
 }

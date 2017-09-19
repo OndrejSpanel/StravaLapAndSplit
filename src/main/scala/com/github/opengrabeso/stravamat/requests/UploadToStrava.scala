@@ -8,39 +8,28 @@ import RequestUtils._
 
 
 
-object UploadToStrava extends ProcessFile("/upload-strava") {
-  def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit = {
-    // get form input (which splits should we upload?)
+object UploadToStrava extends ProcessFile("/upload-strava") with UploadResults {
 
+  override def html(req: Request, resp: Response) = {
+    startUploadSession(req.session())
+
+    super.html(req, resp)
+  }
+
+  override def processAll(split: Seq[(Int, Main.ActivityEvents)], id: String)(req: Request, resp: Response) = {
     val session = req.session()
     val auth = session.attribute[Main.StravaAuthResult]("auth")
+    val sessionId = session.attribute[String]("sid")
 
-    val api = new strava.StravaAPI(auth.token)
+    val uploadCount = uploadMultiple(split.map(_._2))(auth, sessionId)
 
-    val ret = api.uploadRawFileGz(export, "fit.gz") // TODO: forward response (at least status)
+    countResponse(uploadCount)
 
-    if (ret.isSuccess) {
-      val contentType = "application/json"
-      resp.status(200)
-
-      val output = Map("id" -> ret.get)
-
-      jsonMapper.writeValue(resp.raw.getOutputStream, output.asJava)
-
-      resp.`type`(contentType)
-    } else {
-      val contentType = "application/json"
-      resp.status(400)
-
-      val output = Map("error" -> "error")
-
-      jsonMapper.writeValue(resp.raw.getOutputStream, output.asJava)
-
-      resp.`type`(contentType)
-    }
-
-    Nil
   }
+
+
+  // TODO: different override structure
+  def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit = ???
 
 
 }
