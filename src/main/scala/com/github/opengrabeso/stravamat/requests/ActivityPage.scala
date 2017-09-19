@@ -39,73 +39,62 @@ trait ActivityRequestHandler {
       <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
       <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
 
-      <style>
-        .activityTable {{
-        border: 0;
-        border-collapse: collapse;
-        }}
-        .activityTable td, .activityTable th {{
-        border: 1px solid black;
-        }}
-        .cellNoBorder {{
-        border: 0;
-        }}
-
-        #map {{
-        height: 500px;
-        width: 800px;
-        }}
-      </style>
+      <link rel="stylesheet" type="text/css" href="static/activityPage.css"/>
+      <link rel="stylesheet" type="text/css" href="static/page.css"/>
 
       <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
     val bodyContent =
-      <form id="activity_form" action="upload-strava" method="post">
-      <table class="activityTable">
-      <tr>
-        <th>Event</th>
-        <th>Time</th>
-        <th>km</th>
-        <th>Action</th>
-      </tr>{val ees = activityData.editableEvents
-      var lastSport = ""
-      var lastTime = Option.empty[ZonedDateTime]
-      val startTime = activityData.id.startTime
-      for ((t, i) <- activityData.events.zipWithIndex) yield {
-        val t = activityData.events(i)
-        val ee = ees(i)
-        val action = ee.action
-        val eTime = activityData.secondsInActivity(t.stamp)
-        <tr>
-          <td> {xml.Unparsed(t.description)} </td>
-          <td> {displaySeconds(eTime)} </td>
-          <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
-          <td>
-            {val types = t.listTypes
-          if (types.length != 1 && !lastTime.contains(t.stamp)) {
-            lastTime = Some(t.stamp)
-            htmlSelectEvent(eTime.toString, t.listTypes, action)
-          } else {
-            {Events.typeToDisplay(types, types(0).id)}
-            <input type="hidden" name="events" value={t.defaultEvent}/>
-          }}
-          </td>
-          <td class="cellNoBorder" id={s"link${eTime.toString}"}> </td>
-        </tr>
-        <input type="hidden" name="id" value={actId.filename}/>
+      <div class="top">
+        <div class="act">
+          <form id="activity_form" action="upload-strava" method="post">
+          <table class="activityTable">
+            <tr>
+              <th>Event</th>
+              <th>Time</th>
+              <th>km</th>
+              <th>Action</th>
+            </tr>{val ees = activityData.editableEvents
+            var lastSport = ""
+            var lastTime = Option.empty[ZonedDateTime]
+            val startTime = activityData.id.startTime
+            for ((t, i) <- activityData.events.zipWithIndex) yield {
+              val t = activityData.events(i)
+              val ee = ees(i)
+              val action = ee.action
+              val eTime = activityData.secondsInActivity(t.stamp)
+              <tr>
+                <td> {xml.Unparsed(t.description)} </td>
+                <td> {displaySeconds(eTime)} </td>
+                <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
+                <td>
+                  {val types = t.listTypes
+                if (types.length != 1 && !lastTime.contains(t.stamp)) {
+                  lastTime = Some(t.stamp)
+                  htmlSelectEvent(eTime.toString, t.listTypes, action)
+                } else {
+                  {Events.typeToDisplay(types, types(0).id)}
+                  <input type="hidden" name="events" value={t.defaultEvent}/>
+                }}
+                </td>
+                <td class="cellNoBorder" id={s"link${eTime.toString}"}> </td>
+              </tr>
+              <input type="hidden" name="id" value={actId.filename}/>
+            }}
+          </table></form>
+          <button onclick="submitProcess()">Process selected</button>
+          <button onclick="submitDownload()">Download as files</button>
+        </div>
+        {if (activityData.hasGPS) {
+        <div class="map clearfix" id='map'>
+          <script>{mapJS(activityData, auth.mapboxToken)}</script>
+          {/*uploadResultsHtml()*/}
+          <script type="text/javascript">initEvents()</script>
+        </div>
+      } else {
+        <div></div>
       }}
-    </table></form>
-    <button onclick="submitProcess()">Process selected</button>
-    <button onclick="submitDownload()">Download as files</button> ++ {
-      if (activityData.hasGPS) {
-        <div id='map'></div>
-          <script>
-            {mapJS(activityData, auth.mapboxToken)}
-          </script>
-      } else <div></div>
-    } ++ <script type="text/javascript">initEvents()</script>
-    //{uploadResultsHtml()}
-
+      </div>
     ActivityContent(headContent, bodyContent)
   }
 
