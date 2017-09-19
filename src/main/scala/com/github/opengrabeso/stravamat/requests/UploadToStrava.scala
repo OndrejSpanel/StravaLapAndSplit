@@ -5,38 +5,26 @@ import scala.collection.JavaConverters._
 import spark.{Request, Response}
 import RequestUtils._
 
-object UploadToStrava extends ProcessFile("/upload-strava") {
-  def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit = {
 
-    val session = req.session()
-    val auth = session.attribute[Main.StravaAuthResult]("auth")
 
-    val api = new strava.StravaAPI(auth.token)
 
-    val ret = api.uploadRawFileGz(export, "fit.gz") // TODO: forward response (at least status)
+object UploadToStrava extends ProcessFile("/upload-strava") with UploadResults {
 
-    if (ret.isSuccess) {
-      val contentType = "application/json"
-      resp.status(200)
+  override def html(req: Request, resp: Response) = {
+    startUploadSession(req.session())
 
-      val output = Map("id" -> ret.get)
-
-      jsonMapper.writeValue(resp.raw.getOutputStream, output.asJava)
-
-      resp.`type`(contentType)
-    } else {
-      val contentType = "application/json"
-      resp.status(400)
-
-      val output = Map("error" -> "error")
-
-      jsonMapper.writeValue(resp.raw.getOutputStream, output.asJava)
-
-      resp.`type`(contentType)
-    }
-
-    Nil
+    super.html(req, resp)
   }
 
+  override def processAll(split: Seq[(Int, Main.ActivityEvents)], id: String)(req: Request, resp: Response) = {
+    val session = req.session()
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
+    val sessionId = session.attribute[String]("sid")
+
+    val uploadCount = uploadMultiple(split.map(_._2))(auth, sessionId)
+
+    countResponse(uploadCount)
+
+  }
 
 }

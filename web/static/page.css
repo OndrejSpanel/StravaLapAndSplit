@@ -1,0 +1,13 @@
+#header {
+    background-color: #fca;
+    overflow: auto;
+}
+
+#footer {
+    background-color: #fca;
+    overflow: auto;
+}
+
+html {
+    height: 100%;
+}

@@ -26,77 +26,76 @@ object ActivityRequest {
 
 }
 
-trait ActivityRequestHandler {
+trait ActivityRequestHandler extends UploadResults {
   import ActivityRequest._
 
   protected def activityHtmlContent(actId: FileId, activityData: ActivityEvents, session: Session, resp: Response): ActivityContent = {
     val auth = session.attribute[StravaAuthResult]("auth")
 
     val headContent = <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+      <script src="static/jquery-3.2.1.min.js"></script>
+      <script src="static/jquery.mpAjax.js"></script>
+      <script src="static/download.js"></script>
+      <script src="static/ajaxUtils.js"></script>
       <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
-        <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
+      <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
 
-      <style>
-        .activityTable {{
-        border: 0;
-        border-collapse: collapse;
-        }}
-        .activityTable td, .activityTable th {{
-        border: 1px solid black;
-        }}
-        .cellNoBorder {{
-        border: 0;
-        }}
-
-        #map {{
-        height: 500px;
-        width: 800px;
-        }}
-      </style>
+      <link rel="stylesheet" type="text/css" href="static/activityPage.css"/>
+      <link rel="stylesheet" type="text/css" href="static/page.css"/>
 
       <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
-    val bodyContent = <table class="activityTable">
-      <tr>
-        <th>Event</th>
-        <th>Time</th>
-        <th>km</th>
-        <th>Action</th>
-      </tr>{val ees = activityData.editableEvents
-      var lastSport = ""
-      var lastTime = Option.empty[ZonedDateTime]
-      val startTime = activityData.id.startTime
-      for ((t, i) <- activityData.events.zipWithIndex) yield {
-        val t = activityData.events(i)
-        val ee = ees(i)
-        val action = ee.action
-        val eTime = activityData.secondsInActivity(t.stamp)
-        <tr>
-          <td> {xml.Unparsed(t.description)} </td>
-          <td> {displaySeconds(eTime)} </td>
-          <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
-          <td>
-            {val types = t.listTypes
-          if (types.length != 1 && !lastTime.contains(t.stamp)) {
-            lastTime = Some(t.stamp)
-            htmlSelectEvent(eTime.toString, t.listTypes, action)
-          } else {
-            {Events.typeToDisplay(types, types(0).id)}
-            <input type="hidden" name="events" value={t.defaultEvent}/>
-          }}
-          </td>
-          <td class="cellNoBorder" id={s"link${eTime.toString}"}> </td>
-        </tr>
+    val bodyContent =
+      <div class="top">
+        <div class="act">
+          <form id="activity_form" action="upload-strava" method="post">
+          <table class="activityTable">
+            <tr>
+              <th>Event</th>
+              <th>Time</th>
+              <th>km</th>
+              <th>Action</th>
+            </tr>{val ees = activityData.editableEvents
+            var lastSport = ""
+            var lastTime = Option.empty[ZonedDateTime]
+            val startTime = activityData.id.startTime
+            for ((t, i) <- activityData.events.zipWithIndex) yield {
+              val t = activityData.events(i)
+              val ee = ees(i)
+              val action = ee.action
+              val eTime = activityData.secondsInActivity(t.stamp)
+              <tr>
+                <td> {xml.Unparsed(t.description)} </td>
+                <td> {displaySeconds(eTime)} </td>
+                <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
+                <td>
+                  {val types = t.listTypes
+                if (types.length != 1 && !lastTime.contains(t.stamp)) {
+                  lastTime = Some(t.stamp)
+                  htmlSelectEvent(eTime.toString, t.listTypes, action)
+                } else {
+                  {Events.typeToDisplay(types, types(0).id)}
+                  <input type="hidden" name="events" value={t.defaultEvent}/>
+                }}
+                </td>
+                <td class="cellNoBorder" id={s"link${eTime.toString}"}> </td>
+              </tr>
+              <input type="hidden" name="id" value={actId.filename}/>
+            }}
+          </table></form>
+          <button onclick="submitProcess()">Process selected</button>
+          <button onclick="submitDownload()">Download as files</button>
+          {uploadResultsHtml()}
+        </div>
+        {if (activityData.hasGPS) {
+        <div class="map clearfix" id='map'>
+          <script>{mapJS(activityData, auth.mapboxToken)}</script>
+        </div>
+      } else {
+        <div></div>
       }}
-    </table> ++ {
-      if (activityData.hasGPS) {
-        <div id='map'></div>
-          <script>
-            {mapJS(activityData, auth.mapboxToken)}
-          </script>
-      } else <div></div>
-    } :+ <script type="text/javascript">initEvents()</script>
-
+      </div>
+      <script type="text/javascript">initEvents()</script>
     ActivityContent(headContent, bodyContent)
   }
 
@@ -116,33 +115,12 @@ trait ActivityRequestHandler {
 
     /**
      * @param {String} id
-     * @param {String} time
-     * @param {String} action
-     * @param {String} value
-     * @return {String}
-     */
-    function linkWithEvents(id, time, action, value) {
-      var splitWithEvents =
-              '  <input type="hidden" name="id" value="' + id + '"/>' +
-              '  <input type="hidden" name="operation" value="split"/>' +
-              '  <input type="hidden" name="time" value="' + time + '"/>' +
-              '  <input type="submit" value="' + value + '"/>';
-
-      events.forEach( function(e) {
-        splitWithEvents = splitWithEvents + '<input type="hidden" name="events" value="' + e[0] + '"/>';
-      });
-
-      return '<form action="' + action + '" method="get" style="display:inline-block">' + splitWithEvents  + '</form>';
-    }
-    /**
-     * @param {String} id
      * @param event
      * @return {String}
      */
     function splitLink(id, event) {
       var time = event[1];
-      var downloadButton = linkWithEvents(id, time, "download", "Download");
-      var uploadButton = linkWithEvents(id, time, "upload-strava", "To Strava");
+      var selectCheckbox = '<input type="checkbox" name="process_time=' + time + '"} checked=true></input>';
 
       var nextSplit = null;
       events.forEach( function(e) {
@@ -161,7 +139,7 @@ trait ActivityRequestHandler {
         var speedKmH = duration > 0 ? km * 3600 / duration : 0;
         description = km.toFixed(2) + " km / " + paceMinKm.toFixed(2) + " min/km / " + speedKmH.toFixed(1) + " km/h";
       }
-      return downloadButton  + uploadButton + description;
+      return selectCheckbox + description;
 
     }
 
@@ -240,6 +218,37 @@ trait ActivityRequestHandler {
       // execute the callback
       onEventsChanged();
     }
+
+    function submitProcess() {
+      //document.getElementById("upload_button").style.display = "none";
+      document.getElementById("uploads_table").style.display = "block";
+
+      var form = $$("#activity_form");
+      $$.ajax({
+        type: form.attr("method"),
+        url: form.attr("action"),
+        data: new FormData(form[0]),
+        contentType: false,
+        cache: false,
+        processData: false,
+        success: function(response) {
+          showResults();
+        },
+      });
+    }
+
+    function submitDownload() {
+      var form = $$("#activity_form");
+
+      var ajax = new XMLHttpRequest();
+      ajax.open( "POST", "/download", true);
+      ajax.responseType = 'blob';
+      ajax.onload = function(e){
+        download(e.target.response, ajax.getResponseHeader("Content-Disposition"), ajax.getResponseHeader("content-type"));
+      };
+      ajax.send(new FormData(form[0]))
+    }
+
     """)
   }
 
@@ -622,7 +631,7 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
 }
 
 
-object EditActivity extends DefineRequest("edit-activity") with ActivityRequestHandler {
+object EditActivity extends DefineRequest("/edit-activity") with ActivityRequestHandler {
   override def html(req: Request, resp: Response) = withAuth(req, resp ){ implicit auth =>
 
     val session = req.session()

@@ -6,7 +6,7 @@ import shared.Util._
 import spark.{Request, Response}
 import com.google.appengine.api.taskqueue._
 
-object Process extends DefineRequest.Post("/process") with ParseFormData {
+object Process extends DefineRequest.Post("/process") with ParseFormData with UploadResults {
 
   private def follows(first: ActivityEvents, second: ActivityEvents) = {
     val secondGap = second.secondsInActivity(first.endTime)
@@ -46,23 +46,8 @@ object Process extends DefineRequest.Post("/process") with ParseFormData {
 
       val merged = moveslink.MovesLinkUploader.processTimelines(timelineGPS, timelineAttr)
 
-      // store everything into a session storage, and make background tasks to upload it to Strava
+      uploadMultiple(merged)(auth, sessionId)
 
-      val queue = QueueFactory.getDefaultQueue
-      for (upload <- merged) {
-
-        // export here, or in the worker? Both is possible
-
-        // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
-        val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
-        // are any metadata needed?
-        Storage.store(Main.namespace.upload(sessionId), uniqueName, auth.userId, upload.header, upload)
-
-        // using post with param is not recommended, but it should be OK when not using any payload
-        queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth, sessionId))
-        println(s"Queued task $uniqueName")
-      }
-      merged.size
     } else 0
   }
 
@@ -75,18 +60,15 @@ object Process extends DefineRequest.Post("/process") with ParseFormData {
 
     assert(sessionId != null)
 
-    val ops = activities(request)
+    val ops = activities(request)._1
 
     val toMerge = ops.flatMap { op =>
       Storage.load[ActivityHeader, ActivityEvents](Main.namespace.stage, op.filename, auth.userId).map(_._2)
     }
 
-
     val uploadCount = mergeAndUpload(auth, toMerge, sessionId)
 
-    // used in AJAX only - XML response
-    <upload>
-      <count>{uploadCount.toString}</count>
-    </upload>
+    countResponse(uploadCount)
+
   }
 }

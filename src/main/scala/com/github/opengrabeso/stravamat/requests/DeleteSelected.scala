@@ -1,8 +1,6 @@
 package com.github.opengrabeso.stravamat
 package requests
 
-import Main._
-import shared.Util._
 import spark.{Request, Response}
 
 object DeleteSelected extends DefineRequest.Post("/delete-selected") with ParseFormData {
@@ -10,7 +8,7 @@ object DeleteSelected extends DefineRequest.Post("/delete-selected") with ParseF
     val session = request.session()
     implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
 
-    val ops = activities(request)
+    val ops = activities(request)._1
 
 
     ops.foreach { op =>
