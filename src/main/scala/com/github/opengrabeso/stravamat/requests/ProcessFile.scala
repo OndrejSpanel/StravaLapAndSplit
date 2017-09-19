@@ -37,18 +37,7 @@ abstract class ProcessFile(value: String) extends DefineRequest.Post(value) with
   }
 
 
-  def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit
-
-  def processAll(split: Seq[(Int, Main.ActivityEvents)], id: String)(req: Request, resp: Response): NodeSeq = {
-    split.foreach { case (splitTime, save) =>
-
-      val export = FitExport.export(save)
-
-      //process(req, resp, export, s"attachment;filename=split_${id}_$splitTime.fit")
-      process(req, resp, export, s"split_${id}_$splitTime.fit")
-    }
-    Nil
-  }
+  def processAll(split: Seq[(Int, Main.ActivityEvents)], id: String)(req: Request, resp: Response): NodeSeq
 
   override def html(req: Request, resp: Response) = withAuth(req, resp) { auth =>
 

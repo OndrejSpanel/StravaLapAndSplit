@@ -27,9 +27,4 @@ object UploadToStrava extends ProcessFile("/upload-strava") with UploadResults {
 
   }
 
-
-  // TODO: different override structure
-  def process(req: Request, resp: Response, export: Array[Byte], filename: String): Unit = ???
-
-
 }
