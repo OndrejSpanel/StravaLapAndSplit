@@ -288,7 +288,7 @@ object DataStreamGPS {
         .toSeq
         .sortBy(_._1)
 
-      def percentile(percent: Int) = {
+      def percentile(percent: Double) = {
         val countUnder = (percent * 0.01 * speeds.size).toInt
 
         def percentileRecurse(countLeft: Int, histLeft: Seq[(Int, Int)]): Int = {
@@ -306,8 +306,10 @@ object DataStreamGPS {
 
       val fast = percentile(80)
 
+      val top = percentile(99)
+
       //Timing.logTime(s"Speed of ${speedStream.size} samples")
-      SpeedStats(med, fast, max)
+      SpeedStats(med, fast, top)
     }
   }
 
