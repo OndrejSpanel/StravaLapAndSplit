@@ -15,7 +15,8 @@ object SettingsPage extends DefineRequest("/settings") with ChangeSettings with 
     suuntoSettings(settings) ++
     <script>
       updateClock();
-    </script>
+    </script> ++
+    bodyFooter
   }
 
   override def headerPart(req: Request, auth: StravaAuthResult) = {
