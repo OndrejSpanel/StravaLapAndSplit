@@ -1,7 +1,5 @@
 package com.github.opengrabeso.stravamat
 package requests
-import spark.Request
-
 
 trait ShowPending extends HtmlPart {
 

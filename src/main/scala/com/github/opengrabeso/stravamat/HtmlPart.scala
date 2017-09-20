@@ -1,11 +1,12 @@
 package com.github.opengrabeso.stravamat
 
-import spark.{Request, Response}
-import Main._
-
 import scala.xml.NodeSeq
 
 trait HtmlPart extends DefineRequest {
+  final type Request = spark.Request
+  final type Response = spark.Response
+  final type StravaAuthResult = Main.StravaAuthResult
+
   def bodyPart(req: Request, auth: StravaAuthResult): NodeSeq
   def headerPart(req: Request, auth: StravaAuthResult): NodeSeq
 
