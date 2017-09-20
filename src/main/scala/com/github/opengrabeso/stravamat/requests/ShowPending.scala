@@ -1,7 +1,12 @@
-package com.github.opengrabeso.stravamat.requests
+package com.github.opengrabeso.stravamat
+package requests
+import spark.Request
 
-trait ShowPending {
-  def pendingHTML = <div class="modal hide" id="pleaseWaitDialog" data-backdrop="static" data-keyboard="false">
+
+trait ShowPending extends HtmlPart {
+
+  abstract override def bodyPart(req: Request, auth: Main.StravaAuthResult) = {
+    super.bodyPart(req, auth) ++
     <div class="modal-header">
       <h1>Please Wait</h1>
     </div>
@@ -12,11 +17,11 @@ trait ShowPending {
     </div>
     <script>
       function showPending() {{
-        $('# pleaseWaitDialog').modal();
+      $('# pleaseWaitDialog').modal();
       }}
       function hidePending() {{
       $('# pleaseWaitDialog').modal();
       }}
     </script>
-    </div>
+  }
 }
