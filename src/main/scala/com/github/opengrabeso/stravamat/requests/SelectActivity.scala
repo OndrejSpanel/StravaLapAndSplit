@@ -165,9 +165,16 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
 
       </form>
       <button id="upload_button" onclick="submitProcess()">Process...</button> ++
-      uploadResultsHtml() ++
+      uploadResultsHtml() ++ {
+        if (true) {
+          <button onclick="showPending()">Do nothing ...</button>
+        } else {
+          <div></div>
+        }
+      } ++
       <button onclick="submitDelete()">Delete from Stravamat</button>
       <button onclick="submitEdit()">Merge and edit...</button> ++
+      spinnerHere ++
       bodyFooter ++
       <script>{xml.Unparsed(
         //language=JavaScript

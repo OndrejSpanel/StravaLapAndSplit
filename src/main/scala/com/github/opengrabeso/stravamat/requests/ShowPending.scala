@@ -3,34 +3,28 @@ package requests
 
 trait ShowPending extends HtmlPart {
 
-  abstract override def bodyPart(req: Request, auth: Main.StravaAuthResult) = {
-    super.bodyPart(req, auth) ++
-    <div class="modal hide" id="pleaseWaitDialog" data-backdrop="static" data-keyboard="false" style="display:none">
-      <div class="modal-header">
-        <h1>Please Wait</h1>
-      </div>
-      <div class="modal-body">
-        <div id="ajax_loader">
-          <p>Loading ...</p>
-        </div>
-      </div>
-    </div>
+  abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
+    super.headerPart(req, auth) ++
+    <link rel="stylesheet" href="static/spinner.css" type="text/css" media="screen" />
     <script>
       function showPending() {{
-      $('#pleaseWaitDialog').modal();
+      $('#mySpinner').addClass('spinner');
       }}
       function hidePending() {{
-      $('#pleaseWaitDialog').modal();
+      $('#mySpinner').removeClass('spinner');
       }}
     </script>
   }
 
-  abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
-    super.headerPart(req, auth) ++
-    <script src="static/jquery.modal.min.js" type="text/javascript" charset="utf-8"></script>
-    <link rel="stylesheet" href="static/jquery.modal.min.css" type="text/css" media="screen" />
-  }
+  def spinnerHere = {
+    // TODO: https://stephanwagner.me/only-css-loading-spinner
+    //<div id="mySpinner"></div>
 
+    <div id="mySpinner">
+      <span onclick="$('#mySpinner').addClass('spinner');" style="padding: 0 10px 0 0; cursor: pointer;">Add spinner!</span>
+      <span style="padding: 0 0 0 10px; cursor: pointer;">Remove spinner!</span>
+    </div>
+  }
 
 
 }
