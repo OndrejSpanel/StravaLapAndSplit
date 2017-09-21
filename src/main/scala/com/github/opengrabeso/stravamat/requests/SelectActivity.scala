@@ -42,7 +42,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
 
   }
 
-  abstract override def bodyPart(request: Request, auth: StravaAuthResult) = {
+  abstract override def bodyPart(request: Request, auth: StravaAuthResult): NodeSeq = {
     val session = request.session()
 
     val stravaActivities = recentStravaActivities(auth)
@@ -167,17 +167,9 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
         </table>
 
       </form>
-      <button id="upload_button" onclick="submitProcess()">Process...</button> ++
-      uploadResultsHtml() ++ {
-        if (true) {
-          <button onclick="showPending()">Do nothing ...</button>
-        } else {
-          <div></div>
-        }
-      } ++
+      <button id="upload_button" onclick="submitProcess()">Process...</button>
       <button onclick="submitDelete()">Delete from Stravamat</button>
-      <button onclick="submitEdit()">Merge and edit...</button> ++
-      spinnerHere ++
+      <button onclick="submitEdit()">Merge and edit...</button>
       <script>{xml.Unparsed(
         //language=JavaScript
         """

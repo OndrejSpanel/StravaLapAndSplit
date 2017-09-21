@@ -1,9 +1,12 @@
 package com.github.opengrabeso.stravamat
 package requests
 
+import scala.xml.NodeSeq
+
 trait ShowPending extends HtmlPart {
 
-  abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
+  // https://github.com/raphaelfabeni/css-loader
+  abstract override def headerPart(req: Request, auth: StravaAuthResult): NodeSeq = {
     super.headerPart(req, auth) ++
     <link rel="stylesheet" href="static/css-loader.css" type="text/css" media="screen" />
     <script>
@@ -16,10 +19,10 @@ trait ShowPending extends HtmlPart {
     </script>
   }
 
-  def spinnerHere = {
-    // TODO: https://stephanwagner.me/only-css-loading-spinner
 
-    <div id="loader" class="loader loader-default"></div>
+  abstract override def bodyPart(req: Request, auth: StravaAuthResult): NodeSeq = {
+    super.bodyPart(req, auth) ++
+    <div id="loader" class="loader loader-default" data-text=""></div>
   }
 
 
