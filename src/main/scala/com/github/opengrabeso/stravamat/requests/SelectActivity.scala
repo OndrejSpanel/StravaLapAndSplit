@@ -127,8 +127,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
         """
     )}
     </script> ++
-      //spinnerHere ++
-      {bodyHeader(auth) ++ sources(before)} ++ <h2>Activities</h2>
+      sources(before) ++ <h2>Activities</h2>
       <form id="process-form" action="process" method="post" enctype="multipart/form-data">
         <table class="activities">
           {// find most recent Strava activity
@@ -177,7 +176,6 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
       <button onclick="submitDelete()">Delete from Stravamat</button>
       <button onclick="submitEdit()">Merge and edit...</button> ++
       spinnerHere ++
-      bodyFooter ++
       <script>{xml.Unparsed(
         //language=JavaScript
         """
@@ -191,4 +189,4 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
 
 }
 
-abstract class SelectActivity(name: String) extends DefineRequest(name) with HtmlByParts with SelectActivityPart
+abstract class SelectActivity(name: String) extends DefineRequest(name) with HtmlByParts with SelectActivityPart with Headers
