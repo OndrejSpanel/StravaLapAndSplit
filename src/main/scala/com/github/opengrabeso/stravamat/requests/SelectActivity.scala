@@ -101,7 +101,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
                 // response is XML id code of the activity to redirect to
                 window.location.reload(false);
             },
-            complete: function() {hidePending()}
+            error: function() {hidePending()}
           });
         }
 
@@ -119,9 +119,11 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
               var idElem = $(response).find("id");
               if (idElem.length > 0) {
                 window.location = "edit-activity?id=" + idElem.first().text().trim()
+              } else {
+                hidePending();
               }
             },
-            complete: function() {hidePending()}
+            error: function() {hidePending()}
           });
         }
         """
