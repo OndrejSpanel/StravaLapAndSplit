@@ -8,7 +8,7 @@ import spark.Session
 import scala.xml._
 
 trait UploadResults {
-  def uploadResultsHtml() = {
+  def uploadResultsHtml(): NodeSeq = {
     <div id="uploads_table" style="display: none;">
       <table id="uploaded"></table>
       <h4 id="uploads_process">Processing...</h4>
