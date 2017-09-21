@@ -99,9 +99,9 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
             processData: false,
             success: function(response) {
                 // response is XML id code of the activity to redirect to
-
                 window.location.reload(false);
             },
+            complete: function() {hidePending()}
           });
         }
 
@@ -121,11 +121,13 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
                 window.location = "edit-activity?id=" + idElem.first().text().trim()
               }
             },
+            complete: function() {hidePending()}
           });
         }
         """
     )}
     </script> ++
+      //spinnerHere ++
       {bodyHeader(auth) ++ sources(before)} ++ <h2>Activities</h2>
       <form id="process-form" action="process" method="post" enctype="multipart/form-data">
         <table class="activities">
