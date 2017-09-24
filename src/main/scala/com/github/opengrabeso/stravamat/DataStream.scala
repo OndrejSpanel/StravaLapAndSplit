@@ -566,13 +566,14 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       }
 
       def timeDistanceToEvent(t: ZonedDateTime): Double = {
-        def timeDiff(x: ZonedDateTime) = timeDifference(t, x).abs
-        val before = eventsBefore.headOption.map(timeDiff)
-        val after = eventsAfter.headOption.map(timeDiff)
         var min = Double.MaxValue
-        def check(v: Double): Unit = if (v < min) min = v
-        before.foreach(check)
-        after.foreach(check)
+        def check(l: List[ZonedDateTime]): Unit = {
+          if (l.nonEmpty) {
+            min = math.min(min, timeDifference(l.head, t).abs)
+          }
+        }
+        check(eventsBefore)
+        check(eventsAfter)
         min
       }
 
