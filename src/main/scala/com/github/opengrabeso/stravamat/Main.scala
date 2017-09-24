@@ -277,7 +277,7 @@ object Main {
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
 
-    def eventTimes: DataStream.EventTimes = SortedSet(events.map(_.stamp):_*)
+    def eventTimes: DataStream.EventTimes = events.map(_.stamp)(collection.breakOut)
     def optimize: ActivityEvents = {
       // first optimize all attributes
       val times = eventTimes

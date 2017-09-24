@@ -63,7 +63,7 @@ object DataStream {
     data.pickData(newStream).asInstanceOf[Data]
   }
 
-  type EventTimes = SortedSet[ZonedDateTime]
+  type EventTimes = List[ZonedDateTime]
 }
 
 import DataStream._
@@ -559,17 +559,27 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
   override def optimize(eventTimes: EventTimes) = {
 
-    def timeDistanceToEvent(t: ZonedDateTime): Double = {
-      val before = eventTimes.to(t).headOption
-      val after = eventTimes.from(t).headOption
-      assert(before.orElse(after).isDefined)
-      val around = before.toSeq ++ after
-      val timesAround = around.map(timeDifference(t, _).abs)
-      timesAround.min
+    case class EventsCursor(eventsBefore: List[ZonedDateTime], eventsAfter: List[ZonedDateTime]) {
+      def advance(t: ZonedDateTime): EventsCursor = {
+        if (eventsAfter.headOption.exists(_ <= t)) EventsCursor(eventsAfter.head :: eventsBefore, eventsAfter.tail)
+        else this
+      }
+
+      def timeDistanceToEvent(t: ZonedDateTime): Double = {
+        def timeDiff(x: ZonedDateTime) = timeDifference(t, x).abs
+        val before = eventsBefore.headOption.map(timeDiff)
+        val after = eventsAfter.headOption.map(timeDiff)
+        var min = Double.MaxValue
+        def check(v: Double): Unit = if (v < min) min = v
+        before.foreach(check)
+        after.foreach(check)
+        min
+      }
+
     }
 
     //type GPSPointWithTime =
-    def secondNotNeeded(first: GPSPointWithTime, second: GPSPointWithTime, third: GPSPointWithTime) = {
+    def secondNotNeeded(first: GPSPointWithTime, second: GPSPointWithTime, third: GPSPointWithTime, currentEvents: EventsCursor) = {
       // check if second can be obtained by interpolating first and third
       val secondFactor = timeDifference(first._1, second._1) / timeDifference(first._1, third._1)
 
@@ -581,27 +591,30 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       val secondInterpolated = GPSPoint(latitude = interpolatedLat, longitude = interpolatedLon, elevation = None)(None)
       val dist = secondInterpolated distance second._2
       val maxDist = 1
-      val timeDist = timeDistanceToEvent(second._1)
+      val timeDist = currentEvents.timeDistanceToEvent(second._1)
       val error = dist / maxDist + 3 / (timeDist max 1)
       val maxError = 1
       error < maxError
     }
 
+
     // remove unnecessary GPS points
     val minTimeSpacing = 10 // seconds
     @tailrec
-    def optimizeGPSRecurse(todo: List[GPSPointWithTime], done: List[GPSPointWithTime]): List[GPSPointWithTime] = {
+    def optimizeGPSRecurse(todo: List[GPSPointWithTime], done: List[GPSPointWithTime], currentEvents: EventsCursor): List[GPSPointWithTime] = {
       todo match {
-        case first :: second :: third :: tail if timeDifference(first._1, second._1) < minTimeSpacing && secondNotNeeded(first, second, third) =>
-          optimizeGPSRecurse(first :: third :: tail, done)
+        case first :: second :: third :: tail if timeDifference(first._1, second._1) < minTimeSpacing && secondNotNeeded(first, second, third, currentEvents) =>
+          optimizeGPSRecurse(first :: third :: tail, done, currentEvents.advance(third._1))
+        case first :: second :: third :: tail =>
+          optimizeGPSRecurse(second :: third :: tail, first :: done, currentEvents.advance(third._1))
         case head :: tail =>
-          optimizeGPSRecurse(tail, head :: done)
+          optimizeGPSRecurse(tail, head :: done, currentEvents)
         case Nil =>
           done
       }
     }
 
-    val optimized = optimizeGPSRecurse(stream.toList, Nil)
+    val optimized = optimizeGPSRecurse(stream.toList, Nil, EventsCursor(Nil, eventTimes))
 
     pickData(SortedMap(optimized:_*))
   }
