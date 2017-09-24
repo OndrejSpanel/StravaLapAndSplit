@@ -2,7 +2,7 @@ package com.github.opengrabeso.stravamat
 
 import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
-import scala.collection.immutable.SortedMap
+import scala.collection.immutable.{SortedMap, SortedSet}
 import shared.Util._
 import shared.Timing
 
@@ -63,9 +63,11 @@ object DataStream {
     data.pickData(newStream).asInstanceOf[Data]
   }
 
-
-
+  type EventTimes = SortedSet[ZonedDateTime]
 }
+
+import DataStream._
+
 @SerialVersionUID(10L)
 sealed abstract class DataStream extends Serializable {
 
@@ -117,7 +119,7 @@ sealed abstract class DataStream extends Serializable {
     pickData(adjusted)
   }
 
-  def optimize: DataStream
+  def optimize(eventTimes: EventTimes): DataStream
 
   def toLog = s"$typeToLog: ${startTime.map(_.toLog).getOrElse("")} .. ${endTime.map(_.toLogShort).getOrElse("")}"
 
@@ -555,7 +557,16 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   }
 
 
-  override def optimize = {
+  override def optimize(eventTimes: EventTimes) = {
+
+    def timeDistanceToEvent(t: ZonedDateTime): Double = {
+      val before = eventTimes.to(t).headOption
+      val after = eventTimes.from(t).headOption
+      assert(before.orElse(after).isDefined)
+      val around = before.toSeq ++ after
+      val timesAround = around.map(timeDifference(t, _).abs)
+      timesAround.min
+    }
 
     //type GPSPointWithTime =
     def secondNotNeeded(first: GPSPointWithTime, second: GPSPointWithTime, third: GPSPointWithTime) = {
@@ -570,7 +581,10 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       val secondInterpolated = GPSPoint(latitude = interpolatedLat, longitude = interpolatedLon, elevation = None)(None)
       val dist = secondInterpolated distance second._2
       val maxDist = 1
-      dist < maxDist
+      val timeDist = timeDistanceToEvent(second._1)
+      val error = dist / maxDist + 3 / (timeDist max 1)
+      val maxError = 1
+      error < maxError
     }
 
     // remove unnecessary GPS points
@@ -604,7 +618,7 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
   override def isNeeded = true
   def dropAlmostEmpty: DataStreamLap = this
 
-  override def optimize = this // TODO: remove duplicity or very close laps
+  override def optimize(eventTimes: EventTimes) = this // TODO: remove duplicity or very close laps
 }
 
 @SerialVersionUID(10L)
@@ -618,7 +632,7 @@ class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends D
   override def isNeeded = false
   def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 
-  def optimize: DataStreamHR = DataStream.optimize(this)
+  def optimize(eventTimes: EventTimes): DataStreamHR = DataStream.optimize(this)
 }
 
 @SerialVersionUID(11L)
@@ -632,7 +646,7 @@ class DataStreamAttrib(val attribName: String, override val stream: SortedMap[Zo
   override def isNeeded = false
   def dropAlmostEmpty: DataStreamAttrib = this // TODO: drop
 
-  def optimize: DataStreamAttrib = DataStream.optimize(this)
+  def optimize(eventTimes: EventTimes): DataStreamAttrib = DataStream.optimize(this)
 }
 
 
@@ -672,6 +686,6 @@ class DataStreamDist(override val stream: SortedMap[ZonedDateTime, Double]) exte
 
   def dropAlmostEmpty: DataStreamDist = this // TODO: drop
 
-  override def optimize = this // TODO: distance optimization requires interpolation in distanceForTime
+  override def optimize(eventTimes: EventTimes) = this // TODO: distance optimization requires interpolation in distanceForTime
 }
 

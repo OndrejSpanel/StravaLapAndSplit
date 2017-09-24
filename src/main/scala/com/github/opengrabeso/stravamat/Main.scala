@@ -18,7 +18,7 @@ import com.github.opengrabeso.stravamat.shared.Timing
 import com.google.api.client.json.jackson2.JacksonFactory
 
 import scala.annotation.tailrec
-import scala.collection.immutable.SortedMap
+import scala.collection.immutable.{SortedMap, SortedSet}
 import scala.util.Try
 import scala.xml.Elem
 
@@ -276,17 +276,20 @@ object Main {
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
+
+    def eventTimes: DataStream.EventTimes = SortedSet(events.map(_.stamp):_*)
     def optimize: ActivityEvents = {
       // first optimize all attributes
-      this.copy(gps = gps.optimize, dist = dist.optimize, attributes = attributes.map(_.optimize))
+      val times = eventTimes
+      this.copy(gps = gps.optimize(times), dist = dist.optimize(times), attributes = attributes.map(_.optimize(times)))
     }
 
     def optimizeRouteForMap: Seq[(ZonedDateTime, GPSPoint)] = {
-      val maxPoints = 1000
+      val maxPoints = 3000
       if (gps.stream.size < maxPoints) gps.stream.toList
       else {
         // first apply generic GPS optimization
-        val data = gps.optimize
+        val data = gps.optimize(eventTimes)
 
         if (data.stream.size < maxPoints) data.stream.toList
         else {
