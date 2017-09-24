@@ -19,13 +19,6 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
     <input type="checkbox" name={s"id=$idString"} checked={if (include) "true" else null}></input>
   }
 
-  def jsResult(func: String) = {
-
-    val toRun = s"function () {return $func}()"
-
-    <script>document.write({xml.Unparsed(toRun)})</script>
-  }
-
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
     headPrefix ++
     <title>

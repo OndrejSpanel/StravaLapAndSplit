@@ -1015,6 +1015,13 @@ object Main {
     s"""formatDateTime("$startTime") + "..." + formatTime("$endTime") """
   }
 
+  def jsResult(func: String) = {
+
+    val toRun = s"function () {return $func}()"
+
+    <script>document.write({xml.Unparsed(toRun)})</script>
+  }
+
   def localeDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
     // TODO: get timezone and locale from the browser
     val locale = new Locale("cs")

@@ -1,10 +1,13 @@
 package com.github.opengrabeso.stravamat
 package requests
 
+import Main._
+
 trait LoadFromStrava extends HtmlPart with ActivitiesTable {
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
     super.headerPart(req, auth) ++
     <title>Stravamat - get activities from Strava</title>
+    <script src="static/timeUtils.js"></script>
   }
 
   abstract override def bodyPart(req: Request, auth: StravaAuthResult) = {
@@ -13,6 +16,7 @@ trait LoadFromStrava extends HtmlPart with ActivitiesTable {
     <table class="activities">
     {for (act <- activities) yield {
       <tr>
+        <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
         <td>{act.sportName}</td>
         <td>{act.hrefLink}</td>
         <td>{Main.displayDistance(act.distance)}km</td>
