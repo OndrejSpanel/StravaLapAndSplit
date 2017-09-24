@@ -2,6 +2,9 @@ package com.github.opengrabeso.stravamat
 package requests
 import spark.{Request, Response}
 
+/**
+  * Regular cleanup performed periodically, for all users, not requiring user access information
+  * */
 object Cleanup extends DefineRequest("/cleanup") {
   def html(request: Request, resp: Response) = {
     val periodic = request.queryParams("periodic")

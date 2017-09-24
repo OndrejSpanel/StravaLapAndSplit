@@ -2,6 +2,7 @@ package com.github.opengrabeso.stravamat
 
 import java.io._
 import java.nio.channels.Channels
+import java.util
 
 import com.google.appengine.tools.cloudstorage._
 
@@ -140,6 +141,17 @@ object Storage extends FileStore {
     for (i <- list) yield {
       assert(i.getName.startsWith(prefix))
       val name = i.getName.drop(prefix.length)
+      name
+    }
+  }
+
+  def enumerateWithMetadata(namespace: String, userId: String): Iterable[(String, Map[String, String])] = {
+    val prefix = userFilename(namespace, "", userId)
+    val options = new ListOptions.Builder().setPrefix(prefix).build()
+    val list = gcsService.list(bucket, options).asScala.toIterable
+    for (i <- list) yield {
+      assert(i.getName.startsWith(prefix))
+      val name = i.getName.drop(prefix.length)
       val m = try {
         val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
         if (md != null) Some(md.getOptions.getUserMetadata)
@@ -150,7 +162,7 @@ object Storage extends FileStore {
           None
       }
       //println(s"enum '$name' - '$userId': md '$m'")
-      name
+      name -> m.map(_.asScala.toMap).getOrElse(Map())
     }
   }
 

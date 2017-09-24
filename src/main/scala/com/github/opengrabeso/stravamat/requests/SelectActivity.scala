@@ -3,6 +3,7 @@ package requests
 
 import shared.Util._
 import Main._
+import com.google.appengine.api.taskqueue.{QueueFactory, TaskOptions}
 import org.joda.time.{DateTime => ZonedDateTime}
 
 import scala.xml.NodeSeq
@@ -13,6 +14,17 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
   def sources(before: ZonedDateTime): NodeSeq
   def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = true
   def ignoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime
+
+  def defaultIgnoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime = {
+    // ignore anything older than oldest of recent Strava activities
+    val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime)
+    // ignore anything older than 14 days before most recent Strava activity
+    val ignoreBeforeFirst = stravaActivities.headOption.map(_.startTime minusDays  14)
+    // ignore anything older than 2 months from now
+    val ignoreBeforeNow = new ZonedDateTime() minusMonths 2
+
+    (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
+  }
 
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
@@ -36,6 +48,8 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
 
     val stravaActivities = recentStravaActivities(auth)
 
+    QueueFactory.getDefaultQueue add TaskOptions.Builder.withPayload(UserCleanup(auth, defaultIgnoreBefore(stravaActivities)))
+
     startUploadSession(session)
 
     val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
@@ -44,6 +58,8 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
     //println(s"Ignore before $before")
 
     val recentActivities = stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
+
+
     //println(s"Staged ${stagedActivities.mkString("\n  ")}")
     //println(s"Recent ${recentActivities.mkString("\n  ")}")
 

@@ -1,5 +1,6 @@
 package com.github.opengrabeso.stravamat
 
+import java.io.InputStream
 import java.security.MessageDigest
 import java.util
 import java.util.Locale
@@ -165,17 +166,22 @@ object Main {
     }
   }
 
-  def recentStravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
-    val uri = "https://www.strava.com/api/v3/athlete/activities"
-    val request = buildGetRequest(uri, auth.token, "per_page=15")
-
-    val responseJson = jsonMapper.readTree(request.execute().getContent)
+  def parseStravaActivities(content: InputStream) = {
+    val responseJson = jsonMapper.readTree(content)
 
     val stravaActivities = (0 until responseJson.size).map { i =>
       val actI = responseJson.get(i)
       ActivityId.load(actI)
     }
     stravaActivities
+  }
+
+
+  def recentStravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
+    val uri = "https://www.strava.com/api/v3/athlete/activities"
+    val request = buildGetRequest(uri, auth.token, "per_page=15")
+
+    parseStravaActivities(request.execute().getContent)
   }
 
   def stravaActivitiesNotStaged(auth: StravaAuthResult): Seq[ActivityId] = {
