@@ -118,10 +118,24 @@ object Main {
       }
     }
 
+
+    def shortName: String = {
+      val maxLen = 30
+      val ellipsis = "..."
+      if (name.length < maxLen) name
+      else {
+        val allowed = name.take(maxLen-ellipsis.length)
+        // prefer shortening about whole words
+        val lastSeparator = allowed.lastIndexOf(' ')
+        val used = if (lastSeparator >= allowed.length - 8) allowed.take(lastSeparator) else allowed
+        used + ellipsis
+      }
+    }
+
     def hrefLink: Elem = {
       id match {
         case StravaId(num) =>
-          <a href={s"https://www.strava.com/activities/$num"}>{name}</a>
+          <a href={s"https://www.strava.com/activities/$num"}>{shortName}</a>
         case FilenameId(filename) =>
           <div>File</div> // TODO: check Quest / GPS filename?
         case _ =>
