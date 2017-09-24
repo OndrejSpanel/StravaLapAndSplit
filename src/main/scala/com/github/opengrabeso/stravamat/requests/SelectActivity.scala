@@ -7,7 +7,7 @@ import org.joda.time.{DateTime => ZonedDateTime}
 
 import scala.xml.NodeSeq
 
-trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
+trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults with ActivitiesTable {
   def title: String
 
   def sources(before: ZonedDateTime): NodeSeq
