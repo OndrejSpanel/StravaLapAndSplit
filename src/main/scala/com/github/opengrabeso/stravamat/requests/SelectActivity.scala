@@ -143,14 +143,12 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
                 //println(s"    $detected")
                 }
               </td>
-              <td>{if (actEvents.hasGPS) "GPS" else "--"}</td>
-              <td>{if (actEvents.hasAttributes) "Rec" else "--"}</td>
-              <td>{act.hrefLink}</td>
+              <td>{actEvents.describeData}</td>
               <td>{displayDistance(act.distance)} km</td>
               <td>{displaySeconds(act.duration)}</td>
               <td>{htmlActivityAction(act.id, !ignored)}</td>
               <td>{actStrava.map(_.hrefLink).getOrElse(NodeSeq.Empty)}</td>
-              <td>{act.id.toReadableString}</td>
+              <td>{act.hrefLink}</td>
             </tr>
           }}
         </table>

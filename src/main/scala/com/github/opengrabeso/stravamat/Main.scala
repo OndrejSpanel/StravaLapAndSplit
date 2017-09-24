@@ -136,10 +136,8 @@ object Main {
       id match {
         case StravaId(num) =>
           <a href={s"https://www.strava.com/activities/$num"}>{shortName}</a>
-        case FilenameId(filename) =>
-          <div>File</div> // TODO: check Quest / GPS filename?
         case _ =>
-          <div>{id.toString}</div>
+          <div>{id.toReadableString}</div>
       }
     }
   }
@@ -219,6 +217,12 @@ object Main {
   @SerialVersionUID(11L)
   case class ActivityHeader(id: ActivityId, hasGPS: Boolean, hasAttributes: Boolean, stats: SpeedStats) {
     override def toString = id.toString
+    def describeData = (hasGPS, hasAttributes) match {
+      case (true, true) => "GPS+Rec"
+      case (true, false) => "GPS"
+      case (false, true) => "Rec"
+      case (false, false) => "--"
+    }
   }
 
   object ActivityEvents {

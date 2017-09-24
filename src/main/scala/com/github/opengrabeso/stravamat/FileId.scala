@@ -36,7 +36,7 @@ object FileId {
   case class FilenameId(id: String) extends FileId {
     def filename = id
     def stravaId = ""
-    override def toReadableString: String = id
+    override def toReadableString: String = "File " + id  // TODO: check Quest / GPS filename?
   }
 
   @SerialVersionUID(10L)
