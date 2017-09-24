@@ -31,10 +31,6 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults {
     <title>
       Stravamat - {title}
     </title>
-    <style>
-      tr.activities:nth-child(even) {{background-color: #f2f2f2}}
-      tr.activities:hover {{background-color: #f0f0e0}}
-    </style>
     <script src="static/ajaxUtils.js"></script>
     <script src="static/timeUtils.js"></script>
     <script src="static/jquery-3.2.1.min.js"></script> ++

@@ -4,11 +4,7 @@ package requests
 trait GetFiles extends HtmlPart {
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
     super.headerPart(req, auth) ++
-    <style>
-      tr.activities:nth-child(even) {{background-color: #f2f2f2}}
-      tr.activities:hover {{background-color: #f0f0e0}}
-    </style>
-      <script src="static/ajaxUtils.js"></script>
+    <script src="static/ajaxUtils.js"></script>
   }
 
   abstract override def bodyPart(req: Request, auth: StravaAuthResult) = {

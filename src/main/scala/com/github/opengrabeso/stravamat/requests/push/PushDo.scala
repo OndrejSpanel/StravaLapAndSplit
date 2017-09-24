@@ -14,10 +14,6 @@ object PushDo extends DefineRequest("/push-do") with ChangeSettings {
       <html>
         <head>
           {headPrefix}<title>Stravamat - uploading Suunto files</title>
-          <style>
-            tr.activities:nth-child(even) {{background-color: #f2f2f2}}
-            tr.activities:hover {{background-color: #f0f0e0}}
-          </style>
           <script src="static/ajaxUtils.js"></script>
           <script src="static/jquery-3.2.1.min.js"></script>
         </head>
