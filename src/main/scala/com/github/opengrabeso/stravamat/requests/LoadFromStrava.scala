@@ -5,7 +5,7 @@ import Main._
 
 trait LoadFromStrava extends HtmlPart with ActivitiesTable {
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
-    super.headerPart(req, auth) ++
+    headPrefix ++ super.headerPart(req, auth) ++
     <title>Stravamat - get activities from Strava</title>
     <script src="static/timeUtils.js"></script>
   }
