@@ -218,9 +218,9 @@ object Main {
   case class ActivityHeader(id: ActivityId, hasGPS: Boolean, hasAttributes: Boolean, stats: SpeedStats) {
     override def toString = id.toString
     def describeData = (hasGPS, hasAttributes) match {
-      case (true, true) => "GPS+Rec"
+      case (true, true) => "GPS+"
       case (true, false) => "GPS"
-      case (false, true) => "Rec"
+      case (false, true) => "+"
       case (false, false) => "--"
     }
   }
@@ -1009,7 +1009,7 @@ object Main {
     myFormat.print(periodToFormat)
   }
 
-  def displayDistance(dist: Double): String = "%.2f".format(dist*0.001)
+  def displayDistance(dist: Double): String = "%.2f km".format(dist*0.001)
 
   def displayDate(startTime: ZonedDateTime): String = {
     ISODateTimeFormat.dateTime().print(startTime)

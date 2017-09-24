@@ -131,6 +131,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
             // once any activity is present on Strava, do not offer upload by default any more
             // (if some earlier is not present, it was probably already uploaded and deleted)
             <tr>
+              <td>{htmlActivityAction(act.id, !ignored)}</td>
               <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
               <td>
                 {
@@ -143,11 +144,10 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
                 //println(s"    $detected")
                 }
               </td>
-              <td>{actEvents.describeData}</td>
-              <td>{displayDistance(act.distance)} km</td>
+              <td>{displayDistance(act.distance)}</td>
               <td>{displaySeconds(act.duration)}</td>
-              <td>{htmlActivityAction(act.id, !ignored)}</td>
               <td>{actStrava.map(_.hrefLink).getOrElse(NodeSeq.Empty)}</td>
+              <td>{actEvents.describeData}</td>
               <td>{act.hrefLink}</td>
             </tr>
           }}

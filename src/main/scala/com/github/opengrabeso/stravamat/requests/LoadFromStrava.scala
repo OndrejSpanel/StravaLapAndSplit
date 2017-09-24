@@ -18,9 +18,9 @@ trait LoadFromStrava extends HtmlPart with ActivitiesTable {
       <tr>
         <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
         <td>{act.sportName}</td>
-        <td>{act.hrefLink}</td>
-        <td>{Main.displayDistance(act.distance)}km</td>
+        <td>{Main.displayDistance(act.distance)}</td>
         <td>{Main.displaySeconds(act.duration)}</td>
+        <td>{act.hrefLink}</td>
         <td>{act.id.stravaId}</td>
         <td>
           <form action="activityFromStrava" method="get">
