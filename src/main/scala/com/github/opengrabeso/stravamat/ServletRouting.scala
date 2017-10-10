@@ -35,7 +35,7 @@ class ServletRouting extends SparkApplication {
 
       SaveSettings, SettingsPage,
 
-      Cleanup,
+      Cleanup, ConvertOldData,
 
       RouteData
     )

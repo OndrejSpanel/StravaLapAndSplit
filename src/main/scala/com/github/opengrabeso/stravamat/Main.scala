@@ -186,10 +186,14 @@ object Main {
 
   def stravaActivitiesNotStaged(auth: StravaAuthResult): Seq[ActivityId] = {
     val stravaActivities = recentStravaActivities(auth)
-
-    val storedActivities = stagedActivities(auth)
-    // do not display the activities which are already staged
-    stravaActivities diff storedActivities
+    if (stravaActivities.nonEmpty) {
+      val notBefore = stravaActivities.map(_.startTime).min
+      val storedActivities = stagedActivities(auth, notBefore)
+      // do not display the activities which are already staged
+      stravaActivities diff storedActivities
+    } else {
+      stravaActivities
+    }
   }
 
   object namespace {
@@ -207,9 +211,12 @@ object Main {
     val settings = "settings"
   }
 
-  def stagedActivities(auth: StravaAuthResult): Seq[ActivityHeader] = {
+  def stagedActivities(auth: StravaAuthResult, notBefore: ZonedDateTime): Seq[ActivityHeader] = {
     val storedActivities = {
-      val d = Storage.enumerate(namespace.stage, auth.userId)
+      def isNotBefore(md: Map[String, String]) = {
+        md.get("startTime").forall(timeString => ZonedDateTime.parse(timeString) >= notBefore)
+      }
+      val d = Storage.enumerate(namespace.stage, auth.userId, Some(isNotBefore))
       d.flatMap { a =>
         Storage.load[ActivityHeader](namespace.stage, a, auth.userId)
       }
@@ -229,6 +236,7 @@ object Main {
       case (false, true) => "+"
       case (false, false) => "--"
     }
+
   }
 
   object ActivityEvents {

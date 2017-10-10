@@ -10,7 +10,6 @@ import scala.reflect.ClassTag
 import collection.JavaConverters._
 
 object Storage extends FileStore {
-
   // from https://cloud.google.com/appengine/docs/java/googlecloudstorageclient/read-write-to-cloud-storage
 
   final val bucket = "stravamat.appspot.com"
@@ -81,6 +80,18 @@ object Storage extends FileStore {
     }
   }
 
+  def loadRawName[T : ClassTag](filename: String): Option[T] = {
+    //println(s"load '$filename' - '$userId'")
+    val is = input(filename)
+    try {
+      val ois = new ObjectInputStream(is)
+      readSingleObject[T](ois)
+    } finally {
+      is.close()
+    }
+
+  }
+
   def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
     object FormatChanged {
       def unapply(arg: Exception): Option[Exception] = arg match {
@@ -90,23 +101,19 @@ object Storage extends FileStore {
         case _ => None
       }
     }
-    //println(s"load '$filename' - '$userId'")
-    val is = input(userFilename(namespace, filename, userId))
+    val rawName = userFilename(namespace, filename, userId)
     try {
-      val ois = new ObjectInputStream(is)
-      readSingleObject[T](ois)
+      loadRawName(rawName)
     } catch {
       case _: FileNotFoundException =>
         None
       case FormatChanged(x) =>
         println(s"load error ${x.getMessage} - $filename")
-        delete(namespace, filename, userId)
+        gcsService.delete(fileId(filename))
         None
       case x: Exception =>
         x.printStackTrace()
         None
-    } finally {
-      is.close()
     }
   }
 
@@ -134,8 +141,31 @@ object Storage extends FileStore {
     gcsService.delete(fileId(toDelete))
   }
 
-  def enumerate(namespace: String, userId: String): Iterable[String] = {
+
+  def enumerate(namespace: String, userId: String, filter: Option[Map[String, String] => Boolean] = None): Iterable[String] = {
+
+    def filterByMetadata(i: ListItem, filter: Map[String, String] => Boolean): Option[ListItem] = {
+      val name = i.getName
+      val md = gcsService.getMetadata(new GcsFilename(bucket, name))
+      Some(i).filter(_ => filter(md.getOptions.getUserMetadata.asScala.toMap))
+    }
+
     val prefix = userFilename(namespace, "", userId)
+    val options = new ListOptions.Builder().setPrefix(prefix).build()
+    val list = gcsService.list(bucket, options).asScala.toIterable
+    val actStream = for {
+      iCandidate <- list
+      i <- filter.map(f => filterByMetadata(iCandidate, f)).getOrElse(Some(iCandidate))
+    } yield {
+      assert(i.getName.startsWith(prefix))
+      val name = i.getName.drop(prefix.length)
+      name
+    }
+    actStream.toVector  // toVector to avoid debugging streams, we are always traversing all of them anyway
+  }
+
+  def enumerateAll(): Iterable[String] = {
+    val prefix = ""
     val options = new ListOptions.Builder().setPrefix(prefix).build()
     val list = gcsService.list(bucket, options).asScala.toIterable
     for (i <- list) yield {
@@ -144,6 +174,7 @@ object Storage extends FileStore {
       name
     }
   }
+
 
   def enumerateWithMetadata(namespace: String, userId: String): Iterable[(String, Map[String, String])] = {
     val prefix = userFilename(namespace, "", userId)
@@ -189,6 +220,24 @@ object Storage extends FileStore {
       m
     }.contains(true)
   }
+
+  def updateMetadata(file: String, metadata: Seq[(String, String)]): Boolean = {
+    val gcsFilename = new GcsFilename(bucket, file)
+    val md = gcsService.getMetadata(gcsFilename)
+    val userData = md.getOptions.getUserMetadata.asScala
+    val matching = metadata.forall { case (key, name) =>
+      userData.get(key).contains(name)
+    }
+    if (!matching) {
+      val builder = new GcsFileOptions.Builder()
+      for (m <- userData ++ metadata) {
+        builder.addUserMetadata(m._1, m._2)
+      }
+      gcsService.update(gcsFilename, builder.build())
+    }
+    !matching
+  }
+
 
   type FileItem = ListItem
 

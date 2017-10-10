@@ -70,7 +70,7 @@ object Upload extends DefineRequest.Post("/upload") {
     if (actData.nonEmpty) {
       for (act <- actData) {
         val actOpt = act.cleanPositionErrors // .optimize
-        Storage.store(Main.namespace.stage, act.id.id.filename, userId, actOpt.header, actOpt, "digest" -> digest)
+        Storage.store(Main.namespace.stage, act.id.id.filename, userId, actOpt.header, actOpt, "digest" -> digest, "startTime" -> actOpt.id.startTime.toString)
       }
     } else {
       Storage.store(Main.namespace.stage, name, userId, NoActivity, NoActivity, "digest" -> digest)

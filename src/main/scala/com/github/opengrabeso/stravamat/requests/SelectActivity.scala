@@ -54,12 +54,12 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
 
     startUploadSession(session)
 
-    val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
-    val before = ignoreBefore(stravaActivities)
+    val notBefore = ignoreBefore(stravaActivities)
+    val stagedActivities = Main.stagedActivities(auth, notBefore)
 
-    //println(s"Ignore before $before")
+    //println(s"Ignore before $notBefore")
 
-    val recentActivities = stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
+    val recentActivities = stagedActivities.filter(_.id.startTime > notBefore).sortBy(_.id.startTime)
 
 
     //println(s"Staged ${stagedActivities.mkString("\n  ")}")
@@ -136,7 +136,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
         """
     )}
     </script> ++
-      sources(before) ++ <h2>Activities</h2>
+      sources(notBefore) ++ <h2>Activities</h2>
       <form id="process-form" action="process" method="post" enctype="multipart/form-data">
         <table class="activities">
           {// find most recent Strava activity
