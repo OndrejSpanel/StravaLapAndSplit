@@ -48,7 +48,9 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
 
     val stravaActivities = recentStravaActivities(auth)
 
-    QueueFactory.getDefaultQueue add TaskOptions.Builder.withPayload(UserCleanup(auth, defaultIgnoreBefore(stravaActivities)))
+    if (false) {
+      QueueFactory.getDefaultQueue add TaskOptions.Builder.withPayload(UserCleanup(auth, defaultIgnoreBefore(stravaActivities)))
+    }
 
     startUploadSession(session)
 
