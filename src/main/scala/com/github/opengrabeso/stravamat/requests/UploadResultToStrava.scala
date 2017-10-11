@@ -44,7 +44,7 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
     val uploadNamespace = Main.namespace.upload(sessionId)
     val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
 
-    for (upload <- Storage.load2nd[Main.ActivityEvents](uploadNamespace, key, auth.userId)) {
+    for (upload <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(uploadNamespace, key, auth.userId))) {
 
       val export = FitExport.export(upload)
 
@@ -60,9 +60,9 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
             case _ => 0L
           }
 
-          Storage.store(uploadResultNamespace, key, auth.userId, UploadDuplicate(id))
+          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadDuplicate(id))
         case Failure(ex) =>
-          Storage.store(uploadResultNamespace, key, auth.userId, UploadError(ex))
+          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadError(ex))
           // https://stackoverflow.com/questions/45353793/how-to-use-deferredtaskcontext-setdonotretry-with-google-app-engine-in-java
           //DeferredTaskContext.setDoNotRetry(true)
           //throw ex
@@ -72,10 +72,10 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
           val eta = System.currentTimeMillis() + 3000
           queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(key, uploadId, auth, eta, sessionId))
 
-          Storage.store(uploadResultNamespace, key, auth.userId, UploadInProgress(uploadId))
+          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadInProgress(uploadId))
       }
 
-      Storage.delete(uploadNamespace, key, auth.userId)
+      Storage.delete(Storage.FullName(uploadNamespace, key, auth.userId))
 
 
     }
@@ -103,13 +103,13 @@ case class WaitForStravaUpload(key: String, id: Long, auth: Main.StravaAuthResul
       done match {
         case Success(Some(actId)) =>
           println(s"Uploaded as $actId")
-          Storage.store(uploadResultNamespace, key, auth.userId, UploadDone(actId))
+          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadDone(actId))
         case Success(None) =>
           // still processing - retry
           retry(now + 2000)
         case Failure(ex) =>
           println(s"Upload $id failed")
-          Storage.store(uploadResultNamespace, key, auth.userId, UploadError(ex))
+          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadError(ex))
 
       }
 

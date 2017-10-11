@@ -19,7 +19,7 @@ object ConvertOldData extends DefineRequest("/convert-old-data") {
 
       for {
         file <- files if metadataFromFilename(file).isEmpty
-        activityLoad <- Try(loadRawName[ActivityHeader](file))
+        activityLoad <- Try(loadRawName[ActivityHeader](FullName(file)))
         activity <- activityLoad
       } {
         val metadata = Seq("startTime" -> activity.id.startTime.toString)

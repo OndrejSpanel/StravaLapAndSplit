@@ -10,4 +10,12 @@ trait ActivityStorage {
   }
 
 
+  def loadActivity(stage: String, actId: FileId, userId: String) = {
+    val fullName = Storage.getFullName(Main.namespace.stage, actId.filename, userId)
+
+    Storage.load[ActivityHeader, ActivityEvents](fullName).map(_._2)
+  }
+
+
+
 }

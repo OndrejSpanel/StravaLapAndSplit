@@ -28,7 +28,13 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
   // some actions (logout) may have their URL prefixed to provide a specific functionality
 
   def apply(request: Request, resp: Response): AnyRef = {
-    println(s"Request ${request.url()}")
+
+    import com.google.appengine.api.utils.SystemProperty
+
+    if (SystemProperty.environment.value() == SystemProperty.Environment.Value.Development) {
+      // logging on production server is counter-productive, logs are already sorted by request
+      println(s"Request ${request.url()}")
+    }
     val nodes = html(request, resp)
     if (nodes.nonEmpty) {
       nodes.head match {

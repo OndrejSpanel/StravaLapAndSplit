@@ -9,20 +9,31 @@ import com.google.appengine.tools.cloudstorage._
 import org.apache.commons.io.IOUtils
 
 import scala.reflect.ClassTag
-import collection.JavaConverters._
 
 object Storage extends FileStore {
+
 
   // from https://cloud.google.com/appengine/docs/java/googlecloudstorageclient/read-write-to-cloud-storage
 
   final val bucket = "stravamat.appspot.com"
 
+  // full name combined - namespace, filename, user Id
+  object FullName {
+    def apply(namespace: String, filename: String, userId: String): FullName = {
+      // user id needed so that files from different users are not conflicting
+      FullName(userId + "/" + namespace + "/" + filename)
+    }
+    def withMetadata(namespace: String, filename: String, userId: String, metadata: Seq[(String, String)]): FullName = {
+      // metadata stored as part of the filename are much quicker to access, filtering is done from them only
+      FullName(userId + "/" + namespace + "/" + filename + metadataEncoded(metadata))
+    }
+  }
+
+  case class FullName(name: String)
+
   private def fileId(filename: String) = new GcsFilename(bucket, filename)
 
-  // user id needed so that files from different users are not conflicting
-  private def userFilename(namespace: String, filename: String, userId: String) = {
-    userId + "/" + namespace + "/" + filename
-  }
+  private def userFilename(namespace: String, filename: String, userId: String) = FullName.apply(namespace, filename, userId)
 
   def metadataEncoded(metadata: Seq[(String, String)]): String = {
     if (metadata.nonEmpty) {
@@ -45,11 +56,6 @@ object Storage extends FileStore {
     }
   }
 
-  private def userFilenameWithMetadata(namespace: String, filename: String, userId: String, metadata: Seq[(String, String)]) = {
-    // metadata stored as part of the filename are much quicker to access, filtering is done from them only
-    userId + "/" + namespace + "/" + filename + metadataEncoded(metadata)
-  }
-
   private final val gcsService = GcsServiceFactory.createGcsService(
     new RetryParams.Builder()
     .initialRetryDelayMillis(10)
@@ -58,25 +64,25 @@ object Storage extends FileStore {
     .build()
   )
 
-  def output(filename: String, metadata: Seq[(String, String)]): OutputStream = {
+  def output(filename: FullName, metadata: Seq[(String, String)]): OutputStream = {
     val instance = new GcsFileOptions.Builder()
     for (m <- metadata) {
       instance.addUserMetadata(m._1, m._2)
     }
-    val channel = gcsService.createOrReplace(fileId(filename), instance.build)
+    val channel = gcsService.createOrReplace(fileId(filename.name), instance.build)
     Channels.newOutputStream(channel)
   }
 
-  def input(filename: String): InputStream = {
+  def input(filename: FullName): InputStream = {
     val bufferSize = 1 * 1024 * 1024
-    val readChannel = gcsService.openPrefetchingReadChannel(fileId(filename), 0, bufferSize)
+    val readChannel = gcsService.openPrefetchingReadChannel(fileId(filename.name), 0, bufferSize)
 
     Channels.newInputStream(readChannel)
   }
 
-  def store(namespace: String, filename: String, userId: String, obj: AnyRef, metadata: (String, String)*) = {
+  def store(name: FullName, obj: AnyRef, metadata: (String, String)*) = {
     //println(s"store '$filename' - '$userId'")
-    val os = output(userFilename(namespace, filename, userId), metadata)
+    val os = output(name, metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj)
     oos.close()
@@ -87,13 +93,35 @@ object Storage extends FileStore {
     metadata: Seq[(String, String)] = Seq.empty, priorityMetaData: Seq[(String, String)] = Seq.empty
   ) = {
     //println(s"store '$filename' - '$userId'")
-    val os = output(userFilenameWithMetadata(namespace, filename, userId, priorityMetaData), metadata)
+    val os = output(FullName.withMetadata(namespace, filename, userId, priorityMetaData), metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj1)
     oos.writeObject(obj2)
     oos.close()
     os.close()
   }
+
+  def getFullName(stage: String, filename: String, userId: String): FullName = {
+    val prefix = FullName(stage, filename, userId)
+
+    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
+    val list = gcsService.list(bucket, options).asScala.toIterable
+    val matches = for (iCandidate <- list) yield {
+      assert(iCandidate.getName.startsWith(prefix.name))
+      iCandidate.getName
+    }
+    // multiple matches possible, because of -1 .. -N variants added
+    // select only real matches
+    val realMatches = matches.toList.filter { name =>
+      name == prefix.name || name.startsWith(prefix.name + "//")
+    }
+
+    if (realMatches.size == 1) {
+      FullName(realMatches.head)
+    } else prefix
+  }
+
+
 
   private def readSingleObject[T: ClassTag](ois: ObjectInputStream) = {
     try {
@@ -113,7 +141,7 @@ object Storage extends FileStore {
     }
   }
 
-  def loadRawName[T : ClassTag](filename: String): Option[T] = {
+  def loadRawName[T : ClassTag](filename: FullName): Option[T] = {
     //println(s"load '$filename' - '$userId'")
     val is = input(filename)
     try {
@@ -125,7 +153,7 @@ object Storage extends FileStore {
 
   }
 
-  def load[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
+  def load[T : ClassTag](fullName: FullName): Option[T] = {
     object FormatChanged {
       def unapply(arg: Exception): Option[Exception] = arg match {
         case _: java.io.InvalidClassException => Some(arg) // bad serialVersionUID
@@ -134,15 +162,14 @@ object Storage extends FileStore {
         case _ => None
       }
     }
-    val rawName = userFilename(namespace, filename, userId)
     try {
-      loadRawName(rawName)
+      loadRawName(fullName)
     } catch {
       case _: FileNotFoundException =>
         None
       case FormatChanged(x) =>
-        println(s"load error ${x.getMessage} - $filename")
-        gcsService.delete(fileId(filename))
+        println(s"load error ${x.getMessage} - $fullName")
+        gcsService.delete(fileId(fullName.name))
         None
       case x: Exception =>
         x.printStackTrace()
@@ -150,13 +177,13 @@ object Storage extends FileStore {
     }
   }
 
-  def load2nd[T : ClassTag](namespace: String, filename: String, userId: String): Option[T] = {
+  def load2nd[T : ClassTag](fullName: FullName): Option[T] = {
     //println(s"load '$filename' - '$userId'")
-    load[AnyRef, T](namespace, filename, userId).map(_._2)
+    load[AnyRef, T](fullName).map(_._2)
   }
 
-  def load[T1: ClassTag, T2: ClassTag](namespace: String, filename: String, userId: String): Option[(T1, T2)] = {
-    val is = input(userFilename(namespace, filename, userId))
+  def load[T1: ClassTag, T2: ClassTag](fullName: FullName): Option[(T1, T2)] = {
+    val is = input(fullName)
     try {
       val ois = new ObjectInputStream(is)
       val obj1 = readSingleObject[T1](ois)
@@ -169,13 +196,12 @@ object Storage extends FileStore {
     }
   }
 
-  def delete(namespace: String, filename: String, userId: String): Boolean = {
-    val toDelete = userFilename(namespace, filename, userId)
-    gcsService.delete(fileId(toDelete))
+  def delete(toDelete: FullName): Boolean = {
+    gcsService.delete(fileId(toDelete.name))
   }
 
 
-  def enumerate(namespace: String, userId: String, filter: Option[String => Boolean] = None): Iterable[String] = {
+  def enumerate(namespace: String, userId: String, filter: Option[String => Boolean] = None): Iterable[(FullName, String)] = {
 
     def filterByMetadata(name: String, filter: String => Boolean): Option[String] = {
       // filtering can be done only by "priority" (filename) metadata, accessing real metadata is too slow and brings almost no benefit
@@ -183,15 +209,14 @@ object Storage extends FileStore {
     }
 
     val prefix = userFilename(namespace, "", userId)
-    val options = new ListOptions.Builder().setPrefix(prefix).build()
+    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
     val list = gcsService.list(bucket, options).asScala.toIterable
     val actStream = for {
       iCandidate <- list
       iName <- filter.map(f => filterByMetadata(iCandidate.getName, f)).getOrElse(Some(iCandidate.getName))
     } yield {
-      assert(iName.startsWith(prefix))
-      val name = iName.drop(prefix.length)
-      name
+      assert(iName.startsWith(prefix.name))
+      FullName(iName) -> iName.drop(prefix.name.length)
     }
     actStream.toVector  // toVector to avoid debugging streams, we are always traversing all of them anyway
   }
@@ -208,37 +233,16 @@ object Storage extends FileStore {
   }
 
 
-  def enumerateWithMetadata(namespace: String, userId: String): Iterable[(String, Map[String, String])] = {
-    val prefix = userFilename(namespace, "", userId)
-    val options = new ListOptions.Builder().setPrefix(prefix).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
-    for (i <- list) yield {
-      assert(i.getName.startsWith(prefix))
-      val name = i.getName.drop(prefix.length)
-      val m = try {
-        val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
-        if (md != null) Some(md.getOptions.getUserMetadata)
-        else None
-      } catch {
-        case e: Exception =>
-          e.printStackTrace()
-          None
-      }
-      //println(s"enum '$name' - '$userId': md '$m'")
-      name -> m.map(_.asScala.toMap).getOrElse(Map())
-    }
-  }
-
   def check(namespace: String, userId: String, path: String, digest: String): Boolean = {
 
     val prefix = userFilename(namespace, path, userId)
-    val options = new ListOptions.Builder().setPrefix(prefix).build()
+    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
     val found = gcsService.list(bucket, options).asScala.toIterable.headOption
 
     // there should be at most one result
     found.flatMap{i =>
-      assert(i.getName.startsWith(prefix))
-      val name = i.getName.drop(prefix.length)
+      assert(i.getName.startsWith(prefix.name))
+      val name = i.getName.drop(prefix.name.length)
       val m = try {
         val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
         val userData = md.getOptions.getUserMetadata.asScala
@@ -275,7 +279,7 @@ object Storage extends FileStore {
     val gcsFilenameNew = fileId(newName)
 
     // read metadata
-    val in = input(oldName)
+    val in = input(FullName(oldName))
 
     val md = gcsService.getMetadata(gcsFilenameOld)
     val metadata = if (md != null) md.getOptions.getUserMetadata.asScala.toMap

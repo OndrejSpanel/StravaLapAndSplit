@@ -219,7 +219,7 @@ object Main {
       }
       val d = Storage.enumerate(namespace.stage, auth.userId, Some(isNotBeforeByName))
       d.flatMap { a =>
-        Storage.load[ActivityHeader](namespace.stage, a, auth.userId)
+        Storage.load[ActivityHeader](a._1)
       }
     }
     storedActivities.toVector

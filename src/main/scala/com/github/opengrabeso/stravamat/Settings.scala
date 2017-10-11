@@ -6,7 +6,7 @@ object Settings {
   case class SettingsStorage(questTimeOffset: Int, maxHR: Int)
 
   private def userSettings(userId: String) = {
-    Storage.load[SettingsStorage](Main.namespace.settings, "settings", userId)
+    Storage.load[SettingsStorage](Storage.FullName(Main.namespace.settings, "settings", userId))
   }
 
   def apply(userId: String) = {

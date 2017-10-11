@@ -22,13 +22,13 @@ case class UserCleanup(auth: Main.StravaAuthResult, before: ZonedDateTime) exten
     // clean activities before "before", as those are never listed to the user
     // verify they are already stored on Strava, if not, keep then until a global expiry cleanup will handle them
     val headers = d.flatMap { a =>
-      Storage.load[ActivityHeader](namespace.stage, a, auth.userId).map(a -> _)
+      Storage.load[ActivityHeader](a._1).map(a -> _)
     }
 
     val headersToClean = headers.filter(_._2.id.startTime < before).toSeq.sortBy(_._2.id.startTime)
 
     breakable {
-      for ((file, h) <- headersToClean) {
+      for (((file,_), h) <- headersToClean) {
 
         val timestamp = h.id.startTime.getMillis / 1000 - 1 * 3600
 
@@ -39,7 +39,7 @@ case class UserCleanup(auth: Main.StravaAuthResult, before: ZonedDateTime) exten
 
         if (stravaActivities.exists(_ isMatching h.id)) {
           println(s"Cleaning stage file ${h.id} $file")
-          Storage.delete(namespace.stage, file, auth.userId)
+          Storage.delete(file)
           break // always clean at most one item per request
         }
       }
