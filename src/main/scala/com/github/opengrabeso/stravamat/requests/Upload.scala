@@ -11,7 +11,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload
 import org.apache.commons.io.IOUtils
 import spark.{Request, Response}
 
-object Upload extends DefineRequest.Post("/upload") {
+object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
   override def html(request: Request, resp: Response) = {
     withAuth(request, resp) { auth =>
 
@@ -70,10 +70,11 @@ object Upload extends DefineRequest.Post("/upload") {
     if (actData.nonEmpty) {
       for (act <- actData) {
         val actOpt = act.cleanPositionErrors // .optimize
-        Storage.store(Main.namespace.stage, act.id.id.filename, userId, actOpt.header, actOpt, "digest" -> digest, "startTime" -> actOpt.id.startTime.toString)
+        assert(digest == actOpt.id.digest)
+        storeActivity(Main.namespace.stage, actOpt, userId)
       }
     } else {
-      Storage.store(Main.namespace.stage, name, userId, NoActivity, NoActivity, "digest" -> digest)
+      Storage.store(Main.namespace.stage, name, userId, NoActivity, NoActivity, Seq("digest" -> digest))
     }
     Timing.logTime("Store file")
   }

@@ -1,9 +1,9 @@
 package com.github.opengrabeso.stravamat
 package requests
-import com.github.opengrabeso.stravamat.requests.Cleanup.BackgroundCleanup
 import com.google.appengine.api.taskqueue.{DeferredTask, QueueFactory, TaskOptions}
 import spark.{Request, Response}
 import Main._
+import Storage._
 
 import scala.util.Try
 
@@ -14,18 +14,17 @@ object ConvertOldData extends DefineRequest("/convert-old-data") {
   @SerialVersionUID(10L)
   case object BackgroundConvert extends DeferredTask {
     override def run(): Unit = {
-      val files = Storage.enumerateAll()
+      val files = enumerateAll()
       var converted = 0
 
       for {
-        file <- files
-        activityLoad <- Try(Storage.loadRawName[ActivityHeader](file))
+        file <- files if metadataFromFilename(file).isEmpty
+        activityLoad <- Try(loadRawName[ActivityHeader](file))
         activity <- activityLoad
       } {
         val metadata = Seq("startTime" -> activity.id.startTime.toString)
-        if (Storage.updateMetadata(file, metadata)) {
-          converted += 1
-        }
+        Storage.move(file, file + metadataEncoded(metadata))
+        converted += 1
       }
 
       println(s"Convert: Total ${files.size} files, converted $converted")

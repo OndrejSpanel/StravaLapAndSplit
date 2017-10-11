@@ -213,10 +213,11 @@ object Main {
 
   def stagedActivities(auth: StravaAuthResult, notBefore: ZonedDateTime): Seq[ActivityHeader] = {
     val storedActivities = {
-      def isNotBefore(md: Map[String, String]) = {
+      def isNotBeforeByName(name: String) = {
+        val md = Storage.metadataFromFilename(name)
         md.get("startTime").forall(timeString => ZonedDateTime.parse(timeString) >= notBefore)
       }
-      val d = Storage.enumerate(namespace.stage, auth.userId, Some(isNotBefore))
+      val d = Storage.enumerate(namespace.stage, auth.userId, Some(isNotBeforeByName))
       d.flatMap { a =>
         Storage.load[ActivityHeader](namespace.stage, a, auth.userId)
       }

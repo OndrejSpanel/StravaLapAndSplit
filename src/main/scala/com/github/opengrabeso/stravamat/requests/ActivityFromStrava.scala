@@ -3,7 +3,7 @@ package requests
 
 import spark.{Request, Response}
 
-object ActivityFromStrava extends DefineRequest("/activityFromStrava") {
+object ActivityFromStrava extends DefineRequest("/activityFromStrava") with ActivityStorage {
 
   override def html(request: Request, resp: Response) = {
     withAuth(request, resp) { auth =>
@@ -16,7 +16,8 @@ object ActivityFromStrava extends DefineRequest("/activityFromStrava") {
           Main.getEventsFrom(auth.token, idNum.toString)
       }
 
-      Storage.store(Main.namespace.stage, stravaId.filename, auth.userId, activityData.header, activityData, "digest" -> activityData.id.digest)
+
+      storeActivity(Main.namespace.stage, activityData, auth.userId)
 
       resp.redirect(s"/selectActivity")
       Nil
