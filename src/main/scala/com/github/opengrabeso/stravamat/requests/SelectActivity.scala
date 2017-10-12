@@ -77,7 +77,17 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
 
     val recentActivities = (stagedActivities diff toCleanup.map(_._1)).filter(_.id.startTime >= notBefore).sortBy(_.id.startTime)
 
-    val recentToStrava = findMatchingStrava(recentActivities, stravaActivities /*++ oldStravaActivities*/).filter((filterListed _).tupled)
+    val recentToStrava = findMatchingStrava(recentActivities, stravaActivities ++ oldStravaActivities).filter((filterListed _).tupled)
+
+    /*
+    println(s"Staged recentActivities ${recentActivities.size}")
+    println(s"Staged oldStagedActivities ${oldStagedActivities.size}")
+    println(s"Staged stravaActivities ${stravaActivities.size}")
+    println(s"Staged oldStravaActivities ${oldStravaActivities.size}")
+    println(s"Staged toCleanup ${toCleanup.size}")
+    println(s"oldStravaActivities ${oldStravaActivities.mkString("\n  ")}")
+    println(s"oldStagedActivities ${oldStagedActivities.map(_.id).mkString("\n  ")}")
+    */
 
     super.bodyPart(request, auth) ++
     <script>
