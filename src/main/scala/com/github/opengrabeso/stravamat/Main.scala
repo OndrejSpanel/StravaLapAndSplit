@@ -527,7 +527,7 @@ object Main {
     }
 
     def processPausesAndEvents: ActivityEvents = {
-      implicit val start = Timing.Start()
+      val timing = Timing.start()
       //val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
       // prefer GPS, as this is already cleaned for accuracy error
@@ -537,7 +537,7 @@ object Main {
         this.gps.distStream
       }
 
-      Timing.logTime("distStream")
+      timing.logTime("distStream")
 
       val speedStream = DataStreamGPS.computeSpeedStream(distStream)
       val speedMap = speedStream
@@ -545,7 +545,7 @@ object Main {
       // integrate route distance back from smoothed speed stream so that we are processing consistent data
       val routeDistance = DataStreamGPS.routeStreamFromSpeedStream(speedStream)
 
-      Timing.logTime("routeDistance")
+      timing.logTime("routeDistance")
 
       // find pause candidates: times when smoothed speed is very low
       val speedPauseMax = 0.7
@@ -575,7 +575,7 @@ object Main {
 
       val mergedPauses = mergePauses(pauseSpeeds, Nil).reverse
 
-      Timing.logTime("mergePauses")
+      timing.logTime("mergePauses")
 
       def avgSpeedDuring(beg: ZonedDateTime, end: ZonedDateTime): Double = {
         val findBeg = routeDistance.to(beg).lastOption
@@ -680,7 +680,7 @@ object Main {
 
       val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2))
 
-      Timing.logTime("extractedPauses")
+      timing.logTime("extractedPauses")
 
       val cleanedPauses = cleanPauses(extractedPauses)
 
@@ -784,7 +784,7 @@ object Main {
 
       val cleanedEvents = cleanupEvents(allEvents.sortBy(_.stamp).toList, Nil).reverse
 
-      Timing.logTime("extractPause done")
+      timing.logTime("extractPause done")
 
       copy(events = cleanedEvents.toArray)
     }

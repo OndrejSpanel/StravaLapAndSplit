@@ -48,7 +48,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
 
   def storeFromStreamWithDigest(userId: String, name: String, timezone: String, stream: InputStream, digest: String) = {
     import MoveslinkImport._
-    implicit val start = Timing.Start()
+    val timing = Timing.start()
 
     val extension = name.split('.').last
     val actData: Seq[Main.ActivityEvents] = extension.toLowerCase match {
@@ -66,7 +66,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
       case e =>
         Nil
     }
-    Timing.logTime("Import file")
+    timing.logTime("Import file")
     if (actData.nonEmpty) {
       for (act <- actData) {
         val actOpt = act.cleanPositionErrors // .optimize
@@ -76,7 +76,7 @@ object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
     } else {
       Storage.store(Main.namespace.stage, name, userId, NoActivity, NoActivity, Seq("digest" -> digest))
     }
-    Timing.logTime("Store file")
+    timing.logTime("Store file")
   }
 
   def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream) = {

@@ -1,6 +1,7 @@
 package com.github.opengrabeso.stravamat
 package requests
 
+import shared.Timing
 import shared.Util._
 import Main._
 import com.google.appengine.api.taskqueue.{QueueFactory, TaskOptions}
@@ -44,9 +45,14 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
   }
 
   abstract override def bodyPart(request: Request, auth: StravaAuthResult): NodeSeq = {
+
+    val timing = Timing.start(true)
+
     val session = request.session()
 
     val stravaActivities = recentStravaActivities(auth)
+
+    timing.logTime("recentStravaActivities")
 
     if (false) {
       QueueFactory.getDefaultQueue add TaskOptions.Builder.withPayload(UserCleanup(auth, defaultIgnoreBefore(stravaActivities)))
@@ -61,6 +67,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
 
     val recentActivities = stagedActivities.filter(_.id.startTime > notBefore).sortBy(_.id.startTime)
 
+    timing.logTime("recentActivities")
 
     //println(s"Staged ${stagedActivities.mkString("\n  ")}")
     //println(s"Recent ${recentActivities.mkString("\n  ")}")
