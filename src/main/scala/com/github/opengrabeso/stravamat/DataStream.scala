@@ -260,9 +260,9 @@ object DataStreamGPS {
   }
 
   def computeSpeedStream(dist: DistStream, smoothing: Int = 10): DistStream = {
-    implicit val start = Timing.Start()
+    val timing = Timing.start(true)
     val smoothedSpeed = smoothSpeed(dist, smoothing)
-    Timing.logTime(s"computeSpeedStream of ${dist.size} samples, smoothing $smoothing")
+    timing.logTime(s"computeSpeedStream of ${dist.size} samples, smoothing $smoothing")
     smoothedSpeed
   }
 

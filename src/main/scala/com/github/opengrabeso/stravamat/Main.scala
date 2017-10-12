@@ -1,5 +1,6 @@
 package com.github.opengrabeso.stravamat
 
+import java.io.InputStream
 import java.security.MessageDigest
 import java.util
 import java.util.Locale
@@ -7,7 +8,7 @@ import java.util.Locale
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
-import org.joda.time.{Interval, Period, PeriodType, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Period, PeriodType, Seconds, DateTime => ZonedDateTime}
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 
 import scala.collection.JavaConverters._
@@ -165,11 +166,8 @@ object Main {
     }
   }
 
-  def recentStravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
-    val uri = "https://www.strava.com/api/v3/athlete/activities"
-    val request = buildGetRequest(uri, auth.token, "per_page=15")
-
-    val responseJson = jsonMapper.readTree(request.execute().getContent)
+  def parseStravaActivities(content: InputStream) = {
+    val responseJson = jsonMapper.readTree(content)
 
     val stravaActivities = (0 until responseJson.size).map { i =>
       val actI = responseJson.get(i)
@@ -178,12 +176,38 @@ object Main {
     stravaActivities
   }
 
+  def lastStravaActivities(auth: StravaAuthResult, count: Int): Seq[ActivityId] = {
+    val timing = Timing.start()
+    val uri = "https://www.strava.com/api/v3/athlete/activities"
+    val request = buildGetRequest(uri, auth.token, s"per_page=$count")
+
+    val ret = parseStravaActivities(request.execute().getContent)
+    timing.logTime(s"lastStravaActivities ($count)")
+    ret
+  }
+
+  private val normalCount = 15
+
+  def recentStravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
+    lastStravaActivities(auth, normalCount)
+  }
+
+  def recentStravaActivitiesHistory(auth: StravaAuthResult, countMultiplier: Double = 1): (Seq[ActivityId], Seq[ActivityId]) = {
+    val allActivities = lastStravaActivities(auth, (normalCount * countMultiplier).toInt)
+    allActivities.splitAt(normalCount)
+  }
+
+
   def stravaActivitiesNotStaged(auth: StravaAuthResult): Seq[ActivityId] = {
     val stravaActivities = recentStravaActivities(auth)
-
-    val storedActivities = stagedActivities(auth)
-    // do not display the activities which are already staged
-    stravaActivities diff storedActivities
+    if (stravaActivities.nonEmpty) {
+      val notBefore = stravaActivities.map(_.startTime).min
+      val storedActivities = stagedActivities(auth, notBefore)
+      // do not display the activities which are already staged
+      stravaActivities diff storedActivities
+    } else {
+      stravaActivities
+    }
   }
 
   object namespace {
@@ -201,11 +225,15 @@ object Main {
     val settings = "settings"
   }
 
-  def stagedActivities(auth: StravaAuthResult): Seq[ActivityHeader] = {
+  def stagedActivities(auth: StravaAuthResult, notBefore: ZonedDateTime): Seq[ActivityHeader] = {
     val storedActivities = {
-      val d = Storage.enumerate(namespace.stage, auth.userId)
+      def isNotBeforeByName(name: String) = {
+        val md = Storage.metadataFromFilename(name)
+        md.get("startTime").forall(timeString => ZonedDateTime.parse(timeString) >= notBefore)
+      }
+      val d = Storage.enumerate(namespace.stage, auth.userId, Some(isNotBeforeByName))
       d.flatMap { a =>
-        Storage.load[ActivityHeader](namespace.stage, a, auth.userId)
+        Storage.load[ActivityHeader](a._1)
       }
     }
     storedActivities.toVector
@@ -223,6 +251,7 @@ object Main {
       case (false, true) => "+"
       case (false, false) => "--"
     }
+
   }
 
   object ActivityEvents {
@@ -512,7 +541,7 @@ object Main {
     }
 
     def processPausesAndEvents: ActivityEvents = {
-      implicit val start = Timing.Start()
+      val timing = Timing.start()
       //val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
       // prefer GPS, as this is already cleaned for accuracy error
@@ -522,7 +551,7 @@ object Main {
         this.gps.distStream
       }
 
-      Timing.logTime("distStream")
+      timing.logTime("distStream")
 
       val speedStream = DataStreamGPS.computeSpeedStream(distStream)
       val speedMap = speedStream
@@ -530,7 +559,7 @@ object Main {
       // integrate route distance back from smoothed speed stream so that we are processing consistent data
       val routeDistance = DataStreamGPS.routeStreamFromSpeedStream(speedStream)
 
-      Timing.logTime("routeDistance")
+      timing.logTime("routeDistance")
 
       // find pause candidates: times when smoothed speed is very low
       val speedPauseMax = 0.7
@@ -560,7 +589,7 @@ object Main {
 
       val mergedPauses = mergePauses(pauseSpeeds, Nil).reverse
 
-      Timing.logTime("mergePauses")
+      timing.logTime("mergePauses")
 
       def avgSpeedDuring(beg: ZonedDateTime, end: ZonedDateTime): Double = {
         val findBeg = routeDistance.to(beg).lastOption
@@ -665,7 +694,7 @@ object Main {
 
       val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2))
 
-      Timing.logTime("extractedPauses")
+      timing.logTime("extractedPauses")
 
       val cleanedPauses = cleanPauses(extractedPauses)
 
@@ -769,7 +798,7 @@ object Main {
 
       val cleanedEvents = cleanupEvents(allEvents.sortBy(_.stamp).toList, Nil).reverse
 
-      Timing.logTime("extractPause done")
+      timing.logTime("extractPause done")
 
       copy(events = cleanedEvents.toArray)
     }

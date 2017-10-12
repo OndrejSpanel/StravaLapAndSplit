@@ -18,16 +18,8 @@ object ManageActivities extends SelectActivity("/selectActivity") {
     </div>
   }
 
-  override def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = {
-    strava.isEmpty
-  }
+  override def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = strava.isEmpty
 
-  override def ignoreBefore(stravaActivities: Seq[ActivityId]) = {
-    // ignore anything older than oldest of recent Strava activities
-    val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime)
-    val ignoreBeforeFirst = stravaActivities.headOption.map(_.startTime minusDays  14)
-    val ignoreBeforeNow = new ZonedDateTime() minusMonths 2
+  override def ignoreBefore(stravaActivities: Seq[ActivityId]) = defaultIgnoreBefore(stravaActivities)
 
-    (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
-  }
 }

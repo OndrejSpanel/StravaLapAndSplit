@@ -1,8 +1,10 @@
 package com.github.opengrabeso.stravamat
 package requests
 
+import shared._
 import shared.Util._
 import Main._
+import com.google.appengine.api.taskqueue.{QueueFactory, TaskOptions}
 import org.joda.time.{DateTime => ZonedDateTime}
 
 import scala.xml.NodeSeq
@@ -13,6 +15,14 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
   def sources(before: ZonedDateTime): NodeSeq
   def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = true
   def ignoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime
+
+  def alwaysIgnoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime = {
+    ActivityTime.alwaysIgnoreBefore(stravaActivities.map(_.startTime))
+  }
+
+  def defaultIgnoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime = {
+    ActivityTime.defaultIgnoreBefore(stravaActivities.map(_.startTime))
+  }
 
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
@@ -32,26 +42,42 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
   }
 
   abstract override def bodyPart(request: Request, auth: StravaAuthResult): NodeSeq = {
+
+    val timing = Timing.start(true)
+
     val session = request.session()
 
-    val stravaActivities = recentStravaActivities(auth)
+    val (stravaActivities, oldStravaActivities) = recentStravaActivitiesHistory(auth, 2)
+
+    val neverBefore = alwaysIgnoreBefore(stravaActivities)
 
     startUploadSession(session)
 
-    val stagedActivities = Main.stagedActivities(auth).toVector // toVector to avoid debugging streams
-    val before = ignoreBefore(stravaActivities)
+    val notBefore = ignoreBefore(stravaActivities)
+    val stagedActivities = Main.stagedActivities(auth, notBefore)
 
-    //println(s"Ignore before $before")
+    //println(s"Ignore before $notBefore")
 
-    val recentActivities = stagedActivities.filter(_.id.startTime > before).sortBy(_.id.startTime)
+
+
+    def findMatchingStrava(ids: Seq[ActivityHeader], strava: Seq[ActivityId]): Seq[(ActivityHeader, Option[ActivityId])] = {
+      ids.map( a => a -> strava.find(_ isMatching a.id))
+    }
+    // never display any activity which should be cleaned by UserCleanup
+    val oldStagedActivities = stagedActivities.filter(_.id.startTime < neverBefore)
+    val toCleanup = findMatchingStrava(oldStagedActivities, oldStravaActivities).flatMap { case (k,v) => v.map(k -> _)}
+
+    timing.logTime("SelectActivity: recentActivities")
+
+    if (true) {
+      QueueFactory.getDefaultQueue add TaskOptions.Builder.withPayload(UserCleanup(auth, neverBefore))
+    }
     //println(s"Staged ${stagedActivities.mkString("\n  ")}")
     //println(s"Recent ${recentActivities.mkString("\n  ")}")
 
-    // match recent activities against Strava activities
-    // a significant overlap means a match
-    val recentToStrava = recentActivities.map { r =>
-      r -> stravaActivities.find(_ isMatching r.id)
-    }.filter((filterListed _).tupled)
+    val recentActivities = (stagedActivities diff toCleanup.map(_._1)).filter(_.id.startTime >= notBefore).sortBy(_.id.startTime)
+
+    val recentToStrava = findMatchingStrava(recentActivities, stravaActivities /*++ oldStravaActivities*/).filter((filterListed _).tupled)
 
     super.bodyPart(request, auth) ++
     <script>
@@ -118,7 +144,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
         """
     )}
     </script> ++
-      sources(before) ++ <h2>Activities</h2>
+      sources(notBefore) ++ <h2>Activities</h2>
       <form id="process-form" action="process" method="post" enctype="multipart/form-data">
         <table class="activities">
           {// find most recent Strava activity

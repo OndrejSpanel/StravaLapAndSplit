@@ -1,7 +1,6 @@
 package com.github.opengrabeso.stravamat
 package requests
 
-import com.github.opengrabeso.stravamat.Main.namespace
 import spark.{Request, Response}
 
 object CheckUploadStatus extends DefineRequest.Post("/check-upload-status")  {
@@ -21,14 +20,16 @@ object CheckUploadStatus extends DefineRequest.Post("/check-upload-status")  {
       val resultsFiles = Storage.enumerate(uploadResultNamespace, auth.userId)
 
       val results = for {
-        resultFilename <- resultsFiles
-        status <- Storage.load[UploadStatus](uploadResultNamespace, resultFilename, auth.userId)
+        (_, resultFilename) <- resultsFiles
+        status <- Storage.load[UploadStatus](Storage.FullName(uploadResultNamespace, resultFilename, auth.userId))
       } yield {
         <result>
-          {val ret = status.xml
-        // once reported, delete it
-        if (ret.nonEmpty) Storage.delete(uploadResultNamespace, resultFilename, auth.userId)
-        ret}
+          {
+            val ret = status.xml
+            // once reported, delete it
+            if (ret.nonEmpty) Storage.delete(Storage.FullName(uploadResultNamespace, resultFilename, auth.userId))
+            ret
+          }
         </result>
       }
       val complete = <complete></complete>
