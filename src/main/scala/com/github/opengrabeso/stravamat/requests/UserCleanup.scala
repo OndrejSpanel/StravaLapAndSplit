@@ -39,7 +39,8 @@ case class UserCleanup(auth: Main.StravaAuthResult, before: ZonedDateTime) exten
       if (oldestStrava > oldestStaged) { // some older Strava data may be available to match
         val (_, olderStravaActivities) = Main.recentStravaActivitiesHistory(auth, 4)
 
-        cleanFiles(headersToClean)
+        val olderHeadersToClean = oldStaged.flatMap(h => olderStravaActivities.find(_ isMatching h._2.id).map(h -> _))
+        cleanFiles(olderHeadersToClean)
       }
     } else {
       cleanFiles(headersToClean)
