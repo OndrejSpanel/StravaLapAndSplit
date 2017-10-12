@@ -1,19 +1,19 @@
 package com.github.opengrabeso.stravamat.shared
 
 trait Timing {
-  def logTime(msg: String)
+  def logTime(msg: =>String)
 }
 
 object Timing {
   class Real extends Timing {
     def now() = System.currentTimeMillis()
     val start = now()
-    def logTime(msg: String) = println(s"$msg: time ${now() - start}")
+    def logTime(msg: =>String) = println(s"$msg: time ${now() - start}")
   }
 
   class Dummy extends Timing {
 
-    def logTime(msg: String) = {}
+    def logTime(msg: =>String) = {}
 
   }
 

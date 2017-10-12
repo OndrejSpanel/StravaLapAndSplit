@@ -25,24 +25,22 @@ case class UserCleanup(auth: Main.StravaAuthResult, before: ZonedDateTime) exten
       Storage.load[ActivityHeader](a._1).map(a -> _)
     }
 
-    val headersToClean = headers.filter(_._2.id.startTime < before).toSeq.sortBy(_._2.id.startTime)
+    val oldHeaders = headers.filter(_._2.id.startTime < before).toSeq.sortBy(_._2.id.startTime)
 
-    breakable {
-      for (((file,_), h) <- headersToClean) {
+    // TODO: check and cleanup for activities older than the history
+    val (_, oldStravaActivities) = Main.recentStravaActivitiesHistory(auth, 2)
 
-        val timestamp = h.id.startTime.getMillis / 1000 - 1 * 3600
+    val headersToClean = oldHeaders.flatMap(h => oldStravaActivities.find(_ isMatching h._2.id).map(h -> _))
+    /*
+    val timestamp = h.id.startTime.getMillis / 1000 - 1 * 3600
+    val uri = "https://www.strava.com/api/v3/athlete/activities"
+    val request = buildGetRequest(uri, auth.token, s"per_page=15&after=$timestamp")
+    val stravaActivities = parseStravaActivities(request.execute().getContent)
+    */
 
-        val uri = "https://www.strava.com/api/v3/athlete/activities"
-        val request = buildGetRequest(uri, auth.token, s"per_page=15&after=$timestamp")
-
-        val stravaActivities = parseStravaActivities(request.execute().getContent)
-
-        if (stravaActivities.exists(_ isMatching h.id)) {
-          println(s"Cleaning stage file ${h.id} $file")
-          Storage.delete(file)
-          break // always clean at most one item per request
-        }
-      }
+    for ((((file,_), h), onStrava) <- headersToClean) {
+      println(s"Cleaning stage file $onStrava ${h.id} $file")
+      Storage.delete(file)
     }
 
   }

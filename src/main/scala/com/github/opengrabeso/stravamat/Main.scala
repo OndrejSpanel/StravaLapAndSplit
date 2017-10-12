@@ -8,7 +8,7 @@ import java.util.Locale
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
-import org.joda.time.{Interval, Period, PeriodType, Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{Period, PeriodType, Seconds, DateTime => ZonedDateTime}
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
 
 import scala.collection.JavaConverters._
@@ -176,13 +176,27 @@ object Main {
     stravaActivities
   }
 
+  def lastStravaActivities(auth: StravaAuthResult, count: Int): Seq[ActivityId] = {
+    val timing = Timing.start()
+    val uri = "https://www.strava.com/api/v3/athlete/activities"
+    val request = buildGetRequest(uri, auth.token, s"per_page=$count")
+
+    val ret = parseStravaActivities(request.execute().getContent)
+    timing.logTime(s"lastStravaActivities ($count)")
+    ret
+  }
+
+  private val normalCount = 15
 
   def recentStravaActivities(auth: StravaAuthResult): Seq[ActivityId] = {
-    val uri = "https://www.strava.com/api/v3/athlete/activities"
-    val request = buildGetRequest(uri, auth.token, "per_page=15")
-
-    parseStravaActivities(request.execute().getContent)
+    lastStravaActivities(auth, normalCount)
   }
+
+  def recentStravaActivitiesHistory(auth: StravaAuthResult, countMultiplier: Double = 1): (Seq[ActivityId], Seq[ActivityId]) = {
+    val allActivities = lastStravaActivities(auth, (normalCount * countMultiplier).toInt)
+    allActivities.splitAt(normalCount)
+  }
+
 
   def stravaActivitiesNotStaged(auth: StravaAuthResult): Seq[ActivityId] = {
     val stravaActivities = recentStravaActivities(auth)
