@@ -1,14 +1,10 @@
 package com.github.opengrabeso.stravamat
 package requests
-import java.io.InputStream
 
 import org.joda.time.{DateTime => ZonedDateTime}
 import com.google.appengine.api.taskqueue.DeferredTask
-import RequestUtils._
 import Main._
 import shared.Util._
-
-import scala.util.control.Breaks._
 
 /**
   * User specific cleanup, requires user access tokens for Strava */
