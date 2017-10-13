@@ -804,7 +804,7 @@ object Main {
 
 
     /*
-    Clean errors in buildins and other areas where signal is bad and position error high
+    Clean errors in buildings and other areas where signal is bad and position error high
     (EHPE - estimated horizontal position error)
     * */
     def cleanPositionErrors: ActivityEvents = {
