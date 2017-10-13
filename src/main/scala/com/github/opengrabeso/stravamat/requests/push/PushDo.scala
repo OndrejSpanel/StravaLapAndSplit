@@ -46,7 +46,6 @@ object PushDo extends DefineRequest("/push-do") with ChangeSettings {
             });
           }
           update();
-          updateClock();
           """)}
         </script>
           <div id="uploaded" style="display: none;">

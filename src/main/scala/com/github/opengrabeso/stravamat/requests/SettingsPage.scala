@@ -6,10 +6,7 @@ trait SettingsPage extends HtmlPart with ChangeSettings {
     val settings = Settings(auth.userId)
 
     super.bodyPart(req, auth) ++
-    suuntoSettings(settings) ++
-    <script>
-      updateClock();
-    </script>
+    suuntoSettings(settings)
   }
 
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {

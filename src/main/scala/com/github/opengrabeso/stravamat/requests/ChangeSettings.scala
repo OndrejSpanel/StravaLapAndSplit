@@ -20,9 +20,12 @@ trait ChangeSettings {
         var d = new Date();
         document.getElementById("time").innerHTML = formatTimeSec(d);
         document.getElementById("timeQuest").innerHTML = currentQuestTime(d);
+      }
+      function startUpdatingClock() {
+        updateClock();
         setTimeout(function () {
-          updateClock();
-        }, 1000);
+          startUpdatingClock();
+        }, 500);
       }
       function settingsChanged() {
         // send the new settings to the server
@@ -39,7 +42,7 @@ trait ChangeSettings {
         Max HR</td><td><input type="number" name="max_hr" id="max_hr" min="100" max="260" value={settings.maxHR.toString} onchange="settingsChanged()"></input>
       </td></tr>
       <tr><td>
-        Quest time offset</td><td> <input type="number" id="quest_time_offset" name="quest_time_offset" min="-60" max="60" value={settings.questTimeOffset.toString} onchange="settingsChanged()"></input>
+        Quest time offset</td><td> <input type="number" id="quest_time_offset" name="quest_time_offset" min="-60" max="60" value={settings.questTimeOffset.toString} onchange="settingsChanged();updateClock()"></input>
       </td>
         <td>Adjust up or down so that Quest time below matches the time on your watch</td>
       </tr>
@@ -53,5 +56,8 @@ trait ChangeSettings {
         <td><b id="timeQuest"></b></td>
       </tr>
     </table>
+    <script>
+      startUpdatingClock();
+    </script>
   }
 }
