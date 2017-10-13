@@ -11,7 +11,7 @@ object SaveSettings extends DefineRequest.Post("/save-settings") {
     val maxHR = request.queryParams("max_hr").toInt
 
 
-    Storage.store(Storage.FullName(Main.namespace.settings, "settings", auth.userId), Settings.SettingsStorage(questTimeOffset, maxHR))
+    Settings.store(auth.userId, Settings.SettingsStorage(questTimeOffset, maxHR))
     resp.status(200)
 
     Nil

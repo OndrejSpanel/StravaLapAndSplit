@@ -9,7 +9,12 @@ object Settings {
     Storage.load[SettingsStorage](Storage.FullName(Main.namespace.settings, "settings", userId))
   }
 
-  def apply(userId: String) = {
+  def store(userId: String, settings: SettingsStorage): Unit = {
+    Storage.store(Storage.FullName(Main.namespace.settings, "settings", userId), settings)
+  }
+
+
+  def apply(userId: String): SettingsStorage = {
     userSettings(userId).getOrElse(SettingsStorage(0, 220))
   }
 
