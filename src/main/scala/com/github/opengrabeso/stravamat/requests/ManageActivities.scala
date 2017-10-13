@@ -3,7 +3,6 @@ package requests
 
 import org.joda.time.{DateTime => ZonedDateTime}
 import Main._
-import shared.Util._
 
 object ManageActivities extends SelectActivity("/selectActivity") {
   override def title = "select activities to process"

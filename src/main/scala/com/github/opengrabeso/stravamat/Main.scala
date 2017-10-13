@@ -19,8 +19,7 @@ import com.github.opengrabeso.stravamat.shared.Timing
 import com.google.api.client.json.jackson2.JacksonFactory
 
 import scala.annotation.tailrec
-import scala.collection.immutable.{SortedMap, SortedSet}
-import scala.util.Try
+import scala.collection.immutable.SortedMap
 import scala.xml.Elem
 
 object Main {
