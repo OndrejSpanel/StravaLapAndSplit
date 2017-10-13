@@ -803,6 +803,10 @@ object Main {
     }
 
 
+    /*
+    Clean errors in buildins and other areas where signal is bad and position error high
+    (EHPE - estimated horizontal position error)
+    * */
     def cleanPositionErrors: ActivityEvents = {
 
       def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
