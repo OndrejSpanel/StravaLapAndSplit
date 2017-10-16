@@ -1,7 +1,7 @@
 package com.github.opengrabeso.stravamat
 package requests
 
-import java.io.{ByteArrayInputStream, InputStream}
+import java.io.{ByteArrayInputStream, InputStream, ObjectInputStream}
 
 import Main.NoActivity
 import shared.Timing
@@ -10,6 +10,8 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
 import org.apache.commons.io.IOUtils
 import spark.{Request, Response}
+
+import scala.util.Try
 
 object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
   override def html(request: Request, resp: Response) = {
@@ -64,13 +66,21 @@ object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
           loadFromMove(nameWithIndex, digest, act)
         }
       case e =>
-        Nil
+        // unknown extension, try deserialization
+        Try {
+          val ois = new ObjectInputStream(stream)
+          val _ = ois.readObject()
+          val obj = ois.readObject()
+          obj match {
+            case act: Main.ActivityEvents =>
+              act
+          }
+        }.toOption.toSeq
     }
     timing.logTime("Import file")
     if (actData.nonEmpty) {
       for (act <- actData) {
         val actOpt = act.cleanPositionErrors // .optimize
-        assert(digest == actOpt.id.digest)
         storeActivity(Main.namespace.stage, actOpt, userId)
       }
     } else {
