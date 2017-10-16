@@ -2,7 +2,7 @@ package com.github.opengrabeso.stravamat
 
 import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
-import scala.collection.immutable.{SortedMap, SortedSet}
+import scala.collection.immutable.SortedMap
 import shared.Util._
 import shared.Timing
 
@@ -63,6 +63,41 @@ object DataStream {
     data.pickData(newStream).asInstanceOf[Data]
   }
 
+  // remove any points which contain no useful information
+  def samplesAt[Data <: DataStream](data: Data, times: List[ZonedDateTime]): Data = {
+    type ItemWithTime = data.ItemWithTime
+
+    // select nearest sample
+
+    def notNeeded(first: ItemWithTime, second: ItemWithTime) = {
+      // avoid samples being too apart each other, it brings no benefit and could be risky
+      if (timeDifference(first._1, second._1) > 30) {
+        false
+      } else {
+        first._2 == second._2
+      } // Strava seems not to be interpolating HR, it simply reuses the last value seen
+    }
+
+    @tailrec
+    def samplesAtRecurse(todoTimes: List[ZonedDateTime], todo: List[ItemWithTime], done: List[ItemWithTime]): List[ItemWithTime] = {
+      todoTimes match {
+        case head :: tail =>
+          // interpolate or get nearest
+          val (toTime, fromTime) = todo.span(_._1 <= head)
+
+          val lastToTime = toTime.lastOption.orElse(done.headOption)
+
+          val adjustTime = lastToTime.map(sample => sample.copy(_1 = head))
+
+          samplesAtRecurse(tail, fromTime, adjustTime.toList ++ done)
+        case Nil => done
+      }
+    }
+
+    val newStream = SortedMap(samplesAtRecurse(times, data.stream.toList, Nil):_*)
+    data.pickData(newStream).asInstanceOf[Data]
+  }
+
   type EventTimes = List[ZonedDateTime]
 }
 
@@ -70,6 +105,7 @@ import DataStream._
 
 @SerialVersionUID(10L)
 sealed abstract class DataStream extends Serializable {
+
 
   def typeToLog: String
   def streamType: Class[_ <: DataStream] = this.getClass
@@ -119,6 +155,7 @@ sealed abstract class DataStream extends Serializable {
     pickData(adjusted)
   }
 
+  def samplesAt(times: List[ZonedDateTime]): DataStream = DataStream.samplesAt(this, times)
   def optimize(eventTimes: EventTimes): DataStream
 
   def toLog = s"$typeToLog: ${startTime.map(_.toLog).getOrElse("")} .. ${endTime.map(_.toLogShort).getOrElse("")}"
@@ -519,12 +556,6 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
     // try first: assume user stops watch first, GPS pod quickly after, i.e. offset can be determined based on the end times
 
-    val gpsAfterHrd = 3000 // time in ms it takes to stop GPS after stopping HR
-
-    // match values: stream.last._1 = dist.stream.last._1 + xxxx + gpsAfterHrd
-
-    val endOffset = (stream.last._1.getMillis - dist.last._1.getMillis - gpsAfterHrd).toInt
-
     if (false) {
       val distances = (dist.values.tail zip dist.values).map(ab => ab._1 - ab._2)
 
@@ -545,15 +576,23 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       val (bestOffset, confidence) = findOffset(distancesWithTimes)
       println(s"Quest offset $bestOffset from distance ${dist.last._2}, confidence $confidence")
     }
-    println(s"Offset based on stop time: $endOffset")
     val useEndOffset = false
     //hrdMove.timeOffset(bestOffset)
-    if (useEndOffset && endOffset.abs < 10) {
-      // some smart verification between estimated and measured end offset
-      (endOffset / 1000.0).round.toInt
-    } else {
-      0
-    }
+    if (useEndOffset) {
+      val gpsAfterHrd = 3000 // time in ms it takes to stop GPS after stopping HR
+
+      // match values: stream.last._1 = dist.stream.last._1 + xxxx + gpsAfterHrd
+
+      val endOffset = if (dist.nonEmpty) (stream.last._1.getMillis - dist.last._1.getMillis - gpsAfterHrd).toInt else 0
+
+      println(s"Offset based on stop time: $endOffset")
+      if (endOffset.abs < 10) {
+        // some smart verification between estimated and measured end offset
+        (endOffset / 1000.0).round.toInt
+      } else {
+        0
+      }
+    } else 0
   }
 
 

@@ -120,16 +120,7 @@ object Main {
 
 
     def shortName: String = {
-      val maxLen = 30
-      val ellipsis = "..."
-      if (name.length < maxLen) name
-      else {
-        val allowed = name.take(maxLen-ellipsis.length)
-        // prefer shortening about whole words
-        val lastSeparator = allowed.lastIndexOf(' ')
-        val used = if (lastSeparator >= allowed.length - 8) allowed.take(lastSeparator) else allowed
-        used + ellipsis
-      }
+      shortNameString(name)
     }
 
     def hrefLink: Elem = {
@@ -267,6 +258,7 @@ object Main {
 
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
+
     import ActivityEvents._
 
     def computeDistStream = {
@@ -281,9 +273,8 @@ object Main {
 
     def header: ActivityHeader = ActivityHeader(id, hasGPS, hasAttributes, computeSpeedStats)
 
-    def streams = {
-      if (hasGPS) dist +: gps +: attributes
-      else dist +: attributes
+    def streams: Seq[DataStream] = {
+      Seq(dist, gps).filter(_.nonEmpty) ++ attributes
     }
 
     def startTime = id.startTime
@@ -291,7 +282,8 @@ object Main {
     def duration: Double = (endTime.getMillis - startTime.getMillis).toDouble / 1000
 
     def isAlmostEmpty(minDurationSec: Int) = {
-      !streams.exists(_.stream.nonEmpty) || endTime < startTime.plusSeconds(minDurationSec) || streams.exists(x => x.isAlmostEmpty)
+      val ss = streams
+      !ss.exists(_.stream.nonEmpty) || endTime < startTime.plusSeconds(minDurationSec) || ss.exists(x => x.isAlmostEmpty)
     }
 
     override def toString = id.toString
@@ -317,7 +309,7 @@ object Main {
     def lat: Double = if (hasGPS) (begPos._1 + endPos._1) * 0.5 else 0.0
     def lon: Double = if (hasGPS) (begPos._2 + endPos._2) * 0.5 else 0.0
 
-    def hasGPS: Boolean = gps.stream.nonEmpty
+    def hasGPS: Boolean = gps.nonEmpty
     def hasAttributes: Boolean = attributes.exists(_.stream.nonEmpty)
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
@@ -440,7 +432,7 @@ object Main {
         (totGps ++ iGps, totDist ++ iDist, mergeAttributes(totAttr, iAttr))
       }
 
-      ActivityEvents(mergedId, eventsAndSportsSorted, dist.pickData(totals._2), gps.pickData(totals._1), totals._3)
+      ActivityEvents(mergedId, eventsAndSportsSorted, dist.pickData(totals._2), gps.pickData(totals._1), totals._3).unifySamples
     }
 
     def editableEvents: Array[EditableEvent] = {
@@ -847,6 +839,15 @@ object Main {
 
     }
 
+    def unifySamples: ActivityEvents = {
+      // make sure all distance and attribute times are aligned with GPS times
+      val times = gps.stream.keys.toList
+      //dist
+      val unifiedAttributes = attributes.map(a => a.samplesAt(times))
+      copy(attributes = unifiedAttributes)
+    }
+
+
   }
 
   trait ActivityStreams {
@@ -1072,6 +1073,21 @@ object Main {
       formatDT.print(startTime) + ".." + formatDT.print(endTime)
     }) + " " + zone.toString
   }
+
+
+  def shortNameString(name: String): String = {
+    val maxLen = 30
+    val ellipsis = "..."
+    if (name.length < maxLen) name
+    else {
+      val allowed = name.take(maxLen-ellipsis.length)
+      // prefer shortening about whole words
+      val lastSeparator = allowed.lastIndexOf(' ')
+      val used = if (lastSeparator >= allowed.length - 8) allowed.take(lastSeparator) else allowed
+      used + ellipsis
+    }
+  }
+
 }
 
 

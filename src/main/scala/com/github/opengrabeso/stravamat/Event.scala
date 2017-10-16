@@ -149,8 +149,8 @@ trait SegmentTitle {
   def isPrivate: Boolean
   def name: String
   def title = {
-    val segTitle = if (isPrivate) "private segment" else "segment"
-    s"$segTitle $name"
+    val segPrefix = if (isPrivate) "private " else ""
+    segPrefix + Main.shortNameString("segment " + name)
   }
 
 }
