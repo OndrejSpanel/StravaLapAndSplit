@@ -41,7 +41,8 @@ object FileId {
 
   @SerialVersionUID(10L)
   case class TempId(id: String) extends FileId {
-    def filename = "temp-" + id
+    final private val prefix = "temp-"
+    def filename = if (id.startsWith(prefix)) id else "temp-" + id
     def stravaId = ""
   }
 
