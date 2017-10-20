@@ -85,7 +85,7 @@ object DataStream {
           // interpolate or get nearest
           val (toTime, fromTime) = todo.span(_._1 <= head)
 
-          val lastToTime = toTime.lastOption.orElse(done.headOption)
+          val lastToTime = if (todo.nonEmpty) toTime.lastOption.orElse(done.headOption) else None
 
           val adjustTime = lastToTime.map(sample => sample.copy(_1 = head))
 
