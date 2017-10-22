@@ -660,12 +660,19 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   }
 
   def filterElevation = {
+    val timing = Timing.start()
     val elevationStream = stream.flatMap { case (k, v) => v.elevation.map(k -> _.toDouble) }
 
-    val filteredElevationStream = elevationStream.mapValues(_ * 1.0)
+    // TODO: handle begin / end correctly
+    val filteredElevationData = elevationStream.mapValues(_ * 1.0).toList.sliding(3).map {
+      case Seq(a, b, c) =>
+        b._1 -> Seq(a._2, b._2, c._2).sorted.apply(1)
+    }.toSeq
+    val filteredElevationStream = SortedMap(filteredElevationData:_*)
     val filteredGpsStream = stream.map { case (k, v) =>
       k -> v.copy(elevation = filteredElevationStream.get(k).map(_.toInt))(v.in_accuracy)
     }
+    timing.logTime("filterElevation")
     pickData(filteredGpsStream)
   }
 
