@@ -279,7 +279,7 @@ object Main {
 
     def startTime = id.startTime
     def endTime = id.endTime
-    def duration: Double = (endTime.getMillis - startTime.getMillis).toDouble / 1000
+    def duration: Double = timeDifference(startTime, endTime)
 
     def isAlmostEmpty(minDurationSec: Int) = {
       val ss = streams
@@ -852,7 +852,20 @@ object Main {
       copy(attributes = unifiedAttributes)
     }
 
-
+    trait Stats {
+      def distanceInM: Double
+      def totalTimeInSeconds: Double
+      def speed: Double
+      def movingTime: Double
+      def elevation: Double
+    }
+    def stats = new Stats {
+      val distanceInM = id.distance
+      val totalTimeInSeconds = duration
+      val speed = distanceInM / totalTimeInSeconds
+      val movingTime = 0.0
+      val elevation = 0.0
+    }
   }
 
   trait ActivityStreams {

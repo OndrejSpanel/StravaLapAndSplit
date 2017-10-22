@@ -45,9 +45,24 @@ trait ActivityRequestHandler extends UploadResults {
 
       <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
+      val stats = activityData.stats
+
     val bodyContent =
       <div class="top">
         <div class="act">
+          <hr/>
+          <table>
+            <tr>
+              <td>Duration</td><td>{displaySeconds(stats.totalTimeInSeconds.toInt)}</td>
+            </tr>
+            <tr>
+              <td>Distance</td><td>{displayDistance(stats.distanceInM)}</td>
+            </tr>
+            <tr>
+              <td>Elevation</td><td>{stats.elevation}</td>
+            </tr>
+          </table>
+          <hr/>
           <form id="activity_form" action="upload-strava" method="post">
           <table class="activityTable">
             <tr>
