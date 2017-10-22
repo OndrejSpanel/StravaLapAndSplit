@@ -164,16 +164,6 @@ object XMLParser {
 
       // drop two samples around each None
       // TODO: drop time region instead of a count, using Function.Window
-      def slidingRepeatHeadTail[T](s: Seq[T], slide: Int) = {
-        if (s.nonEmpty) {
-          val prefix = Seq.fill(slide / 2)(s.head)
-          val postfix = Seq.fill(slide - 1 - slide / 2)(s.last)
-          val slideSource = prefix ++ s ++ postfix
-          slideSource.sliding(slide)
-        } else {
-          Nil
-        }
-      }
 
       val slide5 = slidingRepeatHeadTail(validatedHR, 5)
 

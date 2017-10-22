@@ -664,9 +664,13 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
     val elevationStream = stream.flatMap { case (k, v) => v.elevation.map(k -> _.toDouble) }
 
     // TODO: handle begin / end correctly
-    val filteredElevationData = elevationStream.mapValues(_ * 1.0).toList.sliding(3).map {
-      case Seq(a, b, c) =>
-        b._1 -> Seq(a._2, b._2, c._2).sorted.apply(1)
+    val slidingWindow = 3
+    val midIndex = slidingWindow / 2
+    val filteredElevationData = slidingRepeatHeadTail(elevationStream.toList, slidingWindow).map { s =>
+      val values = s.map(_._2)
+      val avg = if (values.nonEmpty) values.sum / values.size else 0
+      val mid = s(midIndex)
+      mid._1 -> avg
     }.toSeq
     val filteredElevationStream = SortedMap(filteredElevationData:_*)
     val filteredGpsStream = stream.map { case (k, v) =>

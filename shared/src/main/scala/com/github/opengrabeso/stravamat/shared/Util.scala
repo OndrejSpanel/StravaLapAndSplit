@@ -34,6 +34,17 @@ object Util {
     def maxOpt(implicit ev: Ordering[T]): Option[T] = if (seq.isEmpty) None else Some(seq.max)
   }
 
+  def slidingRepeatHeadTail[T](s: Seq[T], slide: Int): TraversableOnce[Seq[T]] = {
+    if (s.nonEmpty) {
+      val prefix = Seq.fill(slide / 2)(s.head)
+      val postfix = Seq.fill(slide - 1 - slide / 2)(s.last)
+      val slideSource = prefix ++ s ++ postfix
+      slideSource.sliding(slide)
+    } else {
+      Nil
+    }
+  }
+
   def timeToUTC(dateTime: ZonedDateTime) = {
     dateTime.withZone(DateTimeZone.UTC)
   }
