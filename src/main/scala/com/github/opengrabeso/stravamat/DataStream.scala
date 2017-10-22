@@ -9,7 +9,7 @@ import shared.Timing
 import scala.annotation.tailrec
 
 @SerialVersionUID(-4477339787979943124L)
-case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(in_accuracy: Option[Double]) {
+case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(val in_accuracy: Option[Double]) {
   @transient
   def accuracy: Double = if (in_accuracy != null) in_accuracy.getOrElse(0) else 0
 
@@ -658,6 +658,17 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
     pickData(SortedMap(optimized:_*))
   }
+
+  def filterElevation = {
+    val elevationStream = stream.flatMap { case (k, v) => v.elevation.map(k -> _.toDouble) }
+
+    val filteredElevationStream = elevationStream.mapValues(_ * 1.0)
+    val filteredGpsStream = stream.map { case (k, v) =>
+      k -> v.copy(elevation = filteredElevationStream.get(k).map(_.toInt))(v.in_accuracy)
+    }
+    pickData(filteredGpsStream)
+  }
+
 }
 
 @SerialVersionUID(10L)

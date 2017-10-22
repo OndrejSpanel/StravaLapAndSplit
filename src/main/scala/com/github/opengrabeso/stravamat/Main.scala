@@ -97,7 +97,6 @@ object Main {
 
     def timeOffset(offset: Int): ActivityId = copy(startTime = startTime plusSeconds offset, endTime = endTime plusSeconds offset)
 
-
     def isMatching(that: ActivityId): Boolean = {
       // check overlap time
 
@@ -258,6 +257,9 @@ object Main {
 
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
+    self =>
+
+
 
     import ActivityEvents._
 
@@ -314,6 +316,14 @@ object Main {
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
+    lazy val elevation: Double = {
+      val elevationStream = gps.stream.flatMap {
+        case (k, v) =>
+          v.elevation.map(k -> _.toDouble)
+      }
+      val elevations = elevationStream.values
+      (elevations zip elevations.drop(1)).map {case (a, b) => (a - b).abs}.sum
+    }
 
     def eventTimes: DataStream.EventTimes = events.map(_.stamp)(collection.breakOut)
     def optimize: ActivityEvents = {
@@ -840,8 +850,7 @@ object Main {
     }
 
     def applyFilters(auth: StravaAuthResult): ActivityEvents = {
-      // GPS smoothing
-      this
+      copy(gps = gps.filterElevation)
     }
 
     def unifySamples: ActivityEvents = {
@@ -864,7 +873,7 @@ object Main {
       val totalTimeInSeconds = duration
       val speed = distanceInM / totalTimeInSeconds
       val movingTime = 0.0
-      val elevation = 0.0
+      val elevation = self.elevation
     }
   }
 
