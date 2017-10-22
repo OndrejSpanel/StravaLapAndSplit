@@ -322,7 +322,7 @@ object Main {
           v.elevation.map(k -> _.toDouble)
       }
       val elevations = elevationStream.values
-      (elevations zip elevations.drop(1)).map {case (a, b) => (a - b).abs}.sum
+      (elevations zip elevations.drop(1)).map {case (prev, next) => (next - prev) max 0}.sum
     }
 
     def eventTimes: DataStream.EventTimes = events.map(_.stamp)(collection.breakOut)
