@@ -34,12 +34,15 @@ object Util {
     def maxOpt(implicit ev: Ordering[T]): Option[T] = if (seq.isEmpty) None else Some(seq.max)
   }
 
-  def slidingRepeatHeadTail[T, X](s: Seq[T], slide: Int)(map: Seq[T] => X): TraversableOnce[X] = {
+  def slidingRepeatHeadTail[T, X](s: IndexedSeq[T], slide: Int)(map: Seq[T] => X): TraversableOnce[X] = {
     if (s.nonEmpty) {
-      val prefix = Seq.fill(slide / 2)(s.head)
+      val prefix = (1 until slide).foldLeft(s.take(1))((s, head) => s ++ s.take(1))
       val postfix = Seq.fill(slide - 1 - slide / 2)(s.last)
       val slideSource = prefix ++ s ++ postfix
-      slideSource.sliding(slide).map(map)
+      // make a sliding view over the collection
+      for (i <- 0 until slideSource.size - slide) yield {
+        map(slideSource.slice(i, i + slide))
+      }
     } else {
       Nil
     }
