@@ -665,7 +665,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
     val slidingWindow = 7
     val midIndex = slidingWindow / 2
-    val filteredElevationData = slidingRepeatHeadTail(elevationStream, slidingWindow).map { s =>
+    val filteredElevationData = slidingRepeatHeadTail(elevationStream, slidingWindow){ s =>
       val mid = s(midIndex)
       val values = s.map(_._2)
       // remove extremes, smooth the rest

@@ -34,12 +34,12 @@ object Util {
     def maxOpt(implicit ev: Ordering[T]): Option[T] = if (seq.isEmpty) None else Some(seq.max)
   }
 
-  def slidingRepeatHeadTail[T](s: Seq[T], slide: Int): TraversableOnce[Seq[T]] = {
+  def slidingRepeatHeadTail[T, X](s: Seq[T], slide: Int)(map: Seq[T] => X): TraversableOnce[X] = {
     if (s.nonEmpty) {
       val prefix = Seq.fill(slide / 2)(s.head)
       val postfix = Seq.fill(slide - 1 - slide / 2)(s.last)
       val slideSource = prefix ++ s ++ postfix
-      slideSource.sliding(slide)
+      slideSource.sliding(slide).map(map)
     } else {
       Nil
     }

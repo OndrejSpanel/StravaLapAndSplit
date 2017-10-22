@@ -165,9 +165,7 @@ object XMLParser {
       // drop two samples around each None
       // TODO: drop time region instead of a count, using Function.Window
 
-      val slide5 = slidingRepeatHeadTail(validatedHR, 5)
-
-      val validatedCleanedHR = slide5.map {
+      val validatedCleanedHR = slidingRepeatHeadTail(validatedHR, 5) {
         case s5 if !s5.contains(None) => s5(2)
         case _ => None
       }.toIndexedSeq
