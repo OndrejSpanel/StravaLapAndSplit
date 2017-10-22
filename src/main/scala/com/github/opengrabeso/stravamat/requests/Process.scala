@@ -4,7 +4,6 @@ package requests
 import Main._
 import shared.Util._
 import spark.{Request, Response}
-import com.google.appengine.api.taskqueue._
 
 object Process extends DefineRequest.Post("/process") with ParseFormData with UploadResults with ActivityStorage {
 
@@ -63,7 +62,7 @@ object Process extends DefineRequest.Post("/process") with ParseFormData with Up
     val ops = activities(request)._1
 
     val toMerge = ops.flatMap { op =>
-      loadActivity(Main.namespace.stage, op, auth.userId)
+      loadActivity(Main.namespace.stage, op, auth.userId).map(_.applyFilters(auth))
     }
 
     val uploadCount = mergeAndUpload(auth, toMerge, sessionId)

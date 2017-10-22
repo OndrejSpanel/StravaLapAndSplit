@@ -839,6 +839,11 @@ object Main {
 
     }
 
+    def applyFilters(auth: StravaAuthResult): ActivityEvents = {
+      // GPS smoothing
+      this
+    }
+
     def unifySamples: ActivityEvents = {
       // make sure all distance and attribute times are aligned with GPS times
       val times = gps.stream.keys.toList

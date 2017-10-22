@@ -606,7 +606,7 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
 
     // TODO: create groups, process each group separately
     val toMerge = ops.flatMap { op =>
-      Storage.load[ActivityHeader, ActivityEvents](Storage.getFullName(namespace.stage, op.filename, auth.userId)).map(_._2)
+      Storage.load[ActivityHeader, ActivityEvents](Storage.getFullName(namespace.stage, op.filename, auth.userId)).map(_._2.applyFilters(auth))
     }
 
 
