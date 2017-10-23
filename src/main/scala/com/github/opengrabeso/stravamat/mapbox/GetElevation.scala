@@ -1,8 +1,8 @@
 package com.github.opengrabeso.stravamat
 package mapbox
 
-import java.awt.image.BufferedImage
-import javax.imageio.ImageIO
+import com.google.code.appengine.awt.image.BufferedImage
+import com.google.code.appengine.imageio.ImageIO
 
 import scala.collection.mutable
 
@@ -13,6 +13,7 @@ object GetElevation {
     def tileImage(x: Long, y: Long, z: Long): BufferedImage = {
 
       tiles.getOrElseUpdate((x, y, z), {
+        val timing = shared.Timing.start()
         val domain = "https://api.mapbox.com/v4/"
         val source = s"""mapbox.terrain-rgb/$z/$x/$y.pngraw"""
 
@@ -25,6 +26,8 @@ object GetElevation {
 
         // load PNG
         val image = ImageIO.read(response)
+
+        timing.logTime(s"Read image $source")
 
         image
       })
@@ -39,7 +42,10 @@ object GetElevation {
     }
 
     private def tileCoord(lon: Double, lat: Double): (Array[Long], Double, Double) = {
-      val tf = TileBelt.pointToTileFraction(lon, lat, 16)
+      // 16 is max. where neighbourghs have a different value
+      // in Europe zoom 16 corresponds approx. 1 px ~ 1m
+      val zoom = 13
+      val tf = TileBelt.pointToTileFraction(lon, lat, zoom)
       val tile = tf.map(Math.floor(_).toLong)
 
       val xp = tf(0) - tile(0)
@@ -68,8 +74,11 @@ object GetElevation {
       val x = Math.floor(xp * image.getWidth).toInt
       val y = Math.floor(yp * image.getHeight).toInt
 
-      // TODO: handle egde pixels correctly
-      val candidates = Seq(imageHeight(image, x, y), imageHeight(image, x + 1 , y), imageHeight(image, x, y + 1), imageHeight(image, x + 1, y + 1))
+      // TODO: handle edge pixels correctly
+      val x1 = (x + 1) min (image.getWidth - 1)
+      val y1 = (y + 1) min (image.getHeight - 1)
+
+      val candidates = Seq(imageHeight(image, x, y), imageHeight(image, x1 , y), imageHeight(image, x, y1), imageHeight(image, x1, y1))
       (candidates.min, candidates.max)
     }
 

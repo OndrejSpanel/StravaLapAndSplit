@@ -1,5 +1,6 @@
 package com.github.opengrabeso.stravamat
 
+import mapbox.GetElevation
 import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.immutable.SortedMap
@@ -661,7 +662,14 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
   def filterElevation = {
     val timing = Timing.start()
-    val elevationStream = stream.toVector.flatMap { case (k, v) => v.elevation.map(k -> _.toDouble) }
+    val cache = new GetElevation.TileCache
+    // TODO: prefetch tiles, or process in parallel
+    val elevationStream = stream.toVector.flatMap {
+      case (k, v) =>
+        val range = cache.possibleRange(v.longitude, v.latitude)
+        def clamp(x: Double) = range._1 max x min range._2
+        v.elevation.map(k -> clamp(_))
+    }
 
     val slidingWindow = 9
     val useMiddle = 5
