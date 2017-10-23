@@ -38,19 +38,39 @@ object GetElevation {
       height
     }
 
-    def apply(lon: Double, lat: Double): Double = {
-      // TODO: four point bilinear interpolation
-      val tf = TileBelt.pointToTileFraction(lon, lat, 20)
+    private def tileCoord(lon: Double, lat: Double): (Array[Long], Double, Double) = {
+      val tf = TileBelt.pointToTileFraction(lon, lat, 16)
       val tile = tf.map(Math.floor(_).toLong)
-
-      val image = tileImage(tile(0), tile(1), tile(2))
 
       val xp = tf(0) - tile(0)
       val yp = tf(1) - tile(1)
+      (tile, xp, yp)
+    }
+
+    def apply(lon: Double, lat: Double): Double = {
+      // TODO: four point bilinear interpolation
+      val (tile, xp, yp) = tileCoord(lon, lat)
+
+      val image = tileImage(tile(0), tile(1), tile(2))
+
       val x = Math.floor(xp * image.getWidth).toInt
       val y = Math.floor(yp * image.getHeight).toInt
 
       imageHeight(image, x, y)
+    }
+
+    def possibleRange(lon: Double, lat: Double): (Double, Double) = {
+
+      val (tile, xp, yp) = tileCoord(lon, lat)
+
+      val image = tileImage(tile(0), tile(1), tile(2))
+
+      val x = Math.floor(xp * image.getWidth).toInt
+      val y = Math.floor(yp * image.getHeight).toInt
+
+      // TODO: handle egde pixels correctly
+      val candidates = Seq(imageHeight(image, x, y), imageHeight(image, x + 1 , y), imageHeight(image, x, y + 1), imageHeight(image, x + 1, y + 1))
+      (candidates.min, candidates.max)
     }
 
   }

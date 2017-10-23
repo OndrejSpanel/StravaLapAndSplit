@@ -11,8 +11,7 @@ class TileBeltTest extends FunSuite {
 
   test("tile to geojson") {
     val geojson = tilebelt.tileToGeoJSON(tile1)
-    assert(geojson.`type` ==  "Polygon")
-    
+    assert(geojson.coordinates.nonEmpty)
   }
   test("tile to bbox") {
     val ext = tilebelt.tileToBBOX(tile1)
@@ -37,16 +36,16 @@ class TileBeltTest extends FunSuite {
   test("has siblings") {
     val tiles1 = Array(Array(0, 0, 5), Array(0, 1, 5), Array(1, 1, 5), Array(1, 0, 5))
     val tiles2 = Array(Array(0, 0, 5), Array(0, 1, 5), Array(1, 1, 5))
-    assert(tilebelt.hasSiblings(Array(0, 0, 5), tiles1) == true)
-    assert(tilebelt.hasSiblings(Array(0, 1, 5), tiles1) == true)
-    assert(tilebelt.hasSiblings(Array(0, 0, 5), tiles2) == false)
-    assert(tilebelt.hasSiblings(Array(0, 0, 5), tiles2) == false)
+    assert(tilebelt.hasSiblings(Array(0, 0, 5), tiles1))
+    assert(tilebelt.hasSiblings(Array(0, 1, 5), tiles1))
+    assert(!tilebelt.hasSiblings(Array(0, 0, 5), tiles2))
+    assert(!tilebelt.hasSiblings(Array(0, 0, 5), tiles2))
     
   }
   test("has tile") {
     val tiles1 = Array(Array(0, 0, 5), Array(0, 1, 5), Array(1, 1, 5), Array(1, 0, 5))
-    assert(tilebelt.hasSiblings(Array(2, 0, 5), tiles1) == false)
-    assert(tilebelt.hasSiblings(Array(0, 1, 5), tiles1) == true)
+    assert(!tilebelt.hasSiblings(Array(2, 0, 5), tiles1))
+    assert(tilebelt.hasSiblings(Array(0, 1, 5), tiles1))
     
   }
   test("get quadkey") {

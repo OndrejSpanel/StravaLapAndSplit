@@ -15,13 +15,11 @@ object TileBelt {
     Array(w, s, e, n)
   }
 
+  case class GeoJSONPoly(coordinates: Array[Array[Array[Double]]])
+
   def tileToGeoJSON(tile: Array[Int]) = {
     val bbox = tileToBBOX(tile)
-    object poly {
-      var `type` = "Polygon"
-      var coordinates = Array(Array(Array(bbox(0), bbox(1)), Array(bbox(0), bbox(3)), Array(bbox(2), bbox(3)), Array(bbox(2), bbox(1)), Array(bbox(0), bbox(1))))
-    }
-    poly
+    GeoJSONPoly(Array(Array(Array(bbox(0), bbox(1)), Array(bbox(0), bbox(3)), Array(bbox(2), bbox(3)), Array(bbox(2), bbox(1)), Array(bbox(0), bbox(1)))))
   }
 
   def tile2lon(x: Double, z: Double) = {
