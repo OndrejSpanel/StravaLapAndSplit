@@ -7,7 +7,7 @@ object TileBelt {
   val d2r = Math.PI / 180
   val r2d = 180 / Math.PI
 
-  def tileToBBOX(tile: Array[Double]): Array[Double] = {
+  def tileToBBOX(tile: Array[Int]): Array[Double] = {
     val e = tile2lon(tile(0) + 1, tile(2))
     val w = tile2lon(tile(0), tile(2))
     val s = tile2lat(tile(1) + 1, tile(2))
@@ -15,7 +15,7 @@ object TileBelt {
     Array(w, s, e, n)
   }
 
-  def tileToGeoJSON(tile: Array[Double]) = {
+  def tileToGeoJSON(tile: Array[Int]) = {
     val bbox = tileToBBOX(tile)
     object poly {
       var `type` = "Polygon"
