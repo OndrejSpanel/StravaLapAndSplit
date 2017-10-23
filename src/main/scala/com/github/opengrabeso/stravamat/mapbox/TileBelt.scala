@@ -126,7 +126,7 @@ object TileBelt {
   def getBboxZoom(bbox: Array[Long]): Int = {
     val MAX_ZOOM = 28
     for (z <- 0 until MAX_ZOOM) {
-      val mask = 1 << (32 - (z + 1))
+      val mask = 1L << (32 - (z + 1))
       if ((bbox(0) & mask) != (bbox(2) & mask) || (bbox(1) & mask) != (bbox(3) & mask)) {
         return z
       }
