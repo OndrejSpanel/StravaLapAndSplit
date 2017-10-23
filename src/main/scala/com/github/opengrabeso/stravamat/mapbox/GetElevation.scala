@@ -7,9 +7,9 @@ object GetElevation {
 
   def apply(lon: Double, lat: Double): Double = {
     val tf = TileBelt.pointToTileFraction(lon, lat, 20)
-    val tile = tf.map(Math.floor)
+    val tile = tf.map(Math.floor(_).toInt)
     val domain = "https://api.mapbox.com/v4/"
-    val source = """mapbox.terrain-rgb///.pngraw"""
+    val source = s"""mapbox.terrain-rgb/${tile(2)}/${tile(0)}/${tile(1)}.pngraw"""
 
     import javax.imageio.ImageIO
     // request
