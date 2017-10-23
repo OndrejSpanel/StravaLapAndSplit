@@ -26,7 +26,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
 
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
-    <input type="checkbox" name={s"id=$idString"} checked={if (include) "true" else null}></input>
+    <input class="checkSelect" type="checkbox" name={s"id=$idString"} checked={if (include) "true" else null} onchange="selectChecked(this)"></input>
   }
 
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
@@ -151,6 +151,20 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
             error: function() {hidePending()}
           });
         }
+
+        function uncheckAll() {
+          $(".checkSelect").prop("checked", false);
+          selectChecked();
+        }
+        function selectChecked() {
+          // count how many are checked
+          // if none or very few, hide the uncheck button
+          var checked = $(".checkSelect:checked").length;
+          if (checked > 2) $("#uncheckAll_button").show();
+          else $("#uncheckAll_button").hide();
+          if (checked > 0 ) $(".onCheckedAction").show();
+          else $(".onCheckedAction").hide();
+        }
         """
     )}
     </script> ++
@@ -163,7 +177,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
           for ((actEvents, actStrava) <- recentToStrava) yield {
             //println(s"  act $actEvents $actStrava")
             val act = actEvents.id
-            val ignored = mostRecentStrava.exists(_ > act.endTime)
+            val ignored = actStrava.isDefined || mostRecentStrava.exists(_ >= act.startTime)
             // once any activity is present on Strava, do not offer upload by default any more
             // (if some earlier is not present, it was probably already uploaded and deleted)
             <tr>
@@ -190,9 +204,10 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
         </table>
 
       </form>
-      <button id="upload_button" onclick="submitProcess()">Process...</button>
-      <button onclick="submitDelete()">Delete from Stravamat</button>
-      <button onclick="submitEdit()">Merge and edit...</button> ++
+      <button class="onCheckedAction" id="upload_button" onclick="submitProcess()">Process...</button>
+      <button class="onCheckedAction" onclick="submitDelete()">Delete from Stravamat</button>
+      <button class="onCheckedAction" onclick="submitEdit()">Merge and edit...</button> ++
+      <button id ="uncheckAll_button" onclick="uncheckAll()">Uncheck all</button> ++
       uploadResultsHtml() ++
       <script>{xml.Unparsed(
         //language=JavaScript
@@ -201,6 +216,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
         // Stop the browser from submitting the form.
         event.preventDefault();
       });
+      selectChecked();
       """)}
       </script>
   }
