@@ -30,6 +30,14 @@ object GetElevation {
       })
     }
 
+    private def imageHeight(image: BufferedImage, x: Int, y: Int): Double = {
+      val rgb = image.getRGB(x, y)
+
+      val height = -10000 + (rgb & 0xffffff) * 0.1
+
+      height
+    }
+
     def apply(lon: Double, lat: Double): Double = {
       // TODO: four point bilinear interpolation
       val tf = TileBelt.pointToTileFraction(lon, lat, 20)
@@ -42,14 +50,7 @@ object GetElevation {
       val x = Math.floor(xp * image.getWidth).toInt
       val y = Math.floor(yp * image.getHeight).toInt
 
-      val rgb = image.getRGB(x, y)
-
-      val R = (rgb >> 16) & 0xff
-      val G = (rgb >> 8) & 0xff
-      val B = (rgb >> 0) & 0xff
-      val height = -10000 + (R * 256 * 256 + G * 256 + B) * 0.1
-
-      height
+      imageHeight(image, x, y)
     }
 
   }
