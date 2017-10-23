@@ -17,7 +17,7 @@ class TileBeltTest extends FunSuite {
   test("tile to bbox") {
     val ext = tilebelt.tileToBBOX(tile1)
     assert(ext != null)
-    assert(ext == Array(-178.2421875, 84.7060489350415, -177.890625, 84.73838712095339))
+    assert(ext.deep == Array(-178.2421875, 84.7060489350415, -177.890625, 84.73838712095339).deep)
     
   }
   test("get parent") {
@@ -77,12 +77,12 @@ class TileBeltTest extends FunSuite {
   }
   test("point and tile back and forth") {
     val tile = tilebelt.pointToTile(10, 10, 10)
-    assert(tile.toString() == tilebelt.quadkeyToTile(tilebelt.tileToQuadkey(tile)).toString())
+    assert(tile.deep == tilebelt.quadkeyToTile(tilebelt.tileToQuadkey(tile)).deep)
     
   }
   test("check key 03") {
     val quadkey = "03"
-    assert(tilebelt.quadkeyToTile(quadkey).toString() == Array(1, 1, 2).toString())
+    assert(tilebelt.quadkeyToTile(quadkey).deep == Array(1, 1, 2).deep)
     
   }
   test("bbox to tile -- big") {
@@ -96,7 +96,7 @@ class TileBeltTest extends FunSuite {
   test("bbox to tile -- no area") {
     val bbox = Array[Double](-84, 11, -84, 11)
     val tile = tilebelt.bboxToTile(bbox)
-    assert(tile ==  Array(71582788, 125964677, 28))
+    assert(tile.deep ==  Array(71582788, 125964677, 28).deep)
     
   }
   test("bbox to tile -- dc") {

@@ -33,11 +33,12 @@ object TileBelt {
     r2d * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)))
   }
 
-  def pointToTile(lon: Double, lat: Double, z: Double): Array[Int] = {
+  def pointToTile(lon: Double, lat: Double, z: Int): Array[Long] = {
     val tile = pointToTileFraction(lon, lat, z)
     Array(
-      Math.floor(tile(0)).toInt,
-      Math.floor(tile(1)).toInt
+      Math.floor(tile(0)).toLong,
+      Math.floor(tile(1)).toLong,
+      z
     )
   }
 
@@ -85,18 +86,18 @@ object TileBelt {
     tile1(0) == tile2(0) && tile1(1) == tile2(1) && tile1(2) == tile2(2)
   }
 
-  def tileToQuadkey(tile: Array[Int]) = {
+  def tileToQuadkey(tile: Array[Long]) = {
     var index = ""
     for (z <- tile(2) until 0 by -1) {
       var b = 0
-      val mask = 1 << (z - 1)
+      val mask = 1L << (z - 1)
       if ((tile(0) & mask) != 0) b += 1
       if ((tile(1) & mask) != 0) b += 2
       index += b.toString
     }
     index
   }
-  def quadkeyToTile(quadkey: String) = {
+  def quadkeyToTile(quadkey: String): Array[Int] = {
     var x = 0
     var y = 0
     val z = quadkey.length
@@ -113,18 +114,18 @@ object TileBelt {
     Array(x, y, z)
   }
 
-  def bboxToTile(bboxCoords: Array[Double]): Array[Int] = {
+  def bboxToTile(bboxCoords: Array[Double]): Array[Long] = {
     val min = pointToTile(bboxCoords(0), bboxCoords(1), 32)
     val max = pointToTile(bboxCoords(2), bboxCoords(3), 32)
     val bbox = Array(min(0), min(1), max(0), max(1))
     val z = getBboxZoom(bbox)
     if (z == 0) return Array(0, 0, 0)
-    val x = bbox(0) >> (32 - z)
-    val y = bbox(1) >> (32 - z)
+    val x = (bbox(0) >> (32 - z)) & Int.MaxValue
+    val y = (bbox(1) >> (32 - z)) & Int.MaxValue
     Array(x, y, z)
   }
 
-  def getBboxZoom(bbox: Array[Int]): Int = {
+  def getBboxZoom(bbox: Array[Long]): Int = {
     val MAX_ZOOM = 28
     for (z <- 0 until MAX_ZOOM) {
       val mask = 1 << (32 - (z + 1))
@@ -135,7 +136,7 @@ object TileBelt {
     MAX_ZOOM
   }
 
-  def pointToTileFraction(lon: Double, lat: Double, z: Double): Array[Double] = {
+  def pointToTileFraction(lon: Double, lat: Double, z: Int): Array[Double] = {
     val sin = Math.sin(lat * d2r)
     val z2 = Math.pow(2, z)
     val x = z2 * (lon / 360 + 0.5)
