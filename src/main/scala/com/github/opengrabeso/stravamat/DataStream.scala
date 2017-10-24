@@ -1,5 +1,6 @@
 package com.github.opengrabeso.stravamat
 
+import com.google.appengine.api.ThreadManager
 import mapbox.GetElevation
 import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
@@ -663,6 +664,8 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
   def filterElevation = {
     val timing = Timing.start()
     val cache = new GetElevation.TileCache
+    // TODO: handle 50 threads per request limitation gracefully
+    implicit val threadFactor= ThreadManager.currentRequestThreadFactory()
     // TODO: prefetch tiles, or process in parallel
     val elevationStream = stream.toVector.flatMap {
       case (k, v) =>

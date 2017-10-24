@@ -1,16 +1,28 @@
 package com.github.opengrabeso.stravamat
 package mapbox
 
+import java.util.concurrent.ThreadFactory
+
 import com.google.code.appengine.awt.image.BufferedImage
 import com.google.code.appengine.imageio.ImageIO
 
 import scala.collection.mutable
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Promise}
 
 object GetElevation {
-  /* ScalaFromJS: 2017-10-23 09:41:46.284*/
+
+  object DefaultThreadFactory {
+    implicit object SimpleThreadFactory extends ThreadFactory {
+      def newThread(runnable: Runnable) = new Thread(runnable)
+    }
+
+  }
+
   class TileCache {
     val tiles = mutable.Map.empty[(Long, Long, Long), BufferedImage]
-    def tileImage(x: Long, y: Long, z: Long): BufferedImage = {
+
+    def tileImage(x: Long, y: Long, z: Long)(implicit threadFactory: ThreadFactory): BufferedImage = {
 
       tiles.getOrElseUpdate((x, y, z), {
         val timing = shared.Timing.start()
@@ -22,10 +34,19 @@ object GetElevation {
 
         val request = RequestUtils.buildGetRequest(domain + source, pars)
 
-        val response = request.execute().getContent
+        val promise = Promise[BufferedImage]
 
-        // load PNG
-        val image = ImageIO.read(response)
+        val runnable = new Runnable {
+          def run() = {
+            val response = request.execute().getContent
+            // load PNG
+            promise success ImageIO.read(response)
+          }
+        }
+
+        threadFactory.newThread(runnable).start()
+
+        val image = Await.result(promise.future, Duration.Inf)
 
         timing.logTime(s"Read image $source")
 
@@ -53,7 +74,7 @@ object GetElevation {
       (tile, xp, yp)
     }
 
-    def apply(lon: Double, lat: Double): Double = {
+    def apply(lon: Double, lat: Double)(implicit threadFactory: ThreadFactory): Double = {
       // TODO: four point bilinear interpolation
       val (tile, xp, yp) = tileCoord(lon, lat)
 
@@ -65,7 +86,7 @@ object GetElevation {
       imageHeight(image, x, y)
     }
 
-    def possibleRange(lon: Double, lat: Double): (Double, Double) = {
+    def possibleRange(lon: Double, lat: Double)(implicit threadFactory: ThreadFactory): (Double, Double) = {
 
       val (tile, xp, yp) = tileCoord(lon, lat)
 
@@ -84,7 +105,7 @@ object GetElevation {
 
   }
 
-  def apply(lon: Double, lat: Double, cache: TileCache = new TileCache): Double = {
+  def apply(lon: Double, lat: Double, cache: TileCache = new TileCache)(implicit threadFactory: ThreadFactory): Double = {
     cache(lon, lat)
   }
 }
