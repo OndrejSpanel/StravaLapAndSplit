@@ -47,9 +47,9 @@ lazy val stravamat = (project in file("."))
     commonSettings,
 
     libraryDependencies ++= commonLibs ++ Seq(
-      "com.google.http-client" % "google-http-client-appengine" % "1.22.0",
-      "com.google.http-client" % "google-http-client-jackson2" % "1.22.0",
-      "com.google.apis" % "google-api-services-storage" % "v1-rev110-1.22.0",
+      "com.google.http-client" % "google-http-client-appengine" % "1.23.0",
+      "com.google.http-client" % "google-http-client-jackson2" % "1.23.0",
+      "com.google.apis" % "google-api-services-storage" % "v1-rev113-1.23.0",
       "com.google.appengine.tools" % "appengine-gcs-client" % "0.6",
 
       "javax.servlet" % "servlet-api" % "2.5" % "provided",
