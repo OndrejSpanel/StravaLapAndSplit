@@ -667,7 +667,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
     val timing = Timing.start()
     val cache = new GetElevation.TileCache
     // TODO: handle 50 threads per request limitation gracefully
-    implicit val threadFactor= ThreadManager.currentRequestThreadFactory()
+    implicit val threadFactor = ThreadManager.currentRequestThreadFactory()
     val elevationFutures = stream.toVector.flatMap {
       case (k, v) =>
         v.elevation.map(elev => (k, elev, cache.possibleRange(v.longitude, v.latitude)))

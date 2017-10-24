@@ -47,7 +47,6 @@ object GetElevation {
             timing.logTime(s"Start request $source")
             val request = RequestUtils.buildGetRequest(domain + source, pars)
 
-
             val response = request.execute().getContent
             // load PNG
             promise success ImageIO.read(response)
@@ -55,7 +54,17 @@ object GetElevation {
           }
         }
 
-        threadFactory.newThread(runnable).start()
+        try {
+          threadFactory.newThread(runnable).start()
+        } catch {
+          // when async not working (e.g. over GAE thread per request limit), do the work sync
+          case ex: IllegalStateException =>
+            println(ex.getMessage)
+            runnable.run()
+          case ex: Exception =>
+            ex.printStackTrace()
+            runnable.run()
+        }
 
         promise.future
       })
@@ -73,6 +82,7 @@ object GetElevation {
       // 16 is max. where neighbourghs have a different value
       // in Europe zoom 16 corresponds approx. 1 px ~ 1m
       val zoom = 13
+      //val zoom = 20
       val tf = TileBelt.pointToTileFraction(lon, lat, zoom)
       val tile = tf.map(Math.floor(_).toLong)
 
