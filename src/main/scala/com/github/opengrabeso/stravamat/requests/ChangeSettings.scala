@@ -27,22 +27,21 @@ trait ChangeSettings {
           startUpdatingClock();
         }, 500);
       }
-      function settingsChanged() {
+      function settingsChanged(target) {
+        var name = target.id;
         // send the new settings to the server
-        var questOffset = parseInt(document.getElementById("quest_time_offset").value);
-        var maxHR = parseInt(document.getElementById("max_hr").value);
-        ajaxAsync("save-settings?quest_time_offset=" + questOffset + "&max_hr=" + maxHR, "", function(response) {});
-
+        var v = parseInt(target.value);
+        ajaxAsync("save-settings?" + name + "=" + v, function(response) {});
       }
       """)}
     </script>
     <h2>Settings</h2>
     <table>
       <tr><td>
-        Max HR</td><td><input type="number" name="max_hr" id="max_hr" min="100" max="260" value={settings.maxHR.toString} onchange="settingsChanged()"></input>
+        Max HR</td><td><input type="number" name="max_hr" id="max_hr" min="100" max="260" value={settings.maxHR.toString} onchange="settingsChanged(this)"></input>
       </td></tr>
       <tr><td>
-        Quest time offset</td><td> <input type="number" id="quest_time_offset" name="quest_time_offset" min="-60" max="60" value={settings.questTimeOffset.toString} onchange="settingsChanged();updateClock()"></input>
+        Quest time offset</td><td> <input type="number" id="quest_time_offset" name="quest_time_offset" min="-60" max="60" value={settings.questTimeOffset.toString} onchange="settingsChanged(this);updateClock()"></input>
       </td>
         <td>Adjust up or down so that Quest time below matches the time on your watch</td>
       </tr>

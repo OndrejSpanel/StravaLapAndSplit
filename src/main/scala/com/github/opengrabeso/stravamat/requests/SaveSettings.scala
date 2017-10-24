@@ -7,11 +7,16 @@ object SaveSettings extends DefineRequest.Post("/save-settings") {
     val session = request.session
     val auth = session.attribute[Main.StravaAuthResult]("auth")
 
-    val questTimeOffset = request.queryParams("quest_time_offset").toInt
-    val maxHR = request.queryParams("max_hr").toInt
+    def loadSettingsInt(name: String) = {
+      Option(request.queryParams(name)).map(_.toInt)
+    }
 
+    val settings = Settings(auth.userId)
+      .setQuestTimeOffset(loadSettingsInt("quest_time_offset"))
+      .setMaxHR(loadSettingsInt("max_hr"))
+      .setElevFilter(loadSettingsInt("elev_filter"))
 
-    Settings.store(auth.userId, Settings.SettingsStorage(questTimeOffset, maxHR))
+    Settings.store(auth.userId, settings)
     resp.status(200)
 
     Nil

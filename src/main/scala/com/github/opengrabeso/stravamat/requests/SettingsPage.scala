@@ -5,8 +5,21 @@ trait SettingsPage extends HtmlPart with ChangeSettings {
   abstract override def bodyPart(req: Request, auth: StravaAuthResult) = {
     val settings = Settings(auth.userId)
 
+    val filterNames = DataStreamGPS.FilterSettings.names
+
     super.bodyPart(req, auth) ++
-    suuntoSettings(settings)
+    suuntoSettings(settings) ++
+    <hr/>
+    <p>
+      Elevation filter
+      <select id="elev_filter" name="elev_filter" onChange="settingsChangedOption(this)">
+        {for ((name, i) <- filterNames) yield {
+        <option value={i.toString} selected={if (i == settings.elevFilter) "" else null}>
+          {name}
+        </option>
+      }}
+      </select>
+    </p>
   }
 
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
@@ -14,6 +27,19 @@ trait SettingsPage extends HtmlPart with ChangeSettings {
     <title>Stravamat - settings</title>
     <script src="static/ajaxUtils.js"></script>
     <script src="static/jquery-3.2.1.min.js"></script>
+      <script>{xml.Unparsed(
+        //language=JavaScript
+        """
+        function settingsChangedOption(target) {
+          var name = target.id;
+          // send the new settings to the server
+          var v = target.value;
+          ajaxAsync("save-settings?" + name + "=" + v, function(response) {});
+        }
+        """)}
+
+
+    </script>
   }
 
 }

@@ -199,6 +199,19 @@ object DataStreamGPS {
 
   // median, 80% percentile, max
   case class SpeedStats(median: Double, fast: Double, max: Double)
+
+  object FilterSettings {
+    def none = new FilterSettings(0, 0, "None")
+    def weak = new FilterSettings(5, 3, "Weak")
+    def normal = new FilterSettings(9, 5, "Normal")
+    def strong = new FilterSettings(13, 7, "Strong")
+    val list = IndexedSeq(none, weak, normal, strong)
+    def names = list.map(_.name).zipWithIndex
+
+    def select(i: Int): FilterSettings = if (i<0) list(0) else if (i>=list.size) list.last else list(i)
+  }
+  class FilterSettings(val slidingWindow: Int, val useMiddle: Int, val name: String)
+
   /**
     * Experiments have shown smoothingInterval = 60 gives most accurate results.
     * Perhaps the same smoothing interval is used in the Quest itself?
@@ -663,7 +676,7 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
     pickData(SortedMap(optimized:_*))
   }
 
-  def filterElevation = {
+  def filterElevation(filter: Int) = {
     val timing = Timing.start()
     val cache = new GetElevation.TileCache
     // TODO: handle 50 threads per request limitation gracefully
@@ -683,8 +696,8 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
       timing.logTime("All images read")
     }
 
-    val slidingWindow = 9
-    val useMiddle = 5
+    val settings = FilterSettings.select(filter)
+    import settings._
     val midIndex = slidingWindow / 2
     val filteredElevationData = slidingRepeatHeadTail(elevationStream, slidingWindow){ s =>
       val mid = s(midIndex)

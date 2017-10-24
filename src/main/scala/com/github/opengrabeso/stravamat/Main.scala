@@ -850,7 +850,7 @@ object Main {
     }
 
     def applyFilters(auth: StravaAuthResult): ActivityEvents = {
-      copy(gps = gps.filterElevation)
+      copy(gps = gps.filterElevation(Settings(auth.userId).elevFilter))
     }
 
     def unifySamples: ActivityEvents = {

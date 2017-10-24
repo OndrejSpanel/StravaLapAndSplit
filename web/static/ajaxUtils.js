@@ -57,9 +57,9 @@ function ajaxAsync(uri, data, callback, failure) {
     xmlhttp.onreadystatechange = function () {
         if (xmlhttp.readyState === 4) {
             if (xmlhttp.status >= 200 && xmlhttp.status < 300) {
-                callback(xmlhttp.responseXML, xmlhttp.status);
+                if (callback) callback(xmlhttp.responseXML, xmlhttp.status);
             } else if (failure) {
-                failure(xmlhttp.responseXML, xmlhttp.status);
+                if (failure) failure(xmlhttp.responseXML, xmlhttp.status);
             }
         }
     };

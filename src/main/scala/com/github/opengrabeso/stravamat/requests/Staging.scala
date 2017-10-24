@@ -12,6 +12,7 @@ object Staging extends SelectActivity("/staging") {
       <h2>Data sources</h2>
       <a href="loadFromStrava">Load from Strava ...</a>
       <a href="getFiles">Upload files...</a>
+      <a href="settings">Settings...</a>
       <hr/>
     </div>
   }
