@@ -50,7 +50,7 @@ lazy val stravamat = (project in file("."))
       "com.google.http-client" % "google-http-client-appengine" % "1.23.0",
       "com.google.http-client" % "google-http-client-jackson2" % "1.23.0",
       "com.google.apis" % "google-api-services-storage" % "v1-rev113-1.23.0",
-      "com.google.appengine.tools" % "appengine-gcs-client" % "0.6",
+      "com.google.appengine.tools" % "appengine-gcs-client" % "0.7",
 
       "javax.servlet" % "servlet-api" % "2.5" % "provided",
       "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406" % "container",
@@ -64,7 +64,7 @@ lazy val stravamat = (project in file("."))
 
       "com.sparkjava" % "spark-core" % "1.1.1" excludeAll ExclusionRule(organization = "org.eclipse.jetty"),
       "org.slf4j" % "slf4j-simple" % "1.6.1",
-      "commons-fileupload" % "commons-fileupload" % "1.3.2",
+      "commons-fileupload" % "commons-fileupload" % "1.3.3",
       "com.jsuereth" %% "scala-arm" % "2.0" exclude(
         "org.scala-lang.plugins", "scala-continuations-library_" + scalaBinaryVersion.value
       ),
