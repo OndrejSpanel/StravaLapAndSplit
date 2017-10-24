@@ -9,6 +9,8 @@ import shared.Util._
 import shared.Timing
 
 import scala.annotation.tailrec
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 @SerialVersionUID(-4477339787979943124L)
 case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(val in_accuracy: Option[Double]) {
@@ -666,13 +668,18 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
     val cache = new GetElevation.TileCache
     // TODO: handle 50 threads per request limitation gracefully
     implicit val threadFactor= ThreadManager.currentRequestThreadFactory()
-    // TODO: prefetch tiles, or process in parallel
-    val elevationStream = stream.toVector.flatMap {
+    val elevationFutures = stream.toVector.flatMap {
       case (k, v) =>
-        val range = cache.possibleRange(v.longitude, v.latitude)
-        def clamp(x: Double) = range._1 max x min range._2
-        v.elevation.map(k -> clamp(_))
+        v.elevation.map(elev => (k, elev, cache.possibleRange(v.longitude, v.latitude)))
     }
+
+    val elevationStream = elevationFutures.map {
+      case (k, elev, rangeFuture) =>
+        val range = Await.result(rangeFuture, Duration.Inf)
+        (k, range._1 max elev min range._2)
+    }
+
+    timing.logTime("All images read")
 
     val slidingWindow = 9
     val useMiddle = 5
