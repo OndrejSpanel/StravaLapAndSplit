@@ -44,7 +44,7 @@ object GetElevation {
             // request
             val pars = Map("access_token" -> Main.secret.mapboxToken)
 
-            timing.logTime(s"Start request $source")
+            //timing.logTime(s"Start request $source")
             val request = RequestUtils.buildGetRequest(domain + source, pars)
 
             val response = request.execute().getContent

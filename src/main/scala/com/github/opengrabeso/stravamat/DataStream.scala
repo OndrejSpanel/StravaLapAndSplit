@@ -679,7 +679,9 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
         (k, range._1 max elev min range._2)
     }
 
-    timing.logTime("All images read")
+    if (elevationStream.nonEmpty) {
+      timing.logTime("All images read")
+    }
 
     val slidingWindow = 9
     val useMiddle = 5
