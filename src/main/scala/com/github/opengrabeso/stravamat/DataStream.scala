@@ -1,5 +1,7 @@
 package com.github.opengrabeso.stravamat
 
+import com.google.appengine.api.ThreadManager
+import mapbox.GetElevation
 import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
 
 import scala.collection.immutable.SortedMap
@@ -7,9 +9,11 @@ import shared.Util._
 import shared.Timing
 
 import scala.annotation.tailrec
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 @SerialVersionUID(-4477339787979943124L)
-case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(in_accuracy: Option[Double]) {
+case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(val in_accuracy: Option[Double]) {
   @transient
   def accuracy: Double = if (in_accuracy != null) in_accuracy.getOrElse(0) else 0
 
@@ -658,6 +662,48 @@ class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) ext
 
     pickData(SortedMap(optimized:_*))
   }
+
+  def filterElevation = {
+    val timing = Timing.start()
+    val cache = new GetElevation.TileCache
+    // TODO: handle 50 threads per request limitation gracefully
+    implicit val threadFactor = ThreadManager.currentRequestThreadFactory()
+    val elevationFutures = stream.toVector.flatMap {
+      case (k, v) =>
+        v.elevation.map(elev => (k, elev, cache.possibleRange(v.longitude, v.latitude)))
+    }
+
+    val elevationStream = elevationFutures.map {
+      case (k, elev, rangeFuture) =>
+        val range = Await.result(rangeFuture, Duration.Inf)
+        (k, range._1 max elev min range._2)
+    }
+
+    if (elevationStream.nonEmpty) {
+      timing.logTime("All images read")
+    }
+
+    val slidingWindow = 9
+    val useMiddle = 5
+    val midIndex = slidingWindow / 2
+    val filteredElevationData = slidingRepeatHeadTail(elevationStream, slidingWindow){ s =>
+      val mid = s(midIndex)
+      val values = s.map(_._2)
+      // remove extremes, smooth the rest
+      val extremes = values.sorted
+      val removeFromEachSide = (slidingWindow - useMiddle) / 2
+      val withoutExtremes = extremes.slice(removeFromEachSide, removeFromEachSide + useMiddle)
+      val avg = if (withoutExtremes.nonEmpty) withoutExtremes.sum / withoutExtremes.size else 0
+      mid._1 -> avg
+    }.toSeq
+    val filteredElevationStream = filteredElevationData.toMap
+    val filteredGpsStream = stream.map { case (k, v) =>
+      k -> v.copy(elevation = filteredElevationStream.get(k).map(_.toInt))(v.in_accuracy)
+    }
+    timing.logTime("filterElevation")
+    pickData(filteredGpsStream)
+  }
+
 }
 
 @SerialVersionUID(10L)

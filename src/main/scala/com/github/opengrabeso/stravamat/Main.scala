@@ -97,7 +97,6 @@ object Main {
 
     def timeOffset(offset: Int): ActivityId = copy(startTime = startTime plusSeconds offset, endTime = endTime plusSeconds offset)
 
-
     def isMatching(that: ActivityId): Boolean = {
       // check overlap time
 
@@ -258,6 +257,9 @@ object Main {
 
   @SerialVersionUID(10L)
   case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
+    self =>
+
+
 
     import ActivityEvents._
 
@@ -279,7 +281,7 @@ object Main {
 
     def startTime = id.startTime
     def endTime = id.endTime
-    def duration: Double = (endTime.getMillis - startTime.getMillis).toDouble / 1000
+    def duration: Double = timeDifference(startTime, endTime)
 
     def isAlmostEmpty(minDurationSec: Int) = {
       val ss = streams
@@ -314,6 +316,14 @@ object Main {
 
     def distanceForTime(time: ZonedDateTime): Double = dist.distanceForTime(time)
 
+    lazy val elevation: Double = {
+      val elevationStream = gps.stream.flatMap {
+        case (k, v) =>
+          v.elevation.map(k -> _.toDouble)
+      }
+      val elevations = elevationStream.values
+      (elevations zip elevations.drop(1)).map {case (prev, next) => (next - prev) max 0}.sum
+    }
 
     def eventTimes: DataStream.EventTimes = events.map(_.stamp)(collection.breakOut)
     def optimize: ActivityEvents = {
@@ -839,6 +849,10 @@ object Main {
 
     }
 
+    def applyFilters(auth: StravaAuthResult): ActivityEvents = {
+      copy(gps = gps.filterElevation)
+    }
+
     def unifySamples: ActivityEvents = {
       // make sure all distance and attribute times are aligned with GPS times
       val times = gps.stream.keys.toList
@@ -847,7 +861,20 @@ object Main {
       copy(attributes = unifiedAttributes)
     }
 
-
+    trait Stats {
+      def distanceInM: Double
+      def totalTimeInSeconds: Double
+      def speed: Double
+      def movingTime: Double
+      def elevation: Double
+    }
+    def stats = new Stats {
+      val distanceInM = id.distance
+      val totalTimeInSeconds = duration
+      val speed = distanceInM / totalTimeInSeconds
+      val movingTime = 0.0
+      val elevation = self.elevation
+    }
   }
 
   trait ActivityStreams {

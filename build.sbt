@@ -60,6 +60,8 @@ lazy val stravamat = (project in file("."))
 
       "com.fasterxml" % "aalto-xml" % "1.0.0",
 
+      "fr.opensagres.xdocreport.appengine-awt" % "appengine-awt" % "1.0.0",
+
       "com.sparkjava" % "spark-core" % "1.1.1" excludeAll ExclusionRule(organization = "org.eclipse.jetty"),
       "org.slf4j" % "slf4j-simple" % "1.6.1",
       "commons-fileupload" % "commons-fileupload" % "1.3.2",

@@ -45,9 +45,24 @@ trait ActivityRequestHandler extends UploadResults {
 
       <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
+      val stats = activityData.stats
+
     val bodyContent =
       <div class="top">
         <div class="act">
+          <hr/>
+          <table>
+            <tr>
+              <td>Duration</td><td>{displaySeconds(stats.totalTimeInSeconds.toInt)}</td>
+            </tr>
+            <tr>
+              <td>Distance</td><td>{displayDistance(stats.distanceInM)}</td>
+            </tr>
+            <tr>
+              <td>Elevation</td><td>{stats.elevation}</td>
+            </tr>
+          </table>
+          <hr/>
           <form id="activity_form" action="upload-strava" method="post">
           <table class="activityTable">
             <tr>
@@ -606,7 +621,7 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
 
     // TODO: create groups, process each group separately
     val toMerge = ops.flatMap { op =>
-      Storage.load[ActivityHeader, ActivityEvents](Storage.getFullName(namespace.stage, op.filename, auth.userId)).map(_._2)
+      Storage.load[ActivityHeader, ActivityEvents](Storage.getFullName(namespace.stage, op.filename, auth.userId)).map(_._2.applyFilters(auth))
     }
 
 
