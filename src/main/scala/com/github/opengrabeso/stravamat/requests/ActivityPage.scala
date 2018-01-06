@@ -131,7 +131,7 @@ trait ActivityRequestHandler extends UploadResults {
       var id = "$actIdName";
       // events are: ["split", 0, 0.0, "Run", "lap"] - kind, time, distance, sport, original kind
       var events = [
-        ${activityData.editableEvents.mkString("[", "],[", "]")}
+        ${activityData.editableEvents.mkString("[", "],\n        [", "]")}
       ];
 
       // callback, should update the map when events are changed

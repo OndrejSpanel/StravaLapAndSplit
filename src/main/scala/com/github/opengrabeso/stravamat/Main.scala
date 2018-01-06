@@ -447,9 +447,9 @@ object Main {
 
     def editableEvents: Array[EditableEvent] = {
 
-      val ees = events.map { e1 =>
-        val action = e1.defaultEvent
-        EditableEvent(action, id.secondsInActivity(e1.stamp), distanceForTime(e1.stamp), e1.listTypes, action)
+      val ees = events.map { e =>
+        val action = e.defaultEvent
+        EditableEvent(action, id.secondsInActivity(e.stamp), distanceForTime(e.stamp), e.listTypes, e.originalEvent)
       }
 
       // consolidate mutliple events with the same time so that all of them have the same action
