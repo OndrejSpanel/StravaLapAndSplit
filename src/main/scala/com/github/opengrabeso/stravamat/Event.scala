@@ -171,12 +171,12 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) e
 }
 
 
-case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind]) {
+case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind], var actionOriginal: String) {
   override def toString: String = {
     val select = ActivityRequest.htmlSelectEvent(time.toString, kinds, action)
     val selectHtmlSingleLine = select.toString.lines.mkString(" ")
 
     val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)} km $selectHtmlSingleLine"""
-    s""""$action", $time, $km, '$description'"""
+    s""""$action", $time, $km, '$description', "$actionOriginal""""
   }
 }

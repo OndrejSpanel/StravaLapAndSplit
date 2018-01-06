@@ -129,7 +129,7 @@ trait ActivityRequestHandler extends UploadResults {
     xml.Unparsed(
       s"""
       var id = "$actIdName";
-      // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
+      // events are: ["split", 0, 0.0, "Run", "lap"] - kind, time, distance, sport, original kind
       var events = [
         ${activityData.editableEvents.mkString("[", "],[", "]")}
       ];
@@ -283,7 +283,13 @@ trait ActivityRequestHandler extends UploadResults {
       onEventsChanged();
     }
     function lapsSelectUser() {
-
+      events.forEach(function(e) {
+        if (e[4] === "lap"){
+          console.log("Set user lap " + e[1]);
+          changeEvent("lap", e[1]);
+        }
+      });
+      onEventsChanged();
     }
     function lapsSelectLongPauses() {
 
