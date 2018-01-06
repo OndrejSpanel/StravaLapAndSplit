@@ -98,9 +98,18 @@ trait ActivityRequestHandler extends UploadResults {
               <input type="hidden" name="id" value={actId.filename}/>
             }}
           </table></form>
-          <button onclick="submitProcess()">Process selected</button>
-          <button onclick="submitDownload()">Download as files</button>
+          <div>
+            <h3>Lap markers</h3>
+            <button onClick="lapsClearAll()">Unselect all</button><br />
+            <button onClick="lapsSelectUser()">Select user laps</button><br />
+            <button onClick="lapsSelectLongPauses()">Select long pauses</button> <button onClick="lapsSelectAllPauses()">Select all pauses</button>
+          </div>
+          <div>
+            <h3>Process</h3>
+            <button onclick="submitProcess()">Process selected</button>
+            <button onclick="submitDownload()">Download as files</button>
           {uploadResultsHtml()}
+          </div>
         </div>
         {if (activityData.hasGPS) {
         <div class="map clearfix" id='map'>
@@ -263,6 +272,22 @@ trait ActivityRequestHandler extends UploadResults {
       };
       ajax.send(new FormData(form[0]))
     }
+
+
+    function lapsClearAll() {
+
+    }
+    function lapsSelectUser() {
+
+    }
+    function lapsSelectLongPauses() {
+
+    }
+    function lapsSelectAllPauses() {
+
+    }
+
+
 
     """)
   }
