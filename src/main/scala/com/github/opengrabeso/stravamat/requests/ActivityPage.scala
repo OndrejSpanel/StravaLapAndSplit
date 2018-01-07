@@ -272,6 +272,23 @@ trait ActivityRequestHandler extends UploadResults {
       ajax.send(new FormData(form[0]))
     }
 
+    // is tests current event state (as displayed on the page)
+    function isCheckedLap(e) {
+      return e[0] === "lap";
+    }
+
+    // was test original event state
+    function wasUserLap(e) {
+      return e[4] === "lap";
+    }
+
+    function wasLongPause(e) {
+      return e[4].lastIndexOf("long pause") === 0;
+    }
+
+    function wasAnyPause(e) {
+      return e[4] === "pause" || wasLongPause(e)
+    }
 
     function lapsClearAll() {
       events.forEach(function(e) {
@@ -281,31 +298,25 @@ trait ActivityRequestHandler extends UploadResults {
       });
       onEventsChanged();
     }
-    function lapsSelectUser() {
+
+    function lapsSelectByPredicate(f) {
       events.forEach(function(e) {
-        if (e[4] === "lap"){
-          changeEvent("lap", e[1]);
-        }
-      });
-      onEventsChanged();
-    }
-    function lapsSelectLongPauses() {
-      events.forEach(function(e) {
-        if (e[4].lastIndexOf("long pause") === 0) { // match on both start and end
-          changeEvent("lap", e[1]);
-        }
-      });
-      onEventsChanged();
-    }
-    function lapsSelectAllPauses() {
-      events.forEach(function(e) {
-        if (e[4] === "pause" || e[4].lastIndexOf("long pause") === 0) { // match on both start and end for long pauses
+        if (f(e)){
           changeEvent("lap", e[1]);
         }
       });
       onEventsChanged();
     }
 
+    function lapsSelectUser() {
+      lapsSelectByPredicate(wasUserLap);
+    }
+    function lapsSelectLongPauses() {
+      lapsSelectByPredicate(wasLongPause);
+    }
+    function lapsSelectAllPauses() {
+      lapsSelectByPredicate(wasAnyPause);
+    }
 
 
     """)
