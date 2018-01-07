@@ -767,7 +767,9 @@ object Main {
       // process existing events
       val inheritEvents = this.events.filterNot(_.isSplit)
 
-      val events = (BegEvent(id.startTime, findSport(id.startTime)) +: EndEvent(id.endTime) +: inheritEvents) ++ pauseEvents
+      val hillEvents = findHills(this.gps)
+
+      val events = (BegEvent(id.startTime, findSport(id.startTime)) +: EndEvent(id.endTime) +: inheritEvents) ++ pauseEvents ++ hillEvents
       val eventsByTime = events.sortBy(_.stamp)
 
       val sports = eventsByTime.map(x => findSport(x.stamp))
@@ -908,12 +910,36 @@ object Main {
     sport
   }
 
+  def findHills(latlng: DataStreamGPS): Seq[Event] = {
+    // find global min and max
+    val elevStream = latlng.stream.flatMap { case (stamp, gps) =>
+      gps.elevation.map(stamp -> _)
+    }
+    if (elevStream.isEmpty) {
+      Seq.empty
+    } else {
+      val max = elevStream.maxBy(_._2)
+      val min = elevStream.minBy(_._2)
+      val minimalHillHeight = 5
+      if (max._2 > min._2 + minimalHillHeight) {
+        Seq(
+          HillTopEvent(max._2, max._1),
+          HillBottomEvent(min._2, min._1)
+        )
+      } else {
+        Seq.empty
+      }
+    }
+  }
+
   def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: Seq[ZonedDateTime], segments: Seq[Event]): ActivityEvents = {
 
     val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
     val events = (BegEvent(actId.startTime, actId.sportName) +: EndEvent(actId.endTime) +: cleanLaps.map(LapEvent)) ++ segments
+
     val eventsByTime = events.sortBy(_.stamp)
+
 
     ActivityEvents(actId, eventsByTime.toArray, act.dist, act.latlng, act.attributes)
   }

@@ -105,6 +105,7 @@ trait ActivityRequestHandler extends UploadResults {
             <button id="wasLongPause" onClick="lapsSelectLongPauses()">Select long pauses</button>
             <button id="wasAnyPause" onClick="lapsSelectAllPauses()">Select all pauses</button><br />
             <div id="wasSegment"><button onClick="lapsSelectByPredicate(wasSegment)">Select segments</button></div>
+            <div id="wasHill"><button onClick="lapsSelectByPredicate(wasHill)">Select climbs/descends</button></div>
           </div>
           <div>
             <h3>Process</h3>
@@ -298,6 +299,10 @@ trait ActivityRequestHandler extends UploadResults {
       return e[4].lastIndexOf("segment") === 0 || e[4].lastIndexOf("private segment") === 0;
     }
 
+    function wasHill(e) {
+      return e[4].lastIndexOf("hill") === 0;
+    }
+
     function lapsClearAll() {
       events.forEach(function(e) {
         if (isCheckedLap(e)){
@@ -354,6 +359,7 @@ trait ActivityRequestHandler extends UploadResults {
       showOrHide("wasLongPause", wasLongPause);
       showOrHide("wasAnyPause", wasAnyPause);
       showOrHide("wasSegment", wasSegment);
+      showOrHide("wasHill", wasHill);
     }
 
 

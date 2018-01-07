@@ -28,8 +28,10 @@ object EventPriority {
   val seq: IndexedSeq[Class[_]] = IndexedSeq(
     classOf[BegEvent], classOf[EndEvent],
     classOf[SplitEvent],
+    classOf[StartSegEvent], classOf[EndSegEvent],
     classOf[PauseEvent], classOf[PauseEndEvent],
-    classOf[LapEvent]
+    classOf[LapEvent],
+    classOf[HillTopEvent], classOf[HillBottomEvent]
   )
 
   def apply(e: Event) = {
@@ -100,7 +102,6 @@ case class PauseEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def defaultEvent = if (duration >= 30) "lap" else ""
   override def originalEvent = if (duration >= 50) "long pause" else "pause"
   def isSplit = false
-  def priority = 20
 }
 @SerialVersionUID(10)
 case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
@@ -191,7 +192,7 @@ case class HillTopEvent(elev: Double, stamp: ZonedDateTime) extends Event with E
 @SerialVersionUID(10)
 case class HillBottomEvent(elev: Double, stamp: ZonedDateTime) extends Event with ElevTitle {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
-  def description: String = s"Top $title"
+  def description: String = s"Bottom $title"
   def defaultEvent = ""
   override def originalEvent = "hill bottom"
   def isSplit = false
