@@ -100,9 +100,10 @@ trait ActivityRequestHandler extends UploadResults {
           </table></form>
           <div>
             <h3>Lap markers</h3>
-            <button onClick="lapsClearAll()">Unselect all</button><br />
-            <button onClick="lapsSelectUser()">Select user laps</button><br />
-            <button onClick="lapsSelectLongPauses()">Select long pauses</button> <button onClick="lapsSelectAllPauses()">Select all pauses</button>
+            <button id="isCheckedLap" onClick="lapsClearAll()">Unselect all</button><br />
+            <div id="wasUserLap"><button onClick="lapsSelectUser()">Select user laps</button><br /></div>
+            <button id="wasLongPause" onClick="lapsSelectLongPauses()">Select long pauses</button>
+            <button id="wasAnyPause" onClick="lapsSelectAllPauses()">Select all pauses</button>
           </div>
           <div>
             <h3>Process</h3>
@@ -177,6 +178,7 @@ trait ActivityRequestHandler extends UploadResults {
         }
         selectOption(e);
       });
+      showEventButtons();
     }
 
     function selectOption(e) {
@@ -237,9 +239,10 @@ trait ActivityRequestHandler extends UploadResults {
         }
       });
 
-
       // execute the callback
       onEventsChanged();
+
+      showEventButtons();
     }
 
     function submitProcess() {
@@ -292,11 +295,12 @@ trait ActivityRequestHandler extends UploadResults {
 
     function lapsClearAll() {
       events.forEach(function(e) {
-        if (e[0] === "lap"){
+        if (isCheckedLap(e)){
           changeEvent("", e[1]);
         }
       });
       onEventsChanged();
+      showEventButtons();
     }
 
     function lapsSelectByPredicate(f) {
@@ -306,6 +310,7 @@ trait ActivityRequestHandler extends UploadResults {
         }
       });
       onEventsChanged();
+      showEventButtons();
     }
 
     function lapsSelectUser() {
@@ -316,6 +321,33 @@ trait ActivityRequestHandler extends UploadResults {
     }
     function lapsSelectAllPauses() {
       lapsSelectByPredicate(wasAnyPause);
+    }
+
+    function testPredicate(f) {
+      var ret = false;
+      events.forEach(function(e) {
+        if (f(e)){
+          ret = true;
+        }
+      });
+      return ret;
+    }
+    function showEventButtons() {
+      function showOrHide(name, func) {
+        if (testPredicate(func)) {
+          $$("#" + name).show();
+        } else {
+          $$("#" + name).hide();
+        }
+      }
+      function enableOrDisable(name, func) {
+        //showOrHide(name, func)
+        $$("#" + name).prop("disabled", !testPredicate(func));
+      }
+      enableOrDisable("isCheckedLap", isCheckedLap);
+      showOrHide("wasUserLap", wasUserLap);
+      showOrHide("wasLongPause", wasLongPause);
+      showOrHide("wasAnyPause", wasAnyPause);
     }
 
 
