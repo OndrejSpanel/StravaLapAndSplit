@@ -104,7 +104,7 @@ case class PauseEvent(duration: Int, stamp: ZonedDateTime) extends Event {
 }
 @SerialVersionUID(10)
 case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "Pause end"
   def defaultEvent = if (duration >= 50) "lap" else ""
   override def originalEvent = if (duration >= 50) "long pause end" else "pause end"
@@ -112,7 +112,7 @@ case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
 }
 @SerialVersionUID(10)
 case class LapEvent(stamp: ZonedDateTime) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "Lap"
   def defaultEvent = "lap"
   def isSplit = false
@@ -120,7 +120,7 @@ case class LapEvent(stamp: ZonedDateTime) extends Event {
 
 @SerialVersionUID(10)
 case class EndEvent(stamp: ZonedDateTime) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "End"
   def defaultEvent = "end"
   def isSplit = true
@@ -130,7 +130,7 @@ case class EndEvent(stamp: ZonedDateTime) extends Event {
 
 @SerialVersionUID(10)
 case class BegEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "<b>Start</b>"
   def defaultEvent = s"split${sport.toString}"
   def isSplit = true
@@ -141,7 +141,7 @@ case class BegEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
 
 @SerialVersionUID(10)
 case class SplitEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "Split"
   def defaultEvent = s"split${sport.toString}"
   def isSplit = true
@@ -158,9 +158,14 @@ trait SegmentTitle {
 
 }
 
+trait ElevTitle {
+  def elev: Double
+  def title = Main.shortNameString("elevation " + elev)
+}
+
 @SerialVersionUID(10)
 case class StartSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description: String = s"Start $title"
   def defaultEvent = ""
   override def originalEvent = "segment beg"
@@ -168,13 +173,29 @@ case class StartSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime)
 }
 @SerialVersionUID(10)
 case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description: String = s"End $title"
   def defaultEvent = ""
   override def originalEvent = "segment end"
   def isSplit = false
 }
 
+@SerialVersionUID(10)
+case class HillTopEvent(elev: Double, stamp: ZonedDateTime) extends Event with ElevTitle {
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
+  def description: String = s"Top $title"
+  def defaultEvent = ""
+  override def originalEvent = "hill top"
+  def isSplit = false
+}
+@SerialVersionUID(10)
+case class HillBottomEvent(elev: Double, stamp: ZonedDateTime) extends Event with ElevTitle {
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
+  def description: String = s"Top $title"
+  def defaultEvent = ""
+  override def originalEvent = "hill bottom"
+  def isSplit = false
+}
 
 case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind], var actionOriginal: String) {
   override def toString: String = {
