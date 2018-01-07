@@ -161,7 +161,7 @@ trait SegmentTitle {
 
 trait ElevTitle {
   def elev: Double
-  def title = Main.shortNameString("elevation " + elev)
+  def title = Main.shortNameString("Elevation " + elev.toInt + " m")
 }
 
 @SerialVersionUID(10)
@@ -184,7 +184,7 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) e
 @SerialVersionUID(10)
 case class HillTopEvent(elev: Double, stamp: ZonedDateTime) extends Event with ElevTitle {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
-  def description: String = s"Top $title"
+  def description: String = title
   def defaultEvent = ""
   override def originalEvent = "hill top"
   def isSplit = false
@@ -192,18 +192,18 @@ case class HillTopEvent(elev: Double, stamp: ZonedDateTime) extends Event with E
 @SerialVersionUID(10)
 case class HillBottomEvent(elev: Double, stamp: ZonedDateTime) extends Event with ElevTitle {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
-  def description: String = s"Bottom $title"
+  def description: String = title
   def defaultEvent = ""
   override def originalEvent = "hill bottom"
   def isSplit = false
 }
 
-case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind], var actionOriginal: String) {
+case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind], var actionOriginal: String, actionDescription: String) {
   override def toString: String = {
     val select = ActivityRequest.htmlSelectEvent(time.toString, kinds, action)
     val selectHtmlSingleLine = select.toString.lines.mkString(" ")
 
-    val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)} km $selectHtmlSingleLine"""
+    val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)}<br />""" + actionDescription
     s""""$action", $time, $km, '$description', "$actionOriginal""""
   }
 }

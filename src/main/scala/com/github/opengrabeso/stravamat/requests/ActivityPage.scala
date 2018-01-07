@@ -132,7 +132,7 @@ trait ActivityRequestHandler extends UploadResults {
     xml.Unparsed(
       s"""
       var id = "$actIdName";
-      // events are: ["split", 0, 0.0, "Run", "lap"] - kind, time, distance, sport, original kind
+      // events are: ["split", 0, 0.0, "Run", "lap", "Start"] - kind, time, distance, sport, original kind, description
       var events = [
         ${activityData.editableEvents.mkString("[", "],\n        [", "]")}
       ];
@@ -374,12 +374,13 @@ trait ActivityRequestHandler extends UploadResults {
 
     /**
      * @param {String} eTime time of the event
+     * @param {String} description description of the event
      * */
-    function getSelectHtml(eTime) {
+    function getSelectHtml(eTime, description) {
       var tableOption = document.getElementById(eTime);
       var html = tableOption.innerHTML;
       var value = tableOption.value;
-      return '<select onchange="changeEvent(this.options[this.selectedIndex].value,' + eTime + ')">' + html + '</select>';
+      return description + '<br /><select onchange="changeEvent(this.options[this.selectedIndex].value,' + eTime + ')">' + html + '</select>';
     }
     function mapEventData(events, route) {
       var markers = [];
@@ -429,7 +430,7 @@ trait ActivityRequestHandler extends UploadResults {
             "properties": {
               "title": e[0],
               "icon": "circle",
-              "description": getSelectHtml(e[1]),
+              "description": getSelectHtml(e[1], e[3]),
               "color": "#444",
               "opacity": 0.5
             }

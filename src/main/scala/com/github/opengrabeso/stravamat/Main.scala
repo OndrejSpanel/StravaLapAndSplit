@@ -449,7 +449,7 @@ object Main {
 
       val ees = events.map { e =>
         val action = e.defaultEvent
-        EditableEvent(action, id.secondsInActivity(e.stamp), distanceForTime(e.stamp), e.listTypes, e.originalEvent)
+        EditableEvent(action, id.secondsInActivity(e.stamp), distanceForTime(e.stamp), e.listTypes, e.originalEvent, e.description)
       }
 
       // consolidate mutliple events with the same time so that all of them have the same action
