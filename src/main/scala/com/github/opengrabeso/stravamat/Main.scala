@@ -767,7 +767,7 @@ object Main {
       // process existing events
       val inheritEvents = this.events.filterNot(_.isSplit)
 
-      val hillEvents = findHills(this.gps)
+      val hillEvents = findHills(gps, distStream)
 
       val events = (BegEvent(id.startTime, findSport(id.startTime)) +: EndEvent(id.endTime) +: inheritEvents) ++ pauseEvents ++ hillEvents
       val eventsByTime = events.sortBy(_.stamp)
@@ -910,34 +910,37 @@ object Main {
     sport
   }
 
-  def findHills(latlng: DataStreamGPS): Seq[Event] = {
+  def findHills(latlng: DataStreamGPS, dist: DataStreamDist#DataMap): Seq[Event] = {
     // find global min and max
     if (latlng.stream.isEmpty) {
       Seq.empty
     } else {
-      val elevStream = latlng.stream.flatMap { case (stamp, gps) =>
-        gps.elevation.map(stamp -> _)
+      val routeDist = DataStreamGPS.routeStreamFromDistStream(dist.toSeq)
+
+      case class ElevDist(stamp: ZonedDateTime, elev: Int, dist: Double)
+      val elevStream = latlng.stream.toList.flatMap { case (stamp, gps) =>
+        gps.elevation.map(e => ElevDist(stamp, e, routeDist(stamp)))
       }
-      val max = elevStream.maxBy(_._2)
-      val min = elevStream.minBy(_._2)
+      val max = elevStream.maxBy(_.elev)
+      val min = elevStream.minBy(_.elev)
       val minimalHillHeight = 5
-      if (max._2 > min._2 + minimalHillHeight) {
+      if (max.elev > min.elev + minimalHillHeight) {
         val globalOnly = false
 
         if (globalOnly) {
           Seq(
-            ElevationEvent(max._2, max._1),
-            ElevationEvent(min._2, min._1)
+            ElevationEvent(max.elev, max.stamp),
+            ElevationEvent(min.elev, min.stamp)
           )
         } else {
 
           // find all local extremes
 
           // get rid of monotonous rise/descends
-          def removeMidSlopes(todo: List[(ZonedDateTime, Int)], done: List[(ZonedDateTime, Int)]): List[(ZonedDateTime, Int)] = {
+          def removeMidSlopes(todo: List[ElevDist], done: List[ElevDist]): List[ElevDist] = {
             todo match {
               case a0 :: a1 :: a2 :: tail =>
-                if (a0._2 <= a1._2 && a1._2 <= a2._2 || a0._2 >= a1._2 && a1._2 >= a2._2) {
+                if (a0.elev <= a1.elev && a1.elev <= a2.elev || a0.elev >= a1.elev && a1.elev >= a2.elev) {
                   removeMidSlopes(a0 :: a2 :: tail, done)
                 } else {
                   removeMidSlopes(a1 :: a2 :: tail, a0 :: done)
@@ -947,10 +950,48 @@ object Main {
             }
           }
 
-          val slopes = removeMidSlopes(elevStream.toList, Nil)
+
+          def filterSlopes(todo: List[ElevDist], done: List[ElevDist]): List[ElevDist] = {
+
+            def slope(samples: ElevDist*) = {
+              val maxElev = samples.maxBy(_.elev).elev
+              val minElev = samples.minBy(_.elev).elev
+              val dist = samples.last.dist - samples.head.dist
+              (maxElev - minElev) / dist
+            }
+
+            todo match {
+              case a0 :: a1 :: a2 :: a3 :: tail =>
+                // check if a0..a1..a2 is substantial enough in context of a0..a3
+                val a03elev = Seq(a0, a1, a2, a3).map(_.elev)
+                val min = a03elev.min
+                val max = a03elev.max
+
+                val diff = max - min
+                val midDiff = (a1.elev - a2.elev).abs
+                if (midDiff < diff / 4) {
+                  filterSlopes(a0 :: a3 :: tail, done)
+                } else {
+                  filterSlopes(a1 :: a2 :: a3 :: tail, a0 :: done)
+                }
+              case _ =>
+                done.reverse
+            }
+
+          }
+
+          val slopes = removeMidSlopes(elevStream, Nil)
+
+          val slopesElev = slopes.map(_.elev)
+
+          val totalElev = (slopesElev zip slopesElev.drop(1)).map { case (a,b) => (a-b).abs }.sum
+          val minMaxDiff = max.elev - min.elev
+
 
           // choose only the most significant ones
-          slopes.map(x => ElevationEvent(x._2, x._1))
+          val filteredSlopes = filterSlopes(slopes, Nil)
+
+          filteredSlopes.map(x => ElevationEvent(x.elev, x.stamp))
         }
       } else {
         Seq.empty
