@@ -276,7 +276,6 @@ trait ActivityRequestHandler extends UploadResults {
     function lapsClearAll() {
       events.forEach(function(e) {
         if (e[0] === "lap"){
-          console.log("Clear lap " + e[1]);
           changeEvent("", e[1]);
         }
       });
@@ -285,17 +284,26 @@ trait ActivityRequestHandler extends UploadResults {
     function lapsSelectUser() {
       events.forEach(function(e) {
         if (e[4] === "lap"){
-          console.log("Set user lap " + e[1]);
           changeEvent("lap", e[1]);
         }
       });
       onEventsChanged();
     }
     function lapsSelectLongPauses() {
-
+      events.forEach(function(e) {
+        if (e[4].lastIndexOf("long pause") === 0) { // match on both start and end
+          changeEvent("lap", e[1]);
+        }
+      });
+      onEventsChanged();
     }
     function lapsSelectAllPauses() {
-
+      events.forEach(function(e) {
+        if (e[4] === "pause" || e[4].lastIndexOf("long pause") === 0) { // match on both start and end for long pauses
+          changeEvent("lap", e[1]);
+        }
+      });
+      onEventsChanged();
     }
 
 
