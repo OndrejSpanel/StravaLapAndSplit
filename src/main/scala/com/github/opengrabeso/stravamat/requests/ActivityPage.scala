@@ -15,7 +15,7 @@ protected case class ActivityContent(head: NodeSeq, body: NodeSeq)
 
 object ActivityRequest {
   def htmlSelectEvent(time: String, types: Array[EventKind], action: String) = {
-    <select id={time} name="events" onchange={s"changeEvent(this, this.options[this.selectedIndex].value, $time)"}>
+    <select id={time} name="events" onchange={s"changeEvent(this.options[this.selectedIndex].value, $time)"}>
       {for (et <- types) yield {
       <option value={et.id} selected={if (action == et.id) "" else null}>
         {et.display}
@@ -98,9 +98,20 @@ trait ActivityRequestHandler extends UploadResults {
               <input type="hidden" name="id" value={actId.filename}/>
             }}
           </table></form>
-          <button onclick="submitProcess()">Process selected</button>
-          <button onclick="submitDownload()">Download as files</button>
+          <div>
+            <h3>Lap markers</h3>
+            <button id="isCheckedLap" onClick="lapsClearAll()">Unselect all</button><br />
+            <div id="wasUserLap"><button onClick="lapsSelectUser()">Select user laps</button><br /></div>
+            <button id="wasLongPause" onClick="lapsSelectLongPauses()">Select long pauses</button>
+            <button id="wasAnyPause" onClick="lapsSelectAllPauses()">Select all pauses</button><br />
+            <div id="wasSegment"><button onClick="lapsSelectByPredicate(wasSegment)">Select segments</button></div>
+          </div>
+          <div>
+            <h3>Process</h3>
+            <button onclick="submitProcess()">Process selected</button>
+            <button onclick="submitDownload()">Download as files</button>
           {uploadResultsHtml()}
+          </div>
         </div>
         {if (activityData.hasGPS) {
         <div class="map clearfix" id='map'>
@@ -120,9 +131,9 @@ trait ActivityRequestHandler extends UploadResults {
     xml.Unparsed(
       s"""
       var id = "$actIdName";
-      // events are: ["split", 0, 0.0, "Run"] - kind, time, distance, sport
+      // events are: ["split", 0, 0.0, "Run", "lap"] - kind, time, distance, sport, original kind
       var events = [
-        ${activityData.editableEvents.mkString("[", "],[", "]")}
+        ${activityData.editableEvents.mkString("[", "],\n        [", "]")}
       ];
 
       // callback, should update the map when events are changed
@@ -139,7 +150,7 @@ trait ActivityRequestHandler extends UploadResults {
 
       var nextSplit = null;
       events.forEach( function(e) {
-        if (e[0].lastIndexOf("split", 0) == 0 && e[1] > time && nextSplit == null) {
+        if (e[0].lastIndexOf("split", 0) === 0 && e[1] > time && nextSplit == null) {
           nextSplit = e;
         }
       });
@@ -161,13 +172,14 @@ trait ActivityRequestHandler extends UploadResults {
     function initEvents() {
       //console.log("initEvents " + events.toString());
       events.forEach(function(e){
-        if (e[0].lastIndexOf("split",0) == 0) {
+        if (e[0].lastIndexOf("split",0) === 0) {
           addEvent(e);
         } else {
           removeEvent(e[1])
         }
         selectOption(e);
       });
+      showEventButtons();
     }
 
     function selectOption(e) {
@@ -183,7 +195,7 @@ trait ActivityRequestHandler extends UploadResults {
         for (var i = 0; i < opts.length; i++)
             opts[i].removeAttribute('selected');
         var checked = tableOption.querySelector('option:checked');
-        checked.setAttribute('selected', 'selected');
+        if (checked) checked.setAttribute('selected', 'selected');
       }
     }
 
@@ -201,12 +213,11 @@ trait ActivityRequestHandler extends UploadResults {
     }
 
     /**
-    * @param {Element} item
     * @param {String} newValue
     * @param {String} itemTime
     * */
-    function changeEvent(item, newValue, itemTime) {
-      //console.log("changeEvent", item, newValue, itemTime)
+    function changeEvent(newValue, itemTime) {
+      //console.log("changeEvent", newValue, itemTime)
       events.forEach(function(e) {
         if (e[1] == itemTime) {
           e[0] = newValue;
@@ -229,9 +240,10 @@ trait ActivityRequestHandler extends UploadResults {
         }
       });
 
-
       // execute the callback
       onEventsChanged();
+
+      showEventButtons();
     }
 
     function submitProcess() {
@@ -264,6 +276,87 @@ trait ActivityRequestHandler extends UploadResults {
       ajax.send(new FormData(form[0]))
     }
 
+    // is tests current event state (as displayed on the page)
+    function isCheckedLap(e) {
+      return e[0] === "lap";
+    }
+
+    // was test original event state
+    function wasUserLap(e) {
+      return e[4] === "lap";
+    }
+
+    function wasLongPause(e) {
+      return e[4].lastIndexOf("long pause") === 0;
+    }
+
+    function wasAnyPause(e) {
+      return e[4] === "pause" || wasLongPause(e)
+    }
+
+    function wasSegment(e) {
+      return e[4].lastIndexOf("segment") === 0 || e[4].lastIndexOf("private segment") === 0;
+    }
+
+    function lapsClearAll() {
+      events.forEach(function(e) {
+        if (isCheckedLap(e)){
+          changeEvent("", e[1]);
+        }
+      });
+      onEventsChanged();
+      showEventButtons();
+    }
+
+    function lapsSelectByPredicate(f) {
+      events.forEach(function(e) {
+        if (f(e)){
+          changeEvent("lap", e[1]);
+        }
+      });
+      onEventsChanged();
+      showEventButtons();
+    }
+
+    function lapsSelectUser() {
+      lapsSelectByPredicate(wasUserLap);
+    }
+    function lapsSelectLongPauses() {
+      lapsSelectByPredicate(wasLongPause);
+    }
+    function lapsSelectAllPauses() {
+      lapsSelectByPredicate(wasAnyPause);
+    }
+
+    function testPredicate(f) {
+      var ret = false;
+      events.forEach(function(e) {
+        if (f(e)){
+          ret = true;
+        }
+      });
+      return ret;
+    }
+    function showEventButtons() {
+      function showOrHide(name, func) {
+        if (testPredicate(func)) {
+          $$("#" + name).show();
+        } else {
+          $$("#" + name).hide();
+        }
+      }
+      function enableOrDisable(name, func) {
+        //showOrHide(name, func)
+        $$("#" + name).prop("disabled", !testPredicate(func));
+      }
+      enableOrDisable("isCheckedLap", isCheckedLap);
+      showOrHide("wasUserLap", wasUserLap);
+      showOrHide("wasLongPause", wasLongPause);
+      showOrHide("wasAnyPause", wasAnyPause);
+      showOrHide("wasSegment", wasSegment);
+    }
+
+
     """)
   }
 
@@ -280,7 +373,7 @@ trait ActivityRequestHandler extends UploadResults {
       var tableOption = document.getElementById(eTime);
       var html = tableOption.innerHTML;
       var value = tableOption.value;
-      return '<select onchange="changeEvent(this, this.options[this.selectedIndex].value,' + eTime + ')">' + html + '</select>';
+      return '<select onchange="changeEvent(this.options[this.selectedIndex].value,' + eTime + ')">' + html + '</select>';
     }
     function mapEventData(events, route) {
       var markers = [];

@@ -54,6 +54,7 @@ sealed abstract class Event {
   def timeOffset(offset: Int): Event
 
   def defaultEvent: String
+  def originalEvent: String = defaultEvent
 
   protected def listSplitTypes: Seq[EventKind] = {
     Sport.values.map { s =>
@@ -96,7 +97,8 @@ object Events {
 case class PauseEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
   def description = s"Pause ${Events.niceDuration(duration)}"
-  def defaultEvent = if (duration>=30) "lap" else ""
+  def defaultEvent = if (duration >= 30) "lap" else ""
+  override def originalEvent = if (duration >= 50) "long pause" else "pause"
   def isSplit = false
   def priority = 20
 }
@@ -105,6 +107,7 @@ case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
   def description = "Pause end"
   def defaultEvent = if (duration >= 50) "lap" else ""
+  override def originalEvent = if (duration >= 50) "long pause end" else "pause end"
   def isSplit = false
 }
 @SerialVersionUID(10)
@@ -160,6 +163,7 @@ case class StartSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime)
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
   def description: String = s"Start $title"
   def defaultEvent = ""
+  override def originalEvent = "segment beg"
   def isSplit = false
 }
 @SerialVersionUID(10)
@@ -167,16 +171,17 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) e
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
   def description: String = s"End $title"
   def defaultEvent = ""
+  override def originalEvent = "segment end"
   def isSplit = false
 }
 
 
-case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind]) {
+case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind], var actionOriginal: String) {
   override def toString: String = {
     val select = ActivityRequest.htmlSelectEvent(time.toString, kinds, action)
     val selectHtmlSingleLine = select.toString.lines.mkString(" ")
 
     val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)} km $selectHtmlSingleLine"""
-    s""""$action", $time, $km, '$description'"""
+    s""""$action", $time, $km, '$description', "$actionOriginal""""
   }
 }
