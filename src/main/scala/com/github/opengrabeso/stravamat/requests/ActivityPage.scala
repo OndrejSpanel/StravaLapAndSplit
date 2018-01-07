@@ -300,7 +300,7 @@ trait ActivityRequestHandler extends UploadResults {
     }
 
     function wasHill(e) {
-      return e[4].lastIndexOf("hill") === 0;
+      return e[4] === "elevation";
     }
 
     function lapsClearAll() {

@@ -912,20 +912,46 @@ object Main {
 
   def findHills(latlng: DataStreamGPS): Seq[Event] = {
     // find global min and max
-    val elevStream = latlng.stream.flatMap { case (stamp, gps) =>
-      gps.elevation.map(stamp -> _)
-    }
-    if (elevStream.isEmpty) {
+    if (latlng.stream.isEmpty) {
       Seq.empty
     } else {
+      val elevStream = latlng.stream.flatMap { case (stamp, gps) =>
+        gps.elevation.map(stamp -> _)
+      }
       val max = elevStream.maxBy(_._2)
       val min = elevStream.minBy(_._2)
       val minimalHillHeight = 5
       if (max._2 > min._2 + minimalHillHeight) {
-        Seq(
-          HillTopEvent(max._2, max._1),
-          HillBottomEvent(min._2, min._1)
-        )
+        val globalOnly = false
+
+        if (globalOnly) {
+          Seq(
+            ElevationEvent(max._2, max._1),
+            ElevationEvent(min._2, min._1)
+          )
+        } else {
+
+          // find all local extremes
+
+          // get rid of monotonous rise/descends
+          def removeMidSlopes(todo: List[(ZonedDateTime, Int)], done: List[(ZonedDateTime, Int)]): List[(ZonedDateTime, Int)] = {
+            todo match {
+              case a0 :: a1 :: a2 :: tail =>
+                if (a0._2 <= a1._2 && a1._2 <= a2._2 || a0._2 >= a1._2 && a1._2 >= a2._2) {
+                  removeMidSlopes(a0 :: a2 :: tail, done)
+                } else {
+                  removeMidSlopes(a1 :: a2 :: tail, a0 :: done)
+                }
+              case _ =>
+                done.reverse
+            }
+          }
+
+          val slopes = removeMidSlopes(elevStream.toList, Nil)
+
+          // choose only the most significant ones
+          slopes.map(x => ElevationEvent(x._2, x._1))
+        }
       } else {
         Seq.empty
       }

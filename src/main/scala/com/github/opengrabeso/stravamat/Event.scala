@@ -31,7 +31,7 @@ object EventPriority {
     classOf[StartSegEvent], classOf[EndSegEvent],
     classOf[PauseEvent], classOf[PauseEndEvent],
     classOf[LapEvent],
-    classOf[HillTopEvent], classOf[HillBottomEvent]
+    classOf[ElevationEvent]
   )
 
   def apply(e: Event) = {
@@ -159,11 +159,6 @@ trait SegmentTitle {
 
 }
 
-trait ElevTitle {
-  def elev: Double
-  def title = Main.shortNameString("Elevation " + elev.toInt + " m")
-}
-
 @SerialVersionUID(10)
 case class StartSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
@@ -182,19 +177,11 @@ case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) e
 }
 
 @SerialVersionUID(10)
-case class HillTopEvent(elev: Double, stamp: ZonedDateTime) extends Event with ElevTitle {
+case class ElevationEvent(elev: Double, stamp: ZonedDateTime) extends Event {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
-  def description: String = title
+  def description: String = Main.shortNameString("Elevation " + elev.toInt + " m")
   def defaultEvent = ""
-  override def originalEvent = "hill top"
-  def isSplit = false
-}
-@SerialVersionUID(10)
-case class HillBottomEvent(elev: Double, stamp: ZonedDateTime) extends Event with ElevTitle {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
-  def description: String = title
-  def defaultEvent = ""
-  override def originalEvent = "hill bottom"
+  override def originalEvent = "elevation"
   def isSplit = false
 }
 
