@@ -691,7 +691,20 @@ object Main {
               done
           }
         }
-        recurse(ps, Nil).reverse
+        val cleaned = recurse(ps, Nil).reverse
+
+        // if there are too many pauses, remove the shortest ones
+        breakable {
+          while (cleaned.nonEmpty) {
+            // find shortest pause
+            // 10 pauses: keep only pauses above 100 seconds
+            val limit = cleaned.size * 10
+            cleaned.
+
+            break
+          }
+        }
+        cleaned
       }
 
       val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2))
