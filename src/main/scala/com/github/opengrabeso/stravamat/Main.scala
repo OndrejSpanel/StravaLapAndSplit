@@ -691,7 +691,7 @@ object Main {
               done
           }
         }
-        val cleaned = recurse(ps, Nil).reverse
+        var cleaned = recurse(ps, Nil).reverse
 
         // if there are too many pauses, remove the shortest ones
         breakable {
@@ -699,9 +699,12 @@ object Main {
             // find shortest pause
             // 10 pauses: keep only pauses above 100 seconds
             val limit = cleaned.size * 10
-            cleaned.
 
-            break
+            val minPause = cleaned.minBy(pauseDuration)
+
+            if (pauseDuration(minPause) > limit) break
+
+            cleaned = cleaned.patch(cleaned.indexOf(minPause), Nil, 1)
           }
         }
         cleaned
