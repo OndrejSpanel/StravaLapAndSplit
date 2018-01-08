@@ -100,13 +100,6 @@ trait ActivityRequestHandler extends UploadResults {
             }}
           </tbody></table>
           </div>
-            <script>{xml.Unparsed("""
-              document.getElementById("aroundScrollingTable").addEventListener("scroll",function(){
-                var translate = "translate(0,"+this.scrollTop+"px)";
-                this.querySelector("thead").style.transform = translate;
-              });
-              """)}
-            </script>
           </form>
           <div>
             <h3>Lap markers</h3>
@@ -114,10 +107,10 @@ trait ActivityRequestHandler extends UploadResults {
             <br />
             <button id="wasUserLap" onClick="lapsSelectUser()">Select user laps</button>
             <button id="wasSegment" onClick="lapsSelectByPredicate(wasSegment)">Select segments</button>
-            <button id="wasHill">onClick="lapsSelectByPredicate(wasHill)">Select climbs/descends</button>
+            <button id="wasHill" onClick="lapsSelectByPredicate(wasHill)">Select climbs/descends</button>
             <br />
             <button id="wasLongPause" onClick="lapsSelectLongPauses()">Select long pauses</button>
-            <button id="wasAnyPause" onClick="lapsSelectAllPauses()">Select all pauses</button><br />
+            <button id="wasAnyPause" onClick="lapsSelectAllPauses()">Select all pauses</button>
           </div>
           <div>
             <h3>Process</h3>
