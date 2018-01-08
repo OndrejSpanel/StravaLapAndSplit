@@ -1132,9 +1132,10 @@ object Main {
         val segName = seg.path("name").textValue
         val segDuration = seg.path("elapsed_time").intValue
         val segPrivate = seg.path("segment").path("private").booleanValue
+        val segmentId = seg.path("segment").path("id").longValue
         Seq(
-          StartSegEvent(segName, segPrivate, segStartTime),
-          EndSegEvent(segName, segPrivate, segStartTime.withDurationAdded(segDuration, 1000))
+          StartSegEvent(segName, segPrivate, segmentId, segStartTime),
+          EndSegEvent(segName, segPrivate, segmentId, segStartTime.withDurationAdded(segDuration, 1000))
         )
       }
     }
@@ -1211,8 +1212,7 @@ object Main {
   }
 
 
-  def shortNameString(name: String): String = {
-    val maxLen = 30
+  def shortNameString(name: String, maxLen: Int = 30): String = {
     val ellipsis = "..."
     if (name.length < maxLen) name
     else {

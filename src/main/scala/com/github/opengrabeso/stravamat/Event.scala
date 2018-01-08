@@ -151,26 +151,36 @@ case class SplitEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
 
 trait SegmentTitle {
   def isPrivate: Boolean
+  def segmentId: Long
   def name: String
-  def title = {
-    val segPrefix = if (isPrivate) "private " else ""
-    segPrefix + Main.shortNameString("segment " + name)
+  /**
+    * @param kind Start or End string expected
+    * */
+  def title(kind: String) = {
+    val segPrefix = if (isPrivate) "private segment " else "segment "
+    val segmentName = Main.shortNameString(name, 32 - segPrefix.length - kind.length)
+    val complete = if (segmentId != 0) {
+      kind + segPrefix + <a title={name} href={s"https://www.strava.com/segments/$segmentId"}>{segmentName}</a>
+    } else {
+      kind + segPrefix + segmentName
+    }
+    complete.capitalize
   }
 
 }
 
-@SerialVersionUID(10)
-case class StartSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
+@SerialVersionUID(11)
+case class StartSegEvent(name: String, isPrivate: Boolean, segmentId: Long, stamp: ZonedDateTime) extends Event with SegmentTitle {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
-  def description: String = s"Start $title"
+  def description: String = title("")
   def defaultEvent = ""
   override def originalEvent = "segment beg"
   def isSplit = false
 }
-@SerialVersionUID(10)
-case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
+@SerialVersionUID(11)
+case class EndSegEvent(name: String, isPrivate: Boolean, segmentId: Long, stamp: ZonedDateTime) extends Event with SegmentTitle {
   def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
-  def description: String = s"End $title"
+  def description: String = title("end ")
   def defaultEvent = ""
   override def originalEvent = "segment end"
   def isSplit = false
