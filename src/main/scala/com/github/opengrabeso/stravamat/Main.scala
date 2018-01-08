@@ -21,6 +21,7 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.xml.Elem
+import scala.util.control.Breaks._
 
 object Main {
 
@@ -951,33 +952,34 @@ object Main {
           }
 
 
-          def filterSlopes(todo: List[ElevDist], done: List[ElevDist]): List[ElevDist] = {
+          def filterSlopes(input: List[ElevDist]): List[ElevDist] = {
 
-            def slope(samples: ElevDist*) = {
-              val maxElev = samples.maxBy(_.elev).elev
-              val minElev = samples.minBy(_.elev).elev
-              val dist = samples.last.dist - samples.head.dist
-              (maxElev - minElev) / dist
+            var todo = input
+            breakable {
+              while (todo.lengthCompare(2) > 0) {
+                // find min elevation difference
+                // removing this never shortens slope
+
+                val elevPairs = todo zip todo.drop(1).map(_.elev)
+                val elevDiff = elevPairs.map { case (ed, elev) => ed.stamp -> (ed.elev - elev).abs }
+
+                val minElevDiff = elevDiff.minBy(_._2)
+
+                // the less samples we have, the more
+                // with 2 samples we ignore 15 meters
+                // with 10 samples we ignore 75 meters
+                // with 20 samples we ignore 150 meters
+
+                val neverIgnoreElevCoef = 7.5
+                if (minElevDiff._2 > todo.length * neverIgnoreElevCoef) break
+
+                val locate = todo.indexWhere(_.stamp == minElevDiff._1)
+
+                todo = todo.patch(locate, Nil, 2)
+              }
+
             }
-
-            todo match {
-              case a0 :: a1 :: a2 :: a3 :: tail =>
-                // check if a0..a1..a2 is substantial enough in context of a0..a3
-                val a03elev = Seq(a0, a1, a2, a3).map(_.elev)
-                val min = a03elev.min
-                val max = a03elev.max
-
-                val diff = max - min
-                val midDiff = (a1.elev - a2.elev).abs
-                if (midDiff < diff / 4) {
-                  filterSlopes(a0 :: a3 :: tail, done)
-                } else {
-                  filterSlopes(a1 :: a2 :: a3 :: tail, a0 :: done)
-                }
-              case _ =>
-                done.reverse
-            }
-
+            todo
           }
 
           val slopes = removeMidSlopes(elevStream, Nil)
@@ -987,9 +989,7 @@ object Main {
           val totalElev = (slopesElev zip slopesElev.drop(1)).map { case (a,b) => (a-b).abs }.sum
           val minMaxDiff = max.elev - min.elev
 
-
-          // choose only the most significant ones
-          val filteredSlopes = filterSlopes(slopes, Nil)
+          val filteredSlopes = filterSlopes(slopes)
 
           filteredSlopes.map(x => ElevationEvent(x.elev, x.stamp))
         }
