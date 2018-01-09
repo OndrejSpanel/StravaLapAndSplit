@@ -13,9 +13,24 @@ body {
     border: 0;
     border-collapse: collapse;
 }
-.activityTable td, .activityTable th {
+.activityTable td {
     border: 1px solid black;
 }
+
+.activityTable th {
+    border: 1px solid black;
+    background-color:#fff; /* prevent headers transparent in a scrolling table */
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.aroundScrollingTable {
+    overflow: auto;
+    max-height: 350px;
+}
+
+
 .cellNoBorder {
     border: 0;
 }

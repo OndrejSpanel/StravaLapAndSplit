@@ -21,6 +21,7 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.xml.Elem
+import scala.util.control.Breaks._
 
 object Main {
 
@@ -449,7 +450,7 @@ object Main {
 
       val ees = events.map { e =>
         val action = e.defaultEvent
-        EditableEvent(action, id.secondsInActivity(e.stamp), distanceForTime(e.stamp), e.listTypes, e.originalEvent)
+        EditableEvent(action, id.secondsInActivity(e.stamp), distanceForTime(e.stamp), e.listTypes, e.originalEvent, e.description)
       }
 
       // consolidate mutliple events with the same time so that all of them have the same action
@@ -690,7 +691,23 @@ object Main {
               done
           }
         }
-        recurse(ps, Nil).reverse
+        var cleaned = recurse(ps, Nil).reverse
+
+        // if there are too many pauses, remove the shortest ones
+        breakable {
+          while (cleaned.nonEmpty) {
+            // find shortest pause
+            // 10 pauses: keep only pauses above 100 seconds
+            val limit = cleaned.size * 10
+
+            val minPause = cleaned.minBy(pauseDuration)
+
+            if (pauseDuration(minPause) > limit) break
+
+            cleaned = cleaned.patch(cleaned.indexOf(minPause), Nil, 1)
+          }
+        }
+        cleaned
       }
 
       val extractedPauses = mergedPauses.flatMap(p => extractPause(p._1, p._2))
@@ -767,7 +784,9 @@ object Main {
       // process existing events
       val inheritEvents = this.events.filterNot(_.isSplit)
 
-      val events = (BegEvent(id.startTime, findSport(id.startTime)) +: EndEvent(id.endTime) +: inheritEvents) ++ pauseEvents
+      val hillEvents = findHills(gps, distStream)
+
+      val events = (BegEvent(id.startTime, findSport(id.startTime)) +: EndEvent(id.endTime) +: inheritEvents) ++ pauseEvents ++ hillEvents
       val eventsByTime = events.sortBy(_.stamp)
 
       val sports = eventsByTime.map(x => findSport(x.stamp))
@@ -908,12 +927,102 @@ object Main {
     sport
   }
 
+  def findHills(latlng: DataStreamGPS, dist: DataStreamDist#DataMap): Seq[Event] = {
+    // find global min and max
+    if (latlng.stream.isEmpty) {
+      Seq.empty
+    } else {
+      val routeDist = DataStreamGPS.routeStreamFromDistStream(dist.toSeq)
+
+      case class ElevDist(stamp: ZonedDateTime, elev: Int, dist: Double)
+      val elevStream = latlng.stream.toList.flatMap { case (stamp, gps) =>
+        gps.elevation.map(e => ElevDist(stamp, e, routeDist(stamp)))
+      }
+      val max = elevStream.maxBy(_.elev)
+      val min = elevStream.minBy(_.elev)
+      val minimalHillHeight = 5
+      if (max.elev > min.elev + minimalHillHeight) {
+        val globalOnly = false
+
+        if (globalOnly) {
+          Seq(
+            ElevationEvent(max.elev, max.stamp),
+            ElevationEvent(min.elev, min.stamp)
+          )
+        } else {
+
+          // find all local extremes
+
+          // get rid of monotonous rise/descends
+          def removeMidSlopes(todo: List[ElevDist], done: List[ElevDist]): List[ElevDist] = {
+            todo match {
+              case a0 :: a1 :: a2 :: tail =>
+                if (a0.elev <= a1.elev && a1.elev <= a2.elev || a0.elev >= a1.elev && a1.elev >= a2.elev) {
+                  removeMidSlopes(a0 :: a2 :: tail, done)
+                } else {
+                  removeMidSlopes(a1 :: a2 :: tail, a0 :: done)
+                }
+              case _ =>
+                done.reverse
+            }
+          }
+
+
+          def filterSlopes(input: List[ElevDist]): List[ElevDist] = {
+
+            var todo = input
+            breakable {
+              while (todo.lengthCompare(2) > 0) {
+                // find min elevation difference
+                // removing this never shortens slope
+
+                val elevPairs = todo zip todo.drop(1).map(_.elev)
+                val elevDiff = elevPairs.map { case (ed, elev) => ed.stamp -> (ed.elev - elev).abs }
+
+                val minElevDiff = elevDiff.minBy(_._2)
+
+                // the less samples we have, the more
+                // with 2 samples we ignore 15 meters
+                // with 10 samples we ignore 75 meters
+                // with 20 samples we ignore 150 meters
+
+                val neverIgnoreElevCoef = 7.5
+                if (minElevDiff._2 > todo.length * neverIgnoreElevCoef) break
+
+                val locate = todo.indexWhere(_.stamp == minElevDiff._1)
+
+                todo = todo.patch(locate, Nil, 2)
+              }
+
+            }
+            todo
+          }
+
+          val slopes = removeMidSlopes(elevStream, Nil)
+
+          val slopesElev = slopes.map(_.elev)
+
+          val totalElev = (slopesElev zip slopesElev.drop(1)).map { case (a,b) => (a-b).abs }.sum
+          val minMaxDiff = max.elev - min.elev
+
+          val filteredSlopes = filterSlopes(slopes)
+
+          filteredSlopes.map(x => ElevationEvent(x.elev, x.stamp))
+        }
+      } else {
+        Seq.empty
+      }
+    }
+  }
+
   def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: Seq[ZonedDateTime], segments: Seq[Event]): ActivityEvents = {
 
     val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
 
     val events = (BegEvent(actId.startTime, actId.sportName) +: EndEvent(actId.endTime) +: cleanLaps.map(LapEvent)) ++ segments
+
     val eventsByTime = events.sortBy(_.stamp)
+
 
     ActivityEvents(actId, eventsByTime.toArray, act.dist, act.latlng, act.attributes)
   }
@@ -1023,9 +1132,10 @@ object Main {
         val segName = seg.path("name").textValue
         val segDuration = seg.path("elapsed_time").intValue
         val segPrivate = seg.path("segment").path("private").booleanValue
+        val segmentId = seg.path("segment").path("id").longValue
         Seq(
-          StartSegEvent(segName, segPrivate, segStartTime),
-          EndSegEvent(segName, segPrivate, segStartTime.withDurationAdded(segDuration, 1000))
+          StartSegEvent(segName, segPrivate, segmentId, segStartTime),
+          EndSegEvent(segName, segPrivate, segmentId, segStartTime.withDurationAdded(segDuration, 1000))
         )
       }
     }
@@ -1102,8 +1212,7 @@ object Main {
   }
 
 
-  def shortNameString(name: String): String = {
-    val maxLen = 30
+  def shortNameString(name: String, maxLen: Int = 30): String = {
     val ellipsis = "..."
     if (name.length < maxLen) name
     else {

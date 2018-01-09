@@ -64,13 +64,14 @@ trait ActivityRequestHandler extends UploadResults {
           </table>
           <hr/>
           <form id="activity_form" action="upload-strava" method="post">
+            <div class="aroundScrollingTable" id ="aroundScrollingTable">
           <table class="activityTable">
-            <tr>
+            <thead><tr>
               <th>Event</th>
               <th>Time</th>
               <th>km</th>
               <th>Action</th>
-            </tr>{val ees = activityData.editableEvents
+            </tr></thead><tbody>{val ees = activityData.editableEvents
             var lastSport = ""
             var lastTime = Option.empty[ZonedDateTime]
             val startTime = activityData.id.startTime
@@ -97,14 +98,19 @@ trait ActivityRequestHandler extends UploadResults {
               </tr>
               <input type="hidden" name="id" value={actId.filename}/>
             }}
-          </table></form>
+          </tbody></table>
+          </div>
+          </form>
           <div>
             <h3>Lap markers</h3>
-            <button id="isCheckedLap" onClick="lapsClearAll()">Unselect all</button><br />
-            <div id="wasUserLap"><button onClick="lapsSelectUser()">Select user laps</button><br /></div>
+            <button id="isCheckedLap" onClick="lapsClearAll()">Unselect all</button>
+            <br />
+            <button id="wasUserLap" onClick="lapsSelectUser()">Select user laps</button>
+            <button id="wasSegment" onClick="lapsSelectByPredicate(wasSegment)">Select segments</button>
+            <button id="wasHill" onClick="lapsSelectByPredicate(wasHill)">Select climbs/descends</button>
+            <br />
             <button id="wasLongPause" onClick="lapsSelectLongPauses()">Select long pauses</button>
-            <button id="wasAnyPause" onClick="lapsSelectAllPauses()">Select all pauses</button><br />
-            <div id="wasSegment"><button onClick="lapsSelectByPredicate(wasSegment)">Select segments</button></div>
+            <button id="wasAnyPause" onClick="lapsSelectAllPauses()">Select all pauses</button>
           </div>
           <div>
             <h3>Process</h3>
@@ -131,7 +137,7 @@ trait ActivityRequestHandler extends UploadResults {
     xml.Unparsed(
       s"""
       var id = "$actIdName";
-      // events are: ["split", 0, 0.0, "Run", "lap"] - kind, time, distance, sport, original kind
+      // events are: ["split", 0, 0.0, "Run", "lap", "Start"] - kind, time, distance, sport, original kind, description
       var events = [
         ${activityData.editableEvents.mkString("[", "],\n        [", "]")}
       ];
@@ -148,9 +154,10 @@ trait ActivityRequestHandler extends UploadResults {
       var time = event[1];
       var selectCheckbox = '<input type="checkbox" name="process_time=' + time + '"} checked=true></input>';
 
+      var splitPrefix = "split";
       var nextSplit = null;
       events.forEach( function(e) {
-        if (e[0].lastIndexOf("split", 0) === 0 && e[1] > time && nextSplit == null) {
+        if (e[0].lastIndexOf(splitPrefix, 0) === 0 && e[1] > time && nextSplit == null) {
           nextSplit = e;
         }
       });
@@ -158,12 +165,26 @@ trait ActivityRequestHandler extends UploadResults {
 
       var description = "???";
       if (nextSplit) {
-        var km = (nextSplit[2] - event[2])/1000;
+        var km = (nextSplit[2] - event[2]) / 1000;
         var duration = nextSplit[1] - event[1];
-        var paceSecKm = km > 0 ? duration / km : 0;
-        var paceMinKm = paceSecKm / 60;
-        var speedKmH = duration > 0 ? km * 3600 / duration : 0;
-        description = km.toFixed(2) + " km / " + paceMinKm.toFixed(2) + " min/km / " + speedKmH.toFixed(1) + " km/h";
+        var kmH = true;
+        var minKm = true;
+        var sport = event[0].substring(splitPrefix.length);
+        if (sport === "Run") kmH = false;
+        if (sport === "Ride") minKm = false;
+
+        var elements = [km.toFixed(1) + " km"];
+        if (minKm) {
+          var paceSecKm = km > 0 ? duration / km : 0;
+          var paceMinKm = paceSecKm / 60;
+          elements.push(paceMinKm.toFixed(2) + " min/km");
+        }
+        if (kmH) {
+          var speedKmH = duration > 0 ? km * 3600 / duration : 0;
+          elements.push(speedKmH.toFixed(1) + " km/h");
+        }
+
+        description = elements.join(" / ")
       }
       return selectCheckbox + description;
 
@@ -298,6 +319,10 @@ trait ActivityRequestHandler extends UploadResults {
       return e[4].lastIndexOf("segment") === 0 || e[4].lastIndexOf("private segment") === 0;
     }
 
+    function wasHill(e) {
+      return e[4] === "elevation";
+    }
+
     function lapsClearAll() {
       events.forEach(function(e) {
         if (isCheckedLap(e)){
@@ -354,6 +379,7 @@ trait ActivityRequestHandler extends UploadResults {
       showOrHide("wasLongPause", wasLongPause);
       showOrHide("wasAnyPause", wasAnyPause);
       showOrHide("wasSegment", wasSegment);
+      showOrHide("wasHill", wasHill);
     }
 
 
@@ -368,12 +394,13 @@ trait ActivityRequestHandler extends UploadResults {
 
     /**
      * @param {String} eTime time of the event
+     * @param {String} description description of the event
      * */
-    function getSelectHtml(eTime) {
+    function getSelectHtml(eTime, description) {
       var tableOption = document.getElementById(eTime);
       var html = tableOption.innerHTML;
       var value = tableOption.value;
-      return '<select onchange="changeEvent(this.options[this.selectedIndex].value,' + eTime + ')">' + html + '</select>';
+      return description + '<br /><select onchange="changeEvent(this.options[this.selectedIndex].value,' + eTime + ')">' + html + '</select>';
     }
     function mapEventData(events, route) {
       var markers = [];
@@ -423,7 +450,7 @@ trait ActivityRequestHandler extends UploadResults {
             "properties": {
               "title": e[0],
               "icon": "circle",
-              "description": getSelectHtml(e[1]),
+              "description": getSelectHtml(e[1], e[3]),
               "color": "#444",
               "opacity": 0.5
             }

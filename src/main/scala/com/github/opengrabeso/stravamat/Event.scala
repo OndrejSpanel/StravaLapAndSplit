@@ -28,8 +28,10 @@ object EventPriority {
   val seq: IndexedSeq[Class[_]] = IndexedSeq(
     classOf[BegEvent], classOf[EndEvent],
     classOf[SplitEvent],
+    classOf[StartSegEvent], classOf[EndSegEvent],
     classOf[PauseEvent], classOf[PauseEndEvent],
-    classOf[LapEvent]
+    classOf[LapEvent],
+    classOf[ElevationEvent]
   )
 
   def apply(e: Event) = {
@@ -100,11 +102,10 @@ case class PauseEvent(duration: Int, stamp: ZonedDateTime) extends Event {
   def defaultEvent = if (duration >= 30) "lap" else ""
   override def originalEvent = if (duration >= 50) "long pause" else "pause"
   def isSplit = false
-  def priority = 20
 }
 @SerialVersionUID(10)
 case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "Pause end"
   def defaultEvent = if (duration >= 50) "lap" else ""
   override def originalEvent = if (duration >= 50) "long pause end" else "pause end"
@@ -112,7 +113,7 @@ case class PauseEndEvent(duration: Int, stamp: ZonedDateTime) extends Event {
 }
 @SerialVersionUID(10)
 case class LapEvent(stamp: ZonedDateTime) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "Lap"
   def defaultEvent = "lap"
   def isSplit = false
@@ -120,7 +121,7 @@ case class LapEvent(stamp: ZonedDateTime) extends Event {
 
 @SerialVersionUID(10)
 case class EndEvent(stamp: ZonedDateTime) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "End"
   def defaultEvent = "end"
   def isSplit = true
@@ -130,7 +131,7 @@ case class EndEvent(stamp: ZonedDateTime) extends Event {
 
 @SerialVersionUID(10)
 case class BegEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "<b>Start</b>"
   def defaultEvent = s"split${sport.toString}"
   def isSplit = true
@@ -141,7 +142,7 @@ case class BegEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
 
 @SerialVersionUID(10)
 case class SplitEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
   def description = "Split"
   def defaultEvent = s"split${sport.toString}"
   def isSplit = true
@@ -150,38 +151,56 @@ case class SplitEvent(stamp: ZonedDateTime, sport: Event.Sport) extends Event {
 
 trait SegmentTitle {
   def isPrivate: Boolean
+  def segmentId: Long
   def name: String
-  def title = {
-    val segPrefix = if (isPrivate) "private " else ""
-    segPrefix + Main.shortNameString("segment " + name)
+  /**
+    * @param kind Start or End string expected
+    * */
+  def title(kind: String) = {
+    val segPrefix = if (isPrivate) "private segment " else "segment "
+    val segmentName = Main.shortNameString(name, 32 - segPrefix.length - kind.length)
+    val complete = if (segmentId != 0) {
+      kind + segPrefix + <a title={name} href={s"https://www.strava.com/segments/$segmentId"}>{segmentName}</a>
+    } else {
+      kind + segPrefix + segmentName
+    }
+    complete.capitalize
   }
 
 }
 
-@SerialVersionUID(10)
-case class StartSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
-  def description: String = s"Start $title"
+@SerialVersionUID(11)
+case class StartSegEvent(name: String, isPrivate: Boolean, segmentId: Long, stamp: ZonedDateTime) extends Event with SegmentTitle {
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
+  def description: String = title("")
   def defaultEvent = ""
   override def originalEvent = "segment beg"
   def isSplit = false
 }
-@SerialVersionUID(10)
-case class EndSegEvent(name: String, isPrivate: Boolean, stamp: ZonedDateTime) extends Event with SegmentTitle {
-  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset)) // Find some way to DRY
-  def description: String = s"End $title"
+@SerialVersionUID(11)
+case class EndSegEvent(name: String, isPrivate: Boolean, segmentId: Long, stamp: ZonedDateTime) extends Event with SegmentTitle {
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
+  def description: String = title("end ")
   def defaultEvent = ""
   override def originalEvent = "segment end"
   def isSplit = false
 }
 
+@SerialVersionUID(10)
+case class ElevationEvent(elev: Double, stamp: ZonedDateTime) extends Event {
+  def timeOffset(offset: Int) = copy(stamp = stamp.plusSeconds(offset))
+  def description: String = Main.shortNameString("Elevation " + elev.toInt + " m")
+  def defaultEvent = ""
+  override def originalEvent = "elevation"
+  def isSplit = false
+}
 
-case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind], var actionOriginal: String) {
+case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind], var actionOriginal: String, actionDescription: String) {
   override def toString: String = {
     val select = ActivityRequest.htmlSelectEvent(time.toString, kinds, action)
     val selectHtmlSingleLine = select.toString.lines.mkString(" ")
 
-    val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)} km $selectHtmlSingleLine"""
+    val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)}<br />""" + actionDescription
     s""""$action", $time, $km, '$description', "$actionOriginal""""
   }
 }
