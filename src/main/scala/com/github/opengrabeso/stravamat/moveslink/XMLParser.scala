@@ -62,7 +62,7 @@ object XMLParser {
     pbStream
   }
 
-  def parseXML(fileName: String, document: InputStream, maxHR: Int, timezone: String): Seq[Move] = {
+  def parseXML(fileName: String, document: InputStream, timezone: String): Seq[Move] = {
 
     import SAXParser._
     object parsed extends SAXParserWithGrammar {
@@ -157,24 +157,12 @@ object XMLParser {
 
     for (i <- parsed.moves.indices) yield {
       val mi = parsed.moves(i)
-      val validatedHR = mi.heartRateSamples.map { hr =>
-        if (hr > maxHR) None
-        else Some(hr)
-      }
-
-      // drop two samples around each None
-      // TODO: drop time region instead of a count, using Function.Window
-
-      val validatedCleanedHR = slidingRepeatHeadTail(validatedHR.toVector, 5) {
-        case s5 if !s5.contains(None) => s5(2)
-        case _ => None
-      }.toIndexedSeq
 
       val timeRange = 0 until mi.durationMs by 10000
 
       def timeMs(ms: Int) = mi.startTime.get.plusMillis(ms)
 
-      val timedMapHR = (timeRange zip validatedCleanedHR).collect { case (t, Some(s)) if s > 0 =>
+      val timedMapHR = (timeRange zip mi.heartRateSamples).collect { case (t, s) if s > 0 =>
         timeMs(t) -> s
       }
 

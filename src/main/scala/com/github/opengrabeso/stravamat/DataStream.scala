@@ -735,6 +735,7 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
 
 @SerialVersionUID(10L)
 class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream {
+
   type Item = Int
 
   def typeToLog = "HR"
@@ -745,6 +746,25 @@ class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends D
   def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 
   def optimize(eventTimes: EventTimes): DataStreamHR = DataStream.optimize(this)
+  def removeAboveMax(maxHR: Int): DataStreamHR = {
+
+    val validatedHR = stream.map { case (key, hr) =>
+      if (hr > maxHR) key -> None
+      else key -> Some(hr)
+    }
+
+    // drop two samples around each None
+    // TODO: drop time region instead of a count, using Function.Window
+
+    val validatedCleanedHR = slidingRepeatHeadTail(validatedHR.toVector, 5) {
+      case s5 if !s5.exists(_._2.isEmpty) => s5(2)
+      case s5 => s5(2)._1 -> None
+    }.flatMap { case (k, v) =>
+        v.map(k -> _)
+    }
+
+    pickData(SortedMap(validatedCleanedHR.toSeq:_*))
+  }
 }
 
 @SerialVersionUID(11L)

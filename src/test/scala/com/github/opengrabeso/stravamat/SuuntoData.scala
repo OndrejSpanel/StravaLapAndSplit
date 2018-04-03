@@ -16,7 +16,7 @@ trait SuuntoData {
     val doc = moveslink.XMLParser.skipMoveslinkDoctype(res)
     val localTimeZone = DateTimeZone.getDefault.toString
 
-    val move = moveslink.XMLParser.parseXML("quest.xml", doc, 240, localTimeZone)
+    val move = moveslink.XMLParser.parseXML("quest.xml", doc, localTimeZone)
     move
   }
 

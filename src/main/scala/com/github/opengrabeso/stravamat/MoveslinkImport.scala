@@ -81,10 +81,10 @@ object MoveslinkImport {
 
   }
 
-  def loadXml(fileName: String, digest: String, stream: InputStream, maxHR: Int, timezone: String): Seq[Move] = {
+  def loadXml(fileName: String, digest: String, stream: InputStream, timezone: String): Seq[Move] = {
     val doc = moveslink.XMLParser.skipMoveslinkDoctype(stream) // TODO: most likely not needed with aalto
 
-    moveslink.XMLParser.parseXML(fileName, doc, maxHR, timezone)
+    moveslink.XMLParser.parseXML(fileName, doc, timezone)
   }
 
 }

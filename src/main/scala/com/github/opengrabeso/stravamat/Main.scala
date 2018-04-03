@@ -869,7 +869,15 @@ object Main {
     }
 
     def applyFilters(auth: StravaAuthResult): ActivityEvents = {
-      copy(gps = gps.filterElevation(Settings(auth.userId).elevFilter))
+      val settings = Settings(auth.userId)
+      val elevFiltered = copy(gps = gps.filterElevation(Settings(auth.userId).elevFilter))
+      val hrFiltered = elevFiltered.attributes.map {
+        case hr: DataStreamHR =>
+          hr.removeAboveMax(settings.maxHR)
+        case attr =>
+          attr
+      }
+      copy(attributes = hrFiltered)
     }
 
     def unifySamples: ActivityEvents = {
