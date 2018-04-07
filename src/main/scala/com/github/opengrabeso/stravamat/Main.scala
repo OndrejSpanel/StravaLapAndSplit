@@ -377,8 +377,6 @@ object Main {
       // TODO: unique ID (merge or hash input ids?)
       val sportName = if (Event.sportPriority(id.sportName) < Event.sportPriority(that.id.sportName)) id.sportName else that.id.sportName
 
-      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, sportName, id.distance + that.id.distance)
-
       val eventsAndSports = (events ++ that.events).sortBy(_.stamp)
 
       // keep only first start Event, change other to Split only
@@ -442,6 +440,7 @@ object Main {
       val totals = offsetStreams.fold(offsetStreams.head) { case ((totGps, totDist, totAttr), (iGps, iDist, iAttr)) =>
         (totGps ++ iGps, totDist ++ iDist, mergeAttributes(totAttr, iAttr))
       }
+      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, sportName, dist.stream.last._2)
 
       ActivityEvents(mergedId, eventsAndSportsSorted, dist.pickData(totals._2), gps.pickData(totals._1), totals._3).unifySamples
     }
