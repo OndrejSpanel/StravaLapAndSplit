@@ -1,7 +1,7 @@
 package com.github.opengrabeso.stravamat
 package weather
 
-import org.joda.time.{DateTime => ZonedDateTime}
+import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 
 object GetTemperature {
 
@@ -10,13 +10,16 @@ object GetTemperature {
   }
 
 
-  def pickPositions(data: DataStreamGPS, distanceBetweenPoints: Double = 1000): DataStreamGPS = {
+  def pickPositions(data: DataStreamGPS, distanceBetweenPoints: Double = 1000, timeBetweenPoints: Double = 3600): DataStreamGPS = {
     // scan distance, each time going over
-    def pickPositionsRecurse(lastPoint: Option[GPSPoint], todo: List[(ZonedDateTime, GPSPoint)], done: List[ZonedDateTime]): List[ZonedDateTime] = {
+    def pickPositionsRecurse(lastPoint: Option[(ZonedDateTime,GPSPoint)], todo: List[(ZonedDateTime, GPSPoint)], done: List[ZonedDateTime]): List[ZonedDateTime] = {
       todo match {
         case head :: tail =>
-          if (lastPoint.forall(_.distance(head._2) > distanceBetweenPoints)) {
-            pickPositionsRecurse(Some(head._2), tail, head._1 :: done)
+          if (lastPoint.forall { case (time, pos) =>
+            pos.distance(head._2) > distanceBetweenPoints ||
+            Seconds.secondsBetween(time, head._1).getSeconds > timeBetweenPoints
+          }) {
+            pickPositionsRecurse(Some(head), tail, head._1 :: done)
           } else {
             pickPositionsRecurse(lastPoint, tail, done)
           }
