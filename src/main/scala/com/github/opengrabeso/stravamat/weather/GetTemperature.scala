@@ -2,11 +2,31 @@ package com.github.opengrabeso.stravamat
 package weather
 
 import org.joda.time.{Seconds, DateTime => ZonedDateTime}
+import shared.Util._
+
+import scala.collection.immutable.SortedMap
+import scala.util.Try
 
 object GetTemperature {
 
-  def apply(lon: Double, lat: Double): Double = {
-    20
+  def apply(lon: Double, lat: Double, time: ZonedDateTime): Option[Double] = {
+    // https://darksky.net/dev/docs
+    val secret = Main.secret.darkSkySecret
+    val timePar = time.toString().replace(".000", "")
+    val requestUrl = s"https://api.darksky.net/forecast/$secret/$lat,$lon,$timePar?units=si&exclude=hourly,daily,minutely,flags"
+
+    val request = RequestUtils.buildGetRequest(requestUrl)
+
+    Try {
+      val response = request.execute() // TODO: async ?
+
+      val responseJson = RequestUtils.jsonMapper.readTree(response.getContent)
+
+      val tempJson = responseJson.path("currently").path("temperature")
+
+      // TODO: cache darksky.net responses
+      tempJson.asDouble
+    }.toOption
   }
 
 
@@ -33,9 +53,10 @@ object GetTemperature {
   }
 
   def forPositions(temperaturePos: DataStreamGPS): DataStreamAttrib = {
-    val stream = temperaturePos.stream.mapValues { v =>
-      apply(v.longitude, v.latitude).toInt
+    val stream = temperaturePos.stream.toSeq.flatMap { case (k, v) =>
+      val result = apply(v.longitude, v.latitude, k).map(_.round.toInt)
+      result.map(k -> _)
     }
-    new DataStreamAttrib("temp", stream)
+    new DataStreamAttrib("temp", SortedMap(stream:_*))
   }
 }
