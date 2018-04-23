@@ -245,7 +245,7 @@ object Main {
   }
 
   object ActivityEvents {
-    def mergeAttributes(thisAttributes: Seq[DataStream], thatAttributes: Seq[DataStream]): Seq[DataStream] = {
+    def mergeAttributes(thisAttributes: Seq[DataStreamAttrib], thatAttributes: Seq[DataStreamAttrib]): Seq[DataStreamAttrib] = {
       val mergedAttr = thisAttributes.map { a =>
         val aThat = thatAttributes.find(_.streamType == a.streamType)
         val aStream = aThat.map(a.stream ++ _.stream).getOrElse(a.stream)
@@ -257,7 +257,7 @@ object Main {
   }
 
   @SerialVersionUID(10L)
-  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStreamAttrib]) {
     self =>
 
 
@@ -876,7 +876,13 @@ object Main {
         case attr =>
           attr
       }
-      copy(attributes = hrFiltered)
+      if (attributes.exists(_.attribName == "temp")) {
+        copy(attributes = hrFiltered)
+      } else {
+        val temperaturePos = weather.GetTemperature.pickPositions(elevFiltered.gps)
+        val temperature = weather.GetTemperature.forPositions(temperaturePos)
+        copy(attributes = temperature +: hrFiltered)
+      }
     }
 
     def unifySamples: ActivityEvents = {
@@ -908,7 +914,7 @@ object Main {
 
     def latlng: DataStreamGPS
 
-    def attributes: Seq[DataStream]
+    def attributes: Seq[DataStreamAttrib]
   }
 
   def detectSportBySpeed(stats: DataStreamGPS.SpeedStats, defaultName: Event.Sport) = {
