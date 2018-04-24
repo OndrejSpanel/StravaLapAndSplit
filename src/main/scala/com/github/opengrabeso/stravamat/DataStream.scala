@@ -746,7 +746,7 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
   override def optimize(eventTimes: EventTimes) = this // TODO: remove duplicity or very close laps
 }
 
-@SerialVersionUID(10L)
+@SerialVersionUID(11L)
 class DataStreamHR(stream: SortedMap[ZonedDateTime, Int]) extends DataStreamAttrib("HR", stream) {
 
   override def pickData(data: DataMap) = new DataStreamHR(data)
