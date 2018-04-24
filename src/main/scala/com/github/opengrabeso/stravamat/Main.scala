@@ -880,8 +880,12 @@ object Main {
         copy(attributes = hrFiltered)
       } else {
         val temperaturePos = weather.GetTemperature.pickPositions(elevFiltered.gps)
-        val temperature = weather.GetTemperature.forPositions(temperaturePos)
-        copy(attributes = temperature +: hrFiltered)
+        if (temperaturePos.nonEmpty) {
+          val temperature = weather.GetTemperature.forPositions(temperaturePos)
+          copy(attributes = temperature +: hrFiltered)
+        } else {
+          copy(attributes = hrFiltered)
+        }
       }
     }
 
