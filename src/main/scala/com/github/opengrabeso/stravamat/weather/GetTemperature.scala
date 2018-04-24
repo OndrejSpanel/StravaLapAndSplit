@@ -4,6 +4,7 @@ package weather
 import org.joda.time.{Seconds, DateTime => ZonedDateTime}
 import shared.Util._
 
+import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.util.Try
 
@@ -13,11 +14,16 @@ object GetTemperature {
     // https://darksky.net/dev/docs
     val secret = Main.secret.darkSkySecret
     val timePar = time.toString().replace(".000", "")
+
+    // consider round all parameters to increase chance of caching
+    // longitude / latitude on equator: one degree is about 110 km
+    // it may be only less with higher latitudes (85 km on 40deg) - see http://www.longitudestore.com/how-big-is-one-gps-degree.html
+
     val requestUrl = s"https://api.darksky.net/forecast/$secret/$lat,$lon,$timePar?units=si&exclude=hourly,daily,minutely,flags"
 
     val request = RequestUtils.buildGetRequest(requestUrl)
 
-    Try {
+    val result = Try {
       val response = request.execute() // TODO: async ?
 
       val responseJson = RequestUtils.jsonMapper.readTree(response.getContent)
@@ -26,16 +32,22 @@ object GetTemperature {
 
       // TODO: cache darksky.net responses
       tempJson.asDouble
-    }.toOption
+    }
+
+    result.failed.foreach { r =>
+      print(s"Weather failure ${r.getLocalizedMessage}")
+    }
+    result.toOption
   }
 
 
   def pickPositions(data: DataStreamGPS, distanceBetweenPoints: Double = 1000, timeBetweenPoints: Double = 3600): DataStreamGPS = {
     // scan distance, each time going over
+    @tailrec
     def pickPositionsRecurse(lastPoint: Option[(ZonedDateTime,GPSPoint)], todo: List[(ZonedDateTime, GPSPoint)], done: List[ZonedDateTime]): List[ZonedDateTime] = {
       todo match {
         case head :: tail =>
-          if (lastPoint.forall { case (time, pos) =>
+          if (tail.isEmpty || lastPoint.forall { case (time, pos) =>
             pos.distance(head._2) > distanceBetweenPoints ||
             Seconds.secondsBetween(time, head._1).getSeconds > timeBetweenPoints
           }) {
