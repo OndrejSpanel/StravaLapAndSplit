@@ -62,6 +62,11 @@ object FitExport {
       new GPSEvent(t, gps)
     }
 
+
+    val attributesWithLast = events.attributes.map { attr =>
+      attr.stream
+    }
+
     val attributesAsEvents = events.attributes.flatMap { attrib =>
       val createAttribEvent: (RecordMesg, Int) => Unit = (msg, value) =>
         attrib match {
@@ -75,7 +80,17 @@ object FitExport {
             }
           case _ => ???
         }
-      attrib.stream.map { case (t, data) =>
+      val attribStream = if (false) {
+        // attempt to fix Strava not showing temperature: make sure each attribute is present for the last GPS value
+        val lastGPSTime = events.gps.stream.lastKey
+        if (attrib.stream contains lastGPSTime) {
+          attrib.stream
+        } else {
+          attrib.stream ++ attrib.stream.until(lastGPSTime).lastOption.map(lastGPSTime -> _._2)
+        }
+      } else attrib.stream
+
+      attribStream.map { case (t, data) =>
         new AttribEvent(t, data.asInstanceOf[Int], createAttribEvent)
       }
     }
