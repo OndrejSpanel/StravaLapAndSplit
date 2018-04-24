@@ -41,7 +41,7 @@ object GetTemperature {
   }
 
 
-  def pickPositions(data: DataStreamGPS, distanceBetweenPoints: Double = 1000, timeBetweenPoints: Double = 3600): DataStreamGPS = {
+  def pickPositions(data: DataStreamGPS, distanceBetweenPoints: Double = 5000, timeBetweenPoints: Double = 3600, altBetweenPoints: Double = 200): DataStreamGPS = {
     // scan distance, each time going over
     @tailrec
     def pickPositionsRecurse(lastPoint: Option[(ZonedDateTime,GPSPoint)], todo: List[(ZonedDateTime, GPSPoint)], done: List[ZonedDateTime]): List[ZonedDateTime] = {
@@ -49,6 +49,7 @@ object GetTemperature {
         case head :: tail =>
           if (tail.isEmpty || lastPoint.forall { case (time, pos) =>
             pos.distance(head._2) > distanceBetweenPoints ||
+            pos.elevation.exists(elevP => head._2.elevation.exists(elevH => (elevH - elevP).abs > altBetweenPoints )) ||
             Seconds.secondsBetween(time, head._1).getSeconds > timeBetweenPoints
           }) {
             pickPositionsRecurse(Some(head), tail, head._1 :: done)
