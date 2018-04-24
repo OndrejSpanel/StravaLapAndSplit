@@ -36,19 +36,19 @@ object Main {
 
   def digest(str: String): String = digest(str.getBytes)
 
-  case class SecretResult(appId: String, appSecret: String, mapboxToken: String, error: String)
+  case class SecretResult(appId: String, appSecret: String, mapboxToken: String, darkSkySecret: String, error: String)
 
   def secret: SecretResult = {
     val filename = "/secret.txt"
     try {
       val secretStream = Main.getClass.getResourceAsStream(filename)
       val lines = scala.io.Source.fromInputStream(secretStream).getLines
-      SecretResult(lines.next(), lines.next(), lines.next(), "")
+      SecretResult(lines.next(), lines.next(), lines.next(), lines.next(), "")
     } catch {
       case _: NullPointerException => // no file found
-        SecretResult("", "", "", s"Missing $filename, app developer should check README.md")
+        SecretResult("", "", "", "", s"Missing $filename, app developer should check README.md")
       case _: Exception =>
-        SecretResult("", "", "", s"Bad $filename, app developer should check README.md")
+        SecretResult("", "", "", "", s"Bad $filename, app developer should check README.md")
     }
   }
 
@@ -60,7 +60,7 @@ object Main {
   def stravaAuth(code: String): StravaAuthResult = {
 
     val json = new util.HashMap[String, String]()
-    val SecretResult(clientId, clientSecret, mapboxToken, _) = secret
+    val SecretResult(clientId, clientSecret, mapboxToken, _, _) = secret
 
     json.put("client_id", clientId)
     json.put("client_secret", clientSecret)
@@ -245,7 +245,7 @@ object Main {
   }
 
   object ActivityEvents {
-    def mergeAttributes(thisAttributes: Seq[DataStream], thatAttributes: Seq[DataStream]): Seq[DataStream] = {
+    def mergeAttributes(thisAttributes: Seq[DataStreamAttrib], thatAttributes: Seq[DataStreamAttrib]): Seq[DataStreamAttrib] = {
       val mergedAttr = thisAttributes.map { a =>
         val aThat = thatAttributes.find(_.streamType == a.streamType)
         val aStream = aThat.map(a.stream ++ _.stream).getOrElse(a.stream)
@@ -257,7 +257,7 @@ object Main {
   }
 
   @SerialVersionUID(10L)
-  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream]) {
+  case class ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStreamAttrib]) {
     self =>
 
 
@@ -876,7 +876,17 @@ object Main {
         case attr =>
           attr
       }
-      copy(attributes = hrFiltered)
+      if (attributes.exists(_.attribName == "temp")) {
+        copy(attributes = hrFiltered)
+      } else {
+        val temperaturePos = weather.GetTemperature.pickPositions(elevFiltered.gps)
+        if (temperaturePos.nonEmpty) {
+          val temperature = weather.GetTemperature.forPositions(temperaturePos)
+          copy(attributes = temperature +: hrFiltered)
+        } else {
+          copy(attributes = hrFiltered)
+        }
+      }
     }
 
     def unifySamples: ActivityEvents = {
@@ -908,7 +918,7 @@ object Main {
 
     def latlng: DataStreamGPS
 
-    def attributes: Seq[DataStream]
+    def attributes: Seq[DataStreamAttrib]
   }
 
   def detectSportBySpeed(stats: DataStreamGPS.SpeedStats, defaultName: Event.Sport) = {

@@ -151,6 +151,19 @@ sealed abstract class DataStream extends Serializable {
     pickData(subData)
   }
 
+  def sliceKeepPrevious(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStream = {
+    // include last previous value of the attribute if available
+    // as Strava works this way: until a new attribute value is provided, the previous one is assumed to be valid (verified for HR and temperature)
+    val subData = stream.from(timeBeg).to(timeEnd)
+    val prevData = stream.to(timeBeg)
+    val withLeadValue = if (subData.contains(timeBeg) || prevData.isEmpty) {
+      subData
+    } else {
+      subData + (timeBeg -> prevData.head._2)
+    }
+    pickData(withLeadValue)
+  }
+
   def timeOffset(bestOffset: Int): DataStream = {
     val adjusted = stream.map{
       case (k,v) =>
@@ -734,18 +747,14 @@ class DataStreamLap(override val stream: SortedMap[ZonedDateTime, String]) exten
 }
 
 @SerialVersionUID(10L)
-class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream {
-
-  type Item = Int
-
-  def typeToLog = "HR"
+class DataStreamHR(stream: SortedMap[ZonedDateTime, Int]) extends DataStreamAttrib("HR", stream) {
 
   override def pickData(data: DataMap) = new DataStreamHR(data)
   override def isAlmostEmpty = false
   override def isNeeded = false
-  def dropAlmostEmpty: DataStreamHR = this // TODO: drop
+  override def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 
-  def optimize(eventTimes: EventTimes): DataStreamHR = DataStream.optimize(this)
+  override def optimize(eventTimes: EventTimes): DataStreamHR = DataStream.optimize(this)
   def removeAboveMax(maxHR: Int): DataStreamHR = {
 
     val validatedHR = stream.map { case (key, hr) =>
@@ -771,7 +780,7 @@ class DataStreamHR(override val stream: SortedMap[ZonedDateTime, Int]) extends D
 class DataStreamAttrib(val attribName: String, override val stream: SortedMap[ZonedDateTime, Int]) extends DataStream {
   type Item = Int
 
-  def typeToLog = "attribName"
+  def typeToLog = attribName
 
   override def pickData(data: DataMap) = new DataStreamAttrib(attribName, data)
   override def isAlmostEmpty = false
@@ -779,6 +788,14 @@ class DataStreamAttrib(val attribName: String, override val stream: SortedMap[Zo
   def dropAlmostEmpty: DataStreamAttrib = this // TODO: drop
 
   def optimize(eventTimes: EventTimes): DataStreamAttrib = DataStream.optimize(this)
+
+  override def timeOffset(bestOffset: Int): DataStreamAttrib = super.timeOffset(bestOffset).asInstanceOf[DataStreamAttrib]
+  override def span(time: ZonedDateTime): (DataStreamAttrib, DataStreamAttrib) = super.span(time).asInstanceOf[(DataStreamAttrib, DataStreamAttrib)]
+  override def slice(timeBeg: ZonedDateTime, timeEnd: ZonedDateTime): DataStreamAttrib = {
+    super.sliceKeepPrevious(timeBeg, timeEnd).asInstanceOf[DataStreamAttrib]
+  }
+  override def samplesAt(times: List[ZonedDateTime]): DataStreamAttrib = super.samplesAt(times).asInstanceOf[DataStreamAttrib]
+
 }
 
 
