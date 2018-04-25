@@ -17,7 +17,7 @@ object Function {
     def duration = Seconds.secondsBetween(begTime, endTime).getSeconds
     def distance = if (isEmpty) 0.0 else totalDistance - data.head._2 // first distance was before the first timestamp
     def speed = if (duration > 0) distance / duration else 0.0
-    def keepSize = if (duration <= durationSec) this else Window(data.tail, totalDistance - data.head._2)(durationSec)
+    def keepSize: Window = if (duration <= durationSec || data.size < 2) this else Window(data.tail, totalDistance - data.head._2)(durationSec).keepSize
     def :+ (item: (ZonedDateTime, Double)) = Window(data :+ item, totalDistance + item._2)(durationSec)
   }
 
@@ -30,9 +30,8 @@ object Function {
     } else {
       val newWindow = (prev :+ todo.head).keepSize
       val duration = newWindow.duration
-      val windowSpeed = prev.speed
-      val interval = Seconds.secondsBetween(prev.endTime, todo.head._1).getSeconds
-      val smoothDist = if (duration + interval > 0) (windowSpeed * duration + todo.head._2) / (duration + interval) else 0
+      //val interval = Seconds.secondsBetween(prev.endTime, todo.head._1).getSeconds
+      val smoothDist = newWindow.speed
       smoothingRecurse((todo.head._1 -> smoothDist) +: done, newWindow, todo.tail)
     }
   }

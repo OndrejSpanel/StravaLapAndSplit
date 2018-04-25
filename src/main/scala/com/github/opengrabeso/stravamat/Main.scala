@@ -573,7 +573,7 @@ object Main {
       // select samples which are slow and the following is also slow (can be in the middle of the pause)
       type PauseStream = List[(ZonedDateTime, ZonedDateTime, Double)]
       val pauseSpeeds: PauseStream = (speedStream zip speedStream.drop(1)).collect {
-        case ((t1, s1), (t2, s2)) if s1 < speedPauseMax && s2< speedPauseMax => (t1, t2, s1)
+        case ((t1, _), (t2, s)) if s < speedPauseMax => (t1, t2, s)
       }.toList
       // aggregate pause intervals - merge all
       def mergePauses(pauses: PauseStream, done: PauseStream): PauseStream = {
