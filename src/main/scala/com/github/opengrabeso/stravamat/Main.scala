@@ -869,7 +869,13 @@ object Main {
 
     def applyFilters(auth: StravaAuthResult): ActivityEvents = {
       val settings = Settings(auth.userId)
-      val elevFiltered = copy(gps = gps.filterElevation(Settings(auth.userId).elevFilter))
+      val useElevFilter = id.id match {
+        case _: StravaId =>
+          false
+        case _ =>
+          true
+      }
+      val elevFiltered = if (useElevFilter) copy(gps = gps.filterElevation(Settings(auth.userId).elevFilter)) else this
       val hrFiltered = elevFiltered.attributes.map {
         case hr: DataStreamHR =>
           hr.removeAboveMax(settings.maxHR)
