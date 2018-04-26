@@ -171,6 +171,16 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
       sources(notBefore) ++ <h2>Activities</h2>
       <form id="process-form" action="process" method="post" enctype="multipart/form-data">
         <table class="activities">
+          <tr>
+            <th></th>
+            <th align="left">Time</th>
+            <th align="left">Type</th>
+            <th align="left">Distance</th>
+            <th align="left">Duration</th>
+            <th align="left">Corresponding Strava activity</th>
+            <th align="left">Data</th>
+            <th align="left">Source</th>
+          </tr>
           {// find most recent Strava activity
           val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
 
@@ -181,6 +191,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
             // once any activity is present on Strava, do not offer upload by default any more
             // (if some earlier is not present, it was probably already uploaded and deleted)
             <tr>
+
               <td>{htmlActivityAction(act.id, !ignored)}</td>
               <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
               <td>

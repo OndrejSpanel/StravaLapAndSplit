@@ -14,22 +14,31 @@ trait LoadFromStrava extends HtmlPart with ActivitiesTable {
     val activities = Main.stravaActivitiesNotStaged(auth)
     super.bodyPart(req, auth) ++
     <table class="activities">
-    {for (act <- activities) yield {
       <tr>
-        <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
-        <td>{act.sportName}</td>
-        <td>{Main.displayDistance(act.distance)}</td>
-        <td>{Main.displaySeconds(act.duration)}</td>
-        <td>{act.hrefLink}</td>
-        <td>{act.id.stravaId}</td>
-        <td>
-          <form action="activityFromStrava" method="get">
-            <input type="hidden" name="activityId" value={act.id.stravaId}/>
-            <input type="submit" value=">>"/>
-          </form>
-        </td>
+        <th align="left">Time</th>
+        <th align="left">Type</th>
+        <th align="left">Distance</th>
+        <th align="left">Duration</th>
+        <th align="left">View on Strava</th>
+        <th align="left">Strava Id</th>
+        <th align="left">Click to edit</th>
       </tr>
-    }}
+      {for (act <- activities) yield {
+        <tr>
+          <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
+          <td>{act.sportName}</td>
+          <td>{Main.displayDistance(act.distance)}</td>
+          <td>{Main.displaySeconds(act.duration)}</td>
+          <td>{act.hrefLink}</td>
+          <td>{act.id.stravaId}</td>
+          <td>
+            <form action="activityFromStrava" method="get">
+              <input type="hidden" name="activityId" value={act.id.stravaId}/>
+              <input type="submit" value=">>"/>
+            </form>
+          </td>
+        </tr>
+      }}
     </table> ++ {cond(activities.nonEmpty) {
       <form action="activityFromStrava" method="get">
         <p>Other activity Id:

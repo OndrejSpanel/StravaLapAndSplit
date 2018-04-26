@@ -126,7 +126,7 @@ object Main {
     def hrefLink: Elem = {
       id match {
         case StravaId(num) =>
-          <a href={s"https://www.strava.com/activities/$num"}>{shortName}</a>
+          <a href={s"https://www.strava.com/activities/$num"}><font color="#FC4C02">{shortName}</font></a>
         case _ =>
           <div>{id.toReadableString}</div>
       }
