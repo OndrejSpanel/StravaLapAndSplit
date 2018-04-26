@@ -95,7 +95,7 @@ object Start extends App {
   }
 
   private val stravamatLocalUrl = "http://localhost:8080"
-  private val stravamatRemoteUrl = "https://stravamat.appspot.com"
+  private val stravamatRemoteUrl = "https://stravimat.appspot.com"
   private var useLocal = false
   private lazy val stravaMatUrl = if (useLocal) stravamatLocalUrl else stravamatRemoteUrl
 

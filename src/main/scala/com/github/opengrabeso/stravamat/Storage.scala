@@ -15,7 +15,7 @@ object Storage extends FileStore {
 
   // from https://cloud.google.com/appengine/docs/java/googlecloudstorageclient/read-write-to-cloud-storage
 
-  final val bucket = "stravamat.appspot.com"
+  final val bucket = "stravimat.appspot.com"
 
   // full name combined - namespace, filename, user Id
   object FullName {
