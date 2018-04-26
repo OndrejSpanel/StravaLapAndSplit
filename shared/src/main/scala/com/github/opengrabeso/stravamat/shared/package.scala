@@ -1,6 +1,6 @@
 package com.github.opengrabeso.stravamat
 
 package object shared {
-  val appName: String = "Stravamat"
-  val gitHubName: String = "Stravamat"
+  val appName: String = "Stravimat"
+  val gitHubName: String = "Stravimat"
 }
