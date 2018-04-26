@@ -1,4 +1,4 @@
-package com.github.opengrabeso.stravamat
+package com.github.opengrabeso.stravimat
 
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}

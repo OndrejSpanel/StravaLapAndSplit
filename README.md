@@ -1,4 +1,4 @@
-Stravamat
+Stravimat
 =========
 
 The application allows spliting Strava activities and editing lap information in them. One particular use

@@ -1,4 +1,4 @@
-package com.github.opengrabeso.stravamat
+package com.github.opengrabeso.stravimat
 
 import org.scalatest.{FlatSpec, Matchers}
 

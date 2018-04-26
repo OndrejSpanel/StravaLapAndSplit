@@ -1,4 +1,4 @@
-package com.github.opengrabeso.stravamat.mapbox
+package com.github.opengrabeso.stravimat.mapbox
 
 import org.scalatest.FunSuite
 

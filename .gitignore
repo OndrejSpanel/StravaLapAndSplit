@@ -20,5 +20,6 @@
 /target/
 /project/target/
 /project/project/
+/shared/target/
 
 /src/main/resources/secret.txt

@@ -1,4 +1,4 @@
-package com.github.opengrabeso.stravamat.fit
+package com.github.opengrabeso.stravimat.fit
 
 import java.io.{FileOutputStream, InputStream, PrintStream}
 

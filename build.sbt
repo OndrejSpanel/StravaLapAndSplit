@@ -36,7 +36,7 @@ lazy val pushUploader = (project in file("push-uploader"))
 
 
 
-lazy val stravamat = (project in file("."))
+lazy val stravimat = (project in file("."))
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .dependsOn(shared)
   .settings(
