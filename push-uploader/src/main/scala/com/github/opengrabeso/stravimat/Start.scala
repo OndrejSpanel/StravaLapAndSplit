@@ -94,17 +94,17 @@ object Start extends App {
     Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS)))
   }
 
-  private val stravamatLocalUrl = "http://localhost:8080"
-  private val stravamatRemoteUrl = "https://stravimat.appspot.com"
+  private val stravimatLocalUrl = "http://localhost:8080"
+  private val stravimatRemoteUrl = "https://stravimat.appspot.com"
   private var useLocal = false
-  private lazy val stravaMatUrl = if (useLocal) stravamatLocalUrl else stravamatRemoteUrl
+  private lazy val stravimatUrl = if (useLocal) stravimatLocalUrl else stravimatRemoteUrl
 
-  private def checkLocalStravamat(): Boolean = {
+  private def checkLocalStravimat(): Boolean = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val localTest = true
 
-    val localRequest = Http().singleRequest(HttpRequest(uri = stravamatLocalUrl + "/ping")).map(_.discardEntityBytes())
+    val localRequest = Http().singleRequest(HttpRequest(uri = stravimatLocalUrl + "/ping")).map(_.discardEntityBytes())
 
     // try communicating with the local Stravimat, if not responding, use the remote one
     useLocal = localTest && Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS))).isSuccess
@@ -237,14 +237,14 @@ object Start extends App {
     /*
     Authentication dance
     - request Stravimat to perform authentication, including user selection
-     - http://stravamat/push-start?port=<XXXX>
+     - http://stravimat/push-start?port=<XXXX>
     - Stravimat knowns or gets the Strava auth token (user id hash)
     - it generates a Stravimat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt>
      - this is captured by authHandler
-    - we receive the token and redirect to a page http://stravamat/push-push?token=<XXXX>
+    - we receive the token and redirect to a page http://stravimat/push-push?token=<XXXX>
     */
     val sessionId = System.currentTimeMillis()
-    val startPushUrl = s"$stravaMatUrl/push-start?port=$serverPort&session=$sessionId"
+    val startPushUrl = s"$stravimatUrl/push-start?port=$serverPort&session=$sessionId"
     println(s"Starting browser $startPushUrl")
     Desktop.getDesktop.browse(new URL(startPushUrl).toURI)
   }
@@ -257,7 +257,7 @@ object Start extends App {
     val sinceTime = new ZonedDateTime(since)
     authData = Some(AuthData(userId, sinceTime, sessionId))
     authDone.countDown()
-    val doPushUrl = s"$stravaMatUrl/push-do"
+    val doPushUrl = s"$stravimatUrl/push-do"
     redirect(doPushUrl, StatusCodes.Found)
   }
 
@@ -356,7 +356,7 @@ object Start extends App {
 
     val req = Http().singleRequest(
       HttpRequest(
-        uri = s"$stravaMatUrl/push-put-start?$requestParams&total-files=${sortedFiles.size}",
+        uri = s"$stravimatUrl/push-put-start?$requestParams&total-files=${sortedFiles.size}",
         method = HttpMethods.POST,
         headers = List(sessionCookie)
       )
@@ -380,7 +380,7 @@ object Start extends App {
 
       val req = Http().singleRequest(
         HttpRequest(
-          uri = s"$stravaMatUrl/push-put-digest?$requestParams&path=$f",
+          uri = s"$stravimatUrl/push-put-digest?$requestParams&path=$f",
           method = HttpMethods.POST,
           headers = List(sessionCookie),
           entity = HttpEntity(digest)
@@ -396,7 +396,7 @@ object Start extends App {
             val bodyBytes = gzipEncoded(fileBytes)
             val uploadReq = Http().singleRequest(
               HttpRequest(
-                uri = s"$stravaMatUrl/push-put?$requestParams&path=$f&digest=$digest",
+                uri = s"$stravimatUrl/push-put?$requestParams&path=$f&digest=$digest",
                 method = HttpMethods.POST,
                 headers = List(sessionCookie) ++ encodingHeader,
                 entity = HttpEntity(contentType, bodyBytes)
@@ -439,7 +439,7 @@ object Start extends App {
     icon.foreach(Tray.changeState(_, state))
   }
 
-  checkLocalStravamat()
+  checkLocalStravimat()
 
   private val serverInfo = startHttpServer(serverPort)
 

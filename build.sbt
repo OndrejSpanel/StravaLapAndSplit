@@ -2,7 +2,7 @@ import sbt.Keys.scalacOptions
 
 lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
-  version := "0.1.8-alpha",
+  version := "0.1.9-beta",
   scalaVersion := "2.11.12",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
@@ -28,7 +28,7 @@ lazy val pushUploader = (project in file("push-uploader"))
   .enablePlugins(sbtassembly.AssemblyPlugin)
   .dependsOn(shared)
   .settings(
-    name := "StravamatStart",
+    name := "StravimatStart",
     commonSettings,
     libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
     libraryDependencies ++= commonLibs
@@ -42,7 +42,7 @@ lazy val stravimat = (project in file("."))
   .settings(
     appengineSettings,
 
-    name := "Stravamat",
+    name := "Stravimat",
 
     commonSettings,
 
