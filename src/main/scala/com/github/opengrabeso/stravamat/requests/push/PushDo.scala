@@ -13,7 +13,7 @@ object PushDo extends DefineRequest("/push-do") with ChangeSettings {
       // display push progress, once done, let user to process it
       <html>
         <head>
-          {headPrefix}<title>Stravamat - uploading Suunto files</title>
+          {headPrefix}<title>{shared.appName} - uploading Suunto files</title>
           <script src="static/ajaxUtils.js"></script>
           <script src="static/jquery-3.2.1.min.js"></script>
         </head>

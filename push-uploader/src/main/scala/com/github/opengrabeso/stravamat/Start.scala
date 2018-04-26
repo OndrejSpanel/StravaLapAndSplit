@@ -90,7 +90,7 @@ object Start extends App {
 
     val localRequest = Http().singleRequest(HttpRequest(uri = localServerUrl)).map(_.discardEntityBytes())
 
-    // try communicating with the local Stravamat, if not responding, use the remote one
+    // try communicating with the local Stravimat, if not responding, use the remote one
     Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS)))
   }
 
@@ -106,7 +106,7 @@ object Start extends App {
 
     val localRequest = Http().singleRequest(HttpRequest(uri = stravamatLocalUrl + "/ping")).map(_.discardEntityBytes())
 
-    // try communicating with the local Stravamat, if not responding, use the remote one
+    // try communicating with the local Stravimat, if not responding, use the remote one
     useLocal = localTest && Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS))).isSuccess
     useLocal
   }
@@ -139,7 +139,7 @@ object Start extends App {
         val imageSized = image.getScaledInstance(iconSize.width, iconSize.height, Image.SCALE_SMOOTH)
 
 
-        val trayIcon = new TrayIcon(imageSized, "Stravamat")
+        val trayIcon = new TrayIcon(imageSized, shared.appName)
 
         import java.awt.event.MouseAdapter
 
@@ -196,7 +196,7 @@ object Start extends App {
     private def changeStateImpl(icon: TrayIcon, s: String): Unit = {
       assert(SwingUtilities.isEventDispatchThread)
       state = s
-      val title = "Stravamat"
+      val title = shared.appName
       val text = if (state.isEmpty) title else title + ": " + state
       icon.setToolTip(text)
     }
@@ -236,10 +236,10 @@ object Start extends App {
   private def startBrowser() = {
     /*
     Authentication dance
-    - request Stravamat to perform authentication, including user selection
+    - request Stravimat to perform authentication, including user selection
      - http://stravamat/push-start?port=<XXXX>
-    - Stravamat knowns or gets the Strava auth token (user id hash)
-    - it generates a Stravamat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt>
+    - Stravimat knowns or gets the Strava auth token (user id hash)
+    - it generates a Stravimat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt>
      - this is captured by authHandler
     - we receive the token and redirect to a page http://stravamat/push-push?token=<XXXX>
     */
@@ -253,7 +253,7 @@ object Start extends App {
   def authHandler(userId: String, since: String, sessionId: String) = {
     // session is authorized, we can continue sending the data
     serverInfo.stop()
-    println(s"Auth done - Stravamat user id $userId, session $sessionId")
+    println(s"Auth done - ${shared.appName} user id $userId, session $sessionId")
     val sinceTime = new ZonedDateTime(since)
     authData = Some(AuthData(userId, sinceTime, sessionId))
     authDone.countDown()

@@ -32,7 +32,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
     headPrefix ++
     <title>
-      Stravamat - {title}
+      {shared.appName} - {title}
     </title>
     <script src="static/ajaxUtils.js"></script>
     <script src="static/timeUtils.js"></script>
@@ -216,7 +216,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
 
       </form>
       <button class="onCheckedAction" id="upload_button" onclick="submitProcess()">Process...</button>
-      <button class="onCheckedAction" onclick="submitDelete()">Delete from Stravamat</button>
+      <button class="onCheckedAction" onclick="submitDelete()">Delete from {shared.appName}</button>
       <button class="onCheckedAction" onclick="submitEdit()">Merge and edit...</button> ++
       <button id ="uncheckAll_button" onclick="uncheckAll()">Uncheck all</button> ++
       uploadResultsHtml() ++

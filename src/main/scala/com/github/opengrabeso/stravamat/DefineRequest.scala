@@ -71,7 +71,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
           <table>
             <tr>
               <td>
-                <a href="/">Stravamat</a>
+                <a href="/">{shared.appName}</a>
               </td>
             </tr>
             <tr>
@@ -101,7 +101,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       <a href="http://labs.strava.com/" id="powered_by_strava" rel="nofollow">
         <img align="left" src="static/api_logo_pwrdBy_strava_horiz_white.png" style="max-height:46px"/>
       </a>
-      <p style="color:#fff"><a href="https://darksky.net/poweredby/" style="color:#fff">Powered by Dark Sky</a> © 2016 - 2018 <a href="https://github.com/OndrejSpanel/Stravamat" style="color:inherit">Ondřej Španěl</a></p>
+      <p style="color:#fff"><a href="https://darksky.net/poweredby/" style="color:#fff">Powered by Dark Sky</a> © 2016 - 2018 <a href={s"https://github.com/OndrejSpanel/${shared.gitHubName}"} style="color:inherit">Ondřej Španěl</a></p>
       <div/>
     </div>
   }
@@ -154,7 +154,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     <html>
       <head>
         {headPrefix}
-        <title>Stravamat</title>
+        <title>{shared.appName}</title>
       </head>
       <body>
         {
@@ -171,12 +171,12 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
             if (showSuuntoUploadInstructions) {
               <h4>Suunto Upload</h4>
                 <p>
-                If you want to upload Suunto files, start the Stravamat Start application
+                If you want to upload Suunto files, start the {shared.appName} Start application
                 which will open a new web page with the upload progress.
               </p>
               <p>
                 The application can be downloaded from
-                <a href="https://github.com/OndrejSpanel/Stravamat/releases">GitHub Stravamat Releases page</a>
+                <a href={s"https://github.com/OndrejSpanel/${shared.gitHubName}/releases"}>GitHub {shared.gitHubName} Releases page</a>
                 .
               </p>
             } else NodeSeq.Empty
