@@ -164,6 +164,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
           else $("#uncheckAll_button").hide();
           if (checked > 0 ) $(".onCheckedAction").show();
           else $(".onCheckedAction").hide();
+          $("#merge_button").html(checked > 1 ? "Merge and edit ..." : "Edit ...");
         }
         """
     )}
@@ -217,7 +218,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
       </form>
       <button class="onCheckedAction" id="upload_button" onclick="submitProcess()">Send to Strava</button>
       <button class="onCheckedAction" onclick="submitDelete()">Delete from {shared.appName}</button>
-      <button class="onCheckedAction" onclick="submitEdit()">Merge and edit...</button> ++
+      <button id ="merge_button" class="onCheckedAction" onclick="submitEdit()">Merge and edit...</button> ++
       <button id ="uncheckAll_button" onclick="uncheckAll()">Uncheck all</button> ++
       uploadResultsHtml() ++
       <script>{xml.Unparsed(
