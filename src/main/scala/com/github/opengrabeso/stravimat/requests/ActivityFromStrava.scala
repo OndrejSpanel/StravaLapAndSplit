@@ -19,7 +19,7 @@ object ActivityFromStrava extends DefineRequest("/activityFromStrava") with Acti
 
       storeActivity(Main.namespace.stage, activityData, auth.userId)
 
-      resp.redirect(s"/selectActivity")
+      resp.redirect(s"/staging")
       Nil
     }
   }
