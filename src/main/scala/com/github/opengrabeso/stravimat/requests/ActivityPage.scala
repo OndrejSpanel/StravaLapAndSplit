@@ -112,12 +112,17 @@ trait ActivityRequestHandler extends UploadResults {
             <button id="wasLongPause" onClick="lapsSelectLongPauses()">Select long pauses</button>
             <button id="wasAnyPause" onClick="lapsSelectAllPauses()">Select all pauses</button>
           </div>
-          <div>
+          <div id="div_process">
             <h3>Process</h3>
             <button id="process_button" onclick="submitProcess()">Send selected to Strava</button>
             <button id="download_button" onclick="submitDownload()">Download as files</button>
             <button id="merge_button" onclick="submitEdit()">Merge and edit...</button>
-          {uploadResultsHtml()}
+            {uploadResultsHtml()}
+          </div>
+          <div id="div_no_process">
+            <h3>
+            Select at least one part of the activity to process it
+            </h3>
           </div>
         </div>
         {if (activityData.hasGPS) {
@@ -282,11 +287,11 @@ trait ActivityRequestHandler extends UploadResults {
         $$("#merge_button").hide();
       }
       if (checked > 0 ) {
-        $$("#process_button").show();
-        $$("#download_button").show();
+        $$("#div_process").show();
+        $$("#div_no_process").hide();
       } else {
-        $$("#process_button").hide();
-        $$("#download_button").hide();
+        $$("#div_process").hide();
+        $$("#div_no_process").show();
       }
     }
 

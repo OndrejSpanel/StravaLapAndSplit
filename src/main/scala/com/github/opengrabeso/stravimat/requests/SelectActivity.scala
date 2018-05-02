@@ -162,68 +162,83 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
           var checked = $(".checkSelect:checked").length;
           if (checked > 2) $("#uncheckAll_button").show();
           else $("#uncheckAll_button").hide();
-          if (checked > 0 ) $(".onCheckedAction").show();
-          else $(".onCheckedAction").hide();
+          if (checked > 0 ) {
+            $("#div_process").show();
+            $("#div_no_process").hide();
+          } else {
+            $("#div_process").hide();
+            $("#div_no_process").show();
+          }
           $("#merge_button").html(checked > 1 ? "Merge and edit ..." : "Edit ...");
         }
         """
     )}
     </script> ++
-      sources(notBefore) ++ <h2>Activities</h2>
-      <form id="process-form" action="process" method="post" enctype="multipart/form-data">
-        <table class="activities">
-          <tr>
-            <th></th>
-            <th align="left">Time</th>
-            <th align="left">Type</th>
-            <th align="left">Distance</th>
-            <th align="left">Duration</th>
-            <th align="left">Corresponding Strava activity</th>
-            <th align="left">Data</th>
-            <th align="left">Source</th>
-          </tr>
-          {// find most recent Strava activity
-          val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
+      sources(notBefore) ++
+        recentToStrava.headOption.toSeq.flatMap { _ =>
+          <h2>Activities</h2>
+          <form id="process-form" action="process" method="post" enctype="multipart/form-data">
+            <table class="activities">
+              <tr>
+                <th></th>
+                <th align="left">Time</th>
+                <th align="left">Type</th>
+                <th align="left">Distance</th>
+                <th align="left">Duration</th>
+                <th align="left">Corresponding Strava activity</th>
+                <th align="left">Data</th>
+                <th align="left">Source</th>
+              </tr>
+              {// find most recent Strava activity
+              val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
 
-          for ((actEvents, actStrava) <- recentToStrava) yield {
-            //println(s"  act $actEvents $actStrava")
-            val act = actEvents.id
-            val ignored = actStrava.isDefined || mostRecentStrava.exists(_ >= act.startTime)
-            // once any activity is present on Strava, do not offer upload by default any more
-            // (if some earlier is not present, it was probably already uploaded and deleted)
-            <tr>
+              for ((actEvents, actStrava) <- recentToStrava) yield {
+                //println(s"  act $actEvents $actStrava")
+                val act = actEvents.id
+                val ignored = actStrava.isDefined || mostRecentStrava.exists(_ >= act.startTime)
+                // once any activity is present on Strava, do not offer upload by default any more
+                // (if some earlier is not present, it was probably already uploaded and deleted)
+                <tr>
 
-              <td>{htmlActivityAction(act.id, !ignored)}</td>
-              <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
-              <td>
-                {
-                val detected = Main.detectSportBySpeed(actEvents.stats, act.sportName)
-                if (act.sportName == Event.Sport.Workout) {
-                  s"$detected?"
-                } else if (act.sportName != detected) {
-                  s"${act.sportName}->$detected"
-                } else act.sportName
-                //println(s"    $detected")
-                }
-              </td>
-              <td>{displayDistance(act.distance)}</td>
-              <td>{displaySeconds(act.duration)}</td>
-              <td>{actStrava.map(_.hrefLink).getOrElse(NodeSeq.Empty)}</td>
-              <td>{actEvents.describeData}</td>
-              <td>{act.hrefLink}</td>
-            </tr>
-          }}
-        </table>
+                  <td>{htmlActivityAction(act.id, !ignored)}</td>
+                  <td>{jsResult(jsDateRange(act.startTime, act.endTime))}</td>
+                  <td>
+                    {
+                    val detected = Main.detectSportBySpeed(actEvents.stats, act.sportName)
+                    if (act.sportName == Event.Sport.Workout) {
+                      s"$detected?"
+                    } else if (act.sportName != detected) {
+                      s"${act.sportName}->$detected"
+                    } else act.sportName
+                    //println(s"    $detected")
+                    }
+                  </td>
+                  <td>{displayDistance(act.distance)}</td>
+                  <td>{displaySeconds(act.duration)}</td>
+                  <td>{actStrava.map(_.hrefLink).getOrElse(NodeSeq.Empty)}</td>
+                  <td>{actEvents.describeData}</td>
+                  <td>{act.hrefLink}</td>
+                </tr>
+              }}
+            </table>
 
-      </form>
-      <button class="onCheckedAction" id="upload_button" onclick="submitProcess()">Send to Strava</button>
-      <button class="onCheckedAction" onclick="submitDelete()">Delete from {shared.appName}</button>
-      <button id ="merge_button" class="onCheckedAction" onclick="submitEdit()">Merge and edit...</button> ++
-      <button id ="uncheckAll_button" onclick="uncheckAll()">Uncheck all</button> ++
-      uploadResultsHtml() ++
-      <script>{xml.Unparsed(
-        //language=JavaScript
-        """
+          </form>
+          <div id="div_process">
+            <button class="onCheckedAction" id="upload_button" onclick="submitProcess()">Send to Strava</button>
+            <button class="onCheckedAction" onclick="submitDelete()">Delete from {shared.appName}</button>
+            <button id ="merge_button" class="onCheckedAction" onclick="submitEdit()">Merge and edit...</button>
+            <button id ="uncheckAll_button" onclick="uncheckAll()">Uncheck all</button>
+            {uploadResultsHtml()}
+          </div>
+          <div id="div_no_process">
+            <h3>
+              Select at least one activity to process it
+            </h3>
+          </div>
+        } ++
+        <script>{xml.Unparsed(
+          //language=JavaScript
+          """
       $("#process-form").submit(function(event) {
         // Stop the browser from submitting the form.
         event.preventDefault();
