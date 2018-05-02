@@ -81,7 +81,7 @@ object Storage extends FileStore {
   }
 
   def store(name: FullName, obj: AnyRef, metadata: (String, String)*) = {
-    //println(s"store '$filename' - '$userId'")
+    println(s"store '$name'")
     val os = output(name, metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj)
@@ -92,7 +92,7 @@ object Storage extends FileStore {
     namespace: String, filename: String, userId: String, obj1: AnyRef, obj2: AnyRef,
     metadata: Seq[(String, String)] = Seq.empty, priorityMetaData: Seq[(String, String)] = Seq.empty
   ) = {
-    //println(s"store '$filename' - '$userId'")
+    println(s"store to '$filename' - '$userId'")
     val os = output(FullName.withMetadata(namespace, filename, userId, priorityMetaData), metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj1)
@@ -183,6 +183,7 @@ object Storage extends FileStore {
   }
 
   def load[T1: ClassTag, T2: ClassTag](fullName: FullName): Option[(T1, T2)] = {
+    println(s"Load from '$fullName'")
     val is = input(fullName)
     try {
       val ois = new ObjectInputStream(is)

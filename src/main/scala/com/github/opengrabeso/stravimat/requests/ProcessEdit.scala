@@ -1,0 +1,38 @@
+package com.github.opengrabeso.stravimat
+package requests
+
+import com.github.opengrabeso.stravimat.FileId.TempId
+import com.github.opengrabeso.stravimat.Main.namespace
+import spark.{Request, Response}
+
+object ProcessEdit extends ProcessFile("/edit-activities") with UploadResults {
+
+  override def html(req: Request, resp: Response) = {
+    startUploadSession(req.session())
+
+    super.html(req, resp)
+  }
+
+  override def processAll(split: Seq[(Int, Main.ActivityEvents)], id: String)(req: Request, resp: Response) = {
+    val session = req.session()
+    val auth = session.attribute[Main.StravaAuthResult]("auth")
+
+    val upload = split.map {
+      case (_, act) =>
+        val eventsWithBegEnd = BegEvent(act.id.startTime, act.id.sportName) +: EndEvent(act.id.endTime) +: act.events
+        act.copy(events = eventsWithBegEnd)
+    }.reduce(_ merge _)
+
+    // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
+    val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
+    Storage.store(namespace.edit, uniqueName, auth.userId, upload.header, upload)
+
+    // report back the edited ID
+    <activity>
+      <id>
+        {TempId(uniqueName)}
+      </id>
+    </activity>
+  }
+
+}

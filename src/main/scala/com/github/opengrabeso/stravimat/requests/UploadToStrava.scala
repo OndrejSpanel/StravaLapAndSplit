@@ -1,12 +1,7 @@
 package com.github.opengrabeso.stravimat
 package requests
 
-import scala.collection.JavaConverters._
 import spark.{Request, Response}
-import RequestUtils._
-
-
-
 
 object UploadToStrava extends ProcessFile("/upload-strava") with UploadResults {
 

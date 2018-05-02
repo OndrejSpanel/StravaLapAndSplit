@@ -114,8 +114,9 @@ trait ActivityRequestHandler extends UploadResults {
           </div>
           <div>
             <h3>Process</h3>
-            <button onclick="submitProcess()">Process selected</button>
+            <button onclick="submitProcess()">Send selected to Strava</button>
             <button onclick="submitDownload()">Download as files</button>
+            <button onclick="submitEdit()">Merge and edit selected</button>
           {uploadResultsHtml()}
           </div>
         </div>
@@ -281,6 +282,28 @@ trait ActivityRequestHandler extends UploadResults {
         processData: false,
         success: function(response) {
           showResults();
+        },
+      });
+    }
+
+    function submitEdit() {
+      //document.getElementById("upload_button").style.display = "none";
+      document.getElementById("uploads_table").style.display = "block";
+
+      var form = $$("#activity_form");
+      $$.ajax({
+        type: form.attr("method"),
+        url: "edit-activities",
+        data: new FormData(form[0]),
+        contentType: false,
+        cache: false,
+        processData: false,
+
+        success: function(response) {
+          var idElem = $$(response).find("id");
+          if (idElem.length > 0) {
+            window.location = "edit-activity?id=" + idElem.first().text().trim()
+          }
         },
       });
     }

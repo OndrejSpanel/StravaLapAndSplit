@@ -203,7 +203,7 @@ object Main {
   object namespace {
     // stage are data visible to the user
     val stage = "stage"
-    // stage are data visible to the user
+    // editable data - not listed in staging
     val edit = "edit"
     // file upload progress
     val uploadProgress = "upload-progress"
@@ -387,8 +387,8 @@ object Main {
       val begsAdjusted = begsSorted.take(1) ++ begsSorted.drop(1).map(e => SplitEvent(e.stamp, e.sport))
 
       // when activities follow each other, insert a lap or a pause between them
-      val lastBeg = begs.map(_.stamp).max
-      val firstEnd = ends.map(_.stamp).min
+      val lastBeg = if (begs.nonEmpty) begs.map(_.stamp).max else begTime
+      val firstEnd = if (ends.nonEmpty) ends.map(_.stamp).min else endTime
 
       val transitionEvents = if (firstEnd <= lastBeg) {
         val duration = timeDifference(firstEnd, lastBeg).toInt
@@ -401,7 +401,7 @@ object Main {
         Nil
       }
 
-      val eventsAndSportsSorted = (begsAdjusted ++ rest ++ transitionEvents :+ ends.maxBy(_.stamp) ).sortBy(_.stamp)
+      val eventsAndSportsSorted = (begsAdjusted ++ rest ++ transitionEvents ++ (if (ends.nonEmpty) Some(ends.maxBy(_.stamp)) else None) ).sortBy(_.stamp)
 
       val startBegTimes = Seq(this.startTime, this.endTime, that.startTime, that.endTime).sorted
 
