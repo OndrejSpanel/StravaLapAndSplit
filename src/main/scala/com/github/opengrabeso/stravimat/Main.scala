@@ -387,19 +387,19 @@ object Main {
       val begsAdjusted = begsSorted.take(1) ++ begsSorted.drop(1).map(e => SplitEvent(e.stamp, e.sport))
 
       // when activities follow each other, insert a lap or a pause between them
-      val lastBeg = begs.map(_.stamp).max
-      val firstEnd = ends.map(_.stamp).min
+      val begsEnds = (begs ++ ends).sortBy(_.stamp)
 
-      val transitionEvents = if (firstEnd <= lastBeg) {
-        // TODO: support more than one transition
-        val duration = timeDifference(firstEnd, lastBeg).toInt
-        if (duration < 60) {
-          Seq(LapEvent(firstEnd), LapEvent(lastBeg))
-        } else {
-          Seq(PauseEvent(duration, firstEnd), PauseEndEvent(duration, lastBeg))
-        }
-      } else {
-        Nil
+      val pairs = begsEnds zip begsEnds.drop(1)
+      val transitionEvents: Seq[Event] = pairs.flatMap {
+        case (e: EndEvent, b: BegEvent) =>
+          val duration = timeDifference(e.stamp, b.stamp).toInt
+          if (duration < 60) {
+            Seq(LapEvent(e.stamp), LapEvent(b.stamp))
+          } else {
+            Seq(PauseEvent(duration, e.stamp), PauseEndEvent(duration, b.stamp))
+          }
+        case _ =>
+          Seq.empty
       }
 
       val eventsAndSportsSorted = (begsAdjusted ++ rest ++ transitionEvents :+ ends.maxBy(_.stamp) ).sortBy(_.stamp)
