@@ -82,7 +82,7 @@ trait ActivityRequestHandler extends UploadResults {
               val eTime = activityData.secondsInActivity(t.stamp)
               <tr>
                 <td> {xml.Unparsed(t.description)} </td>
-                <td> {displaySeconds(eTime)} </td>
+                <td> <a href={s"javascript:selectMapEvent('event-$i')"}>{displaySeconds(eTime)}</a></td>
                 <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
                 <td>
                   {val types = t.listTypes
