@@ -114,9 +114,9 @@ trait ActivityRequestHandler extends UploadResults {
           </div>
           <div>
             <h3>Process</h3>
-            <button onclick="submitProcess()">Send selected to Strava</button>
-            <button onclick="submitDownload()">Download as files</button>
-            <button onclick="submitEdit()">Merge and edit selected</button>
+            <button id="process_button" onclick="submitProcess()">Send selected to Strava</button>
+            <button id="download_button" onclick="submitDownload()">Download as files</button>
+            <button id="merge_button" onclick="submitEdit()">Merge and edit...</button>
           {uploadResultsHtml()}
           </div>
         </div>
@@ -153,7 +153,7 @@ trait ActivityRequestHandler extends UploadResults {
      */
     function splitLink(id, event) {
       var time = event[1];
-      var selectCheckbox = '<input type="checkbox" name="process_time=' + time + '"} checked=true></input>';
+      var selectCheckbox = '<input type="checkbox" name="process_time=' + time + '"} checked=true onchange="onPartChecked(this)"></input>';
 
       var splitPrefix = "split";
       var nextSplit = null;
@@ -202,6 +202,7 @@ trait ActivityRequestHandler extends UploadResults {
         selectOption(e);
       });
       showEventButtons();
+      onPartChecked();
     }
 
     function selectOption(e) {
@@ -264,9 +265,32 @@ trait ActivityRequestHandler extends UploadResults {
 
       // execute the callback
       onEventsChanged();
+      onPartChecked();
 
       showEventButtons();
     }
+
+    function onPartChecked() {
+      // count how many are checked
+      // if none or very few, hide the uncheck button
+      var parts = $$("input:checkbox");
+      var total = parts.length;
+      var checked = parts.filter(":checked").length;
+      if (checked > 1 && checked < total) {
+        $$("#merge_button").show();
+      } else {
+        $$("#merge_button").hide();
+      }
+      if (checked > 0 ) {
+        $$("#process_button").show();
+        $$("#download_button").show();
+      } else {
+        $$("#process_button").hide();
+        $$("#download_button").hide();
+      }
+    }
+
+
 
     function submitProcess() {
       //document.getElementById("upload_button").style.display = "none";
