@@ -5,6 +5,8 @@ import com.github.opengrabeso.stravimat.FileId.TempId
 import com.github.opengrabeso.stravimat.Main.namespace
 import spark.{Request, Response}
 
+import shared.Util._
+
 object ProcessEdit extends ProcessFile("/edit-activities") with UploadResults {
 
   override def html(req: Request, resp: Response) = {
@@ -19,7 +21,7 @@ object ProcessEdit extends ProcessFile("/edit-activities") with UploadResults {
 
     val upload = split.map {
       case (_, act) =>
-        val eventsWithBegEnd = BegEvent(act.id.startTime, act.id.sportName) +: EndEvent(act.id.endTime) +: act.events
+        val eventsWithBegEnd = (BegEvent(act.id.startTime, act.id.sportName) +: EndEvent(act.id.endTime) +: act.events).sortBy(_.stamp)
         act.copy(events = eventsWithBegEnd)
     }.reduce(_ merge _)
 
