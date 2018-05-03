@@ -539,6 +539,7 @@ trait ActivityRequestHandler extends UploadResults {
         },
         "properties": {
           "title": "Begin",
+          "description": events[0][3],
           "icon": "triangle",
           "color": "#F22",
           "opacity": 1
@@ -553,6 +554,7 @@ trait ActivityRequestHandler extends UploadResults {
         },
         "properties": {
           "title": "End",
+          "description": events[events.length - 1][3],
           "icon": "circle",
           "color": "#2F2",
           "opacity": 0.5
