@@ -82,7 +82,7 @@ trait ActivityRequestHandler extends UploadResults {
               val eTime = activityData.secondsInActivity(t.stamp)
               <tr>
                 <td> {xml.Unparsed(t.description)} </td>
-                <td> {displaySeconds(eTime)} </td>
+                <td> <button type="button" onclick={s"selectMapEvent($i)"}>{displaySeconds(eTime)}</button></td>
                 <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
                 <td>
                   {val types = t.listTypes
@@ -150,6 +150,7 @@ trait ActivityRequestHandler extends UploadResults {
 
       // callback, should update the map when events are changed
       var onEventsChanged = function() {};
+      var currentPopup = undefined;
 
     /**
      * @param {String} id
@@ -405,6 +406,13 @@ trait ActivityRequestHandler extends UploadResults {
       lapsSelectByPredicate(wasAnyPause);
     }
 
+    /**
+    @param {number} eventId
+    */
+    function selectMapEvent(eventId) {
+       map.fire('popup', {feature: eventId});
+    }
+
     function testPredicate(f) {
       var ret = false;
       events.forEach(function(e) {
@@ -519,6 +527,40 @@ trait ActivityRequestHandler extends UploadResults {
     function renderEvents(events, route) {
       var markers = mapEventData(events, route);
 
+      var routeLL = route.map(function(i){
+        return [i[0], i[1]]
+      });
+
+      markers.unshift({
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": routeLL[0]
+        },
+        "properties": {
+          "title": "Begin",
+          "description": events[0][3],
+          "icon": "triangle",
+          "color": "#F22",
+          "opacity": 1
+        }
+      });
+
+      markers.push({
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": routeLL[routeLL.length-1]
+        },
+        "properties": {
+          "title": "End",
+          "description": events[events.length - 1][3],
+          "icon": "circle",
+          "color": "#2F2",
+          "opacity": 0.5
+        }
+      });
+
       map.addSource("events", {
         "type": "geojson",
         "data": {
@@ -626,54 +668,6 @@ trait ActivityRequestHandler extends UploadResults {
       //
       // specific, but generic enough:
       //   marker, cross, heart (Maki only?)
-      map.addSource("points", {
-        "type": "geojson",
-        "data": {
-          "type": "FeatureCollection",
-          "features": [{
-            "type": "Feature",
-            "geometry": {
-              "type": "Point",
-              "coordinates": routeLL[0]
-            },
-            "properties": {
-              "title": "Begin",
-              "icon": "triangle",
-              "color": "#F22",
-              "opacity": 1
-            }
-          }, {
-            "type": "Feature",
-            "geometry": {
-              "type": "Point",
-              "coordinates": routeLL[routeLL.length-1]
-            },
-            "properties": {
-              "title": "End",
-              "icon": "circle",
-              "color": "#2F2",
-              "opacity": 0.5
-            }
-          }]
-        }
-      });
-
-      map.addLayer({
-        "id": "points",
-        "type": "symbol",
-        "source": "points",
-        "layout": {
-          "icon-image": "{icon}-15",
-          //"icon-opacity": "1",
-          //"icon-color": "{color}", // not working at the moment - see https://github.com/mapbox/mapbox-gl-js/issues/2730
-          "text-field": "{title}",
-          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-          "text-offset": [0, 0.6],
-          "text-anchor": "top"
-        }
-      });
-
-
     }
 
     if (${activityData.hasGPS}) {
@@ -712,14 +706,14 @@ trait ActivityRequestHandler extends UploadResults {
                 map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
             });
 
-            map.on('click', function (e) {
-                var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
+            map.on('popup', function (e) {
+              var features = map.getSource("events")._data.features;
 
-                if (!features.length) {
-                    return;
-                }
+              if (e.feature >= 0 && e.feature < features.length) {
+                var feature = features[e.feature];
 
-                var feature = features[0];
+                //var prev = map.getPopup();
+                if (currentPopup) currentPopup.remove();
 
                 // Populate the popup and set its coordinates
                 // based on the feature found.
@@ -727,6 +721,27 @@ trait ActivityRequestHandler extends UploadResults {
                     .setLngLat(feature.geometry.coordinates)
                     .setHTML(feature.properties.description)
                     .addTo(map);
+                currentPopup = popup;
+              }
+
+            });
+            map.on('click', function (e) {
+              var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
+
+              if (!features.length) {
+                  return;
+              }
+
+              var feature = features[0];
+
+              if (currentPopup) currentPopup.remove();
+              // Populate the popup and set its coordinates
+              // based on the feature found.
+              var popup = new mapboxgl.Popup()
+                  .setLngLat(feature.geometry.coordinates)
+                  .setHTML(feature.properties.description)
+                  .addTo(map);
+              currentPopup = popup;
             });
 
 
