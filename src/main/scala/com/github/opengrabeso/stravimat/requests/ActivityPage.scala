@@ -410,7 +410,7 @@ trait ActivityRequestHandler extends UploadResults {
     @param {number} eventId
     */
     function selectMapEvent(eventId) {
-       map.fire('popup', {feature: eventId - 1});
+       map.fire('popup', {feature: eventId});
     }
 
     function testPredicate(f) {
@@ -527,6 +527,38 @@ trait ActivityRequestHandler extends UploadResults {
     function renderEvents(events, route) {
       var markers = mapEventData(events, route);
 
+      var routeLL = route.map(function(i){
+        return [i[0], i[1]]
+      });
+
+      markers.unshift({
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": routeLL[0]
+        },
+        "properties": {
+          "title": "Begin",
+          "icon": "triangle",
+          "color": "#F22",
+          "opacity": 1
+        }
+      });
+
+      markers.push({
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": routeLL[routeLL.length-1]
+        },
+        "properties": {
+          "title": "End",
+          "icon": "circle",
+          "color": "#2F2",
+          "opacity": 0.5
+        }
+      });
+
       map.addSource("events", {
         "type": "geojson",
         "data": {
@@ -634,54 +666,6 @@ trait ActivityRequestHandler extends UploadResults {
       //
       // specific, but generic enough:
       //   marker, cross, heart (Maki only?)
-      map.addSource("points", {
-        "type": "geojson",
-        "data": {
-          "type": "FeatureCollection",
-          "features": [{
-            "type": "Feature",
-            "geometry": {
-              "type": "Point",
-              "coordinates": routeLL[0]
-            },
-            "properties": {
-              "title": "Begin",
-              "icon": "triangle",
-              "color": "#F22",
-              "opacity": 1
-            }
-          }, {
-            "type": "Feature",
-            "geometry": {
-              "type": "Point",
-              "coordinates": routeLL[routeLL.length-1]
-            },
-            "properties": {
-              "title": "End",
-              "icon": "circle",
-              "color": "#2F2",
-              "opacity": 0.5
-            }
-          }]
-        }
-      });
-
-      map.addLayer({
-        "id": "points",
-        "type": "symbol",
-        "source": "points",
-        "layout": {
-          "icon-image": "{icon}-15",
-          //"icon-opacity": "1",
-          //"icon-color": "{color}", // not working at the moment - see https://github.com/mapbox/mapbox-gl-js/issues/2730
-          "text-field": "{title}",
-          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-          "text-offset": [0, 0.6],
-          "text-anchor": "top"
-        }
-      });
-
-
     }
 
     if (${activityData.hasGPS}) {
