@@ -82,7 +82,7 @@ trait ActivityRequestHandler extends UploadResults {
               val eTime = activityData.secondsInActivity(t.stamp)
               <tr>
                 <td> {xml.Unparsed(t.description)} </td>
-                <td> <a href={s"javascript:selectMapEvent('event-$i')"}>{displaySeconds(eTime)}</a></td>
+                <td> <button type="button" onclick={s"selectMapEvent($i)"}>{displaySeconds(eTime)}</button></td>
                 <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
                 <td>
                   {val types = t.listTypes
@@ -150,6 +150,7 @@ trait ActivityRequestHandler extends UploadResults {
 
       // callback, should update the map when events are changed
       var onEventsChanged = function() {};
+      var currentPopup = undefined;
 
     /**
      * @param {String} id
@@ -403,6 +404,13 @@ trait ActivityRequestHandler extends UploadResults {
     }
     function lapsSelectAllPauses() {
       lapsSelectByPredicate(wasAnyPause);
+    }
+
+    /**
+    @param {number} eventId
+    */
+    function selectMapEvent(eventId) {
+       map.fire('popup', {feature: eventId - 1});
     }
 
     function testPredicate(f) {
@@ -712,14 +720,14 @@ trait ActivityRequestHandler extends UploadResults {
                 map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
             });
 
-            map.on('click', function (e) {
-                var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
+            map.on('popup', function (e) {
+              var features = map.getSource("events")._data.features;
 
-                if (!features.length) {
-                    return;
-                }
+              if (e.feature >= 0 && e.feature < features.length) {
+                var feature = features[e.feature];
 
-                var feature = features[0];
+                //var prev = map.getPopup();
+                if (currentPopup) currentPopup.remove();
 
                 // Populate the popup and set its coordinates
                 // based on the feature found.
@@ -727,6 +735,27 @@ trait ActivityRequestHandler extends UploadResults {
                     .setLngLat(feature.geometry.coordinates)
                     .setHTML(feature.properties.description)
                     .addTo(map);
+                currentPopup = popup;
+              }
+
+            });
+            map.on('click', function (e) {
+              var features = map.queryRenderedFeatures(e.point, { layers: ['events'] });
+
+              if (!features.length) {
+                  return;
+              }
+
+              var feature = features[0];
+
+              if (currentPopup) currentPopup.remove();
+              // Populate the popup and set its coordinates
+              // based on the feature found.
+              var popup = new mapboxgl.Popup()
+                  .setLngLat(feature.geometry.coordinates)
+                  .setHTML(feature.properties.description)
+                  .addTo(map);
+              currentPopup = popup;
             });
 
 
