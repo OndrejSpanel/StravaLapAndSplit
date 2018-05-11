@@ -37,8 +37,9 @@ trait ActivityRequestHandler extends UploadResults {
       <script src="static/jquery.mpAjax.js"></script>
       <script src="static/download.js"></script>
       <script src="static/ajaxUtils.js"></script>
-      <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.js'></script>
-      <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.23.0/mapbox-gl.css' rel='stylesheet' />
+
+      <script src='https://api.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.js'></script>
+      <link href='https://api.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.css' rel='stylesheet' />
 
       <link rel="stylesheet" type="text/css" href="static/activityPage.css"/>
       <link rel="stylesheet" type="text/css" href="static/page.css"/>
@@ -676,7 +677,7 @@ trait ActivityRequestHandler extends UploadResults {
       mapboxgl.accessToken = "$mapBoxToken";
       var map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/ospanel/cjgpk2b1q001n2rt3vz2yvve2',
+        style: 'mapbox://styles/ospanel/cjh226q3j0rtd2roxwnwlwy13',
         center: [lon, lat],
         zoom: 12
       });
