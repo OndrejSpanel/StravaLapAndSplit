@@ -677,7 +677,7 @@ trait ActivityRequestHandler extends UploadResults {
       mapboxgl.accessToken = "$mapBoxToken";
       var map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/ospanel/cjh226q3j0rtd2roxwnwlwy13',
+        style: 'mapbox://styles/ospanel/cjgpk2b1q001n2rt3vz2yvve2',
         center: [lon, lat],
         zoom: 12
       });
