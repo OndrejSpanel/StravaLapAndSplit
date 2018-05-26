@@ -814,7 +814,16 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
 
 
     if (toMerge.nonEmpty) {
-      val activityData = saveAsNeeded(toMerge.reduceLeft(_ merge _))
+      // first merge all GPS data
+      // then merge in all attribute data
+      val (toMergeGPS, toMergeAttr) = toMerge.partition(_.hasGPS)
+      val merged = if (toMergeGPS.nonEmpty) {
+        val gpsMerged = toMergeGPS.reduceLeft(_ merge _)
+        (gpsMerged +: toMergeAttr).reduceLeft(_ merge _)
+      } else {
+        toMerge.reduceLeft(_ merge _)
+      }
+      val activityData = saveAsNeeded(merged)
 
       // report back the edited ID
       <activity>
