@@ -835,7 +835,6 @@ object Main {
 
       @tailrec
       def cleanGPS(todoGPS: List[gps.ItemWithTime], done: List[gps.ItemWithTime]): List[gps.ItemWithTime] = {
-        /* value 1.0 means the sample should be kept, 0.0 means it should be dropped */
         todoGPS match {
           case first :: second :: tail if second._2.accuracy > 8 =>
             // move second as little as possible to stay within GPS accuracy error
