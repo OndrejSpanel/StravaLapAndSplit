@@ -867,6 +867,7 @@ object Main {
 
     }
 
+    /// input filters - elevation filtering, add temperature info
     def applyFilters(auth: StravaAuthResult): ActivityEvents = {
       val settings = Settings(auth.userId)
       val useElevFilter = id.id match {
@@ -893,6 +894,22 @@ object Main {
           copy(attributes = hrFiltered)
         }
       }
+    }
+
+
+    /// output filters - swim data cleanup
+    def applyUploadFilters(auth: StravaAuthResult): ActivityEvents = {
+      this.id.sportName match {
+        case Event.Sport.Swim =>
+          swimFilter
+        case _ =>
+          this
+      }
+    }
+
+    // swim filter - avoid large discrete steps which are often found in swim sparse data
+    def swimFilter: ActivityEvents = {
+      this
     }
 
     def unifySamples: ActivityEvents = {

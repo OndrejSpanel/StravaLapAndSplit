@@ -24,13 +24,13 @@ trait UploadResults {
 
     val queue = QueueFactory.getDefaultQueue
     for (upload <- merged) {
-
+      val uploadFiltered = upload.applyUploadFilters(auth)
       // export here, or in the worker? Both is possible
 
       // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
-      val uniqueName = upload.id.id.filename + "_" + System.currentTimeMillis().toString
+      val uniqueName = uploadFiltered.id.id.filename + "_" + System.currentTimeMillis().toString
       // are any metadata needed?
-      Storage.store(namespace.upload(sessionId), uniqueName, auth.userId, upload.header, upload)
+      Storage.store(namespace.upload(sessionId), uniqueName, auth.userId, uploadFiltered.header, uploadFiltered)
 
       // using post with param is not recommended, but it should be OK when not using any payload
       queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth, sessionId))
