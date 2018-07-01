@@ -863,7 +863,13 @@ object Main {
       val gpsClean = cleanGPS(gps.stream.toList, Nil).reverse
       val gpsStream = gps.pickData(SortedMap(gpsClean:_*))
 
-      copy(gps = gpsStream)
+      // rebuild dist stream as well
+
+      // TODO: DRY
+      val distanceDeltas = gpsStream.distStream
+      val distances = DataStreamGPS.routeStreamFromDistStream(distanceDeltas.toSeq)
+
+      copy(gps = gpsStream, dist = dist.pickData(distances))
 
     }
 
@@ -899,8 +905,8 @@ object Main {
 
     /// output filters - swim data cleanup
     def applyUploadFilters(auth: StravaAuthResult): ActivityEvents = {
-      this.id.sportName match {
-        case Event.Sport.Swim =>
+      id.sportName match {
+        case Event.Sport.Swim if gps.nonEmpty =>
           swimFilter
         case _ =>
           this
@@ -909,7 +915,45 @@ object Main {
 
     // swim filter - avoid large discrete steps which are often found in swim sparse data
     def swimFilter: ActivityEvents = {
-      this
+      val duration = timeDifference(dist.stream.firstKey, dist.stream.lastKey)
+      // TODO: try to handle some reasonable speed fluctuation
+      // TODO: detect and skip running / walking parts (accurate data)
+
+      // rebuild dist stream as well
+
+      // TODO: DRY
+      val gpsDistances = {
+        val distanceDeltas = gps.distStream
+        val distances = DataStreamGPS.routeStreamFromDistStream(distanceDeltas.toSeq)
+        distances
+      }
+
+      val totalDist = gpsDistances.last._2
+      val avgSpeed = totalDist / duration
+      val gpsByDistance = SortedMap((gpsDistances.values zip gps.stream.values).toSeq:_*)
+
+      def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
+      def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
+
+      def gpsWithDistance(d: Double): GPSPoint = {
+        val get = for {
+          prev <- gpsByDistance.to(d).lastOption
+          next <- gpsByDistance.from(d).headOption
+        } yield {
+          val f = if (next._1 > prev._1) (d - prev._1) / (next._1 - prev._1) else 0
+          val p = vecFromGPS(prev._2)
+          val n = vecFromGPS(next._2)
+          gpsFromVec((n - p) * f + p)
+        }
+        get.get
+      }
+      // generate a sample per second along the GPS curve
+      val gpsSwim = for (time <- 0 to duration.toInt) yield {
+        val d = (time * avgSpeed) min totalDist // avoid rounding errors overflowing end of the range
+        val t = gpsDistances.firstKey.withDurationAdded(time, 1000)
+        t -> gpsWithDistance(d)
+      }
+      copy(gps = gps.pickData(SortedMap(gpsSwim:_*)))
     }
 
     def unifySamples: ActivityEvents = {
