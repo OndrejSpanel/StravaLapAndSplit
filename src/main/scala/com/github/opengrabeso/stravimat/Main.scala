@@ -915,44 +915,61 @@ object Main {
 
     // swim filter - avoid large discrete steps which are often found in swim sparse data
     def swimFilter: ActivityEvents = {
-      // TODO: try to handle some reasonable speed fluctuation
-      // TODO: detect and skip running / walking parts (accurate data)
-      val (prefix, rest) = gps.stream.span(_._2.in_accuracy.exists(_ < 8))
 
-      val duration = timeDifference(rest.firstKey, rest.lastKey)
+      @tailrec
+      def handleInaccuratePartsRecursive(stream: DataStreamGPS.GPSStream, done: DataStreamGPS.GPSStream): DataStreamGPS.GPSStream = {
 
-      // TODO: DRY
-      val gpsDistances = {
-        val distanceDeltas = DataStreamGPS.distStreamFromGPS(rest)
-        val distances = DataStreamGPS.routeStreamFromDistStream(distanceDeltas.toSeq)
-        distances
-      }
+        def isAccurate(p: (ZonedDateTime, GPSPoint)) = p._2.in_accuracy.exists(_ < 8)
 
-      val totalDist = gpsDistances.last._2
-      val gpsByDistance = SortedMap((gpsDistances.values zip rest.values).toSeq:_*)
+        val (prefix, temp) = stream.span(isAccurate)
+        val (handleInner, rest) = temp.span(x => !isAccurate(x))
 
-      def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
-      def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
+        if (handleInner.isEmpty) {
+          assert(rest.isEmpty)
+          done ++ stream
+        } else {
+          val start = prefix.lastOption orElse done.lastOption // prefer last accurate point if available
+          val end = rest.headOption // prefer first accurate point if available
+          val handle = handleInner ++ start ++ end
+          val duration = timeDifference(handle.head._1, handle.last._1)
 
-      def gpsWithDistance(d: Double): GPSPoint = {
-        val get = for {
-          prev <- gpsByDistance.to(d).lastOption
-          next <- gpsByDistance.from(d).headOption
-        } yield {
-          val f = if (next._1 > prev._1) (d - prev._1) / (next._1 - prev._1) else 0
-          val p = vecFromGPS(prev._2)
-          val n = vecFromGPS(next._2)
-          gpsFromVec((n - p) * f + p)
+          val gpsDistances = DataStreamGPS.routeStreamFromGPS(handle)
+          val totalDist = gpsDistances.last._2
+
+          // build gps position by distance curve
+          val gpsByDistance = SortedMap((gpsDistances.values zip handle.values).toSeq: _*)
+
+          // found gps data for given distance
+          def gpsWithDistance(d: Double): GPSPoint = {
+            val get = for {
+              prev <- gpsByDistance.to(d).lastOption
+              next <- gpsByDistance.from(d).headOption
+            } yield {
+              def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
+
+              def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
+
+              val f = if (next._1 > prev._1) (d - prev._1) / (next._1 - prev._1) else 0
+              val p = vecFromGPS(prev._2)
+              val n = vecFromGPS(next._2)
+              gpsFromVec((n - p) * f + p)
+            }
+            get.get
+          }
+
+          val gpsSwim = for (time <- 0 to duration.toInt) yield {
+            val d = (time * totalDist / duration) min totalDist // avoid rounding errors overflowing end of the range
+            val t = handle.firstKey.withDurationAdded(time, 1000)
+            t -> gpsWithDistance(d)
+          }
+          handleInaccuratePartsRecursive(rest, done ++ prefix ++ gpsSwim)
         }
-        get.get
+
       }
-      // generate a sample per second along the GPS curve
-      val gpsSwim = for (time <- 0 to duration.toInt) yield {
-        val d = (time * totalDist / duration) min totalDist // avoid rounding errors overflowing end of the range
-        val t = rest.firstKey.withDurationAdded(time, 1000)
-        t -> gpsWithDistance(d)
-      }
-      copy(gps = gps.pickData(SortedMap(prefix.toSeq ++ gpsSwim:_*)))
+
+      val gpsSwim = handleInaccuratePartsRecursive(gps.stream, SortedMap.empty)
+
+      copy(gps = gps.pickData(gpsSwim))
     }
 
     def unifySamples: ActivityEvents = {
