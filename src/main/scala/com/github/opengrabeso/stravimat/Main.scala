@@ -915,22 +915,21 @@ object Main {
 
     // swim filter - avoid large discrete steps which are often found in swim sparse data
     def swimFilter: ActivityEvents = {
-      val duration = timeDifference(dist.stream.firstKey, dist.stream.lastKey)
       // TODO: try to handle some reasonable speed fluctuation
       // TODO: detect and skip running / walking parts (accurate data)
+      val (prefix, rest) = gps.stream.span(_._2.in_accuracy.exists(_ < 8))
 
-      // rebuild dist stream as well
+      val duration = timeDifference(rest.firstKey, rest.lastKey)
 
       // TODO: DRY
       val gpsDistances = {
-        val distanceDeltas = gps.distStream
+        val distanceDeltas = DataStreamGPS.distStreamFromGPS(rest)
         val distances = DataStreamGPS.routeStreamFromDistStream(distanceDeltas.toSeq)
         distances
       }
 
       val totalDist = gpsDistances.last._2
-      val avgSpeed = totalDist / duration
-      val gpsByDistance = SortedMap((gpsDistances.values zip gps.stream.values).toSeq:_*)
+      val gpsByDistance = SortedMap((gpsDistances.values zip rest.values).toSeq:_*)
 
       def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
       def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
@@ -949,11 +948,11 @@ object Main {
       }
       // generate a sample per second along the GPS curve
       val gpsSwim = for (time <- 0 to duration.toInt) yield {
-        val d = (time * avgSpeed) min totalDist // avoid rounding errors overflowing end of the range
-        val t = gpsDistances.firstKey.withDurationAdded(time, 1000)
+        val d = (time * totalDist / duration) min totalDist // avoid rounding errors overflowing end of the range
+        val t = rest.firstKey.withDurationAdded(time, 1000)
         t -> gpsWithDistance(d)
       }
-      copy(gps = gps.pickData(SortedMap(gpsSwim:_*)))
+      copy(gps = gps.pickData(SortedMap(prefix.toSeq ++ gpsSwim:_*)))
     }
 
     def unifySamples: ActivityEvents = {
