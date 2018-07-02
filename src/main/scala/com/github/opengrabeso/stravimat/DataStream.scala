@@ -291,6 +291,7 @@ object DataStreamGPS {
     gpsDistances
   }
 
+  // differential distance stream from GPS data
   def distStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): DistStream = {
     if (gps.nonEmpty) {
       val gpsKeys = gps.keys.toSeq // toSeq needed to preserve order
@@ -301,6 +302,12 @@ object DataStreamGPS {
     } else {
       SortedMap()
     }
+  }
+
+  // total (along route) distance from GPS data
+  def routeStreamFromGPS(gps: SortedMap[ZonedDateTime, GPSPoint]): DistStream = {
+    val deltas = distStreamFromGPS(gps)
+    routeStreamFromDistStream(deltas.toSeq)
   }
 
   def routeStreamFromDistStream(distDeltas: Seq[(ZonedDateTime, Double)]): DistStream = {
@@ -444,14 +451,17 @@ object DataStreamGPS {
       s"${kv._1},${duration/1000.0},${kv._2}"
     }.mkString("\n")
   }
+
+  type GPSStream  = SortedMap[ZonedDateTime, GPSPoint]
 }
 
 @SerialVersionUID(10L)
-class DataStreamGPS(override val stream: SortedMap[ZonedDateTime, GPSPoint]) extends DataStream {
+class DataStreamGPS(override val stream: DataStreamGPS.GPSStream) extends DataStream {
 
   import DataStreamGPS._
 
   type Item = GPSPoint
+
 
   def typeToLog: String = "GPS"
 

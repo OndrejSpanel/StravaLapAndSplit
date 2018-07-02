@@ -863,10 +863,17 @@ object Main {
       val gpsClean = cleanGPS(gps.stream.toList, Nil).reverse
       val gpsStream = gps.pickData(SortedMap(gpsClean:_*))
 
-      copy(gps = gpsStream)
+      // rebuild dist stream as well
+
+      // TODO: DRY
+      val distanceDeltas = gpsStream.distStream
+      val distances = DataStreamGPS.routeStreamFromDistStream(distanceDeltas.toSeq)
+
+      copy(gps = gpsStream, dist = dist.pickData(distances))
 
     }
 
+    /// input filters - elevation filtering, add temperature info
     def applyFilters(auth: StravaAuthResult): ActivityEvents = {
       val settings = Settings(auth.userId)
       val useElevFilter = id.id match {
@@ -893,6 +900,76 @@ object Main {
           copy(attributes = hrFiltered)
         }
       }
+    }
+
+
+    /// output filters - swim data cleanup
+    def applyUploadFilters(auth: StravaAuthResult): ActivityEvents = {
+      id.sportName match {
+        case Event.Sport.Swim if gps.nonEmpty =>
+          swimFilter
+        case _ =>
+          this
+      }
+    }
+
+    // swim filter - avoid large discrete steps which are often found in swim sparse data
+    def swimFilter: ActivityEvents = {
+
+      @tailrec
+      def handleInaccuratePartsRecursive(stream: DataStreamGPS.GPSStream, done: DataStreamGPS.GPSStream): DataStreamGPS.GPSStream = {
+
+        def isAccurate(p: (ZonedDateTime, GPSPoint)) = p._2.in_accuracy.exists(_ < 8)
+
+        val (prefix, temp) = stream.span(isAccurate)
+        val (handleInner, rest) = temp.span(x => !isAccurate(x))
+
+        if (handleInner.isEmpty) {
+          assert(rest.isEmpty)
+          done ++ stream
+        } else {
+          val start = prefix.lastOption orElse done.lastOption // prefer last accurate point if available
+          val end = rest.headOption // prefer first accurate point if available
+          val handle = handleInner ++ start ++ end
+          val duration = timeDifference(handle.head._1, handle.last._1)
+
+          val gpsDistances = DataStreamGPS.routeStreamFromGPS(handle)
+          val totalDist = gpsDistances.last._2
+
+          // build gps position by distance curve
+          val gpsByDistance = SortedMap((gpsDistances.values zip handle.values).toSeq: _*)
+
+          // found gps data for given distance
+          def gpsWithDistance(d: Double): GPSPoint = {
+            val get = for {
+              prev <- gpsByDistance.to(d).lastOption
+              next <- gpsByDistance.from(d).headOption
+            } yield {
+              def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
+
+              def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
+
+              val f = if (next._1 > prev._1) (d - prev._1) / (next._1 - prev._1) else 0
+              val p = vecFromGPS(prev._2)
+              val n = vecFromGPS(next._2)
+              gpsFromVec((n - p) * f + p)
+            }
+            get.get
+          }
+
+          val gpsSwim = for (time <- 0 to duration.toInt) yield {
+            val d = (time * totalDist / duration) min totalDist // avoid rounding errors overflowing end of the range
+            val t = handle.firstKey.withDurationAdded(time, 1000)
+            t -> gpsWithDistance(d)
+          }
+          handleInaccuratePartsRecursive(rest, done ++ prefix ++ gpsSwim)
+        }
+
+      }
+
+      val gpsSwim = handleInaccuratePartsRecursive(gps.stream, SortedMap.empty)
+
+      copy(gps = gps.pickData(gpsSwim))
     }
 
     def unifySamples: ActivityEvents = {
