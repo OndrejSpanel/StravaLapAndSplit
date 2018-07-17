@@ -613,7 +613,7 @@ object Main {
 
         // locate a point which is under required avg speed, this is guaranteed to serve as a possible pause center
         val (_, candidateStart) = pauseArea.span(_._2 > speedPauseAvg)
-        val (candidate, left) = candidateStart.span(_._2 <= speedPauseAvg)
+        val (candidate, _) = candidateStart.span(_._2 <= speedPauseAvg)
         // now take all under the speed
 
         def isPauseDuring(b: ZonedDateTime, e: ZonedDateTime, rect: DataStreamGPS.GPSRect) = {
@@ -732,7 +732,7 @@ object Main {
             collectSportChanges(longer :: tail, done)
           case head :: tail if timeDifference(head._1, head._2) > minSportChangePause =>
             collectSportChanges(tail, head :: done)
-          case head :: tail =>
+          case _ :: tail =>
             collectSportChanges(tail, done)
           case _ =>
             done
@@ -826,12 +826,12 @@ object Main {
 
     /*
     Clean errors in buildings and other areas where signal is bad and position error high
-    (EHPE - estimated horizontal position error)
+    (EHPE - estimated horizontal positition error)
     * */
     def cleanPositionErrors: ActivityEvents = {
 
       def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
-      def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
+      //def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
 
       @tailrec
       def cleanGPS(todoGPS: List[gps.ItemWithTime], done: List[gps.ItemWithTime]): List[gps.ItemWithTime] = {
@@ -987,7 +987,7 @@ object Main {
       def movingTime: Double
       def elevation: Double
     }
-    def stats = new Stats {
+    def stats: Stats = new Stats {
       val distanceInM = id.distance
       val totalTimeInSeconds = duration
       val speed = distanceInM / totalTimeInSeconds
@@ -1100,10 +1100,10 @@ object Main {
 
           val slopes = removeMidSlopes(elevStream, Nil)
 
-          val slopesElev = slopes.map(_.elev)
+          //val slopesElev = slopes.map(_.elev)
 
-          val totalElev = (slopesElev zip slopesElev.drop(1)).map { case (a,b) => (a-b).abs }.sum
-          val minMaxDiff = max.elev - min.elev
+          //val totalElev = (slopesElev zip slopesElev.drop(1)).map { case (a,b) => (a-b).abs }.sum
+          //val minMaxDiff = max.elev - min.elev
 
           val filteredSlopes = filterSlopes(slopes)
 

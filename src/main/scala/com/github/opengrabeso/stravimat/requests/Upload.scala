@@ -64,8 +64,8 @@ object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
           val nameWithIndex = if (index > 0) s"$name-$index" else name
           loadFromMove(nameWithIndex, digest, act)
         }
-      case e =>
-        // unknown extension, try deserialization
+      case _ =>
+        // unknown extension, try deserialization, might be a file extracted from the server Cloud Storage
         Try {
           val ois = new ObjectInputStream(stream)
           val _ = ois.readObject()

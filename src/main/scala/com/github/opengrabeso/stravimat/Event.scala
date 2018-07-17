@@ -1,5 +1,4 @@
 package com.github.opengrabeso.stravimat
-import com.github.opengrabeso.stravimat.requests.ActivityRequest
 import org.joda.time.{DateTime => ZonedDateTime}
 
 case class EventKind(id: String, display: String)
@@ -197,8 +196,8 @@ case class ElevationEvent(elev: Double, stamp: ZonedDateTime) extends Event {
 
 case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array[EventKind], var actionOriginal: String, actionDescription: String) {
   override def toString: String = {
-    val select = ActivityRequest.htmlSelectEvent(time.toString, kinds, action)
-    val selectHtmlSingleLine = select.toString.lines.mkString(" ")
+    //val select = ActivityRequest.htmlSelectEvent(time.toString, kinds, action)
+    //val selectHtmlSingleLine = select.toString.lines.mkString(" ")
 
     val description = s"""${Main.displaySeconds(time)} ${Main.displayDistance(km)}<br />""" + actionDescription
     s""""$action", $time, $km, '$description', "$actionOriginal""""

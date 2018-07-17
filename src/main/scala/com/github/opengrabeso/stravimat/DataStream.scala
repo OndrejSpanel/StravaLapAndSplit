@@ -71,20 +71,11 @@ object DataStream {
     data.pickData(newStream).asInstanceOf[Data]
   }
 
-  // remove any points which contain no useful information
+  // provide samples at given timestamps
   def samplesAt[Data <: DataStream](data: Data, times: List[ZonedDateTime]): Data = {
     type ItemWithTime = data.ItemWithTime
 
     // select nearest sample
-
-    def notNeeded(first: ItemWithTime, second: ItemWithTime) = {
-      // avoid samples being too apart each other, it brings no benefit and could be risky
-      if (timeDifference(first._1, second._1) > 30) {
-        false
-      } else {
-        first._2 == second._2
-      } // Strava seems not to be interpolating HR, it simply reuses the last value seen
-    }
 
     @tailrec
     def samplesAtRecurse(todoTimes: List[ZonedDateTime], todo: List[ItemWithTime], done: List[ItemWithTime]): List[ItemWithTime] = {
@@ -234,48 +225,6 @@ object DataStreamGPS {
     * Perhaps the same smoothing interval is used in the Quest itself?
     */
   private val smoothingInterval = 60
-
-  /**
-    * Quest records sometimes miss one sample, the missing sample is added the a neighboring sample, like:
-    * 2016-04-13T09:47:01Z	4.9468178241
-    * 2016-04-13T09:47:02Z	10.5000627924
-    * 2016-04-13T09:47:04Z	5.2888359044
-    */
-  private def fixSpeed(input: DistStream): DistStream = {
-    def fixSpeedRecurse(input: DistStream, done: DistStream): DistStream = {
-      if (input.isEmpty) done
-      else {
-        if (input.tail.isEmpty) fixSpeedRecurse(input.tail, done + input.head)
-        else {
-          val item0 = input.head
-          val item1 = input.tail.head
-          val duration = Seconds.secondsBetween(input.head._1, input.tail.head._1).getSeconds
-          if (duration>1) {
-            // missing sample
-            val missingCount = duration - 1
-            val value0 = item0._2
-            val value1 = item1._2
-            if (value0 >= value1) {
-              // 0 large, 1 missing, 2 small
-              val fixed0 = item0.copy(_2 = value0 / duration)
-              val addMissing = for (s <- 1 to missingCount.toInt) yield fixed0.copy(_1 = item0._1.plusSeconds(s))
-              fixSpeedRecurse(input.tail, done + fixed0 ++ addMissing)
-            } else {
-              // 0 small, 1 missing, 2 large
-              val fixed2 = item1.copy(_2 = value0 / duration)
-              val addMissing = for (s <- 1 to missingCount.toInt) yield fixed2.copy(_1 = item0._1.plusSeconds(s))
-              fixSpeedRecurse(input.tail.tail, done + item0 ++ addMissing + fixed2)
-            }
-          } else {
-            fixSpeedRecurse(input.tail, done + input.head)
-          }
-
-        }
-      }
-    }
-
-    fixSpeedRecurse(input, SortedMap())
-  }
 
   private def smoothSpeed(input: DistStream, durationSec: Double): DistStream = {
 
@@ -531,7 +480,7 @@ class DataStreamGPS(override val stream: DataStreamGPS.GPSStream) extends DataSt
 
       val distPairs = distToMatch zip distToMatch.drop(1) // drop(1), not tail, because distToMatch may be empty
       val speedToMatch = distPairs.map {
-        case ((aTime, aDist), (bTime, bDist)) => aTime -> aDist / Seconds.secondsBetween(aTime, bTime).getSeconds
+        case ((aTime, aDist), (bTime, _)) => aTime -> aDist / Seconds.secondsBetween(aTime, bTime).getSeconds
       }
       val smoothedSpeed = selectInner(speedStream)
 
@@ -551,7 +500,7 @@ class DataStreamGPS(override val stream: DataStreamGPS.GPSStream) extends DataSt
       if (smoothedSpeed.isEmpty || speedToMatch.isEmpty) {
         Double.MaxValue
       } else {
-        val error = compareSpeedHistory(smoothedSpeed.toList, speedToMatch.toList, 0)
+        val error = compareSpeedHistory(smoothedSpeed, speedToMatch, 0)
         error
       }
     }
