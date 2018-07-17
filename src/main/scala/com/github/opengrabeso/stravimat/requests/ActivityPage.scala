@@ -816,7 +816,10 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
     if (toMerge.nonEmpty) {
       // first merge all GPS data
       // then merge in all attribute data
-      val (toMergeGPS, toMergeAttr) = toMerge.partition(_.hasGPS)
+      val (toMergeGPS, toMergeAttrRaw) = toMerge.partition(_.hasGPS)
+      val timeOffset = Settings(auth.userId).questTimeOffset
+      val toMergeAttr = toMergeAttrRaw.map(_.timeOffset(-timeOffset))
+
       val merged = if (toMergeGPS.nonEmpty) {
         val gpsMerged = toMergeGPS.reduceLeft(_ merge _)
         (gpsMerged +: toMergeAttr).reduceLeft(_ merge _)
