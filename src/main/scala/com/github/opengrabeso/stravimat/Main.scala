@@ -828,7 +828,7 @@ object Main {
     Clean errors in buildings and other areas where signal is bad and position error high
     (EHPE - estimated horizontal positition error)
     * */
-    def cleanPositionErrors: ActivityEvents = {
+    def cleanGPSPositionErrors: ActivityEvents = {
 
       def vecFromGPS(g: GPSPoint) = Vector2(g.latitude, g.longitude)
       //def gpsFromVec(v: Vector2) = GPSPoint(latitude = v.x, longitude = v.y, None)(None)
@@ -871,6 +871,11 @@ object Main {
 
       copy(gps = gpsStream, dist = dist.pickData(distances))
 
+    }
+
+    def cleanPositionErrors: ActivityEvents = {
+      if (hasGPS) cleanGPSPositionErrors
+      else this
     }
 
     /// input filters - elevation filtering, add temperature info
