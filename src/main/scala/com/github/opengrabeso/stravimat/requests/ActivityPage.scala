@@ -2,12 +2,11 @@ package com.github.opengrabeso.stravimat
 package requests
 
 import com.github.opengrabeso.stravimat.Main._
-import org.joda.time.{Seconds, DateTime => ZonedDateTime}
+import org.joda.time.{DateTime => ZonedDateTime}
 import spark.{Request, Response, Session}
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
-import org.apache.commons.io.IOUtils
 
 import scala.xml.NodeSeq
 
@@ -793,6 +792,7 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
             None
         }
         /*
+        import org.apache.commons.io.IOUtils
         //println(item)
         val is = item.openStream()
         val itemContent = try {
@@ -816,7 +816,10 @@ object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
     if (toMerge.nonEmpty) {
       // first merge all GPS data
       // then merge in all attribute data
-      val (toMergeGPS, toMergeAttr) = toMerge.partition(_.hasGPS)
+      val (toMergeGPS, toMergeAttrRaw) = toMerge.partition(_.hasGPS)
+      val timeOffset = Settings(auth.userId).questTimeOffset
+      val toMergeAttr = toMergeAttrRaw.map(_.timeOffset(-timeOffset))
+
       val merged = if (toMergeGPS.nonEmpty) {
         val gpsMerged = toMergeGPS.reduceLeft(_ merge _)
         (gpsMerged +: toMergeAttr).reduceLeft(_ merge _)
@@ -874,8 +877,6 @@ object EditActivity extends DefineRequest("/edit-activity") with ActivityRequest
       </html>
 
     }
-
-
 
   }
 }
