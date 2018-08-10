@@ -1122,12 +1122,14 @@ object Main {
 
   def processActivityStream(actId: ActivityId, act: ActivityStreams, laps: Seq[ZonedDateTime], segments: Seq[Event]): ActivityEvents = {
 
+    //println(s"Raw laps $laps")
     val cleanLaps = laps.filter(l => l > actId.startTime && l < actId.endTime)
+
+    //println(s"Clean laps $cleanLaps")
 
     val events = (BegEvent(actId.startTime, actId.sportName) +: EndEvent(actId.endTime) +: cleanLaps.map(LapEvent)) ++ segments
 
     val eventsByTime = events.sortBy(_.stamp)
-
 
     ActivityEvents(actId, eventsByTime.toArray, act.dist, act.latlng, act.attributes)
   }

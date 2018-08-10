@@ -71,6 +71,7 @@ object XMLParser {
         "Device" tag ("Name" text (text => deviceName = Some(text))),
         "Header" tag (
           "Distance" text (text => distance = text.toInt),
+          // caution: GPS Track POD <Header>/<DateTime> is given in local timezone with no designation - better ignore it
           "DateTime" text (text => startTime = Some(timeToUTC(ZonedDateTime.parse(text, dateFormatNoZone)))),
           "Duration" text (text => durationMs = (text.toDouble * 1000).toInt)
         ),
@@ -90,17 +91,20 @@ object XMLParser {
 
             "Events" tag (
               "Pause" tag ("State" text (text => paused = text.equalsIgnoreCase("true"))),
-              "Lap" tag (
-                "Type" text { text =>
-                  val lastTime = samples.reverseIterator.flatMap(_.time) //.find(_.isDefined)
-                  for (timestamp <- lastTime.toIterable.headOption) {
-                    laps += Lap(text, timestamp)
-                  }
+              "Lap" tagWithOpen {
+                // caution: lap time is bad for GPS Track Pod. It is marked as <UTC>, but in fact it is written in local time zone
+                // use time of the last previous sample instead, or we might consider using duration inside of the lap event
+                val lastTime = samples.reverseIterator.toIterable.tail.find(_.time.isDefined).flatMap(_.time)
+                for (timestamp <- lastTime) {
+                  laps += Lap("Lap", timestamp)
+                  println(s"SML lap $timestamp")
                 }
-                // we are not interested about any Lap properties
-                //ProcessText("Duration", ???),
-                //ProcessText("Distance", ???)
-              )
+              }
+              //"Type" text { text =>}
+              // we are not interested about any other Lap properties
+              //"Duration" text { text => text.toDouble }
+              //"Duration" text {text => }
+              //"Distance" text {text => }
             )
           )
         )

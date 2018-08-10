@@ -79,6 +79,7 @@ object FitImport {
             case MesgNum.LAP =>
               val timestamp = Option(mesg.getField(RecordMesg.TimestampFieldNum)).map(_.getLongValue)
               for (time <- timestamp) {
+                //println(s"LAP $time")
                 lapBuffer += fromTimestamp(time)
               }
             case MesgNum.FILE_ID =>
