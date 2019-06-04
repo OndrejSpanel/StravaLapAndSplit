@@ -37,8 +37,8 @@ trait ActivityRequestHandler extends UploadResults {
       <script src="static/download.js"></script>
       <script src="static/ajaxUtils.js"></script>
 
-      <script src='https://api.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.js'></script>
-      <link href='https://api.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.css' rel='stylesheet' />
+      <script src='https://api.mapbox.com/mapbox-gl-js/v1.0.0/mapbox-gl.js'></script>
+      <link href='https://api.mapbox.com/mapbox-gl-js/v1.0.0/mapbox-gl.css' rel='stylesheet' />
 
       <link rel="stylesheet" type="text/css" href="static/activityPage.css"/>
       <link rel="stylesheet" type="text/css" href="static/page.css"/>
