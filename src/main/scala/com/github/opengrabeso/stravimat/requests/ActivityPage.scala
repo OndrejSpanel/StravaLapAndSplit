@@ -462,38 +462,39 @@ trait ActivityRequestHandler extends UploadResults {
       var value = tableOption.value;
       return description + '<br /><select onchange="changeEvent(this.options[this.selectedIndex].value,' + eTime + ')">' + html + '</select>';
     }
-    function mapEventData(events, route) {
-      var markers = [];
 
-      function findPoint(route, time) {
-        // interpolate between close points if necessary
-        var i;
-        for (i = 1; i < route.length - 1; i++) {
-          // find first above
-          if (route[i][2] >= time) break;
+    function lerp(a, b, f) {
+      return a + (b - a) * f;
+    }
 
-        }
+    function findPoint(route, time) {
+      // interpolate between close points if necessary
+      var i;
+      for (i = 1; i < route.length - 1; i++) {
+        // find first above
+        if (route[i][2] >= time) break;
 
-        var prev = route[i-1];
-        var next = route[i];
-
-        var f;
-
-        if (f < prev[2]) f = 0;
-        else if (f > next[2]) f = 1;
-        else f = (time - prev[2]) / (next[2] - prev[2]);
-
-        function lerp(a, b, f) {
-          return a + (b - a) * f;
-        }
-        return [
-          lerp(prev[0], next[0], f),
-          lerp(prev[1], next[1], f),
-          lerp(prev[2], next[2], f), // should be time
-          lerp(prev[3], next[3], f)
-        ];
       }
 
+      var prev = route[i-1];
+      var next = route[i];
+
+      var f;
+
+      if (f < prev[2]) f = 0;
+      else if (f > next[2]) f = 1;
+      else f = (time - prev[2]) / (next[2] - prev[2]);
+
+      return [
+        lerp(prev[0], next[0], f),
+        lerp(prev[1], next[1], f),
+        lerp(prev[2], next[2], f), // should be time
+        lerp(prev[3], next[3], f)
+      ];
+    }
+
+    function mapEventData(events, route) {
+      var markers = [];
       var dropStartEnd = events.slice(1, -1);
 
       dropStartEnd.forEach(function(e) {
