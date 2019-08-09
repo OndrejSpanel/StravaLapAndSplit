@@ -633,17 +633,115 @@ trait ActivityRequestHandler extends UploadResults {
       });
     }
 
+
+
+    function generateGrid(bounds, size) {
+        // TODO: pad the bounds to make sure we draw the lines a little longer
+
+        var grid_box = bounds;
+        var avg_y = (grid_box._ne.lat + grid_box._sw.lat) * 0.5;
+
+        // Meridian length is always the same
+        var meridian = 20003930.0;
+        var equator = 40075160;
+        var parallel = Math.cos(avg_y * Math.PI / 180) * equator;
+
+        var grid_distance = 1000.0;
+
+        var grid_step_x = grid_distance / parallel * 360;
+        var grid_step_y = grid_distance / meridian * 180;
+
+        var minSize = Math.max(size.x, size.y);
+        var minLineDistance = 10;
+        var maxLines = minSize / minLineDistance;
+
+        var latLines = _latLines(bounds, grid_step_y, maxLines);
+        var lngLines = _lngLines(bounds, grid_step_x, maxLines);
+        var alpha = Math.min(latLines.alpha, lngLines.alpha);
+
+        if (latLines.lines.length > 0 && lngLines.lines.length > 0) {
+            var grid = [];
+            var i;
+            for (i in latLines.lines) {
+                if (Math.abs(latLines[i]) > 90) {
+                    continue;
+                }
+                grid.push(_horizontalLine(bounds, latLines.lines[i], alpha));
+            }
+
+            for (i in lngLines.lines) {
+                grid.push(_verticalLine(bounds, lngLines.lines[i], alpha));
+            }
+            return grid;
+        }
+        return [];
+    }
+
+    function _latLines(bounds, yticks, maxLines) {
+        return _lines(
+            bounds._sw.lat,
+            bounds._ne.lat,
+            yticks, maxLines, 0
+        );
+    }
+    function _lngLines(bounds, xticks, maxLines) {
+        return _lines(
+            bounds._sw.lng,
+            bounds._ne.lng,
+            xticks, maxLines, 1
+        );
+    }
+
+    function _lines(low, high, ticks, maxLines, baseIndex) {
+        var delta = high - low;
+
+        // TODO: a fixed point
+        var fixedPoint = low; // this._fixedPoint[baseIndex]
+
+        var lowAligned = Math.floor((low - fixedPoint)/ ticks) * ticks + fixedPoint;
+
+        // this._fixedPoint[baseIndex] = Math.floor(((low + high) / 2 - this._fixedPoint[baseIndex])/ ticks) * ticks + this._fixedPoint[baseIndex];
+
+        var lines = [];
+
+        if ( delta / ticks <= maxLines) {
+            for (var i = lowAligned; i <= high; i += ticks) {
+                lines.push(i);
+            }
+        }
+        var aScale = 15;
+        var a = ( maxLines / aScale) / (delta / ticks);
+        return {
+            lines: lines,
+            alpha: Math.min(1, Math.sqrt(a))
+        };
+    }
+
+    function _verticalLine(bounds, lng, alpha) {
+        return [
+            [lng, bounds.getNorth()],
+            [lng, bounds.getSouth()]
+        ];
+    }
+    function _horizontalLine(bounds, lat, alpha) {
+        return [
+            [bounds.getWest(), lat],
+            [bounds.getEast(), lat]
+        ];
+    }
+
+
     function renderGrid(route) {
       var routeLL = route.map(function(i){
         return [i[0], i[1]]
       });
       var last = routeLL.length - 1;
 
-      var coords = [
-        [routeLL[0], routeLL[last]],
-        [routeLL[Math.round(last / 4)], routeLL[Math.round(last * 3 / 4)]]
-      ];
-       console.log(coords);
+       var size = {
+        x: map.getContainer().clientWidth,
+        y: map.getContainer().clientHeight
+      };
+      var grid = generateGrid(map.getBounds(), size);
       map.addSource("grid", {
         "type": "geojson",
         "data": {
@@ -651,7 +749,7 @@ trait ActivityRequestHandler extends UploadResults {
           "properties": {},
           "geometry": {
             "type": "MultiLineString",
-            "coordinates": coords
+            "coordinates": grid
           }
         }
       });
@@ -664,8 +762,8 @@ trait ActivityRequestHandler extends UploadResults {
           "line-cap": "round"
         },
         "paint": {
-          "line-color": "#F44",
-          "line-width": 3,
+          "line-color": "#e40",
+          "line-width": 2,
           'line-opacity': 0.5
         }
       });
