@@ -634,17 +634,24 @@ trait ActivityRequestHandler extends UploadResults {
     }
 
     function renderGrid(route) {
-      var last = route.length - 1;
-      var routeLL = [route[0], route[last]];
+      var routeLL = route.map(function(i){
+        return [i[0], i[1]]
+      });
+      var last = routeLL.length - 1;
 
+      var coords = [
+        [routeLL[0], routeLL[last]],
+        [routeLL[Math.round(last / 4)], routeLL[Math.round(last * 3 / 4)]]
+      ];
+       console.log(coords);
       map.addSource("grid", {
         "type": "geojson",
         "data": {
           "type": "Feature",
           "properties": {},
           "geometry": {
-            "type": "LineString",
-            "coordinates": routeLL
+            "type": "MultiLineString",
+            "coordinates": coords
           }
         }
       });
