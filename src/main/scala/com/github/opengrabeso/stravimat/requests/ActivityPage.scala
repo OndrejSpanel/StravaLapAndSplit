@@ -633,6 +633,45 @@ trait ActivityRequestHandler extends UploadResults {
       });
     }
 
+    function renderGrid(route) {
+      var last = route.length - 1;
+      var routeLL = [route[0], route[last]];
+
+      map.addSource("grid", {
+        "type": "geojson",
+        "data": {
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "LineString",
+            "coordinates": routeLL
+          }
+        }
+      });
+      map.addLayer({
+        "id": "grid",
+        "type": "line",
+        "source": "grid",
+        "layout": {
+          "line-join": "round",
+          "line-cap": "round"
+        },
+        "paint": {
+          "line-color": "#F44",
+          "line-width": 3,
+          'line-opacity': 0.5
+        }
+      });
+
+      // icon list see https://www.mapbox.com/maki-icons/ or see https://github.com/mapbox/mapbox-gl-styles/tree/master/sprites/basic-v9/_svg
+      // basic geometric shapes, each also with - stroke variant:
+      //   star, star-stroke, circle, circle-stroked, triangle, triangle-stroked, square, square-stroked
+      //
+      // specific, but generic enough:
+      //   marker, cross, heart (Maki only?)
+    }
+
+
     function renderRoute(route) {
       var routeLL = route.map(function(i){
         return [i[0], i[1]]
@@ -690,6 +729,7 @@ trait ActivityRequestHandler extends UploadResults {
             var route = JSON.parse(xmlHttp.responseText);
             renderRoute(route);
             renderEvents(events, route);
+            renderGrid(route);
 
             onEventsChanged = function() {
               var eventsData = mapEventData(events, route);
