@@ -891,14 +891,16 @@ trait ActivityRequestHandler extends UploadResults {
                   .addTo(map);
               currentPopup = popup;
             });
-            map.on('moveend', function (e){
+
+            var moveHandler = function (e){
               var existing = map.getSource('events');
               if (existing) {
                 var data = existing._data;
                 renderGrid(data.features[0].geometry.coordinates);
               }
-            });
-
+            };
+            map.on('moveend', moveHandler);
+            map.on('move', moveHandler);
           }
 
         };
