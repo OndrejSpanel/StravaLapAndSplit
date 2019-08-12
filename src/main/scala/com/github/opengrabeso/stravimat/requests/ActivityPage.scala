@@ -731,42 +731,45 @@ trait ActivityRequestHandler extends UploadResults {
     }
 
 
-    function renderGrid(route) {
-      var routeLL = route.map(function(i){
-        return [i[0], i[1]]
-      });
-      var last = routeLL.length - 1;
-
+    function renderGrid() {
        var size = {
         x: map.getContainer().clientWidth,
         y: map.getContainer().clientHeight
       };
       var grid = generateGrid(map.getBounds(), size);
-      map.addSource("grid", {
-        "type": "geojson",
-        "data": {
-          "type": "Feature",
-          "properties": {},
-          "geometry": {
-            "type": "MultiLineString",
-            "coordinates": grid
+
+      var gridData = {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "MultiLineString",
+          "coordinates": grid
+        }
+      };
+
+      var existing = map.getSource('grid');
+      if (existing) {
+        existing.setData(gridData);
+      } else {
+        map.addSource("grid", {
+          "type": "geojson",
+          "data": gridData
+        });
+        map.addLayer({
+          "id": "grid",
+          "type": "line",
+          "source": "grid",
+          "layout": {
+            "line-join": "round",
+            "line-cap": "round"
+          },
+          "paint": {
+            "line-color": "#e40",
+            "line-width": 2,
+            'line-opacity': 0.5
           }
-        }
-      });
-      map.addLayer({
-        "id": "grid",
-        "type": "line",
-        "source": "grid",
-        "layout": {
-          "line-join": "round",
-          "line-cap": "round"
-        },
-        "paint": {
-          "line-color": "#e40",
-          "line-width": 2,
-          'line-opacity': 0.5
-        }
-      });
+        });
+      }
 
       // icon list see https://www.mapbox.com/maki-icons/ or see https://github.com/mapbox/mapbox-gl-styles/tree/master/sprites/basic-v9/_svg
       // basic geometric shapes, each also with - stroke variant:
@@ -834,7 +837,7 @@ trait ActivityRequestHandler extends UploadResults {
             var route = JSON.parse(xmlHttp.responseText);
             renderRoute(route);
             renderEvents(events, route);
-            renderGrid(route);
+            renderGrid();
 
             onEventsChanged = function() {
               var eventsData = mapEventData(events, route);
@@ -888,6 +891,9 @@ trait ActivityRequestHandler extends UploadResults {
                   .setHTML(feature.properties.description)
                   .addTo(map);
               currentPopup = popup;
+            });
+            map.on('moveend', function (e){
+              renderGrid();
             });
 
 
