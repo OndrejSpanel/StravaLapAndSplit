@@ -635,7 +635,7 @@ trait ActivityRequestHandler extends UploadResults {
 
 
 
-    function generateGrid(bounds, size) {
+    function generateGrid(bounds, size, fixedPoint) {
         // TODO: pad the bounds to make sure we draw the lines a little longer
 
         var grid_box = bounds;
@@ -655,8 +655,8 @@ trait ActivityRequestHandler extends UploadResults {
         var minLineDistance = 10;
         var maxLines = minSize / minLineDistance;
 
-        var latLines = _latLines(bounds, grid_step_y, maxLines);
-        var lngLines = _lngLines(bounds, grid_step_x, maxLines);
+        var latLines = _latLines(bounds, fixedPoint, grid_step_y, maxLines);
+        var lngLines = _lngLines(bounds, fixedPoint, grid_step_x, maxLines);
         var alpha = Math.min(latLines.alpha, lngLines.alpha);
 
         if (latLines.lines.length > 0 && lngLines.lines.length > 0) {
@@ -672,35 +672,30 @@ trait ActivityRequestHandler extends UploadResults {
             for (i in lngLines.lines) {
                 grid.push(_verticalLine(bounds, lngLines.lines[i], alpha));
             }
-            return grid;
+            return [grid, alpha];
         }
-        return [];
+        return [[], 0];
     }
 
-    function _latLines(bounds, yticks, maxLines) {
+    function _latLines(bounds, fixedPoint, yticks, maxLines) {
         return _lines(
             bounds._sw.lat,
             bounds._ne.lat,
-            yticks, maxLines, 0
+            yticks, maxLines, fixedPoint[1]
         );
     }
-    function _lngLines(bounds, xticks, maxLines) {
+    function _lngLines(bounds, fixedPoint, xticks, maxLines) {
         return _lines(
             bounds._sw.lng,
             bounds._ne.lng,
-            xticks, maxLines, 1
+            xticks, maxLines, fixedPoint[0]
         );
     }
 
-    function _lines(low, high, ticks, maxLines, baseIndex) {
+    function _lines(low, high, ticks, maxLines, fixedCoord) {
         var delta = high - low;
 
-        // TODO: a fixed point
-        var fixedPoint = low; // this._fixedPoint[baseIndex]
-
-        var lowAligned = Math.floor((low - fixedPoint)/ ticks) * ticks + fixedPoint;
-
-        // this._fixedPoint[baseIndex] = Math.floor(((low + high) / 2 - this._fixedPoint[baseIndex])/ ticks) * ticks + this._fixedPoint[baseIndex];
+        var lowAligned = Math.floor((low - fixedCoord)/ ticks) * ticks + fixedCoord;
 
         var lines = [];
 
@@ -731,12 +726,14 @@ trait ActivityRequestHandler extends UploadResults {
     }
 
 
-    function renderGrid() {
+    function renderGrid(fixedPoint) {
        var size = {
         x: map.getContainer().clientWidth,
         y: map.getContainer().clientHeight
       };
-      var grid = generateGrid(map.getBounds(), size);
+      var gridAndAlpha = generateGrid(map.getBounds(), size, fixedPoint);
+      var grid = gridAndAlpha[0];
+      var alpha = gridAndAlpha[1];
 
       var gridData = {
         "type": "Feature",
@@ -750,6 +747,8 @@ trait ActivityRequestHandler extends UploadResults {
       var existing = map.getSource('grid');
       if (existing) {
         existing.setData(gridData);
+        map.setPaintProperty('grid', 'line-opacity', alpha);
+        map.setLayoutProperty('grid', 'visibility', alpha > 0 ? 'visible' : 'none')
       } else {
         map.addSource("grid", {
           "type": "geojson",
@@ -766,7 +765,7 @@ trait ActivityRequestHandler extends UploadResults {
           "paint": {
             "line-color": "#e40",
             "line-width": 2,
-            'line-opacity': 0.5
+            'line-opacity': alpha
           }
         });
       }
@@ -837,7 +836,7 @@ trait ActivityRequestHandler extends UploadResults {
             var route = JSON.parse(xmlHttp.responseText);
             renderRoute(route);
             renderEvents(events, route);
-            renderGrid();
+            renderGrid(route[0]);
 
             onEventsChanged = function() {
               var eventsData = mapEventData(events, route);
@@ -893,10 +892,12 @@ trait ActivityRequestHandler extends UploadResults {
               currentPopup = popup;
             });
             map.on('moveend', function (e){
-              renderGrid();
+              var existing = map.getSource('events');
+              if (existing) {
+                var data = existing._data;
+                renderGrid(data.features[0].geometry.coordinates);
+              }
             });
-
-
 
           }
 
