@@ -95,7 +95,7 @@ object Start extends App {
   }
 
   private val stravimatLocalUrl = "http://localhost:8080"
-  private val stravimatRemoteUrl = "https://stravimat.appspot.com"
+  private val stravimatRemoteUrl = "https://mixtio.appspot.com"
   private var useLocal = false
   private lazy val stravimatUrl = if (useLocal) stravimatLocalUrl else stravimatRemoteUrl
 

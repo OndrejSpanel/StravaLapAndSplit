@@ -28,7 +28,7 @@ lazy val pushUploader = (project in file("push-uploader"))
   .enablePlugins(sbtassembly.AssemblyPlugin)
   .dependsOn(shared)
   .settings(
-    name := "StravimatStart",
+    name := "MixtioStart",
     commonSettings,
     libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
     libraryDependencies ++= commonLibs
@@ -36,13 +36,13 @@ lazy val pushUploader = (project in file("push-uploader"))
 
 
 
-lazy val stravimat = (project in file("."))
+lazy val mixtio = (project in file("."))
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .dependsOn(shared)
   .settings(
     appengineSettings,
 
-    name := "Stravimat",
+    name := "Mixtio",
 
     commonSettings,
 
