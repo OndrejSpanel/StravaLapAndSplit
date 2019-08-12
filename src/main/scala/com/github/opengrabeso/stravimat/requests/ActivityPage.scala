@@ -633,6 +633,152 @@ trait ActivityRequestHandler extends UploadResults {
       });
     }
 
+
+
+    function generateGrid(bounds, size, fixedPoint) {
+        // TODO: pad the bounds to make sure we draw the lines a little longer
+
+        var grid_box = bounds;
+        var avg_y = (grid_box._ne.lat + grid_box._sw.lat) * 0.5;
+
+        // Meridian length is always the same
+        var meridian = 20003930.0;
+        var equator = 40075160;
+        var parallel = Math.cos(avg_y * Math.PI / 180) * equator;
+
+        var grid_distance = 1000.0;
+
+        var grid_step_x = grid_distance / parallel * 360;
+        var grid_step_y = grid_distance / meridian * 180;
+
+        var minSize = Math.max(size.x, size.y);
+        var minLineDistance = 10;
+        var maxLines = minSize / minLineDistance;
+
+        var latLines = _latLines(bounds, fixedPoint, grid_step_y, maxLines);
+        var lngLines = _lngLines(bounds, fixedPoint, grid_step_x, maxLines);
+        var alpha = Math.min(latLines.alpha, lngLines.alpha);
+
+        if (latLines.lines.length > 0 && lngLines.lines.length > 0) {
+            var grid = [];
+            var i;
+            for (i in latLines.lines) {
+                if (Math.abs(latLines[i]) > 90) {
+                    continue;
+                }
+                grid.push(_horizontalLine(bounds, latLines.lines[i], alpha));
+            }
+
+            for (i in lngLines.lines) {
+                grid.push(_verticalLine(bounds, lngLines.lines[i], alpha));
+            }
+            return [grid, alpha];
+        }
+        return [[], 0];
+    }
+
+    function _latLines(bounds, fixedPoint, yticks, maxLines) {
+        return _lines(
+            bounds._sw.lat,
+            bounds._ne.lat,
+            yticks, maxLines, fixedPoint[1]
+        );
+    }
+    function _lngLines(bounds, fixedPoint, xticks, maxLines) {
+        return _lines(
+            bounds._sw.lng,
+            bounds._ne.lng,
+            xticks, maxLines, fixedPoint[0]
+        );
+    }
+
+    function _lines(low, high, ticks, maxLines, fixedCoord) {
+        var delta = high - low;
+
+        var lowAligned = Math.floor((low - fixedCoord)/ ticks) * ticks + fixedCoord;
+
+        var lines = [];
+
+        if ( delta / ticks <= maxLines) {
+            for (var i = lowAligned; i <= high; i += ticks) {
+                lines.push(i);
+            }
+        }
+        var aScale = 15;
+        var a = ( maxLines / aScale) / (delta / ticks);
+        return {
+            lines: lines,
+            alpha: Math.min(1, Math.sqrt(a))
+        };
+    }
+
+    function _verticalLine(bounds, lng, alpha) {
+        return [
+            [lng, bounds.getNorth()],
+            [lng, bounds.getSouth()]
+        ];
+    }
+    function _horizontalLine(bounds, lat, alpha) {
+        return [
+            [bounds.getWest(), lat],
+            [bounds.getEast(), lat]
+        ];
+    }
+
+
+    function renderGrid(fixedPoint) {
+       var size = {
+        x: map.getContainer().clientWidth,
+        y: map.getContainer().clientHeight
+      };
+      var gridAndAlpha = generateGrid(map.getBounds(), size, fixedPoint);
+      var grid = gridAndAlpha[0];
+      var alpha = gridAndAlpha[1];
+
+      var gridData = {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "MultiLineString",
+          "coordinates": grid
+        }
+      };
+
+      var existing = map.getSource('grid');
+      if (existing) {
+        existing.setData(gridData);
+        map.setPaintProperty('grid', 'line-opacity', alpha);
+        map.setLayoutProperty('grid', 'visibility', alpha > 0 ? 'visible' : 'none')
+      } else {
+        map.addSource("grid", {
+          "type": "geojson",
+          "data": gridData
+        });
+        map.addLayer({
+          "id": "grid",
+          "type": "line",
+          "source": "grid",
+          "layout": {
+            "line-join": "round",
+            "line-cap": "round"
+          },
+          "paint": {
+            "line-color": "#e40",
+            "line-width": 2,
+            'line-opacity': alpha
+          }
+        });
+      }
+
+      // icon list see https://www.mapbox.com/maki-icons/ or see https://github.com/mapbox/mapbox-gl-styles/tree/master/sprites/basic-v9/_svg
+      // basic geometric shapes, each also with - stroke variant:
+      //   star, star-stroke, circle, circle-stroked, triangle, triangle-stroked, square, square-stroked
+      //
+      // specific, but generic enough:
+      //   marker, cross, heart (Maki only?)
+    }
+
+
     function renderRoute(route) {
       var routeLL = route.map(function(i){
         return [i[0], i[1]]
@@ -690,6 +836,7 @@ trait ActivityRequestHandler extends UploadResults {
             var route = JSON.parse(xmlHttp.responseText);
             renderRoute(route);
             renderEvents(events, route);
+            renderGrid(route[0]);
 
             onEventsChanged = function() {
               var eventsData = mapEventData(events, route);
@@ -745,8 +892,15 @@ trait ActivityRequestHandler extends UploadResults {
               currentPopup = popup;
             });
 
-
-
+            var moveHandler = function (e){
+              var existing = map.getSource('events');
+              if (existing) {
+                var data = existing._data;
+                renderGrid(data.features[0].geometry.coordinates);
+              }
+            };
+            map.on('moveend', moveHandler);
+            map.on('move', moveHandler);
           }
 
         };
