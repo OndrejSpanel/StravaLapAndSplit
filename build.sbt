@@ -8,13 +8,13 @@ lazy val commonSettings = Seq(
 )
 
 lazy val commonLibs = Seq(
-  "joda-time" % "joda-time" % "2.9.4",
+  "joda-time" % "joda-time" % "2.10",
   "org.joda" % "joda-convert" % "1.8.1",
   "org.scalatest" %% "scalatest" % "3.0.1" % "test",
   "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
 )
 
-val jacksonVersion = "2.8.3"
+val jacksonVersion = "2.9.9"
 
 lazy val shared = (project in file("shared"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
@@ -47,10 +47,10 @@ lazy val stravimat = (project in file("."))
     commonSettings,
 
     libraryDependencies ++= commonLibs ++ Seq(
-      "com.google.http-client" % "google-http-client-appengine" % "1.22.0",
-      "com.google.http-client" % "google-http-client-jackson2" % "1.22.0",
-      "com.google.apis" % "google-api-services-storage" % "v1-rev110-1.22.0",
-      "com.google.appengine.tools" % "appengine-gcs-client" % "0.6",
+      "com.google.http-client" % "google-http-client-appengine" % "1.31.0",
+      "com.google.http-client" % "google-http-client-jackson2" % "1.31.0",
+      "com.google.apis" % "google-api-services-storage" % "v1-rev158-1.25.0",
+      "com.google.appengine.tools" % "appengine-gcs-client" % "0.8",
 
       "javax.servlet" % "servlet-api" % "2.5" % "provided",
       "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406" % "container",
