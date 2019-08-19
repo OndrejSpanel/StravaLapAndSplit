@@ -52,7 +52,7 @@ object Main {
     }
   }
 
-  case class StravaAuthResult(token: String, refreshToken: String, mapboxToken: String, id: String, name: String) {
+  case class StravaAuthResult(token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String) {
     // used to prove user is authenticated, but we do not want to store token in plain text to avoid security leaks
     lazy val userId: String = digest(token)
   }
@@ -87,28 +87,37 @@ object Main {
 
     val token = responseJson.path("access_token").textValue
     val refreshToken = responseJson.path("refresh_token").textValue
+    val refreshExpire = responseJson.path("expires_at").longValue
 
     val athleteJson = responseJson.path("athlete")
     val id = athleteJson.path("id").numberValue.toString
     val name = athleteJson.path("firstname").textValue + " " + athleteJson.path("lastname").textValue
 
-    StravaAuthResult(token, refreshToken, mapboxToken, id, name)
+    StravaAuthResult(token, refreshToken, refreshExpire, mapboxToken, id, name)
   }
 
   def stravaAuthRefresh(previous: StravaAuthResult): StravaAuthResult = {
+    // if not expired yet (with some space left), use it
+    // if expired or about to expire soon, request a new one
+    // https://developers.strava.com/docs/authentication/:
+    //  If the application’s access tokens for the user are expired or will expire in one hour (3,600 seconds) or less, a new access token will be returned
+    val now = System.currentTimeMillis / 1000
+    val validUntil = previous.refreshExpire - 3600
+    if (now > validUntil) {
+      val json = buildAuthJson
+      json.put("refresh_token", previous.refreshToken)
+      json.put("grant_type", "refresh_token")
 
-    val SecretResult(clientId, clientSecret, mapboxToken, _, _) = secret
+      val responseJson = authRequest(json)
 
-    val json = buildAuthJson
-    json.put("refresh_token", previous.refreshToken)
-    json.put("grant_type", "refresh_token")
+      val token = responseJson.path("access_token").textValue
+      val refreshToken = responseJson.path("refresh_token").textValue
+      val refreshExpire = responseJson.path("expires_at").longValue
 
-    val responseJson = authRequest(json)
-
-    val token = responseJson.path("access_token").textValue
-    val refreshToken = responseJson.path("refresh_token").textValue
-
-    previous.copy(token = token, refreshToken = refreshToken)
+      previous.copy(token = token, refreshToken = refreshToken, refreshExpire = refreshExpire)
+    } else {
+      previous
+    }
   }
 
   @SerialVersionUID(11L)
