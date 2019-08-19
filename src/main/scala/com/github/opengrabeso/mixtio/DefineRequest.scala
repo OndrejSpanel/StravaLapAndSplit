@@ -112,20 +112,22 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     session.attribute[String]("push-session")
   }
 
+  def storeAuth(session: Session, auth: StravaAuthResult) = {
+    session.attribute("auth", auth)
+  }
   def performAuth(code: String, resp: Response, session: Session): Try[StravaAuthResult] = {
     val authResult = Try(Main.stravaAuth(code))
     authResult.foreach { auth =>
       resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
-      session.attribute("auth", auth)
+      storeAuth(session, auth)
     }
     authResult
-
   }
 
   def withAuth(req: Request, resp: Response)(body: StravaAuthResult => NodeSeq): NodeSeq = {
     val session = req.session()
     val auth = session.attribute[StravaAuthResult]("auth")
-    if (auth == null) {
+    if (auth == null || auth.refreshToken == null) {
       val codePar = Option(req.queryParams("code"))
       val statePar = Option(req.queryParams("state")).filter(_.nonEmpty)
       codePar.fold {
@@ -147,11 +149,11 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       // if code is received, login was done and redirected to this URL
       val codePar = Option(req.queryParams("code"))
       codePar.fold {
-        // TODO: some refresh caching
-        val newAuth = stravaAuthRefresh(auth)
         // try issuing the request, if failed, perform auth as needed
         val res = Try {
-          body(auth)
+          val newAuth = stravaAuthRefresh(auth)
+          storeAuth(session, newAuth)
+          body(newAuth)
         }
         val resRecovered = res.recover {
           case err: HttpResponseException if err.getStatusCode == 401 => // unauthorized
