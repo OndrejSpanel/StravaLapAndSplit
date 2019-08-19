@@ -16,18 +16,25 @@ object RequestUtils {
   })
 
   def buildPostRequest(uri: String, authToken: String, parameters: String, content: HttpContent): HttpRequest = {
-    val request = requestFactory.buildPostRequest(new GenericUrl(uri + "?access_token=" + authToken + "&" + parameters), content)
+    val request = requestFactory.buildPostRequest(new GenericUrl(uri + "?" + parameters), content)
+    authorizeRequest(request, authToken)
+  }
+
+  def authorizeRequest(request: HttpRequest, authToken: String) = {
+    val headers = request.getHeaders
+    headers.put("authorization", s"Bearer $authToken")
     request
   }
 
   def buildGetRequest(uri: String, authToken: String, parameters: String): HttpRequest = {
-    val request = requestFactory.buildGetRequest(new GenericUrl(uri + "?access_token=" + authToken + "&" + parameters))
-    request
+    val request = requestFactory.buildGetRequest(new GenericUrl(uri + "?" + parameters))
+
+    authorizeRequest(request, authToken)
   }
 
   def buildDeleteRequest(uri: String, authToken: String, parameters: String): HttpRequest = {
-    val request = requestFactory.buildDeleteRequest(new GenericUrl(uri + "?access_token=" + authToken + "&" + parameters))
-    request
+    val request = requestFactory.buildDeleteRequest(new GenericUrl(uri + "?" + parameters))
+    authorizeRequest(request, authToken)
   }
 
   def buildGetRequest(uri: String, parameters: Map[String, String] = Map.empty): HttpRequest = {
