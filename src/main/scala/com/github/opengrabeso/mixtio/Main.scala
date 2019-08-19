@@ -52,39 +52,63 @@ object Main {
     }
   }
 
-  case class StravaAuthResult(token: String, mapboxToken: String, id: String, name: String) {
+  case class StravaAuthResult(token: String, refreshToken: String, mapboxToken: String, id: String, name: String) {
     // used to prove user is authenticated, but we do not want to store token in plain text to avoid security leaks
     lazy val userId: String = digest(token)
   }
 
-  def stravaAuth(code: String): StravaAuthResult = {
-
+  private def buildAuthJson: util.HashMap[String, String] = {
     val json = new util.HashMap[String, String]()
     val SecretResult(clientId, clientSecret, mapboxToken, _, _) = secret
 
     json.put("client_id", clientId)
     json.put("client_secret", clientSecret)
-    json.put("code", code)
+    json
+  }
 
+  private def authRequest(json: util.HashMap[String, String]): JsonNode = {
     val content = new JsonHttpContent(new JacksonFactory(), json)
 
     val request = requestFactory.buildPostRequest(new GenericUrl("https://www.strava.com/oauth/token"), content)
     val response = request.execute() // TODO: async?
 
-    val responseJson = jsonMapper.readTree(response.getContent)
+    jsonMapper.readTree(response.getContent)
+  }
+
+  def stravaAuth(code: String): StravaAuthResult = {
+
+    val SecretResult(clientId, clientSecret, mapboxToken, _, _) = secret
+
+    val json = buildAuthJson
+    json.put("code", code)
+    json.put("grant_type", "authorization_code")
+
+    val responseJson = authRequest(json)
+
     val token = responseJson.path("access_token").textValue
+    val refreshToken = responseJson.path("refresh_token").textValue
 
     val athleteJson = responseJson.path("athlete")
     val id = athleteJson.path("id").numberValue.toString
     val name = athleteJson.path("firstname").textValue + " " + athleteJson.path("lastname").textValue
 
-    StravaAuthResult(token, mapboxToken, id, name)
-
+    StravaAuthResult(token, refreshToken, mapboxToken, id, name)
   }
 
-  def authorizeHeaders(request: HttpRequest, authToken: String) = {
-    val headers = request.getHeaders
-    headers.put("Authorization:", s"Bearer $authToken")
+  def stravaAuthRefresh(previous: StravaAuthResult): StravaAuthResult = {
+
+    val SecretResult(clientId, clientSecret, mapboxToken, _, _) = secret
+
+    val json = buildAuthJson
+    json.put("refresh_token", previous.refreshToken)
+    json.put("grant_type", "refresh_token")
+
+    val responseJson = authRequest(json)
+
+    val token = responseJson.path("access_token").textValue
+    val refreshToken = responseJson.path("refresh_token").textValue
+
+    previous.copy(token = token, refreshToken = refreshToken)
   }
 
   @SerialVersionUID(11L)

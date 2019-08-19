@@ -3,6 +3,7 @@ package com.github.opengrabeso.mixtio
 import java.net.URLEncoder
 
 import Main._
+import com.google.api.client.http.HttpResponseException
 import spark.{Request, Response, Session}
 
 import scala.util.Try
@@ -127,7 +128,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     if (auth == null) {
       val codePar = Option(req.queryParams("code"))
       val statePar = Option(req.queryParams("state")).filter(_.nonEmpty)
-      codePar.fold{
+      codePar.fold {
         val code = Option(req.cookie("authCode"))
         code.flatMap { code =>
           performAuth(code, resp, session).toOption.map(body)
@@ -143,7 +144,29 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
         }
       }
     } else {
-      body(auth)
+      // if code is received, login was done and redirected to this URL
+      val codePar = Option(req.queryParams("code"))
+      codePar.fold {
+        // TODO: some refresh caching
+        val newAuth = stravaAuthRefresh(auth)
+        // try issuing the request, if failed, perform auth as needed
+        val res = Try {
+          body(auth)
+        }
+        val resRecovered = res.recover {
+          case err: HttpResponseException if err.getStatusCode == 401 => // unauthorized
+            val query = req.queryString
+            loginPage(req, resp, req.url, Option(query))
+        }
+        resRecovered.get
+      } { code =>
+        // called as a callback, process the token
+        performAuth(code, resp, session).map(body).get
+      }
+
+      // first refresh the token
+      // TODO: consider skipping this if the token is very fresh
+      //performAuth(code, resp, session).toOption.map(body)
     }
   }
 
