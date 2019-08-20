@@ -21,6 +21,7 @@
 /project/target/
 /project/project/
 /shared/target/
+/js/target/
 /push-uploader/target/
 
 /src/main/resources/secret.txt

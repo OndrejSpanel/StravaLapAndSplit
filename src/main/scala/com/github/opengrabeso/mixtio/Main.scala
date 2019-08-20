@@ -3,7 +3,7 @@ package com.github.opengrabeso.mixtio
 import java.io.InputStream
 import java.security.MessageDigest
 import java.util
-import java.util.Locale
+import java.util.{Locale, Properties}
 
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
@@ -50,6 +50,12 @@ object Main {
       case _: Exception =>
         SecretResult("", "", "", "", s"Bad $filename, app developer should check README.md")
     }
+  }
+
+  def devMode: Boolean = {
+    val prop = new Properties()
+    prop.load(getClass.getResourceAsStream("/config.properties"))
+    prop.getProperty("devMode").toBoolean
   }
 
   case class StravaAuthResult(token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String) {

@@ -34,15 +34,42 @@ lazy val pushUploader = (project in file("push-uploader"))
     libraryDependencies ++= commonLibs
   )
 
+def inDevMode = sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
+
+def addJavaScriptToServerResources(): Def.SettingsDefinition = {
+  if (inDevMode) {
+    println("SBT for Scala.js example app is in dev mode")
+    (resources in Compile) += (fastOptJS in(js, Compile)).value.data
+  } else {
+    println("SBT for Scala.js example app is in production mode")
+    (resources in Compile) += (fullOptJS in(js, Compile)).value.data
+  }
+}
+
+def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
+  (resources in Compile) += (packageMinifiedJSDependencies in(js, Compile)).value
+}
+
+lazy val js = project.settings(
+    commonSettings
+  ).enablePlugins(ScalaJSPlugin)
 
 
 lazy val mixtio = (project in file("."))
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .dependsOn(shared)
   .settings(
-    appengineSettings,
-
     name := "Mixtio",
+
+    addJavaScriptToServerResources(),
+    addJSDependenciesToServerResources(),
+
+    resourceGenerators in Compile += Def.task {
+      val file = (resourceManaged in Compile).value / "config.properties"
+      val contents = s"devMode=${inDevMode}"
+      IO.write(file, contents)
+      Seq(file)
+    }.taskValue,
 
     commonSettings,
 
@@ -60,6 +87,8 @@ lazy val mixtio = (project in file("."))
 
       "com.fasterxml" % "aalto-xml" % "1.0.0",
 
+      //"org.webjars" % "webjars-locator-core" % "0.39",
+
       "fr.opensagres.xdocreport.appengine-awt" % "appengine-awt" % "1.0.0",
 
       "com.sparkjava" % "spark-core" % "1.1.1" excludeAll ExclusionRule(organization = "org.eclipse.jetty"),
@@ -71,5 +100,6 @@ lazy val mixtio = (project in file("."))
       "org.apache.commons" % "commons-math" % "2.1",
       "commons-io" % "commons-io" % "2.1"
     )
-  )
+  ).enablePlugins(AppenginePlugin)
+
 
