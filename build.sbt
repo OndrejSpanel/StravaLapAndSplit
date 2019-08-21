@@ -37,17 +37,13 @@ lazy val pushUploader = (project in file("push-uploader"))
 def inDevMode = sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
 
 def addJavaScriptToServerResources(): Def.SettingsDefinition = {
-  if (inDevMode) {
-    println("SBT for Scala.js example app is in dev mode")
-    (resources in Compile) += (fastOptJS in(js, Compile)).value.data
-  } else {
-    println("SBT for Scala.js example app is in production mode")
-    (resources in Compile) += (fullOptJS in(js, Compile)).value.data
-  }
+  val optJs = if (inDevMode) fastOptJS else fullOptJS
+  (resources in Compile) += (optJs in(js, Compile)).value.data
 }
 
 def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
-  (resources in Compile) += (packageMinifiedJSDependencies in(js, Compile)).value
+  val depJs = if (inDevMode) packageJSDependencies else packageMinifiedJSDependencies
+  (resources in Compile) += (depJs in(js, Compile)).value
 }
 
 lazy val js = project.settings(

@@ -24,7 +24,7 @@ class ServletRouting extends SparkApplication {
     val handlers: Seq[DefineRequest] = Seq(
       IndexHtml, LogOut,
 
-      JSTest,
+      ScalaJSScript, Version,
 
       push.Ping, push.PushStart, push.PushDo,
 
