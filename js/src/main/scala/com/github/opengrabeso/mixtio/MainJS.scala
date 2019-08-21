@@ -5,5 +5,5 @@ import scala.scalajs.js.annotation._
 @JSExportTopLevel("MainJS")
 object MainJS {
   @JSExport
-  def appName: String = "App Name"
+  def jsAppName: String = appName
 }

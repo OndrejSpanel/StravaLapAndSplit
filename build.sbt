@@ -3,14 +3,22 @@ import sbt.Keys.scalacOptions
 lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
   version := "0.1.10-beta",
-  scalaVersion := "2.11.12",
+  scalaVersion := "2.12.9",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+)
+
+// TODO: try to share
+lazy val jvmLibs = Seq(
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
+)
+
+lazy val jsLibs = libraryDependencies ++= Seq(
+  "org.scalatest" %%% "scalatest" % "3.0.8" % "test"
 )
 
 lazy val commonLibs = Seq(
   "joda-time" % "joda-time" % "2.10",
   "org.joda" % "joda-convert" % "1.8.1",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test",
   "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
 )
 
@@ -23,6 +31,14 @@ lazy val shared = (project in file("shared"))
     libraryDependencies ++= commonLibs
   )
 
+lazy val sharedJs = (project in file("shared-js"))
+  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    commonSettings,
+    jsLibs
+  )
+
 
 lazy val pushUploader = (project in file("push-uploader"))
   .enablePlugins(sbtassembly.AssemblyPlugin)
@@ -31,7 +47,7 @@ lazy val pushUploader = (project in file("push-uploader"))
     name := "MixtioStart",
     commonSettings,
     libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
-    libraryDependencies ++= commonLibs
+    libraryDependencies ++= commonLibs ++ jvmLibs
   )
 
 def inDevMode = sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
@@ -47,13 +63,15 @@ def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
 }
 
 lazy val js = project.settings(
-    commonSettings
-  ).enablePlugins(ScalaJSPlugin)
+    commonSettings,
+    jsLibs
+).enablePlugins(ScalaJSPlugin)
+  .dependsOn(sharedJs)
 
 
-lazy val mixtio = (project in file("."))
+lazy val root = (project in file("."))
   .disablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared)
+  .dependsOn(shared, sharedJs)
   .settings(
     name := "Mixtio",
 
@@ -69,7 +87,7 @@ lazy val mixtio = (project in file("."))
 
     commonSettings,
 
-    libraryDependencies ++= commonLibs ++ Seq(
+    libraryDependencies ++= commonLibs ++ jvmLibs ++ Seq(
       "com.google.http-client" % "google-http-client-appengine" % "1.31.0",
       "com.google.http-client" % "google-http-client-jackson2" % "1.31.0",
       "com.google.apis" % "google-api-services-storage" % "v1-rev158-1.25.0",
@@ -97,5 +115,4 @@ lazy val mixtio = (project in file("."))
       "commons-io" % "commons-io" % "2.1"
     )
   ).enablePlugins(AppenginePlugin)
-
 
