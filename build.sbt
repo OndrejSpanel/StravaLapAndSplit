@@ -13,7 +13,8 @@ lazy val jvmLibs = Seq(
 )
 
 lazy val jsLibs = libraryDependencies ++= Seq(
-  "org.scalatest" %%% "scalatest" % "3.0.8" % "test"
+  "org.scalatest" %%% "scalatest" % "3.0.8" % "test",
+  "org.scala-js" %%% "scalajs-dom" % "0.9.7"
 )
 
 lazy val commonLibs = Seq(

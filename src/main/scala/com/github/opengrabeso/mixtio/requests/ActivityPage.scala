@@ -245,13 +245,6 @@ trait ActivityRequestHandler extends UploadResults {
       tableLink.innerHTML = splitLink(id, e);
     }
 
-    /** @param {String} time */
-    function removeEvent(time) {
-      //console.log("Remove event " + time);
-      var tableLink = document.getElementById("link" + time);
-      tableLink.innerHTML = "";
-    }
-
     /**
     * @param {String} newValue
     * @param {String} itemTime
