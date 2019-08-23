@@ -16,7 +16,7 @@ object Version  extends DefineRequest("version") {
         <p>
           Name:
           <script>
-            document.write({xml.Unparsed("MainJS.jsAppName")})
+            document.write({xml.Unparsed("jsAppName()")})
           </script>
         </p>
       </body>

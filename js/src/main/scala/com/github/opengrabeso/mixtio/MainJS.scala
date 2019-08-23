@@ -1,9 +1,16 @@
 package com.github.opengrabeso.mixtio
 
-import scala.scalajs.js.annotation._
+import scala.scalajs.js
+import js.annotation._
 
-@JSExportTopLevel("MainJS")
+import JSFacade._
+
 object MainJS {
-  @JSExport
-  def jsAppName: String = appName
+  @JSExportTopLevel("jsAppName")
+  def jsAppName(): String = appName
+
+  @JSExportTopLevel("actIdNameWrap")
+  def actIdNameWrap(): String = {
+    actIdName()
+  }
 }

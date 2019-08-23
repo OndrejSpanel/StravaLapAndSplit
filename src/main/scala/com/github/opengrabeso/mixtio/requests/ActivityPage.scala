@@ -43,6 +43,8 @@ trait ActivityRequestHandler extends UploadResults {
       <link rel="stylesheet" type="text/css" href="static/activityPage.css"/>
       <link rel="stylesheet" type="text/css" href="static/page.css"/>
 
+      <script src="js/script"></script>
+      <script src="js/dependencies"></script>
       <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
       val stats = activityData.stats
@@ -142,11 +144,20 @@ trait ActivityRequestHandler extends UploadResults {
     //language=JavaScript
     xml.Unparsed(
       s"""
-      var id = "$actIdName";
+
+      function activityEvents() {
+        return [
+          ${activityData.editableEvents.mkString("[", "],\n        [", "]")}
+        ];
+      }
+
+      function actIdName() {
+        return "$actIdName";
+      }
+
+      var id = actIdNameWrap();
       // events are: ["split", 0, 0.0, "Run", "lap", "Start"] - kind, time, distance, sport, original kind, description
-      var events = [
-        ${activityData.editableEvents.mkString("[", "],\n        [", "]")}
-      ];
+      var events = activityEvents();
 
       // callback, should update the map when events are changed
       var onEventsChanged = function() {};
