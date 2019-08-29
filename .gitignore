@@ -17,12 +17,7 @@
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
-/target/
-/project/target/
+target
 /project/project/
-/shared/target/
-/shared-js/target/
-/js/target/
-/push-uploader/target/
 
 /src/main/resources/secret.txt
