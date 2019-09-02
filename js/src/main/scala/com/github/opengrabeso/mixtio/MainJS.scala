@@ -5,12 +5,28 @@ import js.annotation._
 import JSFacade._
 import org.scalajs.dom.document
 import org.scalajs.dom.raw._
+import org.querki.jquery._
 
 import scala.collection.mutable
 
 object MainJS {
   @JSExportTopLevel("jsAppName")
   def jsAppName(): String = appName
+
+  @JSExportTopLevel("initEvents")
+  def initEvents() = {
+    //console.log("initEvents " + events.toString());
+    events.foreach(e => {
+      if (e(0).lastIndexOf("split", 0) == 0) {
+        addEvent(e)
+      } else {
+        removeEvent(e(1))
+      }
+      selectOption(e)
+    })
+    showEventButtons()
+    onPartChecked()
+  }
 
   @JSExportTopLevel("removeEvent")
   def removeEvent(time: String): Unit = {
@@ -76,6 +92,151 @@ object MainJS {
       description = elements.mkString(" / ")
     }
     selectCheckbox + description
+  }
+
+  def addEvent(e: js.Array[String]) = {
+    //console.log("Add event " + e[1]);
+    val tableLink = document.getElementById("link" + e(1))
+    tableLink.innerHTML = splitLink(id, e)
+  }
+
+  def testPredicate(f: js.Array[String] => Boolean) = {
+    var ret = false
+    events.foreach(e => {
+      if (f(e)) {
+        ret = true
+      }
+    })
+    ret
+  }
+
+  // is tests current event state (as displayed on the page)
+
+  def isCheckedLap(e: js.Array[String]) = {
+    e(0) == "lap"
+  }
+  // was test original event state
+
+  def wasUserLap(e: js.Array[String]) = {
+    e(4) == "lap"
+  }
+
+  def wasLongPause(e: js.Array[String]) = {
+    e(4).lastIndexOf("long pause") == 0
+  }
+
+  def wasAnyPause(e: js.Array[String]) = {
+    e(4) == "pause" || wasLongPause(e)
+  }
+
+  def wasSegment(e: js.Array[String]) = {
+    e(4).lastIndexOf("segment") == 0 || e(4).lastIndexOf("private segment") == 0
+  }
+
+  def wasHill(e: js.Array[String]) = {
+    e(4) == "elevation"
+  }
+
+  def showEventButtons() = {
+
+    def showOrHide(name: String, func: js.Array[String] => Boolean) = {
+      if (testPredicate(func)) {
+        $("#" + name).show()
+      } else {
+        $("#" + name).hide()
+      }
+    }
+
+    def enableOrDisable(name: String, func: js.Array[String] => Boolean) = {
+      //showOrHide(name, func)
+      $("#" + name).prop("disabled", !testPredicate(func))
+    }
+    enableOrDisable("isCheckedLap", isCheckedLap)
+    showOrHide("wasUserLap", wasUserLap)
+    showOrHide("wasLongPause", wasLongPause)
+    showOrHide("wasAnyPause", wasAnyPause)
+    showOrHide("wasSegment", wasSegment)
+    showOrHide("wasHill", wasHill)
+  }
+
+  def lapsClearAll() = {
+    events.foreach(e => {
+      if (isCheckedLap(e)) {
+        changeEvent("", e(1))
+      }
+    })
+    onEventsChanged()
+    showEventButtons()
+  }
+
+  def lapsSelectByPredicate(f: js.Array[String] => Boolean) = {
+    events.foreach(e => {
+      if (f(e)) {
+        changeEvent("lap", e(1))
+      }
+    })
+    onEventsChanged()
+    showEventButtons()
+  }
+
+  def lapsSelectUser() = {
+    lapsSelectByPredicate(wasUserLap)
+  }
+
+  def lapsSelectLongPauses() = {
+    lapsSelectByPredicate(wasLongPause)
+  }
+
+  def lapsSelectAllPauses() = {
+    lapsSelectByPredicate(wasAnyPause)
+  }
+
+  def onPartChecked() = {
+    // count how many are checked
+    // if none or very few, hide the uncheck button
+    val parts = $("input:checkbox")
+    val total = parts.length
+    val checked = parts.filter(":checked").length
+    if (checked > 1 && checked < total) {
+      $("#merge_button").show()
+    } else {
+      $("#merge_button").hide()
+    }
+    if (checked > 0) {
+      $("#div_process").show()
+      $("#div_no_process").hide()
+    } else {
+      $("#div_process").hide()
+      $("#div_no_process").show()
+    }
+  }
+
+  @JSExportTopLevel("changeEvent")
+  def changeEvent(newValue: String, itemTime: String) = {
+    //console.log("changeEvent", newValue, itemTime)
+    events.foreach(e => {
+      if (e(1) == itemTime) {
+        e(0) = newValue
+        selectOption(e)
+      }
+    })
+    events.foreach(e => {
+      if (e(1) == itemTime && e(0).lastIndexOf("split", 0) == 0) {
+        addEvent(e)
+      } else {
+        removeEvent(e(1))
+      }
+    })
+    // without changing the active event first it is often not updated at all, no idea why
+    events.foreach(e => {
+      if (e(0).lastIndexOf("split", 0) == 0) {
+        addEvent(e)
+      }
+    })
+    // execute the callback
+    onEventsChanged()
+    onPartChecked()
+    showEventButtons()
   }
 
 }

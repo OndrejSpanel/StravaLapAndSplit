@@ -163,82 +163,6 @@ trait ActivityRequestHandler extends UploadResults {
       var onEventsChanged = function() {};
       var currentPopup = undefined;
 
-    function initEvents() {
-      //console.log("initEvents " + events.toString());
-      events.forEach(function(e){
-        if (e[0].lastIndexOf("split",0) === 0) {
-          addEvent(e);
-        } else {
-          removeEvent(e[1])
-        }
-        selectOption(e);
-      });
-      showEventButtons();
-      onPartChecked();
-    }
-    function addEvent(e) {
-      //console.log("Add event " + e[1]);
-      var tableLink = document.getElementById("link" + e[1]);
-      tableLink.innerHTML = splitLink(id, e);
-    }
-
-    /**
-    * @param {String} newValue
-    * @param {String} itemTime
-    * */
-    function changeEvent(newValue, itemTime) {
-      //console.log("changeEvent", newValue, itemTime)
-      events.forEach(function(e) {
-        if (e[1] == itemTime) {
-          e[0] = newValue;
-          selectOption(e);
-        }
-      });
-
-      events.forEach(function(e) {
-        if (e[1] == itemTime && e[0].lastIndexOf("split", 0) === 0){
-          addEvent(e);
-        } else {
-          removeEvent(e[1])
-        }
-      });
-
-      // without changing the active event first it is often not updated at all, no idea why
-      events.forEach(function (e) {
-        if (e[0].lastIndexOf("split", 0) === 0) {
-          addEvent(e);
-        }
-      });
-
-      // execute the callback
-      onEventsChanged();
-      onPartChecked();
-
-      showEventButtons();
-    }
-
-    function onPartChecked() {
-      // count how many are checked
-      // if none or very few, hide the uncheck button
-      var parts = $$("input:checkbox");
-      var total = parts.length;
-      var checked = parts.filter(":checked").length;
-      if (checked > 1 && checked < total) {
-        $$("#merge_button").show();
-      } else {
-        $$("#merge_button").hide();
-      }
-      if (checked > 0 ) {
-        $$("#div_process").show();
-        $$("#div_no_process").hide();
-      } else {
-        $$("#div_process").hide();
-        $$("#div_no_process").show();
-      }
-    }
-
-
-
     function submitProcess() {
       //document.getElementById("upload_button").style.display = "none";
       document.getElementById("uploads_table").style.display = "block";
@@ -291,96 +215,11 @@ trait ActivityRequestHandler extends UploadResults {
       ajax.send(new FormData(form[0]))
     }
 
-    // is tests current event state (as displayed on the page)
-    function isCheckedLap(e) {
-      return e[0] === "lap";
-    }
-
-    // was test original event state
-    function wasUserLap(e) {
-      return e[4] === "lap";
-    }
-
-    function wasLongPause(e) {
-      return e[4].lastIndexOf("long pause") === 0;
-    }
-
-    function wasAnyPause(e) {
-      return e[4] === "pause" || wasLongPause(e)
-    }
-
-    function wasSegment(e) {
-      return e[4].lastIndexOf("segment") === 0 || e[4].lastIndexOf("private segment") === 0;
-    }
-
-    function wasHill(e) {
-      return e[4] === "elevation";
-    }
-
-    function lapsClearAll() {
-      events.forEach(function(e) {
-        if (isCheckedLap(e)){
-          changeEvent("", e[1]);
-        }
-      });
-      onEventsChanged();
-      showEventButtons();
-    }
-
-    function lapsSelectByPredicate(f) {
-      events.forEach(function(e) {
-        if (f(e)){
-          changeEvent("lap", e[1]);
-        }
-      });
-      onEventsChanged();
-      showEventButtons();
-    }
-
-    function lapsSelectUser() {
-      lapsSelectByPredicate(wasUserLap);
-    }
-    function lapsSelectLongPauses() {
-      lapsSelectByPredicate(wasLongPause);
-    }
-    function lapsSelectAllPauses() {
-      lapsSelectByPredicate(wasAnyPause);
-    }
-
     /**
     @param {number} eventId
     */
     function selectMapEvent(eventId) {
        map.fire('popup', {feature: eventId});
-    }
-
-    function testPredicate(f) {
-      var ret = false;
-      events.forEach(function(e) {
-        if (f(e)){
-          ret = true;
-        }
-      });
-      return ret;
-    }
-    function showEventButtons() {
-      function showOrHide(name, func) {
-        if (testPredicate(func)) {
-          $$("#" + name).show();
-        } else {
-          $$("#" + name).hide();
-        }
-      }
-      function enableOrDisable(name, func) {
-        //showOrHide(name, func)
-        $$("#" + name).prop("disabled", !testPredicate(func));
-      }
-      enableOrDisable("isCheckedLap", isCheckedLap);
-      showOrHide("wasUserLap", wasUserLap);
-      showOrHide("wasLongPause", wasLongPause);
-      showOrHide("wasAnyPause", wasAnyPause);
-      showOrHide("wasSegment", wasSegment);
-      showOrHide("wasHill", wasHill);
     }
 
 

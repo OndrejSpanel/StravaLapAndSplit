@@ -12,4 +12,6 @@ object JSFacade extends js.Any {
   var id: String = js.native
 
   var events: js.Array[js.Array[String]] = js.native
+
+  var onEventsChanged: js.Function0[Unit] = js.native
 }
