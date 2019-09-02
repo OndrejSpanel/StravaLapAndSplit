@@ -163,65 +163,6 @@ trait ActivityRequestHandler extends UploadResults {
       var onEventsChanged = function() {};
       var currentPopup = undefined;
 
-    function submitProcess() {
-      //document.getElementById("upload_button").style.display = "none";
-      document.getElementById("uploads_table").style.display = "block";
-
-      var form = $$("#activity_form");
-      $$.ajax({
-        type: form.attr("method"),
-        url: form.attr("action"),
-        data: new FormData(form[0]),
-        contentType: false,
-        cache: false,
-        processData: false,
-        success: function(response) {
-          showResults();
-        },
-      });
-    }
-
-    function submitEdit() {
-      //document.getElementById("upload_button").style.display = "none";
-      document.getElementById("uploads_table").style.display = "block";
-
-      var form = $$("#activity_form");
-      $$.ajax({
-        type: form.attr("method"),
-        url: "edit-activities",
-        data: new FormData(form[0]),
-        contentType: false,
-        cache: false,
-        processData: false,
-
-        success: function(response) {
-          var idElem = $$(response).find("id");
-          if (idElem.length > 0) {
-            window.location = "edit-activity?id=" + idElem.first().text().trim()
-          }
-        },
-      });
-    }
-
-    function submitDownload() {
-      var form = $$("#activity_form");
-
-      var ajax = new XMLHttpRequest();
-      ajax.open( "POST", "/download", true);
-      ajax.responseType = 'blob';
-      ajax.onload = function(e){
-        download(e.target.response, ajax.getResponseHeader("Content-Disposition"), ajax.getResponseHeader("content-type"));
-      };
-      ajax.send(new FormData(form[0]))
-    }
-
-    /**
-    @param {number} eventId
-    */
-    function selectMapEvent(eventId) {
-       map.fire('popup', {feature: eventId});
-    }
-
 
     """)
   }

@@ -1,5 +1,7 @@
 package com.github.opengrabeso.mixtio
 
+import org.querki.jquery._
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
@@ -14,4 +16,10 @@ object JSFacade extends js.Any {
   var events: js.Array[js.Array[String]] = js.native
 
   var onEventsChanged: js.Function0[Unit] = js.native
+
+  def showResults(): Unit = js.native
+
+  def download(data: js.Any, strFileName: String, strMimeType: String): Unit = js.native
+
+  var map: js.Dynamic = js.native
 }

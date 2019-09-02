@@ -4,8 +4,9 @@ import scala.scalajs.js
 import js.annotation._
 import JSFacade._
 import org.scalajs.dom.document
+import org.scalajs.dom.window
 import org.scalajs.dom.raw._
-import org.querki.jquery._
+import org.querki.jquery.{JQueryXHR, _}
 
 import scala.collection.mutable
 
@@ -191,6 +192,7 @@ object MainJS {
     lapsSelectByPredicate(wasAnyPause)
   }
 
+  @JSExportTopLevel("onPartChecked")
   def onPartChecked() = {
     // count how many are checked
     // if none or very few, hide the uncheck button
@@ -237,6 +239,62 @@ object MainJS {
     onEventsChanged()
     onPartChecked()
     showEventButtons()
+  }
+
+  @JSExportTopLevel("submitProcess")
+  def submitProcess() = {
+    document.getElementById("uploads_table").asInstanceOf[HTMLElement].style.display = "block"
+    val form = $("#activity_form")
+    $.ajax(new JQueryAjaxSettingsBuilder(Map (
+      "type" -> form.attr("method"),
+      "url" -> form.attr("action"),
+      "data" -> new FormData(form(0).asInstanceOf[HTMLFormElement]),
+      "contentType" -> false,
+      "cache" -> false,
+      "processData" -> false,
+      "success" -> ({(response: Any, _: Any, _: Any) =>
+        showResults()
+      }: js.Function3[Any, Any, Any, Unit])
+    )))
+  }
+
+  @JSExportTopLevel("submitEdit")
+  def submitEdit() = {
+    //document.getElementById("upload_button").style.display = "none";
+    document.getElementById("uploads_table").asInstanceOf[HTMLElement].style.display = "block"
+    val form = $("#activity_form")
+    $.asInstanceOf[js.Dynamic].ajax(js.Dynamic.literal(
+      `type` = form.attr("method"),
+      url = "edit-activities",
+      data = new FormData(form(0).asInstanceOf[HTMLFormElement]),
+      contentType = false,
+      cache = false,
+      processData = false,
+      success = {(response: XMLHttpRequest, _: Any, _: Any) =>
+        val idElem = $(response).find("id")
+        if (idElem.length > 0) {
+          window.asInstanceOf[js.Dynamic].location = "edit-activity?id=" + idElem.first().text().trim()
+        }
+      }
+    ))
+  }
+
+  @JSExportTopLevel("submitDownload")
+  def submitDownload() = {
+    val form = $("#activity_form")
+    val ajax = new XMLHttpRequest()
+    ajax.open("POST", "/download", true)
+    ajax.responseType = "blob"
+    ajax.onload = { e =>
+      download(e.target.asInstanceOf[XMLHttpRequest].response, ajax.getResponseHeader("Content-Disposition"), ajax.getResponseHeader("content-type"))
+    }
+    ajax.send(new FormData(form(0).asInstanceOf[HTMLFormElement]))
+  }
+
+  def selectMapEvent(eventId: String) = {
+    map.fire("popup", js.Dynamic.literal(
+      feature = eventId
+    ))
   }
 
 }
