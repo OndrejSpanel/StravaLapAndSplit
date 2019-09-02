@@ -163,51 +163,6 @@ trait ActivityRequestHandler extends UploadResults {
       var onEventsChanged = function() {};
       var currentPopup = undefined;
 
-    /**
-     * @param {String} id
-     * @param event
-     * @return {String}
-     */
-    function splitLink(id, event) {
-      var time = event[1];
-      var selectCheckbox = '<input type="checkbox" name="process_time=' + time + '"} checked=true onchange="onPartChecked(this)"></input>';
-
-      var splitPrefix = "split";
-      var nextSplit = null;
-      events.forEach( function(e) {
-        if (e[0].lastIndexOf(splitPrefix, 0) === 0 && e[1] > time && nextSplit == null) {
-          nextSplit = e;
-        }
-      });
-      if (nextSplit == null) nextSplit = events[events.length-1];
-
-      var description = "???";
-      if (nextSplit) {
-        var km = (nextSplit[2] - event[2]) / 1000;
-        var duration = nextSplit[1] - event[1];
-        var kmH = true;
-        var minKm = true;
-        var sport = event[0].substring(splitPrefix.length);
-        if (sport === "Run") kmH = false;
-        if (sport === "Ride") minKm = false;
-
-        var elements = [km.toFixed(1) + " km"];
-        if (minKm) {
-          var paceSecKm = km > 0 ? duration / km : 0;
-          var paceMinKm = paceSecKm / 60;
-          elements.push(paceMinKm.toFixed(2) + " min/km");
-        }
-        if (kmH) {
-          var speedKmH = duration > 0 ? km * 3600 / duration : 0;
-          elements.push(speedKmH.toFixed(1) + " km/h");
-        }
-
-        description = elements.join(" / ")
-      }
-      return selectCheckbox + description;
-
-    }
-
     function initEvents() {
       //console.log("initEvents " + events.toString());
       events.forEach(function(e){

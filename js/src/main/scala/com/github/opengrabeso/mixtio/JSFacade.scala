@@ -10,4 +10,6 @@ object JSFacade extends js.Any {
   def activityEvents(): AnyRef = js.native
 
   var id: String = js.native
+
+  var events: js.Array[js.Array[String]] = js.native
 }
