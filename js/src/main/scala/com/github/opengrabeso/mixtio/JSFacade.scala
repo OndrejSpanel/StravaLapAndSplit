@@ -8,4 +8,6 @@ import scala.scalajs.js.annotation._
 object JSFacade extends js.Any {
   def actIdName(): String = js.native
   def activityEvents(): AnyRef = js.native
+
+  var id: String = js.native
 }

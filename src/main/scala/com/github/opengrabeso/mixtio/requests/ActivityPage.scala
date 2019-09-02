@@ -155,7 +155,7 @@ trait ActivityRequestHandler extends UploadResults {
         return "$actIdName";
       }
 
-      var id = actIdNameWrap();
+      var id = actIdName();
       // events are: ["split", 0, 0.0, "Run", "lap", "Start"] - kind, time, distance, sport, original kind, description
       var events = activityEvents();
 
@@ -221,24 +221,6 @@ trait ActivityRequestHandler extends UploadResults {
       showEventButtons();
       onPartChecked();
     }
-
-    function selectOption(e) {
-      //console.log("selectOption " + e[1]);
-      var tableOption = document.getElementById(e[1]);
-      if (tableOption) {
-        // select appropriate option
-        tableOption.value = e[0];
-
-        // we need to update the table source, because it is used to create map popups
-        // http://stackoverflow.com/a/40766724/16673
-        var opts = tableOption.getElementsByTagName('option');
-        for (var i = 0; i < opts.length; i++)
-            opts[i].removeAttribute('selected');
-        var checked = tableOption.querySelector('option:checked');
-        if (checked) checked.setAttribute('selected', 'selected');
-      }
-    }
-
     function addEvent(e) {
       //console.log("Add event " + e[1]);
       var tableLink = document.getElementById("link" + e[1]);
