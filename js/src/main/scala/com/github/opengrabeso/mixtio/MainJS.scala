@@ -2,7 +2,9 @@ package com.github.opengrabeso.mixtio
 
 import scala.scalajs.js
 import js.annotation._
-import JSFacade._
+import ActivityJS._
+import Download._
+import UploadProgress._
 import org.scalajs.dom.document
 import org.scalajs.dom.window
 import org.scalajs.dom.raw._
