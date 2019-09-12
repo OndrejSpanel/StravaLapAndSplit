@@ -11,21 +11,8 @@ import io.udash.rest.raw.{HttpBody, HttpErrorException, HttpMethod, IMapping, Ma
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 
 import scala.annotation.tailrec
-import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-/*
-class ServletRest extends Servlet {
-  val servlet = RestServlet[RestAPI](RestAPIServer)
-
-  // TODO: find a way to use inheritance instead (we need a java class to be used in ServletRest)
-  def init(config: ServletConfig) = servlet.init(config)
-  def getServletConfig = servlet.getServletConfig
-  def service(req: ServletRequest, res: ServletResponse) = servlet.service(req, res)
-  def getServletInfo = servlet.getServletInfo
-  def destroy() = servlet.destroy()
-}
-*/
 object ServletRest {
   val handleRequest: RawRest.HandleRequest = RawRest.asHandleRequest[RestAPI](RestAPIServer)
 }
