@@ -7,15 +7,19 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
+val udashVersion = "0.8.0"
+
 // TODO: try to share
 lazy val jvmLibs = Seq(
-  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test",
+  "io.udash" %% "udash-rest" % udashVersion
 )
 
 lazy val jsLibs = libraryDependencies ++= Seq(
   "org.scalatest" %%% "scalatest" % "3.0.8" % "test",
   "org.scala-js" %%% "scalajs-dom" % "0.9.7",
-  "org.querki" %%% "jquery-facade" % "1.2"
+  "org.querki" %%% "jquery-facade" % "1.2",
+  "io.udash" %%% "udash-rest" % udashVersion
 )
 
 lazy val commonLibs = Seq(
