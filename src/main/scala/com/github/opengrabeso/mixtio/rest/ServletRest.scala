@@ -3,8 +3,7 @@ package rest
 
 import java.io.ByteArrayOutputStream
 
-import scala.collection.JavaConverters._
-import com.avsystem.commons.{JStringBuilder, Opt, SharedExtensions}
+import com.avsystem.commons._
 import io.udash.rest.RestServlet
 import io.udash.rest.RestServlet.CookieHeader
 import io.udash.rest.raw.{HttpBody, HttpErrorException, HttpMethod, IMapping, Mapping, PlainValue, RawRest, RestParameters, RestRequest, RestResponse}
@@ -19,7 +18,7 @@ object ServletRest {
 
 import ServletRest._
 
-trait ReadRequest extends SharedExtensions {
+trait ReadRequest {
   def maxPayloadSize: Long
   def BufferSize: Int
 
