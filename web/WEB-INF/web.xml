@@ -23,6 +23,16 @@
     <servlet-class>com.google.apphosting.utils.servlet.SessionCleanupServlet</servlet-class>
   </servlet>
 
+  <servlet>
+    <servlet-name>rest</servlet-name>
+    <servlet-class>com.github.opengrabeso.mixtio.rest.ServletRest</servlet-class>
+  </servlet>
+
+  <servlet-mapping>
+    <servlet-name>rest</servlet-name>
+    <url-pattern>/rest/*</url-pattern>
+  </servlet-mapping>
+
   <servlet-mapping>
     <servlet-name>_ah_sessioncleanup</servlet-name>
     <url-pattern>/_ah/sessioncleanup</url-pattern>
