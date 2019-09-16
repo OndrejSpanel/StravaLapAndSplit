@@ -23,7 +23,7 @@ object PushDo extends DefineRequest("/push-do") with ChangeSettings {
             <span id="done">--</span>
             of
             <span id="total">--</span>
-          </p>{suuntoSettings(settings)}<script>
+          </p>{suuntoSettings(auth.userId,settings)}<script>
           {xml.Unparsed(
             //language=JavaScript
             """

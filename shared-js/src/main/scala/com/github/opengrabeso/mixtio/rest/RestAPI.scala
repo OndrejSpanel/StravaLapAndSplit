@@ -13,4 +13,4 @@ trait RestAPI {
   def userAPI(@Path userId: String): UserRestAPI
 }
 
-object RestAPI extends DefaultRestServerApiCompanion[RestAPI]
+object RestAPI extends DefaultRestApiCompanion[RestAPI]
