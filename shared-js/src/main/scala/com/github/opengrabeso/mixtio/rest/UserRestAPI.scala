@@ -9,17 +9,7 @@ trait UserRestAPI {
   @GET
   def name: Future[String]
 
-  @POST
-  def saveSettings(settings: SettingsStorage): Future[Unit]
-
-  /**
-    * Testing API only - for debugging REST interface
-    * */
-  @PUT("note")
-  def saveNote(note: String): Future[Unit]
-
-  @GET
-  def note: Future[String]
+  def settings: UserRestSettingsAPI
 }
 
 object UserRestAPI extends DefaultRestServerApiCompanion[UserRestAPI]

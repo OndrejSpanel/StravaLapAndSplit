@@ -122,7 +122,9 @@ object Main {
       val refreshToken = responseJson.path("refresh_token").textValue
       val refreshExpire = responseJson.path("expires_at").longValue
 
-      previous.copy(token = token, refreshToken = refreshToken, refreshExpire = refreshExpire)
+      val auth = previous.copy(token = token, refreshToken = refreshToken, refreshExpire = refreshExpire)
+      rest.RestAPIServer.createUser(auth)
+      auth
     } else {
       previous
     }
