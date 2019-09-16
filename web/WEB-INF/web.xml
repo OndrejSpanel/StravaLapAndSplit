@@ -25,12 +25,22 @@
 
   <servlet>
     <servlet-name>rest</servlet-name>
-    <servlet-class>com.github.opengrabeso.mixtio.rest.ServletRest</servlet-class>
+    <servlet-class>com.github.opengrabeso.mixtio.rest.ServletRestAPIRest</servlet-class>
   </servlet>
 
   <servlet-mapping>
     <servlet-name>rest</servlet-name>
     <url-pattern>/rest/*</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>app</servlet-name>
+    <servlet-class>com.github.opengrabeso.mixtio.ServletApp</servlet-class>
+  </servlet>
+
+  <servlet-mapping>
+    <servlet-name>app</servlet-name>
+    <url-pattern>/app/*</url-pattern>
   </servlet-mapping>
 
   <servlet-mapping>

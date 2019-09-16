@@ -12,12 +12,6 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import scala.annotation.tailrec
 import scala.util.{Failure, Success}
 
-object ServletRest {
-  val handleRequest: RawRest.HandleRequest = RawRest.asHandleRequest[RestAPI](RestAPIServer)
-}
-
-import ServletRest._
-
 trait ReadRequest {
   def maxPayloadSize: Long
   def BufferSize: Int
@@ -122,7 +116,7 @@ trait WriteResponse {
   * Class based on io.udash.rest.RestServlet
   * GAE currently does not support async requests, therefore rewrite of that class was required.
   * */
-class ServletRest extends RestServlet(handleRequest) with ReadRequest with WriteResponse {
+class ServletRest(handleRequest: RawRest.HandleRequest) extends RestServlet(handleRequest) with ReadRequest with WriteResponse {
   def maxPayloadSize = RestServlet.DefaultMaxPayloadSize
   def BufferSize = 8192 // private in RestServlet, cannot use it from there
 
@@ -141,3 +135,6 @@ class ServletRest extends RestServlet(handleRequest) with ReadRequest with Write
     }
   }
 }
+
+class ServletRestAPIRest extends ServletRest(RawRest.asHandleRequest[RestAPI](RestAPIServer))
+
