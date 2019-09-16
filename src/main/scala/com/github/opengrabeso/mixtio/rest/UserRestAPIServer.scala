@@ -1,14 +1,21 @@
 package com.github.opengrabeso.mixtio
 package rest
 
-class UserRestAPIServer extends UserRestAPI with RestAPIUtils {
-
+class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils {
   def name = {
-    syncResponse("TBD")
+    syncResponse(userAuth.name)
   }
-
-  def saveSettings(userId: String, settings: SettingsStorage) = {
-    Settings.store(userId, settings)
+  def saveSettings(settings: SettingsStorage) = {
+    // userID
+    Settings.store(userAuth.userId, settings)
     syncResponse(())
+  }
+  def saveNote(note: String) = {
+    Storage.store(Storage.FullName(Main.namespace.settings, "note", userAuth.userId), note)
+    syncResponse(())
+  }
+  def note = {
+    val value = Storage.load[String](Storage.FullName(Main.namespace.settings, "note", userAuth.userId)).get
+    syncResponse(value)
   }
 }

@@ -59,8 +59,8 @@ object Main {
   }
 
   case class StravaAuthResult(token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String) {
-    // used to prove user is authenticated, but we do not want to store token in plain text to avoid security leaks
-    lazy val userId: String = digest(token)
+    // userId used for serialization, needs to be stable, cannot be created from a token
+    lazy val userId: String = id
   }
 
   private def buildAuthJson: util.HashMap[String, String] = {
@@ -99,7 +99,9 @@ object Main {
     val id = athleteJson.path("id").numberValue.toString
     val name = athleteJson.path("firstname").textValue + " " + athleteJson.path("lastname").textValue
 
-    StravaAuthResult(token, refreshToken, refreshExpire, mapboxToken, id, name)
+    val auth = StravaAuthResult(token, refreshToken, refreshExpire, mapboxToken, id, name)
+    rest.RestAPIServer.createUser(auth)
+    auth
   }
 
   def stravaAuthRefresh(previous: StravaAuthResult): StravaAuthResult = {

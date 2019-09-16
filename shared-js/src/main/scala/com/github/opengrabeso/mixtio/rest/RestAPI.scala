@@ -9,10 +9,8 @@ trait RestAPI {
   @GET
   def identity(@Path in: String): Future[String]
 
-  @GET
-  def userId: Future[String]
-
-  def userAPI(userId: String): UserRestAPI
+  @Prefix("user")
+  def userAPI(@Path userId: String): UserRestAPI
 }
 
 object RestAPI extends DefaultRestServerApiCompanion[RestAPI]
