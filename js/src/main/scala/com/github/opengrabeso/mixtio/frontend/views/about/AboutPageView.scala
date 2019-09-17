@@ -6,7 +6,7 @@ import shared.css._
 import io.udash._
 import io.udash.bootstrap.alert.UdashAlert
 import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
-import io.udash.bootstrap.form.UdashForm
+import io.udash.bootstrap.form.{UdashForm, UdashInputGroup}
 import io.udash.bootstrap.tooltip.UdashPopover
 import io.udash.bootstrap.utils.UdashIcons.FontAwesome
 import io.udash.component.ComponentId
@@ -21,26 +21,22 @@ class AboutPageView(
 
   import scalatags.JsDom.all._
 
-  private val errorsAlert = UdashAlert.danger(ComponentId("alerts"),
-    repeat(model.subSeq(_.errors)) { error =>
-      div(error.get).render
-    }
-  )
+  // Button from Udash Bootstrap wrapper
+  private val submitButton = UdashButton(
+    buttonStyle = ButtonStyle.Primary,
+    block = true, componentId = ComponentId("about")
+  )("Submit")
 
-  private val infoIcon = span(
-    AboutPageStyles.infoIcon,
-    span(
-      FontAwesome.Modifiers.stack,
-      span(FontAwesome.info, FontAwesome.Modifiers.stack1x),
-      span(FontAwesome.circleThin, FontAwesome.Modifiers.stack2x)
-    )
-  ).render
+  submitButton.listen {
+    case UdashButton.ButtonClickEvent(_, _) =>
+      println("Submit pressed")
+  }
 
   def getTemplate: Modifier = div(
     AboutPageStyles.container,
     div(
       p("This is about me")
     ),
-    UdashForm().render
+    submitButton.render
   )
 }
