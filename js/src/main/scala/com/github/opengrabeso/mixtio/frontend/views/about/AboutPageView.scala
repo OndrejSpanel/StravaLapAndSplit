@@ -33,8 +33,8 @@ class AboutPageView(
       p(
         "Athlete: ",
         bind(model.subProp(_.athleteName))
-      ),
-      p("This is about me")
+      ).render,
+      p("Faster than a wind")
     ),
     submitButton.render
   )

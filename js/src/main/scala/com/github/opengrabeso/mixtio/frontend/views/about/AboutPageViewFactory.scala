@@ -15,9 +15,14 @@ class AboutPageViewFactory(
   import scala.concurrent.ExecutionContext.Implicits.global
 
   override def create(): (View, Presenter[AboutPageState.type]) = {
+    // TODO: do not switch to view until the API has returned
     val model = ModelProperty(
-      AboutPageModel(facade.UdashApp.currentUserId.toOption)
+      AboutPageModel(null)
     )
+
+    for (userAPI <- facade.UdashApp.currentUserId.toOption.map(rest.RestAPIClient.api.userAPI)) {
+      userAPI.name.foreach(name => model.subProp(_.athleteName).set(name))
+    }
 
     val presenter = new AboutPagePresenter(model, application)
     val view = new AboutPageView(model, presenter)
