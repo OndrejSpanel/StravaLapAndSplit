@@ -12,18 +12,24 @@ object ScalaJSScript extends DefineRequest("js/*") {
     val scriptName = request.splat().head
     val jsPath = scriptName match {
       case "script" =>
-        if (Main.devMode) "/js-fastopt.js" else "/js-opt.js"
+        Some(if (Main.devMode) "/js-fastopt.js" else "/js-opt.js")
       case "dependencies" =>
-        if (Main.devMode) "/js-jsdeps.js" else "/js-jsdeps.min.js"
+        Some(if (Main.devMode) "/js-jsdeps.js" else "/js-jsdeps.min.js")
+      case _ =>
+        None
     }
-    val res = getClass.getResourceAsStream(jsPath)
+    jsPath.fold {
+      resp.status(404)
+    } { jsPath =>
+      val res = getClass.getResourceAsStream(jsPath)
 
-    resp.status(200)
-    resp.`type`("application/json")
+      resp.status(200)
+      resp.`type`("application/json")
 
-    val out = resp.raw.getOutputStream
-    IOUtils.copy(res, out)
-    IOUtils.write("\n", out) // prevent empty file by always adding an empty line, empty file not handled well by Spark framework
+      val out = resp.raw.getOutputStream
+      IOUtils.copy(res, out)
+      IOUtils.write("\n", out) // prevent empty file by always adding an empty line, empty file not handled well by Spark framework
+    }
 
     Nil
   }
