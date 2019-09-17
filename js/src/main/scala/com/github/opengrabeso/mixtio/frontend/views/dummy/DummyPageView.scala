@@ -1,6 +1,6 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.about
+package views.dummy
 
 import shared.css._
 import io.udash._
@@ -8,9 +8,9 @@ import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
 import io.udash.component.ComponentId
 import io.udash.css._
 
-class AboutPageView(
-  model: ModelProperty[AboutPageModel],
-  presenter: AboutPagePresenter,
+class DummyPageView(
+  model: ModelProperty[DummyPageModel],
+  presenter: DummyPagePresenter,
 ) extends FinalView with CssView {
 
   import scalatags.JsDom.all._
@@ -23,14 +23,14 @@ class AboutPageView(
 
   submitButton.listen {
     case UdashButton.ButtonClickEvent(_, _) =>
-      println("About submit pressed")
-      presenter.gotoDummy()
+      println("Dummy submit pressed")
+      presenter.gotoAbout()
   }
 
   def getTemplate: Modifier = div(
     AboutPageStyles.container,
     div(
-      p("This is about me")
+      p("I am dummy")
     ),
     submitButton.render
   )

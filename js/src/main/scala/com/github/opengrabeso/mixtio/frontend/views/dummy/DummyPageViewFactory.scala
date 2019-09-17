@@ -1,6 +1,6 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.about
+package views.dummy
 
 import routing._
 import io.udash._
@@ -8,19 +8,19 @@ import io.udash._
 import scala.concurrent.Future
 
 /** Prepares model, view and presenter for demo view. */
-class AboutPageViewFactory(
+class DummyPageViewFactory(
   application: Application[RoutingState],
-) extends ViewFactory[AboutPageState.type] {
+) extends ViewFactory[DummyPageState.type] {
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  override def create(): (View, Presenter[AboutPageState.type]) = {
+  override def create(): (View, Presenter[DummyPageState.type]) = {
     // Main model of the view
     val model = ModelProperty(
-      AboutPageModel("me")
+      DummyPageModel("dummy me")
     )
 
-    val presenter = new AboutPagePresenter(model, application)
-    val view = new AboutPageView(model, presenter)
+    val presenter = new DummyPagePresenter(model, application)
+    val view = new DummyPageView(model, presenter)
     (view, presenter)
   }
 
