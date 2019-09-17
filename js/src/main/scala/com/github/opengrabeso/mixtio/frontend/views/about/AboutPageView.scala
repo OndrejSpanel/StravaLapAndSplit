@@ -30,6 +30,10 @@ class AboutPageView(
   def getTemplate: Modifier = div(
     AboutPageStyles.container,
     div(
+      p(
+        "Athlete: ",
+        bind(model.subProp(_.athleteName))
+      ),
       p("This is about me")
     ),
     submitButton.render

@@ -2,6 +2,7 @@ package com.github.opengrabeso.mixtio
 package frontend
 package views.about
 
+import com.github.opengrabeso.mixtio.rest
 import routing._
 import io.udash._
 
@@ -14,19 +15,12 @@ class AboutPageViewFactory(
   import scala.concurrent.ExecutionContext.Implicits.global
 
   override def create(): (View, Presenter[AboutPageState.type]) = {
-    // Main model of the view
     val model = ModelProperty(
-      AboutPageModel("me")
+      AboutPageModel(facade.UdashApp.currentUserId.toOption)
     )
 
     val presenter = new AboutPagePresenter(model, application)
     val view = new AboutPageView(model, presenter)
     (view, presenter)
-  }
-
-  private object NonEmptyStringValidator extends Validator[String] {
-    override def apply(element: String): Future[ValidationResult] = Future.successful {
-      if (element.nonEmpty) Valid else Invalid("") // we can ignore error msg, because we don't display it anyway
-    }
   }
 }
