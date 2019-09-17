@@ -5,16 +5,25 @@ import js.annotation._
 import ActivityJS._
 import Download._
 import UploadProgress._
-import org.scalajs.dom.document
-import org.scalajs.dom.window
+import io.udash.wrappers.jquery.jQ
+import org.scalajs.dom.{Element, document, window}
 import org.scalajs.dom.raw._
 import org.querki.jquery.{JQueryXHR, _}
 
 import scala.collection.mutable
 
 object MainJS {
-  @JSExportTopLevel("jsAppName")
-  def jsAppName(): String = appName
+  @JSExportTopLevel("appMain") // called by Version as an entry point
+  def appMain(): Unit = {
+    jQ((jThis: Element) => {
+      val appRoot = jQ("#application").get(0)
+      if (appRoot.isEmpty) {
+        println("Application root element not found! Check your index.html file!")
+      } else {
+        frontend.ApplicationContext.application.run(appRoot.get)
+      }
+    })
+  }
 
   @JSExportTopLevel("initEvents")
   def initEvents() = {

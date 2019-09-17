@@ -9,6 +9,8 @@ lazy val commonSettings = Seq(
 
 val udashVersion = "0.8.0"
 
+val bootstrapVersion = "3.3.7-1"
+
 val udashJQueryVersion = "3.0.1"
 
 // TODO: try to share
@@ -33,6 +35,8 @@ lazy val jsLibs = libraryDependencies ++= Seq(
   "io.udash" %%% "udash-charts" % udashVersion,
   "io.udash" %%% "udash-jquery" % udashJQueryVersion,
 
+  // "jquery.js" is provided by "udash-jquery" dependency
+  "org.webjars" % "bootstrap" % bootstrapVersion / "bootstrap.js" minified "bootstrap.min.js" dependsOn "jquery.js",
 )
 
 lazy val commonLibs = Seq(

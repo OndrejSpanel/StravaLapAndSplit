@@ -47,7 +47,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
           val xmlPrefix = """<?xml version="1.0" encoding="UTF-8"?>""" + "\n"
           xmlPrefix + nodes.toString
       }
-    } else resp.raw
+    } else resp
   }
 
   def html(request: Request, resp: Response): NodeSeq

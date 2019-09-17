@@ -38,7 +38,9 @@ class AboutPageView(
 
   def getTemplate: Modifier = div(
     AboutPageStyles.container,
-
+    div(
+      p("This is about me")
+    ),
     UdashForm().render
   )
 }

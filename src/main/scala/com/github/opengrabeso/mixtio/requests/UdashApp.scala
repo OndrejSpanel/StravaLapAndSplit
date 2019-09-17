@@ -3,22 +3,17 @@ package requests
 
 import spark.{Request, Response}
 
-object Version  extends DefineRequest("version") {
+object UdashApp  extends DefineRequest("app") {
   def html(request: Request, resp: Response) = {
     <html>
       <head>
         <title>{appName}</title>{headPrefix}
         <script src="js/script"></script>
         <script src="js/dependencies"></script>
+        <script>appMain()</script>
       </head>
       <body>
-        Script loaded.
-        <p>
-          Name:
-          <script>
-            document.write({xml.Unparsed("jsAppName()")})
-          </script>
-        </p>
+        <div id="application"></div>
       </body>
     </html>
   }
