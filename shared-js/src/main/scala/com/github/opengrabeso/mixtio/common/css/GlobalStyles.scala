@@ -1,4 +1,4 @@
-package com.github.opengrabeso.mixtio.shared.css
+package com.github.opengrabeso.mixtio.common.css
 
 import io.udash.css._
 

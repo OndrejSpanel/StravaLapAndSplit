@@ -1,5 +1,5 @@
 package com.github.opengrabeso.mixtio
-package shared.model
+package common.model
 
 import com.avsystem.commons.serialization.HasGenCodec
 import io.udash.rpc.serialization.DefaultExceptionCodecRegistry

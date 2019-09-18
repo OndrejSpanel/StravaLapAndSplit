@@ -2,8 +2,7 @@ package com.github.opengrabeso.mixtio
 package frontend
 
 import routing._
-import shared.model._
-
+import common.model._
 import io.udash._
 
 object ApplicationContext {

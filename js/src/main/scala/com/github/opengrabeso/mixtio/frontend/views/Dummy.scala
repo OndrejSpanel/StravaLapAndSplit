@@ -6,9 +6,8 @@ import io.udash._
 import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
 import io.udash.component.ComponentId
 import io.udash.css._
-
 import frontend.routing._
-import shared.css._
+import common.css._
 
 import scala.concurrent.{ExecutionContext, Future}
 

@@ -2,7 +2,7 @@ package com.github.opengrabeso.mixtio
 package frontend
 package views.about
 
-import shared.css._
+import common.css._
 import io.udash._
 import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
 import io.udash.component.ComponentId

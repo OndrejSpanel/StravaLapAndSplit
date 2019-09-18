@@ -2,9 +2,8 @@ package com.github.opengrabeso.mixtio
 package frontend
 package views
 
-import shared.css._
+import common.css._
 import routing._
-
 import io.udash._
 import io.udash.bootstrap._
 import io.udash.css._
