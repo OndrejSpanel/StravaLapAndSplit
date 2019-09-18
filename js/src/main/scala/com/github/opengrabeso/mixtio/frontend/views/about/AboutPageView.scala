@@ -1,6 +1,7 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.about
+package views
+package about
 
 import common.css._
 import io.udash._
@@ -29,6 +30,7 @@ class AboutPageView(
 
   def getTemplate: Modifier = div(
     AboutPageStyles.container,
+    fragment.header(model.subProp(_.athleteName), model.subProp(_.userId)),
     div(
       p(
         "Athlete: ",
@@ -36,6 +38,7 @@ class AboutPageView(
       ).render,
       p("Faster than a wind")
     ),
-    submitButton.render
+    submitButton.render,
+    fragment.footer
   )
 }

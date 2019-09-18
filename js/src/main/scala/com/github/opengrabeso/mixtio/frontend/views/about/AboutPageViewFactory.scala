@@ -17,7 +17,7 @@ class AboutPageViewFactory(
   override def create(): (View, Presenter[AboutPageState.type]) = {
     // TODO: do not switch to view until the API has returned
     val model = ModelProperty(
-      AboutPageModel(null)
+      AboutPageModel(null, facade.UdashApp.currentUserId.orNull)
     )
 
     for (userAPI <- facade.UdashApp.currentUserId.toOption.map(rest.RestAPIClient.api.userAPI)) {
