@@ -15,12 +15,12 @@ import scala.concurrent.{ExecutionContext, Future}
 object Dummy {
 
   /** The form's model structure. */
-  case class DummyPageModel(dummy: String)
-  object DummyPageModel extends HasModelPropertyCreator[DummyPageModel]
+  case class PageModel(dummy: String)
+  object PageModel extends HasModelPropertyCreator[PageModel]
 
   /** Contains the business logic of this view. */
-  class DummyPagePresenter(
-    model: ModelProperty[DummyPageModel],
+  class PagePresenter(
+    model: ModelProperty[PageModel],
     application: Application[RoutingState]
   )(implicit ec: ExecutionContext) extends Presenter[DummyPageState.type] {
 
@@ -35,9 +35,9 @@ object Dummy {
     }
   }
 
-  class DummyPageView(
-    model: ModelProperty[DummyPageModel],
-    presenter: DummyPagePresenter,
+  class PageView(
+    model: ModelProperty[PageModel],
+    presenter: PagePresenter,
   ) extends FinalView with CssView {
 
     import scalatags.JsDom.all._
@@ -64,7 +64,7 @@ object Dummy {
   }
 
   /** Prepares model, view and presenter for demo view. */
-  class DummyPageViewFactory(
+  class PageViewFactory(
     application: Application[RoutingState],
   ) extends ViewFactory[DummyPageState.type] {
 
@@ -73,11 +73,11 @@ object Dummy {
     override def create(): (View, Presenter[DummyPageState.type]) = {
       // Main model of the view
       val model = ModelProperty(
-        DummyPageModel("dummy me")
+        PageModel("dummy me")
       )
 
-      val presenter = new DummyPagePresenter(model, application)
-      val view = new DummyPageView(model, presenter)
+      val presenter = new PagePresenter(model, application)
+      val view = new PageView(model, presenter)
       (view, presenter)
     }
 
