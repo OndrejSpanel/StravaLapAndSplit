@@ -6,7 +6,7 @@ import Main._
 trait LoadFromStrava extends HtmlPart with ActivitiesTable {
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
     headPrefix ++ super.headerPart(req, auth) ++
-    <title>{shared.appName} - get activities from Strava</title>
+    <title>{appName} - get activities from Strava</title>
     <script src="static/timeUtils.js"></script>
   }
 

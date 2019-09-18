@@ -68,7 +68,7 @@ lazy val sharedJs = (project in file("shared-js"))
 
 lazy val pushUploader = (project in file("push-uploader"))
   .enablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared)
+  .dependsOn(shared, sharedJs)
   .settings(
     name := "MixtioStart",
     commonSettings,

@@ -139,7 +139,7 @@ object Start extends App {
         val imageSized = image.getScaledInstance(iconSize.width, iconSize.height, Image.SCALE_SMOOTH)
 
 
-        val trayIcon = new TrayIcon(imageSized, shared.appName)
+        val trayIcon = new TrayIcon(imageSized, appName)
 
         import java.awt.event.MouseAdapter
 
@@ -196,7 +196,7 @@ object Start extends App {
     private def changeStateImpl(icon: TrayIcon, s: String): Unit = {
       assert(SwingUtilities.isEventDispatchThread)
       state = s
-      val title = shared.appName
+      val title = appName
       val text = if (state.isEmpty) title else title + ": " + state
       icon.setToolTip(text)
     }
@@ -253,7 +253,7 @@ object Start extends App {
   def authHandler(userId: String, since: String, sessionId: String) = {
     // session is authorized, we can continue sending the data
     serverInfo.stop()
-    println(s"Auth done - ${shared.appName} user id $userId, session $sessionId")
+    println(s"Auth done - $appName user id $userId, session $sessionId")
     val sinceTime = new ZonedDateTime(since)
     authData = Some(AuthData(userId, sinceTime, sessionId))
     authDone.countDown()

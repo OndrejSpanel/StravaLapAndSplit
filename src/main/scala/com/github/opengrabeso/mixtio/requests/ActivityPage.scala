@@ -733,7 +733,7 @@ object EditActivity extends DefineRequest("/edit-activity") with ActivityRequest
       val content = activityHtmlContent(actId, activityData, session, resp)
       <html>
         <head>
-          <title>{shared.appName}</title>{headPrefix}{content.head}
+          <title>{appName}</title>{headPrefix}{content.head}
         </head>
         <body>
           {bodyHeader(auth)}{activityData.id.hrefLink}{content.body}{bodyFooter}
@@ -743,7 +743,7 @@ object EditActivity extends DefineRequest("/edit-activity") with ActivityRequest
     }.getOrElse {
       <html>
         <head>
-          <title>{shared.appName}</title>{headPrefix}
+          <title>{appName}</title>{headPrefix}
         </head>
         <body>
           {bodyHeader(auth)}
