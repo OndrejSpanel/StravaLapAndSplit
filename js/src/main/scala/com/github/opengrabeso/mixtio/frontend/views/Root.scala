@@ -42,7 +42,23 @@ object Root {
       }
     }
 
-    def logout() = ???
+    def logout() = {
+      if (!model.subProp(_.waitingForLogin).get && model.subProp(_.userId).get != null) {
+        model.subProp(_.waitingForLogin).set(false)
+        println("Start logout")
+        val oldName = userContextService.userName
+        val oldId = userContextService.userId
+        userContextService.logout().andThen {
+          case Success(_) =>
+            println(s"Logout done for $oldName ($oldId)")
+            model.subProp(_.athleteName).set(null)
+            model.subProp(_.userId).set(null)
+            model.subProp(_.waitingForLogin).set(false)
+            facade.UdashApp.currentUserId = scalajs.js.undefined
+          case Failure(_) =>
+        }
+      }
+    }
   }
 
 

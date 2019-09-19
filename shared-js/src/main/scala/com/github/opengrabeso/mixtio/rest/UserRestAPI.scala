@@ -6,6 +6,8 @@ import io.udash.rest._
 import scala.concurrent.Future
 
 trait UserRestAPI {
+  def logout: Future[Unit]
+
   @GET
   def name: Future[String]
 
