@@ -8,8 +8,6 @@ import scala.collection.mutable
 
 object RestAPIServer extends RestAPI with RestAPIUtils {
 
-  // TODO: consider some user cleanup, as authCode is expired
-
   val users = mutable.Map.empty[String, StravaAuthResult]
 
   def identity(in: String) = {
