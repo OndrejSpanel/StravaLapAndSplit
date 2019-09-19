@@ -2,10 +2,9 @@ package com.github.opengrabeso.mixtio
 package rest
 
 import com.github.opengrabeso.mixtio.Main.StravaAuthResult
-import io.udash.rest._
+import java.time.ZonedDateTime
 
 import scala.collection.mutable
-import scala.concurrent.Future
 
 object RestAPIServer extends RestAPI with RestAPIUtils {
 
@@ -30,5 +29,9 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
     }
     // we might store UserRestAPIServer directly
     new UserRestAPIServer(auth)
+  }
+
+  def now = {
+    syncResponse(ZonedDateTime.now())
   }
 }
