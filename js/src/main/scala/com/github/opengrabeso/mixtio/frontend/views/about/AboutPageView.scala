@@ -31,11 +31,14 @@ class AboutPageView(
   def getTemplate: Modifier = div(
     AboutPageStyles.container,
     div(
-      p(
-        "Athlete: ",
-        bind(model.subProp(_.athleteName))
-      ).render,
-      p("Faster than a wind am I")
+      showIfElse(model.subProp(_.loading))(
+        p("Loading...").render,
+        table(
+          repeat(model.subSeq(_.activities)){m =>
+            tr(td(m.get.name)).render
+          }
+        ).render
+      )
     ),
     submitButton.render
   )

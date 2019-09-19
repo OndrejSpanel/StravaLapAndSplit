@@ -16,7 +16,7 @@ trait UserRestAPI {
   def name: Future[String]
 
   @GET
-  def lastStravaActivities(@whenAbsent(10) count: Int): Future[Seq[ActivityIdModel]]
+  def lastStravaActivities(@whenAbsent(15) count: Int): Future[Seq[ActivityIdModel]]
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

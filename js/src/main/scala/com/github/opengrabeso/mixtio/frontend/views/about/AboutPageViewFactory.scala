@@ -17,11 +17,14 @@ class AboutPageViewFactory(
   override def create(): (View, Presenter[AboutPageState.type]) = {
     // TODO: do not switch to view until the API has returned
     val model = ModelProperty(
-      AboutPageModel(null, facade.UdashApp.currentUserId.orNull)
+      AboutPageModel(true, Seq())
     )
 
     for (userAPI <- facade.UdashApp.currentUserId.toOption.map(rest.RestAPIClient.api.userAPI)) {
-      userAPI.name.foreach(name => model.subProp(_.athleteName).set(name))
+      userAPI.lastStravaActivities(15).foreach { lastActivities =>
+        model.subProp(_.activities).set(lastActivities)
+        model.subProp(_.loading).set(false)
+      }
     }
 
     val presenter = new AboutPagePresenter(model, application)
