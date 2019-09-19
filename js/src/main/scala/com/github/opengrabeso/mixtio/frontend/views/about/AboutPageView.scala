@@ -30,15 +30,13 @@ class AboutPageView(
 
   def getTemplate: Modifier = div(
     AboutPageStyles.container,
-    fragment.header(model.subProp(_.athleteName), model.subProp(_.userId)),
     div(
       p(
         "Athlete: ",
         bind(model.subProp(_.athleteName))
       ).render,
-      p("Faster than a wind")
+      p("Faster than a wind am I")
     ),
-    submitButton.render,
-    fragment.footer
+    submitButton.render
   )
 }
