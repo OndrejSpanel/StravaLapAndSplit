@@ -42,6 +42,7 @@ lazy val jsLibs = libraryDependencies ++= Seq(
 lazy val jsDeps = jsDependencies ++= Seq(
   // "jquery.js" is provided by "udash-jquery" dependency
   "org.webjars" % "bootstrap" % bootstrapVersion / "bootstrap.js" minified "bootstrap.min.js" dependsOn "jquery.js",
+  "org.webjars.npm" % "js-joda" % "1.10.1" / "dist/js-joda.js" minified "dist/js-joda.min.js"
 )
 
 lazy val commonLibs = Seq(

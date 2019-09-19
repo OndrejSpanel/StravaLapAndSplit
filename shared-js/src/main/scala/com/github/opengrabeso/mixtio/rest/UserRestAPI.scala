@@ -1,6 +1,8 @@
 package com.github.opengrabeso.mixtio
 package rest
 
+import java.time.{Instant, ZoneId, ZoneOffset, ZonedDateTime}
+
 import com.avsystem.commons.serialization.whenAbsent
 import common.model._
 import io.udash.rest._
@@ -17,6 +19,9 @@ trait UserRestAPI {
 
   @GET
   def lastStravaActivities(@whenAbsent(15) count: Int): Future[Seq[ActivityIdModel]]
+
+  @GET
+  def stagedActivities(@Query @whenAbsent(Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC)) notBefore: ZonedDateTime): Future[Seq[ActivityIdModel]]
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

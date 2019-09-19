@@ -1,8 +1,11 @@
 package com.github.opengrabeso.mixtio
 package rest
 
+import java.time.ZonedDateTime
+
 import shared.Timing
 import common.model._
+import org.joda.time.DateTime
 
 object UserRestAPIServer {
   implicit class ModelConversion(aid: Main.ActivityId) {
@@ -34,4 +37,11 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     timing.logTime(s"lastStravaActivities ($count)")
     syncResponse(ret.map(_.toModel))
   }
+
+  def stagedActivities(notBefore: ZonedDateTime) = {
+    val t = notBefore.toInstant.toEpochMilli
+
+    syncResponse(Main.stagedActivities(userAuth, new DateTime(t)).map(_.id.toModel))
+  }
+
 }

@@ -35,7 +35,11 @@ class AboutPageView(
         p("Loading...").render,
         table(
           repeat(model.subSeq(_.activities)){m =>
-            tr(td(m.get.name)).render
+            tr(
+              td(m.get.name),
+              td(m.get.sportName),
+              td(m.get.startTime)
+            ).render
           }
         ).render
       )
