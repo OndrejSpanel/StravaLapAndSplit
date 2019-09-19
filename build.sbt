@@ -34,6 +34,9 @@ lazy val jsLibs = libraryDependencies ++= Seq(
   "io.udash" %%% "udash-bootstrap" % udashVersion,
   "io.udash" %%% "udash-charts" % udashVersion,
   "io.udash" %%% "udash-jquery" % udashJQueryVersion,
+
+  "com.zoepepper" %%% "scalajs-jsjoda" % "1.1.1",
+  "com.zoepepper" %%% "scalajs-jsjoda-as-java-time" % "1.1.1"
 )
 
 lazy val jsDeps = jsDependencies ++= Seq(

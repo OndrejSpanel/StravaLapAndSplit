@@ -14,4 +14,4 @@ trait UserRestAPI {
   def settings: UserRestSettingsAPI
 }
 
-object UserRestAPI extends DefaultRestApiCompanion[UserRestAPI]
+object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

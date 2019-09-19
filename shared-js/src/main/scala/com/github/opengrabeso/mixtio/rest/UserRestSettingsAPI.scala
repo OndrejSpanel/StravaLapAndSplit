@@ -25,4 +25,4 @@ trait UserRestSettingsAPI {
   def elev_filter(v: Int): Future[Unit]
 }
 
-object UserRestSettingsAPI extends DefaultRestApiCompanion[UserRestSettingsAPI]
+object UserRestSettingsAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestSettingsAPI](EnhancedRestImplicits)
