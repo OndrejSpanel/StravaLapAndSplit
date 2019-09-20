@@ -33,4 +33,20 @@ object GlobalStyles extends CssBase {
       )
     )
   )
+
+  val header: CssStyle = style(
+    backgroundColor(c"#fca"),
+    overflow.auto
+  )
+
+  val stravaImg: CssStyle = style(
+    maxHeight.apply(46 px)
+  )
+
+  val footerText: CssStyle = style(
+    color.white
+  )
+  val footerLink: CssStyle = style(
+    color.inherit
+  )
 }

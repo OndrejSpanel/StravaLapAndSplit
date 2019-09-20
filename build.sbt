@@ -82,6 +82,12 @@ lazy val pushUploader = (project in file("push-uploader"))
 
 def inDevMode = sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
 
+val cssDir = settingKey[File]("Target for `compileCss` task.")
+val compileCss = taskKey[Unit]("Compiles CSS files.")
+// you can also add `compileCss` as a dependency to
+// the `compileStatics` and `compileAndOptimizeStatics` tasks
+
+
 def addJavaScriptToServerResources(): Def.SettingsDefinition = {
   val optJs = if (inDevMode) fastOptJS else fullOptJS
   (resources in Compile) += (optJs in(js, Compile)).value.data
@@ -94,9 +100,21 @@ def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
 
 lazy val js = project.settings(
     commonSettings,
-    jsLibs
-).enablePlugins(ScalaJSPlugin)
-  .dependsOn(sharedJs)
+    jsLibs,
+    cssDir := {
+      (Compile / fastOptJS / target).value / "styles"
+    },
+    compileCss := Def.taskDyn {
+      val dir = (Compile / cssDir).value
+      val path = dir.absolutePath
+      println(s"Generating CSS files in `$path`...")
+      dir.mkdirs()
+      // make sure you have configured the valid `CssRenderer` path
+      // we assume that `CssRenderer` exists in the `backend` module
+      (root / Compile / runMain).toTask(s" com.github.opengrabeso.mixtio.CssRenderer $path false")
+    }.value,
+  ).enablePlugins(ScalaJSPlugin)
+    .dependsOn(sharedJs)
 
 
 lazy val root = (project in file("."))

@@ -2,6 +2,7 @@ package com.github.opengrabeso.mixtio
 package frontend
 package views
 
+import com.github.opengrabeso.mixtio.common.css.GlobalStyles
 import io.udash.css._
 import io.udash._
 import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
