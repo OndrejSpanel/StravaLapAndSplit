@@ -8,6 +8,7 @@ import io.udash.bootstrap._
 import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
 import io.udash.component.ComponentId
 import io.udash.css._
+import common.css._
 import org.scalajs.dom.raw.HTMLElement
 
 import scala.concurrent.ExecutionContext
@@ -84,8 +85,8 @@ object Root {
 
       Seq(
         div(
+          GlobalStyles.header,
           id := "header",
-          style := "background-color:#fca;overflow:auto", // TODO: CSS
           table(
             tbody(
               tr(
@@ -117,29 +118,29 @@ object Root {
     val footer: Seq[HTMLElement] = Seq(
       p().render,
       div(
+        GlobalStyles.header,
         id := "footer",
-        style := "background-color:#fca;overflow:auto", // TODO: move to a CSS
         a(
           href := "http://labs.strava.com/",
           id := "powered_by_strava",
           rel := "nofollow",
           img(
+            GlobalStyles.stravaImg,
             attr("align") := "left",
             src :="static/api_logo_pwrdBy_strava_horiz_white.png",
-            style := "max-height:46px" // TODO: move to a CSS
           )
         ),
         p(
-          style := "color:#fff",  // TODO: move to a CSS
+          GlobalStyles.footerText,
           a(
+            GlobalStyles.footerLink,
             href := "https://darksky.net/poweredby/",
-            style := "color:#fff", // TODO: move to a CSS
             "Powered by Dark Sky"
           ),
           " © 2016 - 2018 ",
           a(
             href := s"https://github.com/OndrejSpanel/$gitHubName",
-            style := "color:inherit",  // TODO: move to a CSS
+            GlobalStyles.footerLink,
           ),
           "Ondřej Španěl",
           div()
