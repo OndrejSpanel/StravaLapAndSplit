@@ -10,11 +10,12 @@ object ScalaJSScript extends DefineRequest("js/*") {
 
   def html(request: Request, resp: Response) = {
     val scriptName = request.splat().head
+    val moduleName = "frontend"
     val jsPath = scriptName match {
       case "script" =>
-        Some(if (Main.devMode) "/js-fastopt.js" else "/js-opt.js")
+        Some(if (Main.devMode) s"/$moduleName-fastopt.js" else s"/$moduleName-opt.js")
       case "dependencies" =>
-        Some(if (Main.devMode) "/js-jsdeps.js" else "/js-jsdeps.min.js")
+        Some(if (Main.devMode) s"/$moduleName-jsdeps.js" else s"/$moduleName-jsdeps.min.js")
       case _ =>
         None
     }

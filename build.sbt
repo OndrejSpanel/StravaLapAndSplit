@@ -90,12 +90,12 @@ val compileCss = taskKey[Unit]("Compiles CSS files.")
 
 def addJavaScriptToServerResources(): Def.SettingsDefinition = {
   val optJs = if (inDevMode) fastOptJS else fullOptJS
-  (resources in Compile) += (optJs in(js, Compile)).value.data
+  (resources in Compile) += (optJs in(frontend, Compile)).value.data
 }
 
 def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
   val depJs = if (inDevMode) packageJSDependencies else packageMinifiedJSDependencies
-  (resources in Compile) += (depJs in(js, Compile)).value
+  (resources in Compile) += (depJs in(frontend, Compile)).value
 }
 
 lazy val js = project.settings(
@@ -112,12 +112,12 @@ lazy val js = project.settings(
       // make sure you have configured the valid `CssRenderer` path
       // we assume that `CssRenderer` exists in the `backend` module
       (root / Compile / runMain).toTask(s" com.github.opengrabeso.mixtio.CssRenderer $path false")
+
     }.value,
   ).enablePlugins(ScalaJSPlugin)
     .dependsOn(sharedJs)
 
-
-lazy val root = (project in file("."))
+lazy val root = (project in file("backend"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .dependsOn(shared, sharedJs)
   .settings(

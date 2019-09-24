@@ -20,4 +20,4 @@
 target
 /project/project/
 
-/src/main/resources/secret.txt
+/backend/src/main/resources/secret.txt
