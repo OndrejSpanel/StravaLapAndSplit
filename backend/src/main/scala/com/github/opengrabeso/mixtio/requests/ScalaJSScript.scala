@@ -1,12 +1,10 @@
 package com.github.opengrabeso.mixtio
 package requests
 
-import java.io.OutputStreamWriter
-
 import org.apache.commons.io.IOUtils
 import spark.{Request, Response}
 
-object ScalaJSScript extends DefineRequest("js/*") {
+object ScalaJSScript extends DefineRequest("frontend/*") {
 
   def html(request: Request, resp: Response) = {
     val scriptName = request.splat().head
@@ -16,6 +14,8 @@ object ScalaJSScript extends DefineRequest("js/*") {
         Some(if (Main.devMode) s"/$moduleName-fastopt.js" else s"/$moduleName-opt.js")
       case "dependencies" =>
         Some(if (Main.devMode) s"/$moduleName-jsdeps.js" else s"/$moduleName-jsdeps.min.js")
+      case "main.css" =>
+        Some("/main.css")
       case _ =>
         None
     }

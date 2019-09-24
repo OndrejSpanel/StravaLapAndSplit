@@ -84,6 +84,7 @@ def inDevMode = sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase
 
 val cssDir = settingKey[File]("Target for `compileCss` task.")
 val compileCss = taskKey[Unit]("Compiles CSS files.")
+val compileCssOutput = taskKey[File]("Compiles CSS files.")
 // you can also add `compileCss` as a dependency to
 // the `compileStatics` and `compileAndOptimizeStatics` tasks
 
@@ -98,7 +99,14 @@ def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
   (resources in Compile) += (depJs in(frontend, Compile)).value
 }
 
-lazy val js = project.settings(
+def addCssToServerResources(): Def.SettingsDefinition = {
+  val css = (compileCssOutput in(frontend, Compile))
+  val ret = (resources in Compile) += css.value
+  println(s"Resources: $ret")
+  ret
+}
+
+lazy val frontend = project.settings(
     commonSettings,
     jsLibs,
     cssDir := {
@@ -111,11 +119,21 @@ lazy val js = project.settings(
       dir.mkdirs()
       // make sure you have configured the valid `CssRenderer` path
       // we assume that `CssRenderer` exists in the `backend` module
-      (root / Compile / runMain).toTask(s" com.github.opengrabeso.mixtio.CssRenderer $path false")
+      (cssRenderer / Compile / runMain).toTask(s" com.github.opengrabeso.mixtio.cssrenderer.CssRenderer $path false")
 
     }.value,
+    compileCssOutput := {(Compile / cssDir).value / "main.css"},
+    compileCssOutput := compileCssOutput.dependsOn(compileCss).value
   ).enablePlugins(ScalaJSPlugin)
     .dependsOn(sharedJs)
+
+lazy val cssRenderer = (project in file("cssRenderer"))
+  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .settings(
+    libraryDependencies ++= jvmLibs,
+    commonSettings
+  )
+  .dependsOn(sharedJs)
 
 lazy val root = (project in file("backend"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
@@ -125,6 +143,7 @@ lazy val root = (project in file("backend"))
 
     addJavaScriptToServerResources(),
     addJSDependenciesToServerResources(),
+    addCssToServerResources(),
 
     resourceGenerators in Compile += Def.task {
       val file = (resourceManaged in Compile).value / "config.properties"

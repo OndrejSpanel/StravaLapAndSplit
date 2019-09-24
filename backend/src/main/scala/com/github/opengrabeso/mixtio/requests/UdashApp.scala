@@ -8,9 +8,9 @@ object UdashApp  extends DefineRequest("app") {
     <html>
       <head>
         <title>{appName}</title>{headPrefix}
-        <script src="js/script"></script> {/* scala.js compilation result */}
-        <script src="js/dependencies"></script>{/* scala.js dependencies */}
-        <link href="styles/main.css" rel="stylesheet" /> {/* Udash generated stylesheet*/ }
+        <script src="frontend/script"></script> {/* scala.js compilation result */}
+        <script src="frontend/dependencies"></script>{/* scala.js dependencies */}
+        <link href="frontend/main.css" rel="stylesheet" /> {/* Udash generated stylesheet*/ }
         <script>
           var currentUserId = '{auth.userId}';
           appMain()

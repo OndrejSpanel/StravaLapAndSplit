@@ -1,4 +1,5 @@
 package com.github.opengrabeso.mixtio
+package cssrenderer
 
 import io.udash.css._
 import common.css._
