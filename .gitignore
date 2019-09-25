@@ -14,10 +14,15 @@
 # IntelliJ
 /out/
 
+# IntelliJ seems to build the artifact here when "root" is placed in file(".")
+/classes/
+
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
 target
+
 /project/project/
 
 /backend/src/main/resources/secret.txt
+
