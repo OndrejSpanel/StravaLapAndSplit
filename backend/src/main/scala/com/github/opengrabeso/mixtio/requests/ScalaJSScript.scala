@@ -11,21 +11,21 @@ object ScalaJSScript extends DefineRequest("frontend/*") {
     val moduleName = "frontend"
     val jsPath = scriptName match {
       case "script" =>
-        Some(if (Main.devMode) s"/$moduleName-fastopt.js" else s"/$moduleName-opt.js")
+        Some("application/json", if (Main.devMode) s"/$moduleName-fastopt.js" else s"/$moduleName-opt.js")
       case "dependencies" =>
-        Some(if (Main.devMode) s"/$moduleName-jsdeps.js" else s"/$moduleName-jsdeps.min.js")
+        Some("application/json", if (Main.devMode) s"/$moduleName-jsdeps.js" else s"/$moduleName-jsdeps.min.js")
       case "main.css" =>
-        Some("/main.css")
+        Some("text/css", "/main.css")
       case _ =>
         None
     }
     jsPath.fold {
       resp.status(404)
-    } { jsPath =>
+    } { case (mime, jsPath) =>
       val res = getClass.getResourceAsStream(jsPath)
 
       resp.status(200)
-      resp.`type`("application/json")
+      resp.`type`(mime)
 
       val out = resp.raw.getOutputStream
       IOUtils.copy(res, out)
