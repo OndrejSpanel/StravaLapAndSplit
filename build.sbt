@@ -1,4 +1,6 @@
 import sbt.Keys.scalacOptions
+// shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
@@ -19,6 +21,7 @@ lazy val jvmLibs = Seq(
 
   "io.udash" %% "udash-core" % udashVersion,
   "io.udash" %% "udash-rest" % udashVersion,
+  "io.udash" %% "udash-rpc" % udashVersion,
   "io.udash" %% "udash-css" % udashVersion,
 )
 
@@ -29,6 +32,7 @@ lazy val jsLibs = libraryDependencies ++= Seq(
 
   "io.udash" %%% "udash-core" % udashVersion,
   "io.udash" %%% "udash-rest" % udashVersion,
+  "io.udash" %%% "udash-rpc" % udashVersion,
   "io.udash" %%% "udash-css" % udashVersion,
 
   "io.udash" %%% "udash-bootstrap" % udashVersion,
@@ -60,19 +64,23 @@ lazy val shared = (project in file("shared"))
     libraryDependencies ++= commonLibs
   )
 
-lazy val sharedJs = (project in file("shared-js"))
+lazy val sharedJs = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure).in(file("shared-js"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
-  .enablePlugins(ScalaJSPlugin)
-  .settings(
-    commonSettings,
+  .settings(commonSettings)
+  .jvmSettings(libraryDependencies ++= jvmLibs)
+  .jsSettings(
     jsLibs,
     jsDeps
   )
 
+lazy val sharedJs_JVM = sharedJs.jvm
+lazy val sharedJs_JS = sharedJs.js
+
 
 lazy val pushUploader = (project in file("push-uploader"))
   .enablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared, sharedJs)
+  .dependsOn(shared, sharedJs_JVM)
   .settings(
     name := "MixtioStart",
     commonSettings,
@@ -101,9 +109,7 @@ def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
 
 def addCssToServerResources(): Def.SettingsDefinition = {
   val css = (compileCssOutput in(frontend, Compile))
-  val ret = (resources in Compile) += css.value
-  println(s"Resources: $ret")
-  ret
+  (resources in Compile) += css.value
 }
 
 lazy val frontend = project.settings(
@@ -125,7 +131,7 @@ lazy val frontend = project.settings(
     compileCssOutput := {(Compile / cssDir).value / "main.css"},
     compileCssOutput := compileCssOutput.dependsOn(compileCss).value
   ).enablePlugins(ScalaJSPlugin)
-    .dependsOn(sharedJs)
+    .dependsOn(sharedJs_JS)
 
 lazy val cssRenderer = (project in file("cssRenderer"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
@@ -133,11 +139,11 @@ lazy val cssRenderer = (project in file("cssRenderer"))
     libraryDependencies ++= jvmLibs,
     commonSettings
   )
-  .dependsOn(sharedJs)
+  .dependsOn(sharedJs_JVM)
 
-lazy val root = (project in file("backend"))
+lazy val backend = (project in file("backend"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared, sharedJs)
+  .dependsOn(shared, sharedJs_JVM)
   .settings(
     name := "Mixtio",
 
@@ -183,3 +189,4 @@ lazy val root = (project in file("backend"))
     )
   ).enablePlugins(AppenginePlugin)
 
+lazy val root = (project in file(".")).aggregate(backend)
