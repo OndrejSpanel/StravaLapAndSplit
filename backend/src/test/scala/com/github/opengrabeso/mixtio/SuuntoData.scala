@@ -1,6 +1,6 @@
 package com.github.opengrabeso.mixtio
 
-import org.joda.time.DateTimeZone
+import java.time.ZoneId
 
 trait SuuntoData {
   protected def gpsPodMove: Option[Main.ActivityEvents] = {
@@ -14,7 +14,7 @@ trait SuuntoData {
     val res = getClass.getResourceAsStream("/suuntoMerge/Moveslink/quest.xml")
 
     val doc = moveslink.XMLParser.skipMoveslinkDoctype(res)
-    val localTimeZone = DateTimeZone.getDefault.toString
+    val localTimeZone = ZoneId.systemDefault.toString
 
     val move = moveslink.XMLParser.parseXML("quest.xml", doc, localTimeZone)
     move

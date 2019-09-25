@@ -1,11 +1,12 @@
 package com.github.opengrabeso.mixtio
 
+import java.time.temporal.ChronoUnit
+
 import com.garmin.fit
 import com.garmin.fit.{Event => FitEvent, _}
 import Main.ActivityEvents
-
 import shared.Util._
-import org.joda.time.{Seconds, DateTime => JodaDateTime}
+import java.time.ZonedDateTime
 
 object FitExport {
   type Encoder = MesgListener with MesgDefinitionListener
@@ -21,9 +22,9 @@ object FitExport {
     encoder.onMesg(fileIdMesg)
   }
 
-  def toTimestamp(zonedTime: JodaDateTime): DateTime = {
+  def toTimestamp(zonedTime: ZonedDateTime): DateTime = {
     val instant = zonedTime.toInstant
-    val timestamp = instant.getMillis / 1000 - DateTime.OFFSET / 1000.0
+    val timestamp = instant.toEpochMilli / 1000 - DateTime.OFFSET / 1000.0
     val dateTime = new DateTime(0, timestamp)
     dateTime
   }
@@ -32,12 +33,12 @@ object FitExport {
     val encoder = createEncoder
 
     abstract class FitEvent {
-      def time: JodaDateTime
+      def time: ZonedDateTime
 
       def encode(encoder: Encoder)
     }
 
-    abstract class DataEvent(time: JodaDateTime, set: RecordMesg => Unit) extends FitEvent {
+    abstract class DataEvent(time: ZonedDateTime, set: RecordMesg => Unit) extends FitEvent {
       override def encode(encoder: Encoder): Unit = {
         val myMsg = new RecordMesg()
         myMsg.setTimestamp(toTimestamp(time))
@@ -54,9 +55,9 @@ object FitExport {
 
     }
 
-    class GPSEvent(val time: JodaDateTime, val gps: GPSPoint) extends DataEvent(time, encodeGPS(_, gps))
+    class GPSEvent(val time: ZonedDateTime, val gps: GPSPoint) extends DataEvent(time, encodeGPS(_, gps))
 
-    class AttribEvent(val time: JodaDateTime, data: Int, set: (RecordMesg, Int) => Unit) extends DataEvent(time, set(_, data))
+    class AttribEvent(val time: ZonedDateTime, data: Int, set: (RecordMesg, Int) => Unit) extends DataEvent(time, set(_, data))
 
     val gpsAsEvents = events.gps.stream map { case (t, gps) =>
       new GPSEvent(t, gps)
@@ -96,7 +97,7 @@ object FitExport {
     }
 
     trait AutoClose {
-      def emitMsg(time: JodaDateTime, endTime: JodaDateTime)
+      def emitMsg(time: ZonedDateTime, endTime: ZonedDateTime)
 
       private var isOpen = false
       private var counter = 0
@@ -104,11 +105,11 @@ object FitExport {
 
       def count: Int = counter
 
-      def openLap(time: JodaDateTime): Unit = {
+      def openLap(time: ZonedDateTime): Unit = {
         lastStart = time
         isOpen = true
       }
-      def closeLap(time: JodaDateTime): Unit = {
+      def closeLap(time: ZonedDateTime): Unit = {
         if (isOpen && time > lastStart) {
           emitMsg(lastStart, time)
           counter += 1
@@ -117,21 +118,21 @@ object FitExport {
       }
     }
     object LapAutoClose extends AutoClose {
-      def emitMsg(startTime: JodaDateTime, endTime: JodaDateTime): Unit = {
+      def emitMsg(startTime: ZonedDateTime, endTime: ZonedDateTime): Unit = {
         val myMsg = new LapMesg()
         myMsg.setEvent(FitEvent.LAP)
         myMsg.setEventType(EventType.STOP)
         myMsg.setStartTime(toTimestamp(startTime))
         myMsg.setTimestamp(toTimestamp(endTime))
         myMsg.setMessageIndex(count)
-        val lapDurationSec = Seconds.secondsBetween(startTime, endTime).getSeconds.toFloat
+        val lapDurationSec = ChronoUnit.SECONDS.between(startTime, endTime).toFloat
         myMsg.setTotalElapsedTime(lapDurationSec)
         myMsg.setTotalTimerTime(lapDurationSec)
         encoder.onMesg(myMsg)
       }
     }
 
-    def closeActivity(timeEnd: JodaDateTime): Unit = {
+    def closeActivity(timeEnd: ZonedDateTime): Unit = {
       val myMsg = new ActivityMesg()
       myMsg.setTimestamp(toTimestamp(timeEnd))
       myMsg.setNumSessions(1)
@@ -142,7 +143,7 @@ object FitExport {
     }
 
 
-    class LapFitEvent(val time: JodaDateTime) extends FitEvent {
+    class LapFitEvent(val time: ZonedDateTime) extends FitEvent {
       override def encode(encoder: Encoder): Unit = {
         LapAutoClose.closeLap(time)
       }
@@ -172,7 +173,7 @@ object FitExport {
     LapAutoClose.openLap(timeBeg)
     allEvents.foreach(_.encode(encoder))
 
-    val durationSec = Seconds.secondsBetween(timeBeg, timeEnd).getSeconds
+    val durationSec = ChronoUnit.SECONDS.between(timeBeg, timeEnd)
 
     LapAutoClose.closeLap(timeEnd)
 

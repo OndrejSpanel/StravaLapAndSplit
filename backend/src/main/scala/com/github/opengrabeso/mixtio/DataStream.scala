@@ -1,8 +1,10 @@
 package com.github.opengrabeso.mixtio
 
+import java.time.temporal.ChronoUnit
+
 import com.google.appengine.api.ThreadManager
 import mapbox.GetElevation
-import org.joda.time.{ReadablePeriod, Seconds, DateTime => ZonedDateTime}
+import java.time.{ZonedDateTime, Duration => JDuration}
 
 import scala.collection.immutable.SortedMap
 import shared.Util._
@@ -162,7 +164,7 @@ sealed abstract class DataStream extends Serializable {
   def timeOffset(bestOffset: Int): DataStream = {
     val adjusted = stream.map{
       case (k,v) =>
-        k.plus(bestOffset*1000) -> v
+        k.plus(bestOffset, ChronoUnit.SECONDS) -> v
     }
     pickData(adjusted)
   }
@@ -279,7 +281,7 @@ object DataStreamGPS {
     else {
       assert(distDeltas.head._2 == 0)
       val route = distDeltas.tail.scanLeft(distDeltas.head) { case ((tSum, dSum), (t, d)) =>
-        val dt = Seconds.secondsBetween(tSum, t).getSeconds
+        val dt = ChronoUnit.SECONDS.between(tSum, t)
         t -> (dSum + d * dt)
       }
       route
@@ -354,7 +356,7 @@ object DataStreamGPS {
     }
   }
 
-  def dropEmptyPrefix(stream: ValueList, timeOffset: ReadablePeriod, compare: (ZonedDateTime, ZonedDateTime) => Boolean): ZonedDateTime = {
+  def dropEmptyPrefix(stream: ValueList, timeOffset: JDuration, compare: (ZonedDateTime, ZonedDateTime) => Boolean): ZonedDateTime = {
     val prefixTime = detectEmptyPrefix(stream.head._1, new GPSRect(stream.head._2), stream, None)
     prefixTime.map { case (prefTime, prefRect) =>
       // trace back the prefix rectangle size
@@ -364,6 +366,7 @@ object DataStreamGPS {
 
       val gpsDist = DataStreamGPS.distStreamFromGPSList(prefixRaw.map(_._2)).reverse
 
+      @scala.annotation.tailrec
       def trackBackDistance(distances: Seq[Double], trace: Double, ret: Int): Int = {
         if (trace <=0 || distances.isEmpty) ret
         else {
@@ -385,8 +388,8 @@ object DataStreamGPS {
   // drop beginning and end with no activity
   def dropAlmostEmpty(stream: ValueList): Option[(ZonedDateTime, ZonedDateTime)] = {
     if (stream.nonEmpty) {
-      val droppedPrefixTime = dropEmptyPrefix(stream, Seconds.seconds(-10), _ <= _)
-      val droppedPostfixTime = dropEmptyPrefix(stream.reverse, Seconds.seconds(+10), _ >= _)
+      val droppedPrefixTime = dropEmptyPrefix(stream, JDuration.ofSeconds(-10), _ <= _)
+      val droppedPostfixTime = dropEmptyPrefix(stream.reverse, JDuration.ofSeconds(+10), _ >= _)
       if (droppedPrefixTime >= droppedPostfixTime) None
       else Some((droppedPrefixTime, droppedPostfixTime))
     } else None
@@ -395,7 +398,7 @@ object DataStreamGPS {
 
   private def distStreamToCSV(ds: DistStream): String = {
     val times = ds.keys.toSeq
-    val diffs = 0L +: (times zip times.drop(1)).map { case (t1, t2) => t2.getMillis - t1.getMillis }
+    val diffs = 0L +: (times zip times.drop(1)).map { case (t1, t2) => ChronoUnit.MILLIS.between(t1, t2) }
     (ds zip diffs).map { case (kv, duration) =>
       s"${kv._1},${duration/1000.0},${kv._2}"
     }.mkString("\n")
@@ -460,132 +463,6 @@ class DataStreamGPS(override val stream: DataStreamGPS.GPSStream) extends DataSt
     val dist = distStreamFromGPS(stream)
     val smooth = smoothSpeed(dist, smoothingInterval)
     distStreamToCSV(smooth)
-  }
-
-  /*
-  * @param timeOffset in seconds
-  * */
-  private def errorToStream(offsetStream: DistList, speedStream: DistList): Double = {
-    if (offsetStream.isEmpty || speedStream.isEmpty) {
-      Double.MaxValue
-    } else {
-      // TODO: optimize: move speed smoothing out of this function
-      def maxTime(a: ZonedDateTime, b: ZonedDateTime) = if (a>b) a else b
-      def minTime(a: ZonedDateTime, b: ZonedDateTime) = if (a<b) a else b
-      val begMatch = maxTime(offsetStream.head._1, startTime.get)
-      val endMatch = minTime(offsetStream.last._1, endTime.get)
-      // ignore non-matching parts (prefix, postfix)
-      def selectInner[T](data: List[(ZonedDateTime, T)]) = data.dropWhile(_._1 < begMatch).takeWhile(_._1 < endMatch)
-      val distToMatch = selectInner(offsetStream)
-
-      val distPairs = distToMatch zip distToMatch.drop(1) // drop(1), not tail, because distToMatch may be empty
-      val speedToMatch = distPairs.map {
-        case ((aTime, aDist), (bTime, _)) => aTime -> aDist / Seconds.secondsBetween(aTime, bTime).getSeconds
-      }
-      val smoothedSpeed = selectInner(speedStream)
-
-      def compareSpeedHistory(fineSpeed: DistList, coarseSpeed: DistList, error: Double): Double = {
-        //
-        if (fineSpeed.isEmpty || coarseSpeed.isEmpty) error
-        else {
-          if (fineSpeed.head._1 < coarseSpeed.head._1) compareSpeedHistory(fineSpeed.tail, coarseSpeed, error)
-          else {
-            def square(x: Double) = x * x
-            val itemError = square(fineSpeed.head._2 - coarseSpeed.head._2)
-            compareSpeedHistory(fineSpeed.tail, coarseSpeed.tail, error + itemError * itemError)
-          }
-        }
-      }
-
-      if (smoothedSpeed.isEmpty || speedToMatch.isEmpty) {
-        Double.MaxValue
-      } else {
-        val error = compareSpeedHistory(smoothedSpeed, speedToMatch, 0)
-        error
-      }
-    }
-
-  }
-
-  /*
-  * @param 10 sec distance stream (provided by a Quest) */
-  private def findOffset(distanceStream: DistStream) = {
-    val distanceList = distanceStream.toList
-    val maxOffset = 60
-    val offsets = -maxOffset to maxOffset
-    val speedStream = computeSpeedStream.toList
-    val errors = for (offset <- offsets) yield {
-      val offsetStream = distanceList.map { case (k,v) =>
-        k.plus(Seconds.seconds(offset)) -> v
-      }
-      errorToStream(offsetStream, speedStream)
-    }
-    // TODO: prefer most central best error
-    val (minError, minErrorOffset) = (errors zip offsets).minBy(_._1)
-    // compute confidence: how much is the one we have selected reliable?
-    // the ones close may have similar metrics, that is expected, but none far away should have it
-
-
-    def confidenceForSolution(offsetCandidate: Int) = {
-      val confidences = (errors zip offsets).map { case (err, off) =>
-        if (off == offsetCandidate) 0
-        else {
-          val close = 1 - (off - offsetCandidate).abs / (2 * maxOffset).toDouble
-          (err - minError) * close
-        }
-      }
-
-      val confidence = confidences.sum
-      confidence
-    }
-
-    // smoothing causes offset in one direction
-    //val empiricalOffset = 30 // this is for Quest smoothing 5 and GPS smoothing (smoothingInterval) 30
-    val empiricalOffset = 13 // this is for Quest smoothing 5 and GPS smoothing (smoothingInterval) 60
-    (minErrorOffset + empiricalOffset, confidenceForSolution(minErrorOffset))
-  }
-
-  def adjustHrdStream(dist: DataStreamDist#DataMap): Int = {
-
-    // try first: assume user stops watch first, GPS pod quickly after, i.e. offset can be determined based on the end times
-
-    if (false) {
-      val distances = (dist.values.tail zip dist.values).map(ab => ab._1 - ab._2)
-
-      def smoothDistances(todo: Iterable[Double], window: Vector[Double], done: List[Double]): List[Double] = {
-        if (todo.isEmpty) done
-        else {
-          val smoothSize = 5
-          val newWindow = if (window.size < smoothSize) window :+ todo.head
-          else window.tail :+ todo.head
-          smoothDistances(todo.tail, newWindow, done :+ newWindow.sum / newWindow.size)
-        }
-      }
-
-      val distancesSmooth = smoothDistances(distances, Vector(), Nil)
-
-      //val distances10x = distancesSmooth.flatMap(d => List.fill(10)(d/10)).mkString("\n")
-      val distancesWithTimes = SortedMap((dist.keys zip distancesSmooth).toSeq: _*)
-      val (bestOffset, confidence) = findOffset(distancesWithTimes)
-      println(s"Quest offset $bestOffset from distance ${dist.last._2}, confidence $confidence")
-    }
-    val useEndOffset = false
-    //hrdMove.timeOffset(bestOffset)
-    if (useEndOffset) {
-      val gpsAfterHrd = 3000 // time in ms it takes to stop GPS after stopping HR
-
-      // match values: stream.last._1 = dist.stream.last._1 + xxxx + gpsAfterHrd
-
-      val endOffset = if (dist.nonEmpty) (stream.last._1.getMillis - dist.last._1.getMillis - gpsAfterHrd).toInt else 0
-
-      println(s"Offset based on stop time: $endOffset")
-      if (endOffset.abs < 10) {
-        // some smart verification between estimated and measured end offset
-        (endOffset / 1000.0).round.toInt
-      } else {
-        0
-      }
-    } else 0
   }
 
 

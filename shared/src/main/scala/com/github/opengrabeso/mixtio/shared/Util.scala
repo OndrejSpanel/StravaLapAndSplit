@@ -1,8 +1,9 @@
 package com.github.opengrabeso.mixtio
 package shared
 
-import org.joda.time.format.DateTimeFormat
-import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.time.{ZoneOffset, ZonedDateTime}
 
 object Util {
 
@@ -10,18 +11,18 @@ object Util {
     override def compare(that: ZonedDateTimeOps): Int = time.compareTo(that.time)
 
     def toLog: String = {
-      val format = DateTimeFormat.forPattern("dd/MM HH:mm:ss")
-      format.print(time)
+      val format = DateTimeFormatter.ofPattern("dd/MM HH:mm:ss")
+      format.format(time)
     }
 
     def toLogShort: String = {
-      val format = DateTimeFormat.forPattern("HH:mm:ss")
-      format.print(time)
+      val format = DateTimeFormatter.ofPattern("HH:mm:ss")
+      format.format(time)
     }
 
     def toFileName: String = {
-      val format = DateTimeFormat.forPattern("YYYY-MM-dd-HH-mm")
-      format.print(time)
+      val format = DateTimeFormatter.ofPattern("YYYY-MM-dd-HH-mm")
+      format.format(time)
     }
   }
 
@@ -49,11 +50,11 @@ object Util {
   }
 
   def timeToUTC(dateTime: ZonedDateTime) = {
-    dateTime.withZone(DateTimeZone.UTC)
+    dateTime.withZoneSameInstant(ZoneOffset.UTC)
   }
 
   def timeDifference(beg: ZonedDateTime, end: ZonedDateTime): Double = {
-    (end.getMillis - beg.getMillis) * 0.001
+    ChronoUnit.MILLIS.between(beg, end) * 0.001
   }
 
   def kiloCaloriesFromKilojoules(kj: Double): Int = (kj / 4184).toInt

@@ -1,9 +1,7 @@
 package com.github.opengrabeso.mixtio
-import org.joda.time.{DateTime => ZonedDateTime}
-
+import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
 import java.io.File
 import java.nio.file.Files
-
 import java.nio.charset.StandardCharsets
 
 import scala.util.Try
@@ -57,9 +55,9 @@ object MoveslinkFiles {
     // note: may be different timezones, but a rough sort in enough for us (date is important)
     name match {
       case gpsPattern(yyyy,mm,dd,h,m,s) =>
-        Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s")) // TODO: DRY
+        Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s+00:00")) // TODO: DRY
       case questPattern(yyyy,mm,dd,h,m,s) =>
-        Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s")) // TODO: DRY
+        Some(LocalDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s").atZone(ZoneId.systemDefault)) // TODO: DRY
       case _ =>
         None
     }

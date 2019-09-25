@@ -50,8 +50,6 @@ lazy val jsDeps = jsDependencies ++= Seq(
 )
 
 lazy val commonLibs = Seq(
-  "joda-time" % "joda-time" % "2.10",
-  "org.joda" % "joda-convert" % "1.8.1",
   "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
 )
 

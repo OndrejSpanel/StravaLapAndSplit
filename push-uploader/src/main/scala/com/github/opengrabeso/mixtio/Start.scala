@@ -20,7 +20,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise, duration}
 import scala.util.Try
 import scala.xml.Elem
-import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
+import java.time.{ZoneId,ZonedDateTime}
 import shared.Util._
 import shared.Digest
 
@@ -254,7 +254,7 @@ object Start extends App {
     // session is authorized, we can continue sending the data
     serverInfo.stop()
     println(s"Auth done - $appName user id $userId, session $sessionId")
-    val sinceTime = new ZonedDateTime(since)
+    val sinceTime = ZonedDateTime.parse(since)
     authData = Some(AuthData(userId, sinceTime, sessionId))
     authDone.countDown()
     val doPushUrl = s"$stravimatUrl/push-do"
@@ -342,7 +342,7 @@ object Start extends App {
 
     val sortedFiles = wantedFiles.sortBy(MoveslinkFiles.timestampFromName)
 
-    val localTimeZone = DateTimeZone.getDefault.toString
+    val localTimeZone = ZoneId.systemDefault.toString
 
     val requestParams = s"user=$userId&timezone=${URLEncoder.encode(localTimeZone, "UTF-8")}"
 

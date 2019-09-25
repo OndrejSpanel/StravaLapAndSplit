@@ -5,7 +5,6 @@ import java.time.ZonedDateTime
 
 import shared.Timing
 import common.model._
-import org.joda.time.DateTime
 
 object UserRestAPIServer {
   implicit class ModelConversion(aid: Main.ActivityId) {
@@ -39,9 +38,7 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
   }
 
   def stagedActivities(notBefore: ZonedDateTime) = {
-    val t = notBefore.toInstant.toEpochMilli
-
-    syncResponse(Main.stagedActivities(userAuth, new DateTime(t)).map(_.id.toModel))
+    syncResponse(Main.stagedActivities(userAuth, notBefore).map(_.id.toModel))
   }
 
 }

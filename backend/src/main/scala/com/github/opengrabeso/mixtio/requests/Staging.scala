@@ -2,7 +2,7 @@ package com.github.opengrabeso.mixtio
 package requests
 
 import Main._
-import org.joda.time.{DateTime => ZonedDateTime}
+import java.time.ZonedDateTime
 
 object Staging extends SelectActivity("/staging") {
   override def title = "select activities to process"
@@ -18,7 +18,7 @@ object Staging extends SelectActivity("/staging") {
   }
 
   override def ignoreBefore(stravaActivities: Seq[ActivityId]) = {
-    new ZonedDateTime() minusMonths 24
+    ZonedDateTime.now() minusMonths 24
   }
 
 }

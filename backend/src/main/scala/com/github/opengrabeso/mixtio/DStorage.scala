@@ -3,7 +3,7 @@ package com.github.opengrabeso.mixtio
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
 import Main._
-import org.joda.time.{Days, DateTime => ZonedDateTime}
+import java.time.ZonedDateTime
 import com.google.appengine.api.datastore._
 
 import scala.reflect.ClassTag

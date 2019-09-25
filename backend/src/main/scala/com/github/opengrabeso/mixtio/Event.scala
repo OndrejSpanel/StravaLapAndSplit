@@ -1,5 +1,5 @@
 package com.github.opengrabeso.mixtio
-import org.joda.time.{DateTime => ZonedDateTime}
+import java.time.ZonedDateTime
 
 case class EventKind(id: String, display: String)
 

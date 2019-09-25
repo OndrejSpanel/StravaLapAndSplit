@@ -1,6 +1,7 @@
 package com.github.opengrabeso.mixtio
 
-import org.joda.time.format.ISODateTimeFormat
+import java.time.ZonedDateTime
+
 import org.scalatest.{FlatSpec, Matchers}
 
 class SuuntoMergeTest extends FlatSpec with Matchers with SuuntoData {
@@ -17,7 +18,7 @@ class SuuntoMergeTest extends FlatSpec with Matchers with SuuntoData {
 
       m.streamGet[DataStreamLap].isEmpty shouldBe false
 
-      val t = ISODateTimeFormat.dateTimeNoMillis.parseDateTime("2016-10-21T06:46:57Z")
+      val t = ZonedDateTime.parse("2016-10-21T06:46:57Z")
       m.startTime.contains(t)
       m.duration shouldBe 842.4
     }
@@ -32,7 +33,7 @@ class SuuntoMergeTest extends FlatSpec with Matchers with SuuntoData {
       val gps = m.gps
       gps.stream.isEmpty shouldBe false
 
-      val t = ISODateTimeFormat.dateTimeNoMillis.parseDateTime("2016-10-21T06:46:01Z")
+      val t = ZonedDateTime.parse("2016-10-21T06:46:01Z")
       m.startTime.compareTo(t) should equal (0)
       m.duration shouldBe 4664.6 +- 0.5
     }

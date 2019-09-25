@@ -8,8 +8,8 @@ import java.util.{Locale, Properties}
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
-import org.joda.time.{Period, PeriodType, Seconds, DateTime => ZonedDateTime}
-import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat, PeriodFormatterBuilder}
+import java.time.{Duration, Period, ZonedDateTime}
+import java.time.temporal.ChronoUnit
 
 import scala.collection.JavaConverters._
 import shared.Util._
@@ -135,9 +135,9 @@ object Main {
 
     override def toString = s"${id.toString} - $name ($startTime..$endTime)"
 
-    def secondsInActivity(time: ZonedDateTime): Int = Seconds.secondsBetween(startTime, time).getSeconds
+    def secondsInActivity(time: ZonedDateTime): Int = ChronoUnit.SECONDS.between(startTime, time).toInt
 
-    val duration: Int = Seconds.secondsBetween(startTime, endTime).getSeconds
+    val duration: Int = ChronoUnit.SECONDS.between(startTime, endTime).toInt
 
     def timeOffset(offset: Int): ActivityId = copy(startTime = startTime plusSeconds offset, endTime = endTime plusSeconds offset)
 
@@ -147,7 +147,7 @@ object Main {
       val commonBeg = Seq(startTime,that.startTime).max
       val commonEnd = Seq(endTime,that.endTime).min
       if (commonEnd > commonBeg) {
-        val commonDuration = Seconds.secondsBetween(commonBeg, commonEnd).getSeconds
+        val commonDuration = ChronoUnit.SECONDS.between(commonBeg, commonEnd)
         commonDuration > (duration min that.duration) * 0.75f
       } else false
     }
@@ -640,7 +640,7 @@ object Main {
         val findBeg = routeDistance.to(beg).lastOption
         val findEnd = routeDistance.from(end).headOption
         val avgSpeed = for (b <- findBeg; e <- findEnd) yield {
-          val duration = Seconds.secondsBetween(b._1, e._1).getSeconds
+          val duration = ChronoUnit.SECONDS.between(b._1, e._1)
           if (duration > 0) (e._2 - b._2) / duration else 0
         }
         avgSpeed.getOrElse(0)
@@ -670,7 +670,7 @@ object Main {
           }
           val extendedRect = extendRect.getOrElse(rect)
           val rectSize = extendedRect.size
-          val rectDuration = Seconds.secondsBetween(b, e).getSeconds
+          val rectDuration = ChronoUnit.SECONDS.between(b, e)
           val rectSpeed = if (rectDuration > 0) rectSize / rectDuration else 0
           // until the pause is long enough, do not evaluate its speed
           (rectSpeed < speedPauseAvg || rectDuration < minPause, extendedRect)
@@ -760,7 +760,7 @@ object Main {
       val cleanedPauses = cleanPauses(extractedPauses)
 
       val pauseEvents = cleanedPauses.flatMap { case (tBeg, tEnd) =>
-        val duration = Seconds.secondsBetween(tBeg, tEnd).getSeconds
+        val duration = ChronoUnit.SECONDS.between(tBeg, tEnd).toInt
         if (duration > minLongPause) {
           Seq(PauseEvent(duration, tBeg), PauseEndEvent(duration, tEnd))
         } else if (duration > minPause) {
@@ -793,7 +793,7 @@ object Main {
       }
 
       def intervalTooShort(beg: ZonedDateTime, end: ZonedDateTime) = {
-        val duration = Seconds.secondsBetween(beg, end).getSeconds
+        val duration = ChronoUnit.SECONDS.between(beg, end)
         val distance = avgSpeedDuring(beg, end) * duration
         duration < 60 && distance < 100
       }
@@ -1007,7 +1007,7 @@ object Main {
 
           val gpsSwim = for (time <- 0 to duration.toInt) yield {
             val d = (time * totalDist / duration) min totalDist // avoid rounding errors overflowing end of the range
-            val t = handle.firstKey.withDurationAdded(time, 1000)
+            val t = handle.firstKey.plusSeconds(time)
             t -> gpsWithDistance(d)
           }
           handleInaccuratePartsRecursive(rest, done ++ prefix ++ gpsSwim)
@@ -1237,7 +1237,7 @@ object Main {
         }
       }
 
-      val timeValues = timeRelValues.map ( t => startTime.withDurationAdded(t, 1000))
+      val timeValues = timeRelValues.map ( t => startTime.plusSeconds(t))
 
       val attributeValues: Seq[(String, Seq[Int])] = Seq(
         getAttribByName("cadence"),
@@ -1285,7 +1285,7 @@ object Main {
         val segmentId = seg.path("segment").path("id").longValue
         Seq(
           StartSegEvent(segName, segPrivate, segmentId, segStartTime),
-          EndSegEvent(segName, segPrivate, segmentId, segStartTime.withDurationAdded(segDuration, 1000))
+          EndSegEvent(segName, segPrivate, segmentId, segStartTime.plusSeconds(segDuration))
         )
       }
     }
@@ -1316,24 +1316,18 @@ object Main {
   }
 
   def displaySeconds(duration: Int): String = {
-    val myFormat =
-      new PeriodFormatterBuilder()
-        .printZeroNever().appendHours()
-        .appendSeparator(":")
-        .printZeroAlways().minimumPrintedDigits(2).appendMinutes()
-        .appendSeparator(":")
-        .printZeroAlways().minimumPrintedDigits(2).appendSeconds()
-        .toFormatter
-
-    val periodToFormat = new Period(duration*1000, PeriodType.dayTime)
-    myFormat.print(periodToFormat)
+    val hours = duration / 3600
+    val secondsInHours = duration - hours * 3600
+    val minutes = secondsInHours / 60
+    val seconds = secondsInHours - minutes * 60
+    if (hours > 0) {
+      f"$hours:$minutes%02d:$seconds%02d"
+    } else {
+      f"$minutes:$seconds%02d"
+    }
   }
 
   def displayDistance(dist: Double): String = "%.2f km".format(dist*0.001)
-
-  def displayDate(startTime: ZonedDateTime): String = {
-    ISODateTimeFormat.dateTime().print(startTime)
-  }
 
   def jsDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
     s"""formatDateTime("$startTime") + "..." + formatTime("$endTime") """
@@ -1345,22 +1339,6 @@ object Main {
 
     <script>document.write({xml.Unparsed(toRun)})</script>
   }
-
-  def localeDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
-    // TODO: get timezone and locale from the browser
-    val locale = new Locale("cs")
-
-    val zone = startTime.getZone
-
-    val formatDT = DateTimeFormat.forStyle("MS").withLocale(locale).withZone(zone)
-    val formatT = DateTimeFormat.forStyle("-S").withLocale(locale).withZone(zone)
-    (if (endTime.getMillis - startTime.getMillis < 24 * 3600 * 1000) {
-      formatDT.print(startTime) + ".." + formatT.print(endTime)
-    } else {
-      formatDT.print(startTime) + ".." + formatDT.print(endTime)
-    }) + " " + zone.toString
-  }
-
 
   def shortNameString(name: String, maxLen: Int = 30): String = {
     val ellipsis = "..."

@@ -1,6 +1,6 @@
 package com.github.opengrabeso.mixtio
 
-import org.joda.time.DateTime
+import java.time.ZonedDateTime
 import org.scalatest.{FlatSpec, Matchers}
 
 class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
@@ -17,7 +17,7 @@ class DataStreamGPSTest extends FlatSpec with Matchers with SuuntoData {
       // sample 271 missing in the GPS stream
       val time = 270 - 1 // <Time>270</Time>
 
-      def relTime(t: DateTime, r: Int) = t.withDurationAdded(r, 1000)
+      def relTime(t: ZonedDateTime, r: Int) = t plusSeconds r
 
       // verify the test data demonstrate the problem
       gps.stream.get(relTime(t, time + 0)) shouldNot be(None)

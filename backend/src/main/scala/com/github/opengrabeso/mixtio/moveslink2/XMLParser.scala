@@ -3,9 +3,8 @@ package moveslink2
 
 
 import java.io._
-
-import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
-import org.joda.time.format.DateTimeFormat
+import java.time.{ZoneId, ZoneOffset, ZonedDateTime}
+import java.time.format.DateTimeFormatter
 
 import Main._
 
@@ -13,11 +12,13 @@ import scala.collection.immutable.SortedMap
 import shared.Util._
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 object XMLParser {
   private val PositionConstant = 57.2957795131
 
-  private val dateFormatNoZone = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(DateTimeZone.getDefault)
+  private val dateFormatNoZone = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneId.systemDefault)
+  private val dateFormatNoZoneUTC = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneOffset.UTC)
 
   def getRRArray(rrData: String): Seq[Int] = {
     val rrArray = rrData.split(" ")
@@ -67,6 +68,16 @@ object XMLParser {
       val samples = ArrayBuffer.empty[Sample]
       val laps = ArrayBuffer.empty[Lap]
 
+      /**
+        * When there is no zone, assume UTC
+        * */
+      def safeParse(s: String): Try[ZonedDateTime] = {
+        Try {
+          ZonedDateTime.parse(s)
+        } orElse Try {
+          ZonedDateTime.parse(s, dateFormatNoZoneUTC)
+        }
+      }
       def grammar = root(
         "Device" tag ("Name" text (text => deviceName = Some(text))),
         "Header" tag (
@@ -84,7 +95,7 @@ object XMLParser {
             "GPSAltitude" text (text => samples.last.elevation = Some(text.toInt)),
             "EHPE" text (text => samples.last.accuracy = Some(text.toInt)),
             // TODO: handle relative time when UTC is not present
-            "UTC" text (text => samples.last.time = Some(ZonedDateTime.parse(text))),
+            "UTC" text (text => samples.last.time = safeParse(text).toOption),
             "Distance" text (text => samples.last.distance = Some(text.toDouble)),
             "HR" text (text => samples.last.heartRate = Some(text.toInt)),
             // TODO: add other properties (power, cadence, temperature ...)

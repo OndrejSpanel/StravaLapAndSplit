@@ -1,7 +1,9 @@
 package com.github.opengrabeso.mixtio
 
+import java.time.temporal.ChronoUnit
+
 import Main._
-import org.joda.time.{Days, DateTime => ZonedDateTime}
+import java.time.{ZoneId, ZonedDateTime}
 
 trait FileStore {
   type FileItem
@@ -37,7 +39,7 @@ trait FileStore {
 
   def cleanup(): Int = {
     val list = listAllItems()
-    val now = new ZonedDateTime()
+    val now = ZonedDateTime.now()
 
     val ops = for (i <- list) yield {
       val name = itemName(i)
@@ -48,8 +50,8 @@ trait FileStore {
         maxDays <- maxAgeInDays
         modTime <- itemModified(i)
       } yield {
-        val fileTime = new ZonedDateTime(modTime)
-        val age = Days.daysBetween(fileTime, now).getDays
+        val fileTime = ZonedDateTime.ofInstant(modTime.toInstant, ZoneId.systemDefault)
+        val age = ChronoUnit.DAYS.between(fileTime, now)
         if (age >= maxDays) {
           deleteItem(i)
           println(s"Cleaned $name age $age, date $fileTime")

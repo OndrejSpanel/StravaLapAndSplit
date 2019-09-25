@@ -1,7 +1,7 @@
 package com.github.opengrabeso.mixtio
 package requests
 
-import org.joda.time.{DateTime => ZonedDateTime}
+import java.time.ZonedDateTime
 import com.google.appengine.api.taskqueue.DeferredTask
 import Main._
 import shared.Util._

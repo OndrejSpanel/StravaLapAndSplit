@@ -2,7 +2,7 @@ package com.github.opengrabeso.mixtio
 package requests
 import com.google.appengine.api.taskqueue.{DeferredTask, QueueFactory, TaskOptions}
 import spark.{Request, Response}
-import org.joda.time.{DateTime => ZonedDateTime}
+import java.time.ZonedDateTime
 
 /**
   * Regular cleanup performed periodically, for all users, not requiring user access information

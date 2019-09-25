@@ -4,7 +4,8 @@ import java.io.InputStream
 
 import com.garmin.fit._
 import com.github.opengrabeso.mixtio.Main.ActivityEvents
-import org.joda.time.{DateTime => ZonedDateTime}
+import java.time.{LocalDateTime, ZoneId, ZoneOffset, ZonedDateTime}
+
 import shared.Util._
 import FileId._
 
@@ -16,13 +17,10 @@ import scala.collection.mutable.ArrayBuffer
   */
 object FitImport {
 
-  private def fromTimestamp(dateTime: DateTime): ZonedDateTime = {
-    new ZonedDateTime(dateTime.getDate.getTime)
-  }
-
   private def fromTimestamp(timeMs: Long): ZonedDateTime = {
     val smartTime = if (timeMs < 1e10) timeMs * 1000 else timeMs
-    new ZonedDateTime(smartTime + DateTime.OFFSET)
+    val localTime = LocalDateTime.ofEpochSecond(smartTime, 0, ZoneOffset.UTC)
+    ZonedDateTime.of(localTime, ZoneOffset.UTC)
   }
 
   private def decodeLatLng(lat: Int, lng: Int, elev: Option[java.lang.Float]): GPSPoint = {

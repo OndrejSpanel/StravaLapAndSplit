@@ -1,6 +1,7 @@
 package com.github.opengrabeso.mixtio
 
-import org.joda.time.{Seconds, DateTime => ZonedDateTime}
+import java.time.temporal.ChronoUnit
+import java.time.{Duration, ZonedDateTime}
 
 import scala.collection.immutable.SortedMap
 
@@ -14,7 +15,7 @@ object Function {
     def isEmpty = data.isEmpty
     def begTime = data.head._1
     def endTime = data.last._1
-    def duration = Seconds.secondsBetween(begTime, endTime).getSeconds
+    def duration = ChronoUnit.SECONDS.between(begTime, endTime)
     def distance = if (isEmpty) 0.0 else totalDistance - data.head._2 // first distance was before the first timestamp
     def speed = if (duration > 0) distance / duration else 0.0
     def keepSize: Window = if (duration <= durationSec || data.size < 2) this else Window(data.tail, totalDistance - data.head._2)(durationSec).keepSize
@@ -30,7 +31,7 @@ object Function {
     } else {
       val newWindow = (prev :+ todo.head).keepSize
       val duration = newWindow.duration
-      //val interval = Seconds.secondsBetween(prev.endTime, todo.head._1).getSeconds
+      //val interval = ChronoUnit.SECONDS.between(prev.endTime, todo.head._1).getSeconds
       val smoothDist = newWindow.speed
       smoothingRecurse((todo.head._1 -> smoothDist) +: done, newWindow, todo.tail)
     }
@@ -66,8 +67,9 @@ object Function {
     def recurse(todoStream: SortedMap[ZonedDateTime, T], todo: List[(ZonedDateTime, ZonedDateTime)], done: List[(ZonedDateTime, T)]): List[(ZonedDateTime, T)] = {
       todo match {
         case head :: tail =>
-          val before = todoStream.until(head._1 minusMillis 1) // plus / minus epsilon so that the range is excluded
-          val after = todoStream.from(head._2 plusMillis 1)
+          val epsilon = Duration.ofMillis(1)
+          val before = todoStream.until(head._1 minus epsilon) // plus / minus epsilon so that the range is excluded
+          val after = todoStream.from(head._2 plus epsilon)
           recurse(after, tail, before.toList.reverse ++ done)
         case _ =>
           todoStream.toList.reverse ++ done

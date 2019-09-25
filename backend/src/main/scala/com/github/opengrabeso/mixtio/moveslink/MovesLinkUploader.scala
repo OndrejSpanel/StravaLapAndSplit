@@ -68,11 +68,7 @@ object MovesLinkUploader {
           }
 
           val merged = takeGPS.map(m => (m.gps, m)).map { sm =>
-            val offset = sm._1.adjustHrdStream(hrdMove.dist.stream)
-
-            val hrdAdjusted = hrdMove.timeOffset(offset)
-
-            val data = sm._2.merge(hrdAdjusted)
+            val data = sm._2.merge(hrdMove)
 
             data
           }

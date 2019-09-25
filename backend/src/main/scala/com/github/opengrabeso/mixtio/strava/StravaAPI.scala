@@ -3,7 +3,7 @@ package strava
 
 import java.io._
 
-import org.joda.time.{DateTime => ZonedDateTime}
+import java.time.ZonedDateTime
 import java.util.zip.GZIPOutputStream
 
 import com.google.api.client.http._

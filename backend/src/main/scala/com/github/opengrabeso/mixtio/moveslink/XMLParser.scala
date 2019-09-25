@@ -3,8 +3,8 @@ package moveslink
 
 import java.io.{InputStream, PushbackInputStream}
 
-import org.joda.time.{DateTime => ZonedDateTime, _}
-import org.joda.time.format.DateTimeFormat
+import java.time.{ZonedDateTime, _}
+import java.time.format.DateTimeFormatter
 
 import shared.Util._
 
@@ -13,8 +13,8 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 object XMLParser {
-  private val dateFormatBase = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
-  private def dateFormatWithZone(timezone: String) = dateFormatBase.withZone(DateTimeZone.forID(timezone))
+  private val dateFormatBase = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+  private def dateFormatWithZone(timezone: String) = dateFormatBase.withZone(ZoneId.of(timezone))
 
 
   def parseTime(timeText: String, timezone: String): ZonedDateTime = {
@@ -23,8 +23,8 @@ object XMLParser {
 
   def parseDuration(timeStr: String): Duration = {
     val relTime = LocalTime.parse(timeStr)
-    val ms = relTime.getMillisOfDay
-    new Duration(ms)
+    val ns = relTime.toNanoOfDay
+    Duration.ofNanos(ns)
   }
 
   def skipMoveslinkDoctype(is: InputStream): InputStream = {
@@ -160,7 +160,7 @@ object XMLParser {
 
       val timeRange = 0 until mi.durationMs by 10000
 
-      def timeMs(ms: Int) = mi.startTime.get.plusMillis(ms)
+      def timeMs(ms: Int) = mi.startTime.get.plus(Duration.ofMillis(ms))
 
       val timedMapHR = (timeRange zip mi.heartRateSamples).collect { case (t, s) if s > 0 =>
         timeMs(t) -> s

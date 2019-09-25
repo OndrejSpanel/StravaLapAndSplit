@@ -1,7 +1,10 @@
 package com.github.opengrabeso.mixtio
 
-import org.joda.time.{Interval, DateTime => ZonedDateTime}
+import java.time.temporal.ChronoUnit
+import java.time.ZonedDateTime
+
 import shared.Util._
+
 import scala.reflect._
 
 case class Header(moveHeader: MoveHeader, startTime: ZonedDateTime = ZonedDateTime.now, durationMs: Int = 0)
@@ -48,7 +51,7 @@ case class Move(fileName: Set[String], header: MoveHeader, streams: Map[Class[_]
 
   def duration: Double = {
     val durOpt = for (beg <- startTime; end <- endTime) yield {
-      new Interval(beg, end).toDurationMillis.toDouble / 1000
+      ChronoUnit.MILLIS.between(beg, end).toDouble / 1000
     }
     durOpt.getOrElse(0.0)
   }

@@ -5,7 +5,7 @@ import shared._
 import shared.Util._
 import Main._
 import com.google.appengine.api.taskqueue.{QueueFactory, TaskOptions}
-import org.joda.time.{DateTime => ZonedDateTime}
+import java.time.ZonedDateTime
 
 import scala.xml.NodeSeq
 

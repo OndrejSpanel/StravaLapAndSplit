@@ -1,7 +1,9 @@
 package com.github.opengrabeso.mixtio
 package weather
 
-import org.joda.time.{Seconds, DateTime => ZonedDateTime}
+import java.time.temporal.ChronoUnit
+import java.time.ZonedDateTime
+
 import shared.Util._
 
 import scala.annotation.tailrec
@@ -50,7 +52,7 @@ object GetTemperature {
           if (tail.isEmpty || lastPoint.forall { case (time, pos) =>
             val dist = pos.distance(head._2)
             val elevDiff = pos.elevation.flatMap(pe => head._2.elevation.map(he => (he-pe).abs)).getOrElse(0)
-            val duration = Seconds.secondsBetween(time, head._1).getSeconds
+            val duration = ChronoUnit.SECONDS.between(time, head._1)
             val score = (dist / distanceBetweenPoints) + (elevDiff / altBetweenPoints) + (duration / timeBetweenPoints)
             score >= 2
           }) {

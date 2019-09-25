@@ -7,7 +7,7 @@ import java.net.URLEncoder
 import spark.{Request, Response}
 
 import scala.xml.NodeSeq
-import org.joda.time.{DateTime => ZonedDateTime}
+import java.time.ZonedDateTime
 import shared.Util._
 
 object PushStart extends DefineRequest("/push-start") {
@@ -37,7 +37,7 @@ object PushStart extends DefineRequest("/push-start") {
     // ignore anything older than oldest of recent Strava activities
     val ignoreBeforeLast = stravaActivities.lastOption.map(_.startTime) // oldest of the last 15 Strava activities
     val ignoreBeforeFirst = stravaActivities.headOption.map(_.startTime minusDays  14) // most recent on Strava - 2 weeks
-    val ignoreBeforeNow = new ZonedDateTime() minusMonths 2 // max. 2 months
+    val ignoreBeforeNow = ZonedDateTime.now() minusMonths 2 // max. 2 months
 
     val since = (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
 

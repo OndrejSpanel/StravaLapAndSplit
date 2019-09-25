@@ -49,7 +49,7 @@ trait GetFiles extends HtmlPart {
         console.log("changeActivity " + event + ",");
       }
 
-      document.getElementById("timezone").value = Intl.DateTimeFormat().resolvedOptions().timeZone
+      document.getElementById("timezone").value = Intl.DateTimeFormatter().resolvedOptions().timeZone
 
       """
       )}
