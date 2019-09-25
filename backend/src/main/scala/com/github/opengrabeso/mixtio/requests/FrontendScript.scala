@@ -4,7 +4,7 @@ package requests
 import org.apache.commons.io.IOUtils
 import spark.{Request, Response}
 
-object ScalaJSScript extends DefineRequest("frontend/*") {
+object FrontendScript extends DefineRequest("frontend/*") {
 
   def html(request: Request, resp: Response) = {
     val scriptName = request.splat().head
@@ -14,8 +14,6 @@ object ScalaJSScript extends DefineRequest("frontend/*") {
         Some("application/json", if (Main.devMode) s"/$moduleName-fastopt.js" else s"/$moduleName-opt.js")
       case "dependencies" =>
         Some("application/json", if (Main.devMode) s"/$moduleName-jsdeps.js" else s"/$moduleName-jsdeps.min.js")
-      case "main.css" =>
-        Some("text/css", "/main.css")
       case _ =>
         None
     }

@@ -90,13 +90,6 @@ lazy val pushUploader = (project in file("push-uploader"))
 
 def inDevMode = sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
 
-val cssDir = settingKey[File]("Target for `compileCss` task.")
-val compileCss = taskKey[Unit]("Compiles CSS files.")
-val compileCssOutput = taskKey[File]("Compiles CSS files.")
-// you can also add `compileCss` as a dependency to
-// the `compileStatics` and `compileAndOptimizeStatics` tasks
-
-
 def addJavaScriptToServerResources(): Def.SettingsDefinition = {
   val optJs = if (inDevMode) fastOptJS else fullOptJS
   (resources in Compile) += (optJs in(frontend, Compile)).value.data
@@ -107,39 +100,11 @@ def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
   (resources in Compile) += (depJs in(frontend, Compile)).value
 }
 
-def addCssToServerResources(): Def.SettingsDefinition = {
-  val css = (compileCssOutput in(frontend, Compile))
-  (resources in Compile) += css.value
-}
-
 lazy val frontend = project.settings(
     commonSettings,
-    jsLibs,
-    cssDir := {
-      (Compile / fastOptJS / target).value / "styles"
-    },
-    compileCss := Def.taskDyn {
-      val dir = (Compile / cssDir).value
-      val path = dir.absolutePath
-      println(s"Generating CSS files in `$path`...")
-      dir.mkdirs()
-      // make sure you have configured the valid `CssRenderer` path
-      // we assume that `CssRenderer` exists in the `backend` module
-      (cssRenderer / Compile / runMain).toTask(s" com.github.opengrabeso.mixtio.cssrenderer.CssRenderer $path false")
-
-    }.value,
-    compileCssOutput := {(Compile / cssDir).value / "main.css"},
-    compileCssOutput := compileCssOutput.dependsOn(compileCss).value
+    jsLibs
   ).enablePlugins(ScalaJSPlugin)
     .dependsOn(sharedJs_JS)
-
-lazy val cssRenderer = (project in file("cssRenderer"))
-  .disablePlugins(sbtassembly.AssemblyPlugin)
-  .settings(
-    libraryDependencies ++= jvmLibs,
-    commonSettings
-  )
-  .dependsOn(sharedJs_JVM)
 
 lazy val backend = (project in file("backend"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
@@ -149,7 +114,6 @@ lazy val backend = (project in file("backend"))
 
     addJavaScriptToServerResources(),
     addJSDependenciesToServerResources(),
-    addCssToServerResources(),
 
     resourceGenerators in Compile += Def.task {
       val file = (resourceManaged in Compile).value / "config.properties"
