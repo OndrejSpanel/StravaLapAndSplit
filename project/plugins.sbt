@@ -1,7 +1,5 @@
-addSbtPlugin("com.eed3si9n" % "sbt-appengine" % "0.8.0")
-
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.10")
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.28")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.29")
 
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "0.6.1")

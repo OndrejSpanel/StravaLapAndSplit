@@ -5,7 +5,7 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
   version := "0.1.10-beta",
-  scalaVersion := "2.12.9",
+  scalaVersion := "2.12.10",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
@@ -52,7 +52,7 @@ lazy val jsDeps = jsDependencies ++= Seq(
 lazy val commonLibs = Seq(
   "joda-time" % "joda-time" % "2.10",
   "org.joda" % "joda-convert" % "1.8.1",
-  "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
+  "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
 )
 
 val jacksonVersion = "2.9.9"
@@ -151,6 +151,6 @@ lazy val backend = (project in file("backend"))
       "org.apache.commons" % "commons-math" % "2.1",
       "commons-io" % "commons-io" % "2.1"
     )
-  ).enablePlugins(AppenginePlugin)
+  )
 
 lazy val root = (project in file(".")).aggregate(backend)
