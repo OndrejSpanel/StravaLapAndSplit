@@ -1,28 +1,15 @@
-package com.github.opengrabeso.mixtio.rest
+package com.github.opengrabeso.mixtio
+package rest
 
 import java.time.ZonedDateTime
 
-import com.avsystem.commons.rpc._
+import com.avsystem.commons.serialization.{GenCodec, GenKeyCodec}
+import common.model.CustomCodecs.ZonedDateTimeAU
 import io.udash.rest._
-import io.udash.rest.raw._
 
 trait EnhancedRestImplicits extends DefaultRestImplicits {
-  implicit val zonedDateTimeJsonAsRawReal: AsRawReal[JsonValue, ZonedDateTime] =
-    AsRawReal.create(
-      { real =>
-        JsonValue(real.toString)
-      },{ raw =>
-        ZonedDateTime.parse(raw.value)
-      }
-    )
-  implicit val zonedDateTimePlainAsRawReal: AsRawReal[PlainValue, ZonedDateTime] =
-    AsRawReal.create(
-      { real =>
-        PlainValue(real.toString)
-      },{ raw =>
-        ZonedDateTime.parse(raw.value)
-      }
-    )
+  implicit val zonedDateTimeCodec: GenCodec[ZonedDateTime] = GenCodec.fromApplyUnapplyProvider(ZonedDateTimeAU)
+  implicit val zonedDateTimeKeyCodec: GenKeyCodec[ZonedDateTime] = GenKeyCodec.create(ZonedDateTime.parse,_.toString)
 }
 
 object EnhancedRestImplicits extends EnhancedRestImplicits
