@@ -9,7 +9,7 @@ import common.model._
 object UserRestAPIServer {
   implicit class ModelConversion(aid: Main.ActivityId) {
     def toModel: ActivityIdModel = {
-      ActivityIdModel(aid.id.toString, aid.digest, aid.name, aid.startTime.toString, aid.endTime.toString, aid.sportName.toString, aid.distance)
+      ActivityIdModel(aid.id.toString, aid.digest, aid.name, aid.startTime, aid.endTime, aid.sportName.toString, aid.distance)
     }
   }
 }

@@ -34,7 +34,7 @@ class AboutPageView(
   def getTemplate: Modifier = {
     case class DisplayAttrib(name: String, value: ActivityIdModel => String, shortName: Option[String] = None)
     val attribs = Seq(
-      DisplayAttrib("Time", _.startTime),
+      DisplayAttrib("Time", _.startTime.toString),
       DisplayAttrib("Type", _.sportName),
       DisplayAttrib("Distance", _.distance.toString),
       DisplayAttrib("Duration", _ => ""),

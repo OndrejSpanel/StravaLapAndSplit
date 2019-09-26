@@ -27,9 +27,7 @@ class AboutPageViewFactory(
         // TODO: make Util global and working with java.time
         println("lastStravaActivities received")
         implicit def zonedDateTimeOrdering: Ordering[ZonedDateTime] = (x: ZonedDateTime, y: ZonedDateTime) => x.compareTo(y)
-        val notBefore = stravaActivities.map { a =>
-          ZonedDateTime.parse(a.startTime)
-        }.min
+        val notBefore = stravaActivities.map(a => a.startTime).min
         println(s"notBefore $notBefore")
         userAPI.stagedActivities(notBefore).foreach { storedActivities =>
 
