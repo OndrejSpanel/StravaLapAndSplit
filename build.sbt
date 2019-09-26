@@ -129,7 +129,7 @@ lazy val backend = (project in file("backend"))
       "com.google.appengine.tools" % "appengine-gcs-client" % "0.8",
 
       "javax.servlet" % "servlet-api" % "2.5" % "provided",
-      "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406" % "container",
+      "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406" % "provided",
 
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
       "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
