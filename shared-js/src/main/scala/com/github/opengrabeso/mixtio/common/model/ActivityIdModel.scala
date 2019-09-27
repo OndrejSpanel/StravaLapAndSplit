@@ -3,10 +3,8 @@ package common.model
 
 import java.time.ZonedDateTime
 
-import com.avsystem.commons.meta.MacroInstances
 import com.avsystem.commons.serialization.GenCodec
-import io.udash.rest.{CodecWithStructure, DefaultRestImplicits}
-import io.udash.rest.openapi.{RestSchema, RestStructure}
+import rest.EnhancedRestDataCompanion
 
 object CustomCodecs {
   object ZonedDateTimeAU {
@@ -18,14 +16,5 @@ object CustomCodecs {
 
 case class ActivityIdModel(id: String, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: String, distance: Double)
 
-abstract class EnhancedRestDataCompanion {
-  type T = ActivityIdModel
-  implicit val zonedDateCodec = CustomCodecs.zonedDateCodec
-  implicit val instances: MacroInstances[DefaultRestImplicits, CodecWithStructure[T]] = implicitly[MacroInstances[DefaultRestImplicits, CodecWithStructure[T]]]
-  implicit lazy val codec: GenCodec[T] = instances(DefaultRestImplicits, this).codec
-  implicit lazy val restStructure: RestStructure[T] = instances(DefaultRestImplicits, this).structure
-  implicit lazy val restSchema: RestSchema[T] = RestSchema.lazySchema(restStructure.standaloneSchema)
-}
-
-object ActivityIdModel extends EnhancedRestDataCompanion
+object ActivityIdModel extends EnhancedRestDataCompanion[ActivityIdModel]
 
