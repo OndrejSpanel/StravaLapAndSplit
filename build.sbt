@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
 
 val udashVersion = "0.8.0"
 
-val bootstrapVersion = "3.3.7-1"
+val bootstrapVersion = "4.3.1"
 
 val udashJQueryVersion = "3.0.1"
 
@@ -35,7 +35,7 @@ lazy val jsLibs = libraryDependencies ++= Seq(
   "io.udash" %%% "udash-rpc" % udashVersion,
   "io.udash" %%% "udash-css" % udashVersion,
 
-  "io.udash" %%% "udash-bootstrap" % udashVersion,
+  "io.udash" %%% "udash-bootstrap4" % udashVersion,
   "io.udash" %%% "udash-charts" % udashVersion,
   "io.udash" %%% "udash-jquery" % udashJQueryVersion,
 

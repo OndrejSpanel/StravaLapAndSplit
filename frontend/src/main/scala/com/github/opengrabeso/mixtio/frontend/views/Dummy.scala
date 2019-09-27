@@ -3,11 +3,12 @@ package frontend
 package views
 
 import io.udash._
-import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
+import io.udash.bootstrap.button.UdashButton
 import io.udash.component.ComponentId
 import io.udash.css._
 import frontend.routing._
 import common.css._
+import io.udash.bootstrap.utils.BootstrapStyles
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -42,10 +43,7 @@ object Dummy {
     import scalatags.JsDom.all._
 
     // Button from Udash Bootstrap wrapper
-    private val submitButton = UdashButton(
-      buttonStyle = ButtonStyle.Primary,
-      block = true, componentId = ComponentId("about")
-    )("Submit")
+    private val submitButton = UdashButton(buttonStyle = BootstrapStyles.Color.Primary.toProperty, block = true.toProperty, componentId = ComponentId("about"))(_ => "Submit")
 
     submitButton.listen {
       case UdashButton.ButtonClickEvent(_, _) =>

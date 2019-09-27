@@ -6,8 +6,9 @@ package about
 import common.model._
 import common.css._
 import io.udash._
-import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
+import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.table.UdashTable
+import io.udash.bootstrap.utils.BootstrapStyles
 import io.udash.component.ComponentId
 import io.udash.css._
 
@@ -19,11 +20,10 @@ class AboutPageView(
 
   import scalatags.JsDom.all._
 
-  // Button from Udash Bootstrap wrapper
-  private val submitButton = UdashButton(buttonStyle = ButtonStyle.Primary, block = true, componentId = ComponentId("about"))("Submit")
-  private val uploadButton = UdashButton(buttonStyle = ButtonStyle.Primary, block = true, componentId = ComponentId("upload"))("Upload activity data...")
-  private val stagingButton = UdashButton(buttonStyle = ButtonStyle.Primary, block = true, componentId = ComponentId("upload"))("View all staged activities")
-  private val settingsButton = UdashButton(buttonStyle = ButtonStyle.Primary, block = true, componentId = ComponentId("upload"))("Settings")
+  private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
+  private val uploadButton = UdashButton(componentId = ComponentId("upload"))(_ => "Upload activity data...")
+  private val stagingButton = UdashButton(componentId = ComponentId("staged"))(_ => "View all staged activities")
+  private val settingsButton = UdashButton(componentId = ComponentId("settings"))(_ => "Settings")
 
   submitButton.listen {
     case UdashButton.ButtonClickEvent(_, _) =>
@@ -49,8 +49,8 @@ class AboutPageView(
     val hover = Property(true)
     val small = Property(false)
 
-    val table = UdashTable(striped, bordered, hover, small)(model.subSeq(_.activities))(
-      headerFactory = Some(() => tr {
+    val table = UdashTable(model.subSeq(_.activities), striped = striped, bordered = bordered, hover = hover, small = small)(
+      headerFactory = Some(_ => tr {
         attribs.flatMap { a =>
           a.shortName.map(shortName =>
             Seq(
@@ -60,7 +60,7 @@ class AboutPageView(
           ).getOrElse(Seq(th(b(a.name)).render))
         }
       }.render),
-      rowFactory = el => tr(
+      rowFactory = (el,_) => tr(
         produce(el)(m => attribs.flatMap(a => td(a.value(m)).render))
       ).render
     )

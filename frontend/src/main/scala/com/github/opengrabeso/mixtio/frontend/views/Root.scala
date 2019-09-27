@@ -5,7 +5,7 @@ package views
 import routing._
 import io.udash._
 import io.udash.bootstrap._
-import io.udash.bootstrap.button.{ButtonStyle, UdashButton}
+import io.udash.bootstrap.button.UdashButton
 import io.udash.component.ComponentId
 import io.udash.css._
 import common.css._
@@ -68,8 +68,8 @@ object Root {
     import scalatags.JsDom.all._
 
     private val logoutButton = UdashButton(
-      buttonStyle = ButtonStyle.Default,
-      block = true, componentId = ComponentId("logout-button")
+      //buttonStyle = ButtonStyle.Default,
+      block = true.toProperty, componentId = ComponentId("logout-button")
     )("Log Out")
 
     logoutButton.listen {
