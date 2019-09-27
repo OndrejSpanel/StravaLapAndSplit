@@ -6,11 +6,12 @@ package about
 import common.model._
 import common.css._
 import io.udash._
+import io.udash.bootstrap.utils.BootstrapStyles._
 import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.table.UdashTable
-import io.udash.bootstrap.utils.BootstrapStyles
 import io.udash.component.ComponentId
 import io.udash.css._
+
 
 class PageView(
   model: ModelProperty[PageModel],
@@ -67,10 +68,10 @@ class PageView(
 
     div(
       s.container,
-      div(
-        uploadButton.render,
-        stagingButton.render,
-        settingsButton.render,
+      div(Grid.row)(
+        div(Grid.col)(uploadButton.render),
+        div(Grid.col)(stagingButton.render),
+        div(Grid.col)(settingsButton.render),
       ),
 
       div(
