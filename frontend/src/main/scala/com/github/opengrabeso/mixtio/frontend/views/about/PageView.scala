@@ -12,9 +12,9 @@ import io.udash.bootstrap.utils.BootstrapStyles
 import io.udash.component.ComponentId
 import io.udash.css._
 
-class AboutPageView(
-  model: ModelProperty[AboutPageModel],
-  presenter: AboutPagePresenter,
+class PageView(
+  model: ModelProperty[PageModel],
+  presenter: PagePresenter,
 ) extends FinalView with CssView {
   val s = AboutPageStyles
 

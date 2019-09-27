@@ -11,7 +11,7 @@ import io.udash._
 import scala.concurrent.Future
 
 /** Prepares model, view and presenter for demo view. */
-class AboutPageViewFactory(
+class PageViewFactory(
   application: Application[RoutingState],
 ) extends ViewFactory[AboutPageState.type] {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -19,7 +19,7 @@ class AboutPageViewFactory(
   override def create(): (View, Presenter[AboutPageState.type]) = {
     // TODO: do not switch to view until the API has returned
     val model = ModelProperty(
-      AboutPageModel(true, Seq())
+      PageModel(true, Seq())
     )
 
     for (userAPI <- facade.UdashApp.currentUserId.toOption.map(rest.RestAPIClient.api.userAPI)) {
@@ -38,8 +38,8 @@ class AboutPageViewFactory(
       }
     }
 
-    val presenter = new AboutPagePresenter(model, application)
-    val view = new AboutPageView(model, presenter)
+    val presenter = new PagePresenter(model, application)
+    val view = new PageView(model, presenter)
     (view, presenter)
   }
 }

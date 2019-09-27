@@ -7,8 +7,8 @@ import io.udash._
 import scala.concurrent.ExecutionContext
 
 /** Contains the business logic of this view. */
-class AboutPagePresenter(
-  model: ModelProperty[AboutPageModel],
+class PagePresenter(
+  model: ModelProperty[PageModel],
   application: Application[RoutingState]
 )(implicit ec: ExecutionContext) extends Presenter[AboutPageState.type] {
 
