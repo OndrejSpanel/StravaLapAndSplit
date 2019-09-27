@@ -20,10 +20,10 @@ class AboutPageView(
   import scalatags.JsDom.all._
 
   // Button from Udash Bootstrap wrapper
-  private val submitButton = UdashButton(
-    buttonStyle = ButtonStyle.Primary,
-    block = true, componentId = ComponentId("about")
-  )("Submit")
+  private val submitButton = UdashButton(buttonStyle = ButtonStyle.Primary, block = true, componentId = ComponentId("about"))("Submit")
+  private val uploadButton = UdashButton(buttonStyle = ButtonStyle.Primary, block = true, componentId = ComponentId("upload"))("Upload activity data...")
+  private val stagingButton = UdashButton(buttonStyle = ButtonStyle.Primary, block = true, componentId = ComponentId("upload"))("View all staged activities")
+  private val settingsButton = UdashButton(buttonStyle = ButtonStyle.Primary, block = true, componentId = ComponentId("upload"))("Settings")
 
   submitButton.listen {
     case UdashButton.ButtonClickEvent(_, _) =>
@@ -32,6 +32,7 @@ class AboutPageView(
   }
 
   def getTemplate: Modifier = {
+
     case class DisplayAttrib(name: String, value: ActivityIdModel => String, shortName: Option[String] = None)
     val attribs = Seq(
       DisplayAttrib("Time", _.startTime.toString),
@@ -66,6 +67,12 @@ class AboutPageView(
 
     div(
       s.container,
+      div(
+        uploadButton.render,
+        stagingButton.render,
+        settingsButton.render,
+      ),
+
       div(
         showIfElse(model.subProp(_.loading))(
           p("Loading...").render,
