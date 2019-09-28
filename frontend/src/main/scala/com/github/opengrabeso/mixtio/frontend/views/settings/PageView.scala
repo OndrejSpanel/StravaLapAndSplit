@@ -31,6 +31,16 @@ class PageView(
 
   buttonOnClick(submitButton){presenter.gotoAbout()}
 
+  def showWhenLoaded[T](property: ReadableProperty[T]) = {
+    showIfElse(model.subProp(_.loading))(
+      Seq(
+        span("...").render
+      ),
+      Seq(
+        span(bind(property)).render
+      )
+    )
+  }
   def getTemplate: Modifier = {
 
     div(
@@ -46,16 +56,9 @@ class PageView(
 
       div(
         "Settings",
-        showIfElse(model.subProp(_.loading))(
-          Seq(
-            p("Loading...").render
-          ),
-          Seq(
-            p("MaxHR: ", bind(model.subProp(_.settings.maxHR))).render,
-            p("elevFilter: ", bind(model.subProp(_.settings.elevFilter))).render,
-            p("questTimeOffset: ", bind(model.subProp(_.settings.questTimeOffset))).render
-          )
-        )
+        p("MaxHR: ", showWhenLoaded(model.subProp(_.settings).transform(_.maxHR))).render,
+        p("elevFilter: ", showWhenLoaded(model.subProp(_.settings).transform(_.elevFilter))).render,
+        p("questTimeOffset: ", showWhenLoaded(model.subProp(_.settings).transform(_.questTimeOffset))).render
       ),
       submitButton.render
     )

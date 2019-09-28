@@ -10,6 +10,4 @@ case class SettingsStorage(questTimeOffset: Int = 0, maxHR: Int = 220, elevFilte
   def setElevFilter(v: Option[Int]) = v.map(v => copy(elevFilter = v)).getOrElse(this)
 }
 
-object SettingsStorage extends RestDataCompanion[SettingsStorage] {
-  implicit val modelPropertyCreator = ModelPropertyCreator.materialize[SettingsStorage]
-}
+object SettingsStorage extends RestDataCompanion[SettingsStorage]
