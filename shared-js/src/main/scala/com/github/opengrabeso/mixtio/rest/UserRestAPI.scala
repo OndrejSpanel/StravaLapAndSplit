@@ -14,6 +14,9 @@ trait UserRestAPI {
 
   def settings: UserRestSettingsAPI
 
+  @GET("settings")
+  def allSettings: Future[SettingsStorage]
+
   @GET
   def name: Future[String]
 

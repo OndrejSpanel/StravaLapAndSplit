@@ -1,26 +1,23 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.about
+package views.settings
 
 import routing._
-
 import io.udash._
+
 import scala.concurrent.ExecutionContext
 
 /** Contains the business logic of this view. */
 class PagePresenter(
   model: ModelProperty[PageModel],
   application: Application[RoutingState]
-)(implicit ec: ExecutionContext) extends Presenter[AboutPageState.type] {
+)(implicit ec: ExecutionContext) extends Presenter[SettingsPageState.type] {
 
   /** We don't need any initialization, so it's empty. */
-  override def handleState(state: AboutPageState.type): Unit = {
+  override def handleState(state: SettingsPageState.type): Unit = {
   }
 
-  def gotoDummy(): Unit = {
-    application.goTo(DummyPageState)
-  }
-  def gotoSettings(): Unit = {
-    application.goTo(SettingsPageState)
+  def gotoAbout(): Unit = {
+    application.goTo(AboutPageState)
   }
 }

@@ -26,11 +26,15 @@ class PageView(
   private val stagingButton = UdashButton(componentId = ComponentId("staged"))(_ => "View all staged activities")
   private val settingsButton = UdashButton(componentId = ComponentId("settings"))(_ => "Settings")
 
-  submitButton.listen {
-    case UdashButton.ButtonClickEvent(_, _) =>
-      println("About submit pressed")
-      presenter.gotoDummy()
+  def buttonOnClick(button: UdashButton)(callback: => Unit): Unit = {
+    button.listen {
+      case UdashButton.ButtonClickEvent(_, _) =>
+        callback
+    }
   }
+
+  buttonOnClick(submitButton){presenter.gotoDummy()}
+  buttonOnClick(settingsButton){presenter.gotoSettings()}
 
   def getTemplate: Modifier = {
 

@@ -9,6 +9,7 @@ class StatesToViewFactoryDef extends ViewFactoryRegistry[RoutingState] {
     state match {
       case RootState => new Root.PageViewFactory(ApplicationContext.application, ApplicationContext.userContextService)
       case AboutPageState => new about.PageViewFactory(ApplicationContext.application)
+      case SettingsPageState => new settings.PageViewFactory(ApplicationContext.application)
       case DummyPageState => new Dummy.PageViewFactory(ApplicationContext.application)
     }
 }

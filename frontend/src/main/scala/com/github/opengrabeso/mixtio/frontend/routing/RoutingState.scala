@@ -14,4 +14,5 @@ sealed abstract class FinalRoutingState(parentState: Option[ContainerRoutingStat
 
 case object RootState extends ContainerRoutingState(None)
 case object AboutPageState extends FinalRoutingState(Some(RootState))
+case object SettingsPageState extends FinalRoutingState(Some(RootState))
 case object DummyPageState extends FinalRoutingState(Some(RootState))
