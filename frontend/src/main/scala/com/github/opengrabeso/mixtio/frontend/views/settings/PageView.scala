@@ -6,10 +6,12 @@ import common.model._
 import common.css._
 import io.udash._
 import io.udash.bootstrap.button.UdashButton
+import io.udash.bootstrap.form.UdashInputGroup
 import io.udash.bootstrap.table.UdashTable
 import io.udash.bootstrap.utils.BootstrapStyles._
 import io.udash.component.ComponentId
 import io.udash.css._
+import scalacss.internal.ValueT.TypedAttr_MaxLength
 
 
 class PageView(
@@ -31,13 +33,16 @@ class PageView(
 
   buttonOnClick(submitButton){presenter.gotoAbout()}
 
-  def showWhenLoaded[T](property: ReadableProperty[T]) = {
+  def showWhenLoaded(property: Property[Int], hint: String = "", maxChars: Int = 3) = {
+    val stringProp: Property[String] = property.transform(_.toString, _.toInt)
     showIfElse(model.subProp(_.loading))(
       Seq(
         span("...").render
       ),
       Seq(
-        span(bind(property)).render
+        UdashInputGroup.input(
+          NumberInput(stringProp)(placeholder := hint, maxlength := maxChars).render
+        ),
       )
     )
   }
@@ -54,11 +59,14 @@ class PageView(
 
        */
 
-      div(
+      UdashInputGroup()(
         "Settings",
-        p("MaxHR: ", showWhenLoaded(model.subProp(_.settings).transform(_.maxHR))).render,
-        p("elevFilter: ", showWhenLoaded(model.subProp(_.settings).transform(_.elevFilter))).render,
-        p("questTimeOffset: ", showWhenLoaded(model.subProp(_.settings).transform(_.questTimeOffset))).render
+        UdashInputGroup.appendText("MaxHR: "),
+        showWhenLoaded(model.subProp(_.settings.maxHR)),
+        UdashInputGroup.appendText("elevFilter: "),
+        showWhenLoaded(model.subProp(_.settings.elevFilter)),
+        UdashInputGroup.appendText("questTimeOffset: "),
+        showWhenLoaded(model.subProp(_.settings.questTimeOffset))
       ),
       submitButton.render
     )
