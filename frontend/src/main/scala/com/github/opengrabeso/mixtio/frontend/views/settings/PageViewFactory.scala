@@ -11,6 +11,7 @@ import io.udash._
 /** Prepares model, view and presenter for demo view. */
 class PageViewFactory(
   application: Application[RoutingState],
+  userService: services.UserContextService,
 ) extends ViewFactory[SettingsPageState.type] {
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -28,7 +29,7 @@ class PageViewFactory(
       model.subProp(_.loading).set(false)
     }
 
-    val presenter = new PagePresenter(model, application)
+    val presenter = new PagePresenter(model, userService, application)
     val view = new PageView(model, presenter)
     (view, presenter)
   }

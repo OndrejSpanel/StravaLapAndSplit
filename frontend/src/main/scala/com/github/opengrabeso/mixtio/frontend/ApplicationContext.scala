@@ -14,6 +14,9 @@ object ApplicationContext {
   val application = new Application[RoutingState](routingRegistry, viewFactoryRegistry)
   val userContextService = new services.UserContextService(com.github.opengrabeso.mixtio.rest.RestAPIClient.api)
 
+
+  val userAPI = facade.UdashApp.currentUserId.toOption.map(com.github.opengrabeso.mixtio.rest.RestAPIClient.api.userAPI)
+
   application.onRoutingFailure {
     case _: SharedExceptions.UnauthorizedException =>
       // automatic redirection to AboutPage

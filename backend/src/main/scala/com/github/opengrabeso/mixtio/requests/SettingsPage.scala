@@ -25,8 +25,8 @@ trait SettingsPage extends HtmlPart with ChangeSettings {
   abstract override def headerPart(req: Request, auth: StravaAuthResult) = {
     super.headerPart(req, auth) ++
       <title>{appName} - settings</title>
-      <script src="js/script"></script>
-      <script src="js/dependencies"></script>
+      <script src="frontend/script"></script>
+      <script src="frontend/dependencies"></script>
   }
 
 }

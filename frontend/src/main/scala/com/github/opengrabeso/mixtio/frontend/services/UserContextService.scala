@@ -19,12 +19,12 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
   }
   def logout(): Future[UserContext] = {
     userContext.flatMap { ctx =>
-      api().map(_.logout.map(_ => ctx))
+      api.map(_.logout.map(_ => ctx))
     }.getOrElse(Future.failed(new UnsupportedOperationException))
   }
 
   def userName: Option[String] = userContext.map(_.name)
   def userId: Option[String] = userContext.map(_.userId)
 
-  def api(): Option[rest.UserRestAPI] = userContext.map(ctx => rpc.userAPI(ctx.userId))
+  def api: Option[rest.UserRestAPI] = userContext.map(ctx => rpc.userAPI(ctx.userId))
 }

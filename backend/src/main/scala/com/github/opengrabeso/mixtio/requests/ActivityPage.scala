@@ -43,8 +43,8 @@ trait ActivityRequestHandler extends UploadResults {
       <link rel="stylesheet" type="text/css" href="static/activityPage.css"/>
       <link rel="stylesheet" type="text/css" href="static/page.css"/>
 
-      <script src="js/script"></script>
-      <script src="js/dependencies"></script>
+      <script src="frontend/script"></script>
+      <script src="frontend/dependencies"></script>
       <script type="text/javascript">{activityJS(actId, activityData)}</script>
 
       val stats = activityData.stats

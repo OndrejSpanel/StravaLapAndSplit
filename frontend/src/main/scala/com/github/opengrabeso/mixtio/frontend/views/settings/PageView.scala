@@ -49,6 +49,7 @@ class PageView(
   def getTemplate: Modifier = {
 
     div(
+      h1("Settings"),
       s.container,
       /*
       div(Grid.row)(
@@ -60,7 +61,6 @@ class PageView(
        */
 
       UdashInputGroup()(
-        "Settings",
         UdashInputGroup.appendText("MaxHR: "),
         showWhenLoaded(model.subProp(_.settings.maxHR)),
         UdashInputGroup.appendText("elevFilter: "),

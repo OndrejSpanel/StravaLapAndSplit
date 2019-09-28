@@ -13,6 +13,7 @@ import scala.concurrent.Future
 /** Prepares model, view and presenter for demo view. */
 class PageViewFactory(
   application: Application[RoutingState],
+  userService: services.UserContextService
 ) extends ViewFactory[AboutPageState.type] {
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -22,7 +23,7 @@ class PageViewFactory(
       PageModel(true, Seq())
     )
 
-    for (userAPI <- facade.UdashApp.currentUserId.toOption.map(rest.RestAPIClient.api.userAPI)) {
+    for (userAPI <- userService.api) {
       userAPI.lastStravaActivities(15).foreach { stravaActivities =>
         // TODO: make Util global and working with java.time
         println("lastStravaActivities received")
