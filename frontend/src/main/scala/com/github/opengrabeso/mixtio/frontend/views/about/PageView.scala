@@ -3,6 +3,8 @@ package frontend
 package views
 package about
 
+import java.time.temporal.ChronoUnit
+
 import common.model._
 import common.css._
 import io.udash._
@@ -16,7 +18,7 @@ import io.udash.css._
 class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
-) extends FinalView with CssView {
+) extends FinalView with CssView with PageUtils with TimeFormatting {
   val s = AboutPageStyles
 
   import scalatags.JsDom.all._
@@ -26,13 +28,6 @@ class PageView(
   private val stagingButton = UdashButton(componentId = ComponentId("staged"))(_ => "View all staged activities")
   private val settingsButton = UdashButton(componentId = ComponentId("settings"))(_ => "Settings")
 
-  def buttonOnClick(button: UdashButton)(callback: => Unit): Unit = {
-    button.listen {
-      case UdashButton.ButtonClickEvent(_, _) =>
-        callback
-    }
-  }
-
   buttonOnClick(submitButton){presenter.gotoDummy()}
   buttonOnClick(settingsButton){presenter.gotoSettings()}
 
@@ -40,10 +35,10 @@ class PageView(
 
     case class DisplayAttrib(name: String, value: ActivityIdModel => String, shortName: Option[String] = None)
     val attribs = Seq(
-      DisplayAttrib("Time", _.startTime.toString),
+      DisplayAttrib("Time", a => displayTimeRange(a.startTime, a.endTime)),
       DisplayAttrib("Type", _.sportName),
-      DisplayAttrib("Distance", _.distance.toString),
-      DisplayAttrib("Duration", _ => ""),
+      DisplayAttrib("Distance", a => displayDistance(a.distance)),
+      DisplayAttrib("Duration", a => displaySeconds(ChronoUnit.SECONDS.between(a.startTime, a.endTime).toInt)),
       DisplayAttrib("Corresponding Strava activity", _ => "", Some("Strava")),
       DisplayAttrib("Data", _ => ""),
       DisplayAttrib("Source", _.id),
