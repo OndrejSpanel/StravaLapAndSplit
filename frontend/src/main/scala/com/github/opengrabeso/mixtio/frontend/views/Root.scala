@@ -16,7 +16,7 @@ import scala.util.{Failure, Success}
 
 object Root {
 
-  case class PageModel(athleteName: String, userId: String, waitingForLogin: Boolean)
+  case class PageModel(athleteName: String, userId: String)
 
   object PageModel extends HasModelPropertyCreator[PageModel]
 
@@ -37,12 +37,10 @@ object Root {
         model.subProp(_.athleteName).set(name)
       })
       model.subProp(_.userId).set(ctx.userId)
-      model.subProp(_.waitingForLogin).set(false)
     }
 
     def logout() = {
-      if (!model.subProp(_.waitingForLogin).get && model.subProp(_.userId).get != null) {
-        model.subProp(_.waitingForLogin).set(false)
+      if (model.subProp(_.userId).get != null) {
         println("Start logout")
         val oldName = userContextService.userName
         val oldId = userContextService.userId
@@ -51,7 +49,6 @@ object Root {
             println(s"Logout done for $oldName ($oldId)")
             model.subProp(_.athleteName).set(null)
             model.subProp(_.userId).set(null)
-            model.subProp(_.waitingForLogin).set(false)
             facade.UdashApp.currentUserId = scalajs.js.undefined
           case Failure(_) =>
         }
@@ -154,10 +151,7 @@ object Root {
 
       BootstrapStyles.container,
       header,
-      showIfElse(model.subProp(_.waitingForLogin))(
-        p("Waiting for login...").render,
-        childViewContainer
-      ),
+      childViewContainer,
       footer
     )
   }
@@ -170,7 +164,7 @@ object Root {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     override def create(): (View, Presenter[RootState.type]) = {
-      val model = ModelProperty(PageModel(null, userService.userId.orNull, false))
+      val model = ModelProperty(PageModel(null, userService.userId.orNull))
       val presenter = new PagePresenter(model, userService, application)
 
       val view = new View(model, presenter)
