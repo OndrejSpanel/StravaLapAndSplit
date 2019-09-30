@@ -12,6 +12,7 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
   def login(userId: String): Future[UserContext] = {
     val name = rpc.userAPI(userId).name
     name.map { s =>
+      println(s"Frontend: Login completed for $userId")
       val ctx = UserContext(s, userId)
       userContext = Some(ctx)
       ctx

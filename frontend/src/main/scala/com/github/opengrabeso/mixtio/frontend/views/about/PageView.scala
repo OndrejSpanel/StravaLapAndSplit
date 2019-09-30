@@ -81,7 +81,10 @@ class PageView(
       div(
         showIfElse(model.subProp(_.loading))(
           p("Loading...").render,
-          table.render
+          div(
+            bind(model.subProp(_.error).transform(_.map(ex => p(s"Error loading activities ${ex.toString}")).orNull)),
+            table.render
+          ).render
         )
       ),
       submitButton.render

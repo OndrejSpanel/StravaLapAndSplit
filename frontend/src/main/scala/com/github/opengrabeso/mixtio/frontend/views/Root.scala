@@ -157,7 +157,10 @@ object Root {
 
       BootstrapStyles.container,
       header,
-      childViewContainer,
+      showIfElse(model.subProp(_.waitingForLogin))(
+        p("Waiting for login...").render,
+        childViewContainer
+      ),
       footer
     )
   }

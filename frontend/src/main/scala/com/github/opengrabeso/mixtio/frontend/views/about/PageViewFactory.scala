@@ -23,19 +23,22 @@ class PageViewFactory(
       PageModel(true, Seq())
     )
 
+    println(s"userService.api: ${userService.api}")
     for (userAPI <- userService.api) {
-      userAPI.lastStravaActivities(15).foreach { stravaActivities =>
+      userAPI.lastStravaActivities(15).map { stravaActivities =>
         // TODO: make Util global and working with java.time
         println("lastStravaActivities received")
         implicit def zonedDateTimeOrdering: Ordering[ZonedDateTime] = (x: ZonedDateTime, y: ZonedDateTime) => x.compareTo(y)
         val notBefore = stravaActivities.map(a => a.startTime).min
         println(s"notBefore $notBefore")
         userAPI.stagedActivities(notBefore).foreach { storedActivities =>
-
           val ret = (stravaActivities ++ storedActivities).sortBy(_.id)
           model.subProp(_.activities).set(ret)
           model.subProp(_.loading).set(false)
         }
+      }.failed.foreach { ex =>
+        println(s"Failed $ex")
+        model.subProp(_.loading).set(false)
       }
     }
 
