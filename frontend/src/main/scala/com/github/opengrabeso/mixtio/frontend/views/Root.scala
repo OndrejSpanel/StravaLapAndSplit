@@ -32,15 +32,12 @@ object Root {
 
     def login() = {
       val globalUserId = facade.UdashApp.currentUserId.orNull
-      userContextService.login(globalUserId).map { ctx =>
-        model.subProp(_.athleteName).set(ctx.name)
-        model.subProp(_.userId).set(ctx.userId)
-        model.subProp(_.waitingForLogin).set(false)
-        println(s"Login completed for ${ctx.name} (${ctx.userId})")
-      }.failed.foreach { _ =>
-        println(s"Login failed")
-        model.subProp(_.waitingForLogin).set(false)
-      }
+      val ctx = userContextService.login(globalUserId)
+      userContextService.userName.foreach(_.foreach { name =>
+        model.subProp(_.athleteName).set(name)
+      })
+      model.subProp(_.userId).set(ctx.userId)
+      model.subProp(_.waitingForLogin).set(false)
     }
 
     def logout() = {
@@ -173,7 +170,7 @@ object Root {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     override def create(): (View, Presenter[RootState.type]) = {
-      val model = ModelProperty(PageModel(userService.userName.orNull, userService.userId.orNull, false))
+      val model = ModelProperty(PageModel(null, userService.userId.orNull, false))
       val presenter = new PagePresenter(model, userService, application)
 
       val view = new View(model, presenter)
