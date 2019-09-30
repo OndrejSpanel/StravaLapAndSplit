@@ -44,12 +44,7 @@ class PageView(
       DisplayAttrib("Source", _.id),
     )
 
-    val striped = Property(true)
-    val bordered = Property(true)
-    val hover = Property(true)
-    val small = Property(false)
-
-    val table = UdashTable(model.subSeq(_.activities), striped = striped, bordered = bordered, hover = hover, small = small)(
+    val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
       headerFactory = Some(_ => tr {
         attribs.flatMap { a =>
           a.shortName.map(shortName =>
