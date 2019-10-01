@@ -23,6 +23,7 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
   }
 
   def userAPI(userId: String): UserRestAPI = {
+    // TODO: require auth cookie to prevent 3rd party else "injecting" into existing user data
     val auth = synchronized {
       users(userId)
     }

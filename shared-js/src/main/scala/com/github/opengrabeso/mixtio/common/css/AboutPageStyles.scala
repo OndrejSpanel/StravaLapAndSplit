@@ -27,7 +27,21 @@ object AboutPageStyles extends CssBase {
     borderWidth(1 px)
   )
 
+  val inputDesc: CssStyle = style (
+    // ignored, overridden by default Bootstrap styles, need to use different method (Bootstrap theming?}
+    backgroundColor.transparent,
+    border.none
+  )
+
+  val inputName : CssStyle = style (
+    // ignored, overridden by default Bootstrap styles, need to use different method (Bootstrap theming?}
+    backgroundColor.transparent,
+    border.none
+  )
+
+
   private val minWide = 1000 px
+
   val wideMedia = style(
     media.not.all.minWidth(minWide)(
       display.none
