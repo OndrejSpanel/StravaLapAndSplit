@@ -1,14 +1,16 @@
 package com.github.opengrabeso.mixtio
+package common.model
+
+import rest.EnhancedRestDataCompanion
 
 @SerialVersionUID(10L)
-trait FileId {
+sealed trait FileId {
   def filename: String
   def stravaId: String
   def toReadableString: String = toString
 }
 
-object FileId {
-
+object FileId extends EnhancedRestDataCompanion[FileId] {
   def parse(actId: String): FileId = {
     if (actId.last == ')') {
       val prefix = actId.takeWhile(_ != '(')

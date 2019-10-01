@@ -4,6 +4,7 @@ package requests
 import shared._
 import shared.Util._
 import Main._
+import common.model._
 import com.google.appengine.api.taskqueue.{QueueFactory, TaskOptions}
 import java.time.ZonedDateTime
 

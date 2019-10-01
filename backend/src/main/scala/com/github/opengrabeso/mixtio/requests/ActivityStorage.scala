@@ -3,6 +3,8 @@ package requests
 
 import Main._
 
+import common.model._
+
 trait ActivityStorage {
 
   def storeActivity(stage: String, act: ActivityEvents, userId: String) = {

@@ -3,6 +3,8 @@ package requests
 
 import java.io.InputStream
 
+import common.model._
+
 import org.apache.commons.fileupload.FileItemStream
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload

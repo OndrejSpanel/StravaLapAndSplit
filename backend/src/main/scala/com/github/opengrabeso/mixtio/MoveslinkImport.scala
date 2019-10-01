@@ -8,7 +8,7 @@ import MoveHeader.ActivityType._
 import scala.collection.immutable.SortedMap
 import java.time.ZonedDateTime
 import shared.Util._
-import FileId._
+import common.model.FileId._
 import com.github.opengrabeso.mixtio.shared.Timing
 
 object MoveslinkImport {

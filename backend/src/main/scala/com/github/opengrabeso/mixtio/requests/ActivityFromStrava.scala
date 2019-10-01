@@ -3,6 +3,8 @@ package requests
 
 import spark.{Request, Response}
 
+import common.model._
+
 object ActivityFromStrava extends DefineRequest("/activityFromStrava") with ActivityStorage {
 
   override def html(request: Request, resp: Response) = {

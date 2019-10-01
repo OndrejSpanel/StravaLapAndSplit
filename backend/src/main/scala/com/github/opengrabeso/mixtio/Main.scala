@@ -4,19 +4,21 @@ import java.io.InputStream
 import java.security.MessageDigest
 import java.util
 import java.util.{Locale, Properties}
+import java.time.{Duration, Period, ZonedDateTime}
+import java.time.temporal.ChronoUnit
 
 import com.google.api.client.http.{GenericUrl, HttpRequest}
 import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
-import java.time.{Duration, Period, ZonedDateTime}
-import java.time.temporal.ChronoUnit
+import com.google.api.client.json.jackson2.JacksonFactory
+
 
 import scala.collection.JavaConverters._
 import shared.Util._
-import FileId._
-import com.github.opengrabeso.mixtio.DataStreamGPS.SpeedStats
-import com.github.opengrabeso.mixtio.shared.Timing
-import com.google.api.client.json.jackson2.JacksonFactory
+import common.model._
+import DataStreamGPS.SpeedStats
+import common.model.FileId
+import shared.Timing
 
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
@@ -154,7 +156,7 @@ object Main {
 
     def link: String = {
       id match {
-        case StravaId(num) =>
+        case FileId.StravaId(num) =>
           s"https://www.strava.com/activities/$num"
         case _ =>
           null // not a Strava activity - no link
@@ -168,7 +170,7 @@ object Main {
 
     def hrefLink: Elem = {
       id match {
-        case StravaId(num) =>
+        case FileId.StravaId(num) =>
           <a href={s"https://www.strava.com/activities/$num"}><font color="#FC4C02">{shortName}</font></a>
         case _ =>
           <div>{id.toReadableString}</div>
@@ -195,7 +197,7 @@ object Main {
         }
       }
 
-      ActivityId(StravaId(id), actDigest, name, time, time.plusSeconds(duration), sportFromName(sportName), distance)
+      ActivityId(FileId.StravaId(id), actDigest, name, time, time.plusSeconds(duration), sportFromName(sportName), distance)
     }
   }
 
@@ -484,7 +486,7 @@ object Main {
       val totals = offsetStreams.fold(offsetStreams.head) { case ((totGps, totDist, totAttr), (iGps, iDist, iAttr)) =>
         (totGps ++ iGps, totDist ++ iDist, mergeAttributes(totAttr, iAttr))
       }
-      val mergedId = ActivityId(TempId(id.id.filename), "", id.name, begTime, endTime, sportName, dist.stream.last._2)
+      val mergedId = ActivityId(FileId.TempId(id.id.filename), "", id.name, begTime, endTime, sportName, dist.stream.last._2)
 
       ActivityEvents(mergedId, eventsAndSportsSorted, dist.pickData(totals._2), gps.pickData(totals._1), totals._3).unifySamples
     }
@@ -925,7 +927,7 @@ object Main {
     def applyFilters(auth: StravaAuthResult): ActivityEvents = {
       val settings = Settings(auth.userId)
       val useElevFilter = id.id match {
-        case _: StravaId =>
+        case _: FileId.StravaId =>
           false
         case _ =>
           true

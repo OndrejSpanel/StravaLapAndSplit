@@ -41,7 +41,7 @@ class PageView(
       DisplayAttrib("Duration", a => displaySeconds(ChronoUnit.SECONDS.between(a.startTime, a.endTime).toInt)),
       DisplayAttrib("Corresponding Strava activity", _ => "", Some("Strava")),
       DisplayAttrib("Data", _ => ""),
-      DisplayAttrib("Source", _.id),
+      DisplayAttrib("Source", _.id.toReadableString),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(

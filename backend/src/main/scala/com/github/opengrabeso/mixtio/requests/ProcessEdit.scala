@@ -1,7 +1,7 @@
 package com.github.opengrabeso.mixtio
 package requests
 
-import com.github.opengrabeso.mixtio.FileId.TempId
+import common.model.FileId
 import com.github.opengrabeso.mixtio.Main.namespace
 import spark.{Request, Response}
 
@@ -32,7 +32,7 @@ object ProcessEdit extends ProcessFile("/edit-activities") with UploadResults {
     // report back the edited ID
     <activity>
       <id>
-        {TempId(uniqueName)}
+        {FileId.TempId(uniqueName)}
       </id>
     </activity>
   }

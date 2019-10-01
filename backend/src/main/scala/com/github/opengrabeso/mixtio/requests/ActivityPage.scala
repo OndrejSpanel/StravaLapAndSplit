@@ -1,7 +1,8 @@
 package com.github.opengrabeso.mixtio
 package requests
 
-import com.github.opengrabeso.mixtio.Main._
+import Main._
+import common.model._
 import java.time.ZonedDateTime
 import spark.{Request, Response, Session}
 import org.apache.commons.fileupload.FileItemStream
