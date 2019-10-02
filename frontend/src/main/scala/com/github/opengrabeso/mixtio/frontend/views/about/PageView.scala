@@ -33,15 +33,15 @@ class PageView(
 
   def getTemplate: Modifier = {
 
-    case class DisplayAttrib(name: String, value: ActivityId => String, shortName: Option[String] = None)
+    case class DisplayAttrib(name: String, value: (ActivityHeader, Option[ActivityId]) => String, shortName: Option[String] = None)
     val attribs = Seq(
-      DisplayAttrib("Time", a => displayTimeRange(a.startTime, a.endTime)),
-      DisplayAttrib("Type", _.sportName.toString),
-      DisplayAttrib("Distance", a => displayDistance(a.distance)),
-      DisplayAttrib("Duration", a => displaySeconds(ChronoUnit.SECONDS.between(a.startTime, a.endTime).toInt)),
-      DisplayAttrib("Corresponding Strava activity", _ => "", Some("Strava")),
-      DisplayAttrib("Data", _ => ""),
-      DisplayAttrib("Source", _.id.toReadableString),
+      DisplayAttrib("Time", (h, a) => displayTimeRange(h.id.startTime, h.id.endTime)),
+      DisplayAttrib("Type", (h, a) => h.id.sportName.toString),
+      DisplayAttrib("Distance", (h, a) => displayDistance(h.id.distance)),
+      DisplayAttrib("Duration", (h, a) => displaySeconds(ChronoUnit.SECONDS.between(h.id.startTime, h.id.endTime).toInt)),
+      DisplayAttrib("Corresponding Strava activity", (h, a) => a.map(_.name).orNull, Some("Strava")),
+      DisplayAttrib("Data", (h, a) => h.describeData),
+      DisplayAttrib("Source", (h, a) => h.id.id.toReadableString),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
@@ -56,7 +56,7 @@ class PageView(
         }
       }.render),
       rowFactory = (el,_) => tr(
-        produce(el)(m => attribs.flatMap(a => td(a.value(m)).render))
+        produce(el)(ha => attribs.flatMap(a => td(a.value(ha._1, ha._2)).render))
       ).render
     )
 

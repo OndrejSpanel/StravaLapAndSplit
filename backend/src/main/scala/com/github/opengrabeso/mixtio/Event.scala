@@ -4,11 +4,11 @@ import java.time.ZonedDateTime
 case class EventKind(id: String, display: String)
 
 object Event {
-  final type Sport = common.model.SportId
+  final type Sport = common.model.SportId.Value
   final val Sport = common.model.SportId
 
   // lower priority means more preferred
-  def sportPriority(sport: Sport): Int = sport.ordinal
+  def sportPriority(sport: Sport): Int = sport.id
 }
 
 object EventPriority {

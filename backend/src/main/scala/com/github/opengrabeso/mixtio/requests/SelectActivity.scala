@@ -17,14 +17,6 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
   def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = true
   def ignoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime
 
-  def alwaysIgnoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime = {
-    ActivityTime.alwaysIgnoreBefore(stravaActivities.map(_.startTime))
-  }
-
-  def defaultIgnoreBefore(stravaActivities: Seq[ActivityId]): ZonedDateTime = {
-    ActivityTime.defaultIgnoreBefore(stravaActivities.map(_.startTime))
-  }
-
   def htmlActivityAction(id: FileId, include: Boolean) = {
     val idString = id.toString
     <input class="checkSelect" type="checkbox" name={s"id=$idString"} checked={if (include) "true" else null} onchange="selectChecked(this)"></input>
@@ -50,7 +42,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
 
     val (stravaActivities, oldStravaActivities) = recentStravaActivitiesHistory(auth, 2)
 
-    val neverBefore = alwaysIgnoreBefore(stravaActivities)
+    val neverBefore = common.ActivityTime.alwaysIgnoreBefore(stravaActivities)
 
     startUploadSession(session)
 

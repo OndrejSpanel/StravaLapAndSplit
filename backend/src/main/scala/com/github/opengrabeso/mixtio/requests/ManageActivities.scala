@@ -3,7 +3,7 @@ package requests
 
 import java.time.ZonedDateTime
 
-import Main._
+import common._
 import common.model._
 
 object ManageActivities extends SelectActivity("/selectActivity") {
@@ -22,6 +22,6 @@ object ManageActivities extends SelectActivity("/selectActivity") {
 
   override def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = strava.isEmpty
 
-  override def ignoreBefore(stravaActivities: Seq[ActivityId]) = defaultIgnoreBefore(stravaActivities)
+  override def ignoreBefore(stravaActivities: Seq[ActivityId]) = ActivityTime.defaultIgnoreBefore(stravaActivities)
 
 }

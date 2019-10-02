@@ -149,9 +149,9 @@ object Main extends common.Formatting {
     val distance = json.path("distance").doubleValue
     val actDigest = digest(json.toString)
 
-    def sportFromName(name: String): SportId = {
+    def sportFromName(name: String): Event.Sport = {
       try {
-        SportId.byName(sportName)
+        Event.Sport.withName(sportName)
       } catch {
         case _: NoSuchElementException => SportId.Workout
       }
@@ -1253,7 +1253,7 @@ object Main extends common.Formatting {
         case _ =>
           if (ei.startsWith("split")) {
             val sportName = ei.substring("split".length)
-            Some(SplitEvent(e.stamp, Event.Sport.byName(sportName)))
+            Some(SplitEvent(e.stamp, Event.Sport.withName(sportName)))
           } else ei match {
             case "lap" => Some(LapEvent(e.stamp))
             case "end" => Some(EndEvent(e.stamp))

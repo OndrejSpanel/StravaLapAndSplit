@@ -8,6 +8,7 @@ import java.time.ZonedDateTime
 import rest.EnhancedRestDataCompanion
 
 import common.Util._
+import SportId._
 
 @SerialVersionUID(11L)
 case class ActivityId(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: SportId, distance: Double) {
