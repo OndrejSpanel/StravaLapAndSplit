@@ -31,7 +31,7 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
   }
 
   def stagedActivities(notBefore: ZonedDateTime) = syncResponse {
-    Main.stagedActivities(userAuth, notBefore).map(_.id)
+    Main.stagedActivities(userAuth, notBefore)
   }
 
 }

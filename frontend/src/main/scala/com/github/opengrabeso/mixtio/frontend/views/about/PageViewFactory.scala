@@ -32,7 +32,7 @@ class PageViewFactory(
         val notBefore = stravaActivities.map(a => a.startTime).min
         println(s"notBefore $notBefore")
         userAPI.stagedActivities(notBefore).foreach { storedActivities =>
-          val ret = (stravaActivities ++ storedActivities).sortBy(_.startTime)
+          val ret = (stravaActivities ++ storedActivities.map(_.id)).sortBy(_.startTime)
           model.subProp(_.activities).set(ret)
           model.subProp(_.loading).set(false)
         }

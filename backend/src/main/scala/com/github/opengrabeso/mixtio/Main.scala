@@ -16,8 +16,6 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import scala.collection.JavaConverters._
 import common.Util._
 import common.model._
-import DataStreamGPS.SpeedStats
-import common.model.FileId
 import shared.Timing
 
 import scala.annotation.tailrec
@@ -237,18 +235,6 @@ object Main extends common.Formatting {
 
   @SerialVersionUID(10L)
   case object NoActivity
-
-  @SerialVersionUID(11L)
-  case class ActivityHeader(id: ActivityId, hasGPS: Boolean, hasAttributes: Boolean, stats: SpeedStats) {
-    override def toString = id.toString
-    def describeData = (hasGPS, hasAttributes) match {
-      case (true, true) => "GPS+"
-      case (true, false) => "GPS"
-      case (false, true) => "+"
-      case (false, false) => "--"
-    }
-
-  }
 
   object ActivityEvents {
     def mergeAttributes(thisAttributes: Seq[DataStreamAttrib], thatAttributes: Seq[DataStreamAttrib]): Seq[DataStreamAttrib] = {
@@ -1015,7 +1001,7 @@ object Main extends common.Formatting {
     def attributes: Seq[DataStreamAttrib]
   }
 
-  def detectSportBySpeed(stats: DataStreamGPS.SpeedStats, defaultName: Event.Sport) = {
+  def detectSportBySpeed(stats: SpeedStats, defaultName: Event.Sport) = {
     def detectSport(maxRun: Double, fastRun: Double, medianRun: Double): Event.Sport = {
       if (stats.median <= medianRun && stats.fast <= fastRun && stats.max <= maxRun) Event.Sport.Run
       else Event.Sport.Ride

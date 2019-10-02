@@ -8,6 +8,7 @@ import java.time.{ZonedDateTime, Duration => JDuration}
 
 import scala.collection.immutable.SortedMap
 import common.Util._
+import common.model._
 import shared.Timing
 
 import scala.annotation.tailrec
@@ -206,9 +207,6 @@ object DataStreamGPS {
 
   private type DistStream  = SortedMap[ZonedDateTime, Double]
   private type DistList  = List[(ZonedDateTime, Double)]
-
-  // median, 80% percentile, max
-  case class SpeedStats(median: Double, fast: Double, max: Double)
 
   object FilterSettings {
     def none = new FilterSettings(0, 0, "None")

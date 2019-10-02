@@ -6,6 +6,7 @@ import Main._
 import Storage._
 
 import scala.util.Try
+import common.model._
 
 /**
   * Convert data in old format - add metadata, rename ....
