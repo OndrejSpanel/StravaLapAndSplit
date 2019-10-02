@@ -29,6 +29,4 @@ trait Formatting {
 
 }
 
-object Formatting extends Formatting {
-
-}
+object Formatting extends Formatting

@@ -13,7 +13,26 @@ import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.table.UdashTable
 import io.udash.component.ComponentId
 import io.udash.css._
+import scalatags.JsDom.all._
+import PageView._
+import org.scalajs.dom.Node
+import org.scalajs.dom.raw.HTMLElement
+import scalatags.JsDom
+object PageView {
 
+  def hrefLink(ai: ActivityId): JsDom.TypedTag[HTMLElement] = {
+    ai.id match {
+      case FileId.StravaId(num) =>
+        a(
+          // TODO: CSS color "#FC4C02"
+          href := s"https://www.strava.com/activities/$num",
+          ai.shortName
+        )
+      case _ =>
+        div(ai.id.toReadableString)
+    }
+  }
+}
 
 class PageView(
   model: ModelProperty[PageModel],
@@ -33,15 +52,15 @@ class PageView(
 
   def getTemplate: Modifier = {
 
-    case class DisplayAttrib(name: String, value: (ActivityHeader, Option[ActivityId]) => String, shortName: Option[String] = None)
+    case class DisplayAttrib(name: String, value: (ActivityHeader, Option[ActivityId]) => Seq[Node], shortName: Option[String] = None)
     val attribs = Seq(
-      DisplayAttrib("Time", (h, a) => displayTimeRange(h.id.startTime, h.id.endTime)),
-      DisplayAttrib("Type", (h, a) => h.id.sportName.toString),
-      DisplayAttrib("Distance", (h, a) => displayDistance(h.id.distance)),
-      DisplayAttrib("Duration", (h, a) => displaySeconds(ChronoUnit.SECONDS.between(h.id.startTime, h.id.endTime).toInt)),
-      DisplayAttrib("Corresponding Strava activity", (h, a) => a.map(_.name).orNull, Some("Strava")),
-      DisplayAttrib("Data", (h, a) => h.describeData),
-      DisplayAttrib("Source", (h, a) => h.id.id.toReadableString),
+      DisplayAttrib("Time", (h, a) => displayTimeRange(h.id.startTime, h.id.endTime).render),
+      DisplayAttrib("Type", (h, a) => h.id.sportName.toString.render),
+      DisplayAttrib("Distance", (h, a) => displayDistance(h.id.distance).render),
+      DisplayAttrib("Duration", (h, a) => displaySeconds(ChronoUnit.SECONDS.between(h.id.startTime, h.id.endTime).toInt).render),
+      DisplayAttrib("Corresponding Strava activity", (h, a) => a.map(i => hrefLink(i).render).toSeq, Some("Strava")),
+      DisplayAttrib("Data", (h, a) => h.describeData.render),
+      DisplayAttrib("Source", (h, a) => h.id.id.toReadableString.render),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
