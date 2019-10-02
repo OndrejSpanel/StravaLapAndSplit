@@ -53,17 +53,15 @@ class PageView(
   def getTemplate: Modifier = {
 
     // value is a callback
-    // first parameter (h) is Mixtio staged activity
-    // second parameter (a) is corresponding Strava activity ID
-    case class DisplayAttrib(name: String, value: (ActivityHeader, Option[ActivityId]) => Seq[Node], shortName: Option[String] = None)
+    case class DisplayAttrib(name: String, value: ActivityRow => Seq[Node], shortName: Option[String] = None)
     val attribs = Seq(
-      DisplayAttrib("Time", (h, a) => displayTimeRange(h.id.startTime, h.id.endTime).render),
-      DisplayAttrib("Type", (h, a) => h.id.sportName.toString.render),
-      DisplayAttrib("Distance", (h, a) => displayDistance(h.id.distance).render),
-      DisplayAttrib("Duration", (h, a) => displaySeconds(ChronoUnit.SECONDS.between(h.id.startTime, h.id.endTime).toInt).render),
-      DisplayAttrib("Corresponding Strava activity", (h, a) => a.map(i => hrefLink(i).render).toSeq, Some("Strava")),
-      DisplayAttrib("Data", (h, a) => h.describeData.render),
-      DisplayAttrib("Source", (h, a) => hrefLink(h.id).render),
+      DisplayAttrib("Time", ar => displayTimeRange(ar.staged.id.startTime, ar.staged.id.endTime).render),
+      DisplayAttrib("Type", ar => ar.staged.id.sportName.toString.render),
+      DisplayAttrib("Distance", ar => displayDistance(ar.staged.id.distance).render),
+      DisplayAttrib("Duration", ar => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
+      DisplayAttrib("Corresponding Strava activity", ar => ar.strava.map(i => hrefLink(i).render).toSeq, Some("Strava")),
+      DisplayAttrib("Data", ar => ar.staged.describeData.render),
+      DisplayAttrib("Source", ar => hrefLink(ar.staged.id).render),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
@@ -78,7 +76,7 @@ class PageView(
         }
       }.render),
       rowFactory = (el,_) => tr(
-        produce(el)(ha => attribs.flatMap(a => td(a.value(ha._1, ha._2)).render))
+        produce(el)(ha => attribs.flatMap(a => td(a.value(ha)).render))
       ).render
     )
 

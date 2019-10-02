@@ -56,7 +56,7 @@ class PageViewFactory(
 
           val recentToStrava = findMatchingStrava(recentActivities, stravaActivities ++ oldStravaActivities).filter((filterListed _).tupled)
 
-          model.subProp(_.activities).set(recentToStrava)
+          model.subProp(_.activities).set(recentToStrava.map(t => ActivityRow(t._1, t._2)))
           model.subProp(_.loading).set(false)
         }
       }.failed.foreach { ex =>
