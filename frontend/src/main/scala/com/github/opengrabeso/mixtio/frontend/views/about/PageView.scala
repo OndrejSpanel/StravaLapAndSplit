@@ -15,6 +15,7 @@ import io.udash.component.ComponentId
 import io.udash.css._
 import scalatags.JsDom.all._
 import PageView._
+import io.udash.bindings.modifiers.Binding.NestedInterceptor
 import org.scalajs.dom.Node
 import org.scalajs.dom.raw.HTMLElement
 import scalatags.JsDom
@@ -53,15 +54,21 @@ class PageView(
   def getTemplate: Modifier = {
 
     // value is a callback
-    case class DisplayAttrib(name: String, value: ActivityRow => Seq[Node], shortName: Option[String] = None)
+    case class DisplayAttrib(name: String, value: (ActivityRow, ModelProperty[ActivityRow], NestedInterceptor) => Seq[Node], shortName: Option[String] = None)
     val attribs = Seq(
-      DisplayAttrib("Time", ar => displayTimeRange(ar.staged.id.startTime, ar.staged.id.endTime).render),
-      DisplayAttrib("Type", ar => ar.staged.id.sportName.toString.render),
-      DisplayAttrib("Distance", ar => displayDistance(ar.staged.id.distance).render),
-      DisplayAttrib("Duration", ar => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
-      DisplayAttrib("Corresponding Strava activity", ar => ar.strava.map(i => hrefLink(i).render).toSeq, Some("Strava")),
-      DisplayAttrib("Data", ar => ar.staged.describeData.render),
-      DisplayAttrib("Source", ar => hrefLink(ar.staged.id).render),
+      DisplayAttrib(
+        "", (ar, p, nested) => div(
+          // TODO: pass nested here?
+          nested(checkbox(p.subProp(_.selected)))
+        ).render
+      ),
+      DisplayAttrib("Time", (ar, _, _) => displayTimeRange(ar.staged.id.startTime, ar.staged.id.endTime).render),
+      DisplayAttrib("Type", (ar, _, _) => ar.staged.id.sportName.toString.render),
+      DisplayAttrib("Distance", (ar, _, _) => displayDistance(ar.staged.id.distance).render),
+      DisplayAttrib("Duration", (ar, _, _) => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
+      DisplayAttrib("Strava activity", (ar, _, _) => ar.strava.map(i => hrefLink(i).render).toSeq, Some("Strava")),
+      DisplayAttrib("Data", (ar, _, _) => ar.staged.describeData.render),
+      DisplayAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id).render),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
@@ -76,7 +83,9 @@ class PageView(
         }
       }.render),
       rowFactory = (el,_) => tr(
-        produce(el)(ha => attribs.flatMap(a => td(a.value(ha)).render))
+        produceWithNested(el) { (ha, nested) =>
+          attribs.flatMap(a => td(a.value(ha, el.asModel, nested)).render)
+        }
       ).render
     )
 

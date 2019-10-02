@@ -61,15 +61,15 @@ class PageView(
        */
 
       UdashInputGroup()(
-        div(Grid.col)(s.inputName, UdashInputGroup.appendText("Max HR: ")),
+        div(Grid.col)(s.inputName, UdashInputGroup.prependText("Max HR: ")),
         div(Grid.col)(showWhenLoaded(model.subProp(_.settings.maxHR))),
         div(Grid.col)(s.inputDesc, UdashInputGroup.appendText("Drop any samples with HR above this limit as erratic"))
       ),UdashInputGroup()(
-        div(Grid.col)(s.inputName, UdashInputGroup.appendText("Elevation filter: ")),
+        div(Grid.col)(s.inputName, UdashInputGroup.prependText("Elevation filter: ")),
         div(Grid.col)(showWhenLoaded(model.subProp(_.settings.elevFilter))),
         div(Grid.col)(s.inputDesc, UdashInputGroup.appendText("Elevation filtering settings"))
       ),UdashInputGroup()(
-        div(Grid.col)(s.inputName, UdashInputGroup.appendText("Additional sensor (e.g. Quest) time offset: ")),
+        div(Grid.col)(s.inputName, UdashInputGroup.prependText("Additional sensor (e.g. Quest) time offset: ")),
         div(Grid.col)(showWhenLoaded(model.subProp(_.settings.questTimeOffset))),
         div(Grid.col)(s.inputDesc, UdashInputGroup.appendText("Adjust up or down so that Quest time below matches the time on your watch"))
       ),

@@ -2,15 +2,11 @@ package com.github.opengrabeso.mixtio
 package frontend
 package views.about
 
-import java.time.ZonedDateTime
-
 import routing._
 import io.udash._
 import common.model._
 import common.Util._
 import common.ActivityTime._
-
-import scala.concurrent.Future
 
 /** Prepares model, view and presenter for demo view. */
 class PageViewFactory(
@@ -30,7 +26,6 @@ class PageViewFactory(
       ids.map( a => a -> strava.find(_ isMatching a.id))
     }
 
-    println(s"userService.api: ${userService.api}")
     for (userAPI <- userService.api) {
 
       val normalCount = 15
@@ -40,11 +35,7 @@ class PageViewFactory(
 
         val (stravaActivities, oldStravaActivities) = allActivities.splitAt(normalCount)
 
-        // TODO: make Util global and working with java.time
-        println("lastStravaActivities received")
-        implicit def zonedDateTimeOrdering: Ordering[ZonedDateTime] = (x: ZonedDateTime, y: ZonedDateTime) => x.compareTo(y)
         val notBefore = stravaActivities.map(a => a.startTime).min
-        println(s"notBefore $notBefore")
         userAPI.stagedActivities(notBefore).foreach { stagedActivities =>
 
           val neverBefore = alwaysIgnoreBefore(stravaActivities)
@@ -53,10 +44,14 @@ class PageViewFactory(
           val oldStagedActivities = stagedActivities.filter(_.id.startTime < neverBefore)
           val toCleanup = findMatchingStrava(oldStagedActivities, oldStravaActivities).flatMap { case (k,v) => v.map(k -> _)}
           val recentActivities = (stagedActivities diff toCleanup.map(_._1)).filter(_.id.startTime >= notBefore).sortBy(_.id.startTime)
+          val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
 
           val recentToStrava = findMatchingStrava(recentActivities, stravaActivities ++ oldStravaActivities).filter((filterListed _).tupled)
 
-          model.subProp(_.activities).set(recentToStrava.map(t => ActivityRow(t._1, t._2)))
+          model.subProp(_.activities).set(recentToStrava.map { case (act, actStrava) =>
+            val ignored = actStrava.isDefined || mostRecentStrava.exists(_ >= act.id.startTime)
+            ActivityRow(act, actStrava, !ignored)
+          })
           model.subProp(_.loading).set(false)
         }
       }.failed.foreach { ex =>
