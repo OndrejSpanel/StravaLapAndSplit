@@ -52,6 +52,9 @@ class PageView(
 
   def getTemplate: Modifier = {
 
+    // value is a callback
+    // first parameter (h) is Mixtio staged activity
+    // second parameter (a) is corresponding Strava activity ID
     case class DisplayAttrib(name: String, value: (ActivityHeader, Option[ActivityId]) => Seq[Node], shortName: Option[String] = None)
     val attribs = Seq(
       DisplayAttrib("Time", (h, a) => displayTimeRange(h.id.startTime, h.id.endTime).render),
@@ -60,7 +63,7 @@ class PageView(
       DisplayAttrib("Duration", (h, a) => displaySeconds(ChronoUnit.SECONDS.between(h.id.startTime, h.id.endTime).toInt).render),
       DisplayAttrib("Corresponding Strava activity", (h, a) => a.map(i => hrefLink(i).render).toSeq, Some("Strava")),
       DisplayAttrib("Data", (h, a) => h.describeData.render),
-      DisplayAttrib("Source", (h, a) => h.id.id.toReadableString.render),
+      DisplayAttrib("Source", (h, a) => hrefLink(h.id).render),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
