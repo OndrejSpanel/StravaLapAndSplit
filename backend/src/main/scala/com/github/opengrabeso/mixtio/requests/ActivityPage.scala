@@ -737,7 +737,7 @@ object EditActivity extends DefineRequest("/edit-activity") with ActivityRequest
           <title>{appName}</title>{headPrefix}{content.head}
         </head>
         <body>
-          {bodyHeader(auth)}{activityData.id.hrefLink}{content.body}{bodyFooter}
+          {bodyHeader(auth)}{hrefLink(activityData.id)}{content.body}{bodyFooter}
         </body>
       </html>
 

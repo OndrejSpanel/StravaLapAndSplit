@@ -8,7 +8,7 @@ import spark.{Request, Response}
 
 import scala.xml.NodeSeq
 import java.time.ZonedDateTime
-import shared.Util._
+import common.Util._
 
 object PushStart extends DefineRequest("/push-start") {
   override def showSuuntoUploadInstructions = false // no need to show this, user already launched it

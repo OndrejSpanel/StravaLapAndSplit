@@ -1,7 +1,7 @@
 package com.github.opengrabeso.mixtio
 package requests
 
-import Main._
+import common.model._
 import java.time.ZonedDateTime
 
 object Staging extends SelectActivity("/staging") {

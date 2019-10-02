@@ -7,7 +7,7 @@ import mapbox.GetElevation
 import java.time.{ZonedDateTime, Duration => JDuration}
 
 import scala.collection.immutable.SortedMap
-import shared.Util._
+import common.Util._
 import shared.Timing
 
 import scala.annotation.tailrec

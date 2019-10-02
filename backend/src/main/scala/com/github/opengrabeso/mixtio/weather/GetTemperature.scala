@@ -4,7 +4,7 @@ package weather
 import java.time.temporal.ChronoUnit
 import java.time.ZonedDateTime
 
-import shared.Util._
+import common.Util._
 
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap

@@ -3,7 +3,7 @@ package com.github.opengrabeso.mixtio
 import java.time.temporal.ChronoUnit
 import java.time.ZonedDateTime
 
-import shared.Util._
+import common.Util._
 
 import scala.reflect._
 

@@ -5,7 +5,7 @@ import java.time.temporal.ChronoUnit
 import com.garmin.fit
 import com.garmin.fit.{Event => FitEvent, _}
 import Main.ActivityEvents
-import shared.Util._
+import common.Util._
 import java.time.ZonedDateTime
 
 object FitExport {

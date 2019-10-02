@@ -6,7 +6,7 @@ package upload
 import java.io.{FilterInputStream, InputStream, PushbackInputStream}
 import java.util.zip.GZIPInputStream
 
-import shared.Util._
+import common.Util._
 import spark.{Request, Response}
 
 object PutFile extends DefineRequest.Post("/push-put") {

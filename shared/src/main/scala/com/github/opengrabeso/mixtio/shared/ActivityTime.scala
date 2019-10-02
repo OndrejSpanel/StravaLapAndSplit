@@ -1,7 +1,7 @@
 package com.github.opengrabeso.mixtio
 package shared
 import java.time.ZonedDateTime
-import Util._
+import common.Util._
 
 object ActivityTime {
   def alwaysIgnoreBefore(stravaActivities: Seq[ZonedDateTime]): ZonedDateTime = {

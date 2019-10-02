@@ -1,13 +1,13 @@
 package com.github.opengrabeso.mixtio
-package shared
+package common
 
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.{ZoneOffset, ZonedDateTime}
 
-object Util {
+trait Util {
 
-  implicit class ZonedDateTimeOps(val time: ZonedDateTime) extends AnyVal with Ordered[ZonedDateTimeOps] {
+  implicit class ZonedDateTimeOps(val time: ZonedDateTime) extends Ordered[ZonedDateTimeOps] {
     override def compare(that: ZonedDateTimeOps): Int = time.compareTo(that.time)
 
     def toLog: String = {
@@ -30,7 +30,7 @@ object Util {
     override def compare(x: ZonedDateTime, y: ZonedDateTime): Int = x.compareTo(y)
   }
 
-  implicit class MinMaxOptTraversable[T](val seq: Traversable[T]) extends AnyVal {
+  implicit class MinMaxOptTraversable[T](val seq: Traversable[T]) {
     def minOpt(implicit ev: Ordering[T]): Option[T] = if (seq.isEmpty) None else Some(seq.min)
     def maxOpt(implicit ev: Ordering[T]): Option[T] = if (seq.isEmpty) None else Some(seq.max)
   }
@@ -68,7 +68,9 @@ object Util {
     "%.1f %sB".format(bytes / Math.pow(unit, exp), pre)
   }
 
-  implicit class HumanReadableByteCount(val bytes: Long) extends AnyVal {
+  implicit class HumanReadableByteCount(val bytes: Long) {
     def toByteSize: String = humanReadableByteCount(bytes)
   }
 }
+
+object Util extends Util

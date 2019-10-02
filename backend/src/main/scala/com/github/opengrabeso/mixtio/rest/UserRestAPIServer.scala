@@ -4,17 +4,6 @@ package rest
 import java.time.ZonedDateTime
 
 import shared.Timing
-import common.model._
-
-object UserRestAPIServer {
-  implicit class ModelConversion(aid: Main.ActivityId) {
-    def toModel: ActivityIdModel = {
-      ActivityIdModel(aid.id, aid.digest, aid.name, aid.startTime, aid.endTime, aid.sportName, aid.distance)
-    }
-  }
-}
-
-import UserRestAPIServer._
 
 class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils {
   def name = syncResponse {
@@ -38,11 +27,11 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
 
     val ret = Main.parseStravaActivities(request.execute().getContent)
     timing.logTime(s"lastStravaActivities ($count)")
-    ret.map(_.toModel)
+    ret
   }
 
   def stagedActivities(notBefore: ZonedDateTime) = syncResponse {
-    Main.stagedActivities(userAuth, notBefore).map(_.id.toModel)
+    Main.stagedActivities(userAuth, notBefore).map(_.id)
   }
 
 }

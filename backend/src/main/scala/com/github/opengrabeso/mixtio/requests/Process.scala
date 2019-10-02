@@ -2,7 +2,7 @@ package com.github.opengrabeso.mixtio
 package requests
 
 import Main._
-import shared.Util._
+import common.Util._
 import spark.{Request, Response}
 
 object Process extends DefineRequest.Post("/process") with ParseFormData with UploadResults with ActivityStorage {

@@ -6,7 +6,8 @@ import com.garmin.fit._
 import com.github.opengrabeso.mixtio.Main.ActivityEvents
 import java.time.{LocalDateTime, ZoneId, ZoneOffset, ZonedDateTime}
 
-import shared.Util._
+import common.Util._
+import common.model._
 import common.model.FileId._
 
 import scala.collection.immutable.SortedMap
@@ -133,7 +134,7 @@ object FitImport {
       val endTime = allStreams.map(_.last._1).max
 
       // TODO: digest
-      val id = Main.ActivityId(FilenameId(filename), "", "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
+      val id = ActivityId(FilenameId(filename), "", "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
 
       object ImportedStreams extends Main.ActivityStreams {
 

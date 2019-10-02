@@ -3,8 +3,8 @@ package com.github.opengrabeso.mixtio
 import java.io.InputStream
 import java.security.MessageDigest
 import java.util
-import java.util.{Locale, Properties}
-import java.time.{Duration, Period, ZonedDateTime}
+import java.util.Properties
+import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
 import com.google.api.client.http.{GenericUrl, HttpRequest}
@@ -14,7 +14,7 @@ import com.google.api.client.json.jackson2.JacksonFactory
 
 
 import scala.collection.JavaConverters._
-import shared.Util._
+import common.Util._
 import common.model._
 import DataStreamGPS.SpeedStats
 import common.model.FileId
@@ -22,10 +22,9 @@ import shared.Timing
 
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
-import scala.xml.Elem
 import scala.util.control.Breaks._
 
-object Main {
+object Main extends common.Formatting {
 
   import RequestUtils._
 
@@ -58,6 +57,15 @@ object Main {
     val prop = new Properties()
     prop.load(getClass.getResourceAsStream("/config.properties"))
     prop.getProperty("devMode").toBoolean
+  }
+
+  def hrefLink(a: ActivityId) = {
+    a.id match {
+      case FileId.StravaId(num) =>
+        <a href={s"https://www.strava.com/activities/$num"}><font color="#FC4C02">{a.shortName}</font></a>
+      case _ =>
+        <div>{a.id.toReadableString}</div>
+    }
   }
 
   case class StravaAuthResult(token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String) {
@@ -132,73 +140,26 @@ object Main {
     }
   }
 
-  @SerialVersionUID(11L)
-  case class ActivityId(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: Event.Sport, distance: Double) {
 
-    override def toString = s"${id.toString} - $name ($startTime..$endTime)"
+  def loadActivityId(json: JsonNode): ActivityId = {
+    // https://strava.github.io/api/v3/activities/
+    val name = json.path("name").textValue
+    val id = json.path("id").longValue
+    val time = ZonedDateTime.parse(json.path("start_date").textValue)
+    val sportName = json.path("type").textValue
+    val duration = json.path("elapsed_time").intValue
+    val distance = json.path("distance").doubleValue
+    val actDigest = digest(json.toString)
 
-    def secondsInActivity(time: ZonedDateTime): Int = ChronoUnit.SECONDS.between(startTime, time).toInt
-
-    val duration: Int = ChronoUnit.SECONDS.between(startTime, endTime).toInt
-
-    def timeOffset(offset: Int): ActivityId = copy(startTime = startTime plusSeconds offset, endTime = endTime plusSeconds offset)
-
-    def isMatching(that: ActivityId): Boolean = {
-      // check overlap time
-
-      val commonBeg = Seq(startTime,that.startTime).max
-      val commonEnd = Seq(endTime,that.endTime).min
-      if (commonEnd > commonBeg) {
-        val commonDuration = ChronoUnit.SECONDS.between(commonBeg, commonEnd)
-        commonDuration > (duration min that.duration) * 0.75f
-      } else false
-    }
-
-    def link: String = {
-      id match {
-        case FileId.StravaId(num) =>
-          s"https://www.strava.com/activities/$num"
-        case _ =>
-          null // not a Strava activity - no link
+    def sportFromName(name: String): SportId = {
+      try {
+        SportId.byName(sportName)
+      } catch {
+        case _: NoSuchElementException => SportId.Workout
       }
     }
 
-
-    def shortName: String = {
-      shortNameString(name)
-    }
-
-    def hrefLink: Elem = {
-      id match {
-        case FileId.StravaId(num) =>
-          <a href={s"https://www.strava.com/activities/$num"}><font color="#FC4C02">{shortName}</font></a>
-        case _ =>
-          <div>{id.toReadableString}</div>
-      }
-    }
-  }
-
-  object ActivityId {
-    def load(json: JsonNode): ActivityId = {
-      // https://strava.github.io/api/v3/activities/
-      val name = json.path("name").textValue
-      val id = json.path("id").longValue
-      val time = ZonedDateTime.parse(json.path("start_date").textValue)
-      val sportName = json.path("type").textValue
-      val duration = json.path("elapsed_time").intValue
-      val distance = json.path("distance").doubleValue
-      val actDigest = digest(json.toString)
-
-      def sportFromName(name: String): Event.Sport = {
-        try {
-          Event.Sport.byName(sportName)
-        } catch {
-          case _: NoSuchElementException => Event.Sport.Workout
-        }
-      }
-
-      ActivityId(FileId.StravaId(id), actDigest, name, time, time.plusSeconds(duration), sportFromName(sportName), distance)
-    }
+    ActivityId(FileId.StravaId(id), actDigest, name, time, time.plusSeconds(duration), sportFromName(sportName), distance)
   }
 
   def parseStravaActivities(content: InputStream) = {
@@ -206,7 +167,7 @@ object Main {
 
     val stravaActivities = (0 until responseJson.size).map { i =>
       val actI = responseJson.get(i)
-      ActivityId.load(actI)
+      loadActivityId(actI)
     }
     stravaActivities
   }
@@ -1187,7 +1148,7 @@ object Main {
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-    val actId = ActivityId.load(responseJson)
+    val actId = loadActivityId(responseJson)
     val startDateStr = responseJson.path("start_date").textValue
     val startTime = ZonedDateTime.parse(startDateStr)
 
@@ -1317,20 +1278,6 @@ object Main {
     events.copy(events = lapsAndSplits)
   }
 
-  def displaySeconds(duration: Int): String = {
-    val hours = duration / 3600
-    val secondsInHours = duration - hours * 3600
-    val minutes = secondsInHours / 60
-    val seconds = secondsInHours - minutes * 60
-    if (hours > 0) {
-      f"$hours:$minutes%02d:$seconds%02d"
-    } else {
-      f"$minutes:$seconds%02d"
-    }
-  }
-
-  def displayDistance(dist: Double): String = "%.2f km".format(dist*0.001)
-
   def jsDateRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
     s"""formatDateTime("$startTime") + "..." + formatTime("$endTime") """
   }
@@ -1340,18 +1287,6 @@ object Main {
     val toRun = s"function () {return $func}()"
 
     <script>document.write({xml.Unparsed(toRun)})</script>
-  }
-
-  def shortNameString(name: String, maxLen: Int = 30): String = {
-    val ellipsis = "..."
-    if (name.length < maxLen) name
-    else {
-      val allowed = name.take(maxLen-ellipsis.length)
-      // prefer shortening about whole words
-      val lastSeparator = allowed.lastIndexOf(' ')
-      val used = if (lastSeparator >= allowed.length - 8) allowed.take(lastSeparator) else allowed
-      used + ellipsis
-    }
   }
 
 }

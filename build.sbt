@@ -55,13 +55,6 @@ lazy val commonLibs = Seq(
 
 val jacksonVersion = "2.9.9"
 
-lazy val shared = (project in file("shared"))
-  .disablePlugins(sbtassembly.AssemblyPlugin)
-  .settings(
-    commonSettings,
-    libraryDependencies ++= commonLibs
-  )
-
 lazy val sharedJs = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure).in(file("shared-js"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
@@ -74,6 +67,14 @@ lazy val sharedJs = crossProject(JSPlatform, JVMPlatform)
 
 lazy val sharedJs_JVM = sharedJs.jvm
 lazy val sharedJs_JS = sharedJs.js
+
+lazy val shared = (project in file("shared"))
+  .dependsOn(sharedJs.jvm)
+  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .settings(
+    commonSettings,
+    libraryDependencies ++= commonLibs
+  )
 
 
 lazy val pushUploader = (project in file("push-uploader"))

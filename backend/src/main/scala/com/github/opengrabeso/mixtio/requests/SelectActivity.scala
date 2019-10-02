@@ -2,7 +2,7 @@ package com.github.opengrabeso.mixtio
 package requests
 
 import shared._
-import shared.Util._
+import common.Util._
 import Main._
 import common.model._
 import com.google.appengine.api.taskqueue.{QueueFactory, TaskOptions}
@@ -216,9 +216,9 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
                   </td>
                   <td>{displayDistance(act.distance)}</td>
                   <td>{displaySeconds(act.duration)}</td>
-                  <td>{actStrava.map(_.hrefLink).getOrElse(NodeSeq.Empty)}</td>
+                  <td>{actStrava.map(hrefLink).getOrElse(NodeSeq.Empty)}</td>
                   <td>{actEvents.describeData}</td>
-                  <td>{act.hrefLink}</td>
+                  <td>{hrefLink(act)}</td>
                 </tr>
               }}
             </table>

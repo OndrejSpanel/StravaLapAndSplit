@@ -4,15 +4,12 @@ package views
 
 import io.udash.bootstrap.button.UdashButton
 
-trait PageUtils {
+trait PageUtils extends common.Formatting {
   def buttonOnClick(button: UdashButton)(callback: => Unit): Unit = {
     button.listen {
       case UdashButton.ButtonClickEvent(_, _) =>
         callback
     }
   }
-
-  def displayDistance(dist: Double): String = "%.2f km".format(dist*0.001)
-
 
 }

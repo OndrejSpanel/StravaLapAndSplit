@@ -2,7 +2,7 @@ package com.github.opengrabeso.mixtio
 package moveslink
 
 import Main.ActivityEvents
-import shared.Util._
+import common.Util._
 
 import scala.annotation.tailrec
 

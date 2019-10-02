@@ -33,7 +33,7 @@ class PageView(
 
   def getTemplate: Modifier = {
 
-    case class DisplayAttrib(name: String, value: ActivityIdModel => String, shortName: Option[String] = None)
+    case class DisplayAttrib(name: String, value: ActivityId => String, shortName: Option[String] = None)
     val attribs = Seq(
       DisplayAttrib("Time", a => displayTimeRange(a.startTime, a.endTime)),
       DisplayAttrib("Type", _.sportName.toString),

@@ -8,7 +8,7 @@ import java.util.zip.GZIPOutputStream
 
 import com.google.api.client.http._
 import resource.managed
-import shared.Util._
+import common.Util._
 
 import scala.util.{Failure, Success, Try}
 

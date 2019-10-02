@@ -21,10 +21,10 @@ trait UserRestAPI {
   def name: Future[String]
 
   @GET
-  def lastStravaActivities(@whenAbsent(15) count: Int): Future[Seq[ActivityIdModel]]
+  def lastStravaActivities(@whenAbsent(15) count: Int): Future[Seq[ActivityId]]
 
   @GET
-  def stagedActivities(@Query @whenAbsent(Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC)) notBefore: ZonedDateTime): Future[Seq[ActivityIdModel]]
+  def stagedActivities(@Query @whenAbsent(Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC)) notBefore: ZonedDateTime): Future[Seq[ActivityId]]
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

@@ -4,13 +4,14 @@ package requests
 import java.time.ZonedDateTime
 import com.google.appengine.api.taskqueue.DeferredTask
 import Main._
-import shared.Util._
+import common.Util._
+import common.model._
 
 /**
   * User specific cleanup, requires user access tokens for Strava */
 
 @SerialVersionUID(10L)
-case class UserCleanup(auth: Main.StravaAuthResult, before: ZonedDateTime) extends DeferredTask {
+case class UserCleanup(auth: StravaAuthResult, before: ZonedDateTime) extends DeferredTask {
   override def run(): Unit = {
 
     val d = Storage.enumerate(namespace.stage, auth.userId)

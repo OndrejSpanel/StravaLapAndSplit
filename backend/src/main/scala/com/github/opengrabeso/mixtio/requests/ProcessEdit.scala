@@ -5,7 +5,7 @@ import common.model.FileId
 import com.github.opengrabeso.mixtio.Main.namespace
 import spark.{Request, Response}
 
-import shared.Util._
+import common.Util._
 
 object ProcessEdit extends ProcessFile("/edit-activities") with UploadResults {
 

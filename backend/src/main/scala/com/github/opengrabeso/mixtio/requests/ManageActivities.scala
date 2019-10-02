@@ -2,7 +2,9 @@ package com.github.opengrabeso.mixtio
 package requests
 
 import java.time.ZonedDateTime
+
 import Main._
+import common.model._
 
 object ManageActivities extends SelectActivity("/selectActivity") {
   override def title = "select activities to process"

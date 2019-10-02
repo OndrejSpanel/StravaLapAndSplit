@@ -7,7 +7,8 @@ import MoveHeader.ActivityType._
 
 import scala.collection.immutable.SortedMap
 import java.time.ZonedDateTime
-import shared.Util._
+import common.Util._
+import common.model._
 import common.model.FileId._
 import com.github.opengrabeso.mixtio.shared.Timing
 
@@ -56,7 +57,7 @@ object MoveslinkImport {
       val sportBits = 8
       */
 
-      val id = Main.ActivityId(FilenameId(fileName), digest, "Activity", startTime, endTime, sport, d)
+      val id = ActivityId(FilenameId(fileName), digest, "Activity", startTime, endTime, sport, d)
 
       val events = Array[Event](BegEvent(id.startTime, sport), EndEvent(id.endTime))
 
