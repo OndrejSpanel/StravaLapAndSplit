@@ -191,7 +191,7 @@ object Main {
 
       def sportFromName(name: String): Event.Sport = {
         try {
-          Event.Sport.withName(sportName)
+          Event.Sport.byName(sportName)
         } catch {
           case _: NoSuchElementException => Event.Sport.Workout
         }
@@ -1306,7 +1306,7 @@ object Main {
         case _ =>
           if (ei.startsWith("split")) {
             val sportName = ei.substring("split".length)
-            Some(SplitEvent(e.stamp, Event.Sport.withName(sportName)))
+            Some(SplitEvent(e.stamp, Event.Sport.byName(sportName)))
           } else ei match {
             case "lap" => Some(LapEvent(e.stamp))
             case "end" => Some(EndEvent(e.stamp))

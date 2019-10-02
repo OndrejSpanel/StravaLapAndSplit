@@ -14,7 +14,7 @@ object CustomCodecs {
   implicit val zonedDateCodec: GenCodec[ZonedDateTime] = GenCodec.fromApplyUnapplyProvider[ZonedDateTime](ZonedDateTimeAU)
 }
 
-case class ActivityIdModel(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: String, distance: Double)
+case class ActivityIdModel(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: SportId, distance: Double)
 
 object ActivityIdModel extends EnhancedRestDataCompanion[ActivityIdModel]
 

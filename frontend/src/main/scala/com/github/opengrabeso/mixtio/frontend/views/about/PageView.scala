@@ -36,7 +36,7 @@ class PageView(
     case class DisplayAttrib(name: String, value: ActivityIdModel => String, shortName: Option[String] = None)
     val attribs = Seq(
       DisplayAttrib("Time", a => displayTimeRange(a.startTime, a.endTime)),
-      DisplayAttrib("Type", _.sportName),
+      DisplayAttrib("Type", _.sportName.toString),
       DisplayAttrib("Distance", a => displayDistance(a.distance)),
       DisplayAttrib("Duration", a => displaySeconds(ChronoUnit.SECONDS.between(a.startTime, a.endTime).toInt)),
       DisplayAttrib("Corresponding Strava activity", _ => "", Some("Strava")),
