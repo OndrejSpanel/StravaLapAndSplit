@@ -6,5 +6,5 @@ import io.udash._
 import common.model._
 
 /** The form's model structure. */
-case class PageModel(loading: Boolean, activities: Seq[ActivityRow], error: Option[Throwable] = None)
+case class PageModel(loading: Boolean, activities: Seq[ActivityRow], error: Option[Throwable] = None, showOnlyRecent: Boolean = true)
 object PageModel extends HasModelPropertyCreator[PageModel]
