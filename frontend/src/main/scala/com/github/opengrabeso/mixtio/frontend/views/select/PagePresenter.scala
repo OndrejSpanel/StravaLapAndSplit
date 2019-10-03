@@ -37,8 +37,7 @@ class PagePresenter(
 
         val (stravaActivities, oldStravaActivities) = allActivities.splitAt(normalCount)
 
-        val showOnlyRecent = false
-        val notBefore = if (showOnlyRecent) ZonedDateTime.now() minusMonths 24
+        val notBefore = if (!onlyRecent) ZonedDateTime.now() minusMonths 24
         else stravaActivities.map(a => a.startTime).min
 
         userAPI.stagedActivities(notBefore).foreach { stagedActivities =>

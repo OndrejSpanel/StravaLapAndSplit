@@ -45,8 +45,8 @@ class PageView(
 
   private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
   private val uploadButton = UdashButton(componentId = ComponentId("upload"))(_ => "Upload activity data...")
-  private val stagingButton = UdashButton(componentId = ComponentId("staged"))(_ => "View all staged activities")
   private val settingsButton = UdashButton(componentId = ComponentId("settings"))(_ => "Settings")
+  private val filterCheckbox = Checkbox(model.subProp(_.showOnlyRecent))()
 
   buttonOnClick(submitButton){presenter.gotoDummy()}
   buttonOnClick(settingsButton){presenter.gotoSettings()}
@@ -93,7 +93,7 @@ class PageView(
       s.container,
       div(Grid.row)(
         div(Grid.col)(uploadButton.render),
-        div(Grid.col)(stagingButton.render),
+        div(Grid.col)(filterCheckbox.render, label("Show all": Modifier)),
         div(Grid.col)(settingsButton.render),
       ),
 
