@@ -30,7 +30,7 @@ object Dummy {
     }
 
     def gotoSelect() = {
-      application.goTo(AboutPageState)
+      application.goTo(SelectPageState)
 
     }
   }
@@ -52,7 +52,7 @@ object Dummy {
     }
 
     def getTemplate: Modifier = div(
-      AboutPageStyles.container,
+      SelectPageStyles.container,
       div(
         p("I am dummy")
       ),

@@ -9,7 +9,7 @@ class RoutingRegistryDef extends RoutingRegistry[RoutingState] {
   def matchState(state: RoutingState): Url = Url(state2Url(state))
 
   private val (url2State, state2Url) = bidirectional {
-    case "/" => AboutPageState
+    case "/" => SelectPageState
     case "/settings" => SettingsPageState
     case "/dummy" => DummyPageState
   }

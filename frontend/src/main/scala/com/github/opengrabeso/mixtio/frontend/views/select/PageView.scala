@@ -39,7 +39,7 @@ class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
 ) extends FinalView with CssView with PageUtils with TimeFormatting {
-  val s = AboutPageStyles
+  val s = SelectPageStyles
 
   import scalatags.JsDom.all._
 

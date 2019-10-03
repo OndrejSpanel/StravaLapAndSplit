@@ -24,6 +24,6 @@ class PagePresenter(
   }
 
   def gotoSelect(): Unit = {
-    application.goTo(AboutPageState)
+    application.goTo(SelectPageState)
   }
 }

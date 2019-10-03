@@ -16,7 +16,7 @@ For compile time (SBT based) rendering see commit 682a1f6c72c2135c0e0bf0dbb383cc
 object FrontendStyle extends DefineRequest("frontend/main.css") {
   private val styles = Seq(
     GlobalStyles,
-    AboutPageStyles
+    SelectPageStyles
   )
   def html(request: Request, resp: Response) = {
 

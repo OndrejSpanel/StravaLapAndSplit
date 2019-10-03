@@ -4,7 +4,7 @@ import io.udash.css._
 
 import scala.language.postfixOps
 
-object AboutPageStyles extends CssBase {
+object SelectPageStyles extends CssBase {
 
   import dsl._
 

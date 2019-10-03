@@ -18,7 +18,7 @@ class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
 ) extends FinalView with CssView {
-  val s = AboutPageStyles
+  val s = SelectPageStyles
 
   import scalatags.JsDom.all._
 

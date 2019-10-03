@@ -11,10 +11,10 @@ import scala.concurrent.ExecutionContext
 class PagePresenter(
   model: ModelProperty[PageModel],
   application: Application[RoutingState]
-)(implicit ec: ExecutionContext) extends Presenter[AboutPageState.type] {
+)(implicit ec: ExecutionContext) extends Presenter[SelectPageState.type] {
 
   /** We don't need any initialization, so it's empty. */
-  override def handleState(state: AboutPageState.type): Unit = {
+  override def handleState(state: SelectPageState.type): Unit = {
   }
 
   def gotoDummy(): Unit = {

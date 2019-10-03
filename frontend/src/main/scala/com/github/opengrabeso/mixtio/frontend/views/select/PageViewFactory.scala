@@ -12,11 +12,11 @@ import common.ActivityTime._
 class PageViewFactory(
   application: Application[RoutingState],
   userService: services.UserContextService
-) extends ViewFactory[AboutPageState.type] {
+) extends ViewFactory[SelectPageState.type] {
   import scala.concurrent.ExecutionContext.Implicits.global
 
 
-  override def create(): (View, Presenter[AboutPageState.type]) = {
+  override def create(): (View, Presenter[SelectPageState.type]) = {
     // TODO: do not switch to view until the API has returned
     val model = ModelProperty(
       PageModel(true, Seq())
