@@ -27,6 +27,10 @@ object AboutPageStyles extends CssBase {
     borderWidth(1 px)
   )
 
+  val limitWidth: CssStyle = style(
+    maxWidth(500 px)
+  )
+
   val inputDesc: CssStyle = style (
     // ignored, overridden by default Bootstrap styles, need to use different method (Bootstrap theming?}
     backgroundColor.transparent,
