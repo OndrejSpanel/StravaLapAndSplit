@@ -46,7 +46,7 @@ class PageView(
   private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
   private val uploadButton = UdashButton(componentId = ComponentId("upload"))(_ => "Upload activity data...")
   private val settingsButton = UdashButton(componentId = ComponentId("settings"))(_ => "Settings")
-  private val filterCheckbox = Checkbox(model.subProp(_.showOnlyRecent))()
+  private val filterCheckbox = Checkbox(model.subProp(_.showAll))()
 
   buttonOnClick(submitButton){presenter.gotoDummy()}
   buttonOnClick(settingsButton){presenter.gotoSettings()}

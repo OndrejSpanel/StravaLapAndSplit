@@ -17,7 +17,7 @@ class PageViewFactory(
     val model = ModelProperty(PageModel(true, Seq()))
 
     val presenter = new PagePresenter(model, application, userService)
-    presenter.loadActivities(model.subProp(_.showOnlyRecent).get)
+    presenter.loadActivities(model.subProp(_.showAll).get)
     val view = new PageView(model, presenter)
     (view, presenter)
   }

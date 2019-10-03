@@ -2,7 +2,7 @@ package com.github.opengrabeso.mixtio
 package frontend
 package views.select
 
-import java.time.ZonedDateTime
+import java.time.{ZoneOffset, ZonedDateTime}
 
 import common.model._
 import common.Util._
@@ -19,11 +19,12 @@ class PagePresenter(
   userService: services.UserContextService
 )(implicit ec: ExecutionContext) extends Presenter[SelectPageState.type] {
 
-  model.subProp(_.showOnlyRecent).listen { p =>
-    loadActivities(p)
+  model.subProp(_.showAll).listen { p =>
+    loadActivities(!p)
   }
 
   def loadActivities(onlyRecent: Boolean) = {
+    println(s"loadActivities onlyRecent=$onlyRecent")
     def findMatchingStrava(ids: Seq[ActivityHeader], strava: Seq[ActivityId]): Seq[(ActivityHeader, Option[ActivityId])] = {
       ids.map( a => a -> strava.find(_ isMatching a.id))
     }
@@ -31,13 +32,14 @@ class PagePresenter(
     for (userAPI <- userService.api) {
 
       val normalCount = 15
-      def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = true
+      def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = !onlyRecent || strava.isEmpty
 
       userAPI.lastStravaActivities((normalCount * 2).toInt).map { allActivities =>
 
         val (stravaActivities, oldStravaActivities) = allActivities.splitAt(normalCount)
 
-        val notBefore = if (!onlyRecent) ZonedDateTime.now() minusMonths 24
+        // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
+        val notBefore = if (!onlyRecent) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 24
         else stravaActivities.map(a => a.startTime).min
 
         userAPI.stagedActivities(notBefore).foreach { stagedActivities =>
