@@ -1,5 +1,5 @@
 package com.github.opengrabeso.mixtio
-package frontend.views.about
+package frontend.views.select
 
 import common.model._
 import io.udash.HasModelPropertyCreator

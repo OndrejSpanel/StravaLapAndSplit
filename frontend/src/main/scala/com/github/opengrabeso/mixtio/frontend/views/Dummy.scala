@@ -29,7 +29,7 @@ object Dummy {
     override def handleState(state: DummyPageState.type): Unit = {
     }
 
-    def gotoAbout() = {
+    def gotoSelect() = {
       application.goTo(AboutPageState)
 
     }
@@ -48,7 +48,7 @@ object Dummy {
     submitButton.listen {
       case UdashButton.ButtonClickEvent(_, _) =>
         println("Dummy submit pressed")
-        presenter.gotoAbout()
+        presenter.gotoSelect()
     }
 
     def getTemplate: Modifier = div(

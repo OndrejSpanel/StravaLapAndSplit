@@ -1,7 +1,7 @@
 package com.github.opengrabeso.mixtio
 package frontend
 package views
-package about
+package select
 
 import java.time.temporal.ChronoUnit
 

@@ -23,7 +23,7 @@ class PagePresenter(
   override def handleState(state: SettingsPageState.type): Unit = {
   }
 
-  def gotoAbout(): Unit = {
+  def gotoSelect(): Unit = {
     application.goTo(AboutPageState)
   }
 }

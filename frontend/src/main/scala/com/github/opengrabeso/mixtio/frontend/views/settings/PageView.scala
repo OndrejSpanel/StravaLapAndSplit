@@ -31,7 +31,7 @@ class PageView(
     }
   }
 
-  buttonOnClick(submitButton){presenter.gotoAbout()}
+  buttonOnClick(submitButton){presenter.gotoSelect()}
 
   def showWhenLoaded(property: Property[Int], hint: String = "", maxChars: Int = 3) = {
     val stringProp: Property[String] = property.transform(_.toString, _.toInt)

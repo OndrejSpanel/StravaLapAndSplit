@@ -1,6 +1,6 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.about
+package views.select
 
 import routing._
 import io.udash._
