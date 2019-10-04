@@ -10,6 +10,7 @@ import scala.xml.NodeSeq
 
 trait UploadStatus {
   def xml: NodeSeq
+  override def toString: String = xml.toString
 }
 
 @SerialVersionUID(10)

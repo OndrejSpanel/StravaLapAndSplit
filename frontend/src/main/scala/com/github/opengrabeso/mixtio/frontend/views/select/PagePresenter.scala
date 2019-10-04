@@ -10,12 +10,22 @@ import common.ActivityTime._
 import routing._
 import io.udash._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import PagePresenter._
+
+import scala.scalajs.js
 
 object PagePresenter {
   case class LoadedActivities(staged: Seq[ActivityHeader], strava: Seq[ActivityId])
-}
+
+  // TODO: move to some Utils
+  def delay(milliseconds: Int): Future[Unit] = {
+    val p = Promise[Unit]()
+    js.timers.setTimeout(milliseconds) {
+      p.success(())
+    }
+    p.future
+  }}
 
 /** Contains the business logic of this view. */
 class PagePresenter(
@@ -117,14 +127,52 @@ class PagePresenter(
     }
   }
 
+  private def selectedIds = {
+    model.subProp(_.activities).get.filter(_.selected).map(_.staged.id.id)
+  }
+
   def deleteSelected(): Unit = {
-    val fileIds = model.subProp(_.activities).get.filter(_.selected).map(_.staged.id.id)
+    val fileIds = selectedIds
     userService.api.get.deleteActivities(fileIds).foreach { _ =>
       model.subProp(_.activities).set {
         model.subProp(_.activities).get.filter(!_.selected)
       }
     }
   }
+
+  var pending = Seq.empty[String]
+
+  def sendSelectedToStrava(): Unit = {
+    val fileIds = selectedIds
+    userService.api.get.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId).foreach { a =>
+      pending = a
+      // TODO: create progress bar for each activity being uploaded
+      /*
+      model.subProp(_.activities).set {
+        // replace
+        model.subProp(_.activities).get.filter(!_.selected)
+      }
+      */
+      delay(500).foreach(_ => checkPendingResults())
+    }
+  }
+
+  def checkPendingResults(): Unit = {
+    for (api <- userService.api) {
+      for {
+        status <- api.pollUploadResults(pending, facade.UdashApp.sessionId)
+        (uploadId, result) <- status
+      } {
+        println(s"$uploadId completed with $result")
+        // TODO: display results in the table
+        pending = pending diff Seq(uploadId)
+        if (pending.nonEmpty) {
+          delay(500).foreach(_ => checkPendingResults())
+        }
+      }
+    }
+  }
+
 
   def gotoSettings(): Unit = {
     application.goTo(SettingsPageState)

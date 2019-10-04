@@ -27,6 +27,12 @@ trait UserRestAPI {
   def stagedActivities(@Query @whenAbsent(Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC)) notBefore: ZonedDateTime): Future[Seq[ActivityHeader]]
 
   def deleteActivities(ids: Seq[FileId]): Future[Unit]
+
+  def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String): Future[Seq[String]]
+
+  // TODO: richer result than a String
+  def pollUploadResults(uploadIds: Seq[String], sessionId: String): Future[Map[String, String]]
+
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

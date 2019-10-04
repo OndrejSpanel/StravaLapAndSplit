@@ -16,7 +16,7 @@ object UploadToStrava extends ProcessFile("/upload-strava") with UploadResults {
     val auth = session.attribute[Main.StravaAuthResult]("auth")
     val sessionId = session.attribute[String]("sid")
 
-    val uploadCount = uploadMultiple(split.map(_._2))(auth, sessionId)
+    val uploadCount = uploadMultiple(split.map(_._2))(auth, sessionId).size
 
     countResponse(uploadCount)
 

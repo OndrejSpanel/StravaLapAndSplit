@@ -28,7 +28,7 @@ object Process extends DefineRequest.Post("/process") with ParseFormData with Up
     mergeConsecutiveRecurse(events, Nil).reverse
   }
 
-  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Vector[ActivityEvents], sessionId: String): Int = {
+  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Seq[ActivityEvents], sessionId: String): Seq[String] = {
     if (toMerge.nonEmpty) {
 
       val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
@@ -47,7 +47,7 @@ object Process extends DefineRequest.Post("/process") with ParseFormData with Up
 
       uploadMultiple(merged)(auth, sessionId)
 
-    } else 0
+    } else Nil
   }
 
 
@@ -65,7 +65,7 @@ object Process extends DefineRequest.Post("/process") with ParseFormData with Up
       loadActivity(Main.namespace.stage, op, auth.userId).map(_.applyFilters(auth))
     }
 
-    val uploadCount = mergeAndUpload(auth, toMerge, sessionId)
+    val uploadCount = mergeAndUpload(auth, toMerge, sessionId).size
 
     countResponse(uploadCount)
 

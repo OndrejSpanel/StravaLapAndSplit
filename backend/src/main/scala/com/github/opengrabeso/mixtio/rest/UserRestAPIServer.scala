@@ -41,4 +41,37 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
       println(s"Delete ${Main.namespace.stage} ${id.filename} ${userAuth.userId}")
     }
   }
+
+  def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String) = syncResponse {
+
+    val activities = for {
+      id <- ids
+      events <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId))
+    } yield {
+      events
+    }
+
+    // TODO: move mergeAndUpload from requests
+    com.github.opengrabeso.mixtio.requests.Process.mergeAndUpload(userAuth, activities, sessionId)
+  }
+
+  def pollUploadResults(uploadIds: Seq[String], sessionId: String) = syncResponse {
+    val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
+    val resultsFiles = Storage.enumerate(uploadResultNamespace, userAuth.userId)
+
+    val results = resultsFiles.flatMap { case (uploadId, resultFilename) =>
+      val load = Storage.load[requests.UploadStatus](Storage.FullName(uploadResultNamespace, resultFilename, userAuth.userId))
+      load.flatMap { status =>
+        val ret = status.xml
+        if (ret.nonEmpty) {
+          // once reported, delete it
+          Storage.delete(Storage.FullName(uploadResultNamespace, resultFilename, userAuth.userId))
+          Some(uploadId.name -> status.toString)
+        } else {
+          None
+        }
+      }
+    }.toMap
+    results
+  }
 }
