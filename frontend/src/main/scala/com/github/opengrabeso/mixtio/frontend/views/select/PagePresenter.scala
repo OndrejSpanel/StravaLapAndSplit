@@ -117,6 +117,15 @@ class PagePresenter(
     }
   }
 
+  def deleteSelected(): Unit = {
+    val fileIds = model.subProp(_.activities).get.filter(_.selected).map(_.staged.id.id)
+    userService.api.get.deleteActivities(fileIds).foreach { _ =>
+      model.subProp(_.activities).set {
+        model.subProp(_.activities).get.filter(!_.selected)
+      }
+    }
+  }
+
   def gotoSettings(): Unit = {
     application.goTo(SettingsPageState)
   }

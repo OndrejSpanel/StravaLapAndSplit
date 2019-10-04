@@ -25,6 +25,8 @@ trait UserRestAPI {
 
   @GET
   def stagedActivities(@Query @whenAbsent(Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC)) notBefore: ZonedDateTime): Future[Seq[ActivityHeader]]
+
+  def deleteActivities(ids: Seq[FileId]): Future[Unit]
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

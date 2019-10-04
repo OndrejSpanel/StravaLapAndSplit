@@ -4,6 +4,7 @@ package rest
 import java.time.ZonedDateTime
 
 import shared.Timing
+import common.model._
 
 class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils {
   def name = syncResponse {
@@ -34,4 +35,10 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     Main.stagedActivities(userAuth, notBefore)
   }
 
+  def deleteActivities(ids: Seq[FileId]) = syncResponse {
+    for (id <- ids) {
+      Storage.delete(Storage.getFullName(Main.namespace.stage, id.filename, userAuth.userId))
+      println(s"Delete ${Main.namespace.stage} ${id.filename} ${userAuth.userId}")
+    }
+  }
 }
