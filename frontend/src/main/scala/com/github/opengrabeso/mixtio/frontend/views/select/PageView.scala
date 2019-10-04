@@ -68,23 +68,32 @@ class PageView(
       DisplayAttrib("Duration", (ar, _, _) => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
       DisplayAttrib("Strava activity", (ar, _, _) => ar.strava.map(i => hrefLink(i).render).toSeq, Some("Strava")),
       DisplayAttrib("Data", (ar, _, _) => ar.staged.describeData.render),
-      DisplayAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id).render),
+      DisplayAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id).render, Some("")),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
       headerFactory = Some(_ => tr {
         attribs.flatMap { a =>
-          a.shortName.map(shortName =>
-            Seq(
-              td(s.wideMedia, b(a.name)).render,
-              td(s.narrowMedia, b(shortName)).render
-            )
-          ).getOrElse(Seq(th(b(a.name)).render))
+          a.shortName.map { shortName =>
+            val wide = td(s.wideMedia, b(a.name)).render
+            if (shortName.isEmpty) {
+              Seq(wide)
+            } else {
+              val narrow = td(s.narrowMedia, b(a.shortName)).render
+              Seq(wide, narrow)
+            }
+          }.getOrElse(Seq(th(b(a.name)).render))
         }
       }.render),
       rowFactory = (el,_) => tr(
         produceWithNested(el) { (ha, nested) =>
-          attribs.flatMap(a => td(a.value(ha, el.asModel, nested)).render)
+          attribs.flatMap { a =>
+            if (a.shortName.contains("")) {
+              td(s.wideMedia, a.value(ha, el.asModel, nested)).render
+            } else {
+              td(a.value(ha, el.asModel, nested)).render
+            }
+          }
         }
       ).render
     )
