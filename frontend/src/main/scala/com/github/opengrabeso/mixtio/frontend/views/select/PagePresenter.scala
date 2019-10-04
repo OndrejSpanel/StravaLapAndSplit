@@ -145,6 +145,9 @@ class PagePresenter(
   def sendSelectedToStrava(): Unit = {
     val fileIds = selectedIds
     userService.api.get.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId).foreach { a =>
+      a.foreach { i =>
+        println(s"Upload $i started")
+      }
       pending = a
       // TODO: create progress bar for each activity being uploaded
       /*
@@ -158,6 +161,7 @@ class PagePresenter(
   }
 
   def checkPendingResults(): Unit = {
+    println(s"checkPendingResults ${pending.size}")
     for (api <- userService.api) {
       for {
         status <- api.pollUploadResults(pending, facade.UdashApp.sessionId)
@@ -165,10 +169,12 @@ class PagePresenter(
       } {
         println(s"$uploadId completed with $result")
         // TODO: display results in the table
+        println(s"pending $pending")
+        println(s"uploadId $uploadId")
         pending = pending diff Seq(uploadId)
-        if (pending.nonEmpty) {
-          delay(500).foreach(_ => checkPendingResults())
-        }
+      }
+      if (pending.nonEmpty) {
+        delay(500).foreach(_ => checkPendingResults())
       }
     }
   }

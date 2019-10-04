@@ -42,11 +42,13 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     }
   }
 
+  /* Send activities from staging area to Strava, directly, with no editing, merge smart
+  * */
   def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String) = syncResponse {
 
     val activities = for {
       id <- ids
-      events <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId))
+      events <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.stage, id.filename, userAuth.userId))
     } yield {
       events
     }

@@ -34,8 +34,11 @@ trait UploadResults {
 
       // using post with param is not recommended, but it should be OK when not using any payload
       queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth, sessionId))
-      println(s"Queued task $uniqueName")
-      uniqueName
+
+      val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
+      val uploadId = Storage.FullName(uploadResultNamespace, uniqueName, auth.userId).name
+      println(s"Queued task $uniqueName with uploadId=$uploadId")
+      uploadId
     }
   }
 
