@@ -112,9 +112,6 @@ class PagePresenter(
     override def handleState(state: SelectPageState.type): Unit = {
   }
 
-  def gotoDummy(): Unit = {
-    application.goTo(DummyPageState)
-  }
   def gotoSettings(): Unit = {
     application.goTo(SettingsPageState)
   }

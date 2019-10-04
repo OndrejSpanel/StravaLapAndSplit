@@ -43,12 +43,28 @@ class PageView(
 
   import scalatags.JsDom.all._
 
-  private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
-  private val uploadButton = UdashButton(componentId = ComponentId("upload"))(_ => "Upload activity data...")
-  private val settingsButton = UdashButton(componentId = ComponentId("settings"))(_ => "Settings")
+  private val uploadButton = UdashButton()(_ => "Upload activity data...")
+  private val settingsButton = UdashButton()(_ => "Settings")
+
+  // TODO: disable as needed
+  def nothingSelected: ReadableProperty[Boolean] = {
+    model.subProp(_.activities).transform(!_.exists(_.selected))
+  }
+  private def button(disabled: ReadableProperty[Boolean], buttonText: ReadableProperty[String]): UdashButton = {
+    UdashButton(disabled = disabled) { _ => Seq[Modifier](
+        bind(buttonText),
+        Spacing.margin(size = SpacingSize.Small)
+      )
+    }
+  }
+
+  private val sendToStrava = button(nothingSelected, "Send to Strava".toProperty)
+  private val deleteActivity = button(nothingSelected, s"Delete from ${appName}".toProperty)
+  private val mergeAndEdit = button(nothingSelected, "Merge and edit...".toProperty) // TODO: change name based on number of selected items
+  private val uncheckAll = button(nothingSelected, "Uncheck all".toProperty)
+
   private val filterCheckbox = Checkbox(model.subProp(_.showAll))()
 
-  buttonOnClick(submitButton){presenter.gotoDummy()}
   buttonOnClick(settingsButton){presenter.gotoSettings()}
 
   def getTemplate: Modifier = {
@@ -115,7 +131,12 @@ class PageView(
           ).render
         )
       ),
-      submitButton.render
+      div(
+        sendToStrava.render,
+        mergeAndEdit.render,
+        deleteActivity.render,
+        uncheckAll.render
+      )
     )
   }
 }
