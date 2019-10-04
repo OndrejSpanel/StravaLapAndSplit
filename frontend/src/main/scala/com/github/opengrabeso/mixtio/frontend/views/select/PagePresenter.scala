@@ -23,7 +23,6 @@ class PagePresenter(
   application: Application[RoutingState],
   userService: services.UserContextService
 )(implicit ec: ExecutionContext) extends Presenter[SelectPageState.type] {
-
   model.subProp(_.showAll).listen { p =>
     loadActivities(p)
   }
@@ -110,6 +109,12 @@ class PagePresenter(
 
 
     override def handleState(state: SelectPageState.type): Unit = {
+  }
+
+  def unselectAll(): Unit = {
+    model.subProp(_.activities).set {
+      model.subProp(_.activities).get.map(_.copy(selected = false))
+    }
   }
 
   def gotoSettings(): Unit = {

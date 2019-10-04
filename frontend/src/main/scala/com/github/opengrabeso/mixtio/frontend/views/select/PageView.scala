@@ -60,12 +60,16 @@ class PageView(
 
   private val sendToStrava = button(nothingSelected, "Send to Strava".toProperty)
   private val deleteActivity = button(nothingSelected, s"Delete from ${appName}".toProperty)
-  private val mergeAndEdit = button(nothingSelected, "Merge and edit...".toProperty) // TODO: change name based on number of selected items
+  private val mergeAndEdit = button(
+    nothingSelected,
+    model.subProp(_.activities).transform(a => if (a.count(_.selected) > 1) "Merge and edit..." else "Edit...")
+  )
   private val uncheckAll = button(nothingSelected, "Uncheck all".toProperty)
 
   private val filterCheckbox = Checkbox(model.subProp(_.showAll))()
 
   buttonOnClick(settingsButton){presenter.gotoSettings()}
+  buttonOnClick(uncheckAll)(presenter.unselectAll())
 
   def getTemplate: Modifier = {
 
