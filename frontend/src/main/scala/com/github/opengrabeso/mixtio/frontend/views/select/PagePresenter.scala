@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import PagePresenter._
 
 object PagePresenter {
-  case class LoadedActivities(showAll: Boolean, staged: Seq[ActivityHeader], strava: Seq[ActivityId])
+  case class LoadedActivities(staged: Seq[ActivityHeader], strava: Seq[ActivityId])
 }
 
 /** Contains the business logic of this view. */
@@ -28,9 +28,7 @@ class PagePresenter(
     loadActivities(p)
   }
 
-  // TODO: provide some forced refresh
-  // TODO: better handling of loadAll vs. Future
-  var loaded = Option.empty[LoadedActivities]
+  var loaded = Option.empty[(Boolean, Future[LoadedActivities])]
 
   final private val normalCount = 15
 
@@ -52,11 +50,11 @@ class PagePresenter(
           val stravaActivities = allActivities.take(normalCount)
           val notBefore = notBeforeByStrava(showAll, stravaActivities)
 
-          userAPI.stagedActivities(notBefore).map { stagedActivities =>
-            val ret = LoadedActivities(showAll, stagedActivities, allActivities)
-            loaded = Some(ret)
-            ret
+          val ret = userAPI.stagedActivities(notBefore).map { stagedActivities =>
+            LoadedActivities(stagedActivities, allActivities)
           }
+          loaded = Some(showAll, ret)
+          ret
         }
       case None =>
         Future.failed(new NoSuchElementException)
@@ -66,17 +64,17 @@ class PagePresenter(
 
   private def loadCached(level: Boolean): Future[LoadedActivities] = {
     println(s"loadCached $level")
-    if (loaded.isEmpty || loaded.exists(!_.showAll && level)) {
+    if (loaded.isEmpty || loaded.exists(!_._1 && level)) {
       doLoadActivities(level)
     } else {
-      Future.successful(loaded.get)
+      loaded.get._2
     }
   }
 
   def loadActivities(showAll: Boolean) = {
     val load = loadCached(showAll)
 
-    for (LoadedActivities(_, stagedActivities, allStravaActivities) <- load) {
+    for (LoadedActivities(stagedActivities, allStravaActivities) <- load) {
       println(s"loadActivities loaded staged: ${stagedActivities.size}, Strava: ${allStravaActivities.size}")
 
       def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = showAll || strava.isEmpty
