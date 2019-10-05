@@ -87,7 +87,7 @@ lazy val pushUploader = (project in file("push-uploader"))
     libraryDependencies ++= commonLibs ++ jvmLibs
   )
 
-def inDevMode = sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
+def inDevMode = true || sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
 
 def addJavaScriptToServerResources(): Def.SettingsDefinition = {
   val optJs = if (inDevMode) fastOptJS else fullOptJS

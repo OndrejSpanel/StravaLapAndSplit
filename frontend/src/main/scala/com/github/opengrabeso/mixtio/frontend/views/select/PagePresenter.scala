@@ -141,30 +141,30 @@ class PagePresenter(
     }
   }
 
-  var pending = Map.empty[String, FileId]
+  var pending = Map.empty[String, Set[FileId]]
 
   private final val pollPeriodMs = 1000
 
-  private def setStrava(uploadId: String, stravaId: Option[FileId.StravaId]) = {
-    val fileId = pending(uploadId)
-    model.subProp(_.activities).set {
-      model.subProp(_.activities).get.map { a =>
-        if (a.staged.id.id == fileId) {
-          println(s"Found Strava $fileId, set to $stravaId")
-          a.copy(strava = stravaId.map(s => a.staged.id.copy(id = s)))
-        } else a
+  private def setStrava(uploadId: String, stravaId: Option[FileId.StravaId]): Unit = {
+    for (fileId <- pending.get(uploadId)) {
+      model.subProp(_.activities).set {
+        model.subProp(_.activities).get.map { a =>
+          if (fileId contains a.staged.id.id) {
+            a.copy(strava = stravaId.map(s => a.staged.id.copy(id = s)))
+          } else a
+        }
       }
     }
   }
 
-  private def setUploadProgress(uploadId: String, upload: Option[UploadProgress]) = {
-    val fileId = pending(uploadId)
-    model.subProp(_.activities).set {
-      model.subProp(_.activities).get.map { a =>
-        if (a.staged.id.id == fileId) {
-          println(s"Found Strava $fileId, set to $upload")
-          a.copy(upload = upload)
-        } else a
+  private def setUploadProgress(uploadId: String, upload: Option[UploadProgress]): Unit = {
+    for (fileId <- pending.get(uploadId)) {
+      model.subProp(_.activities).set {
+        model.subProp(_.activities).get.map { a =>
+          if (fileId contains a.staged.id.id) {
+            a.copy(upload = upload)
+          } else a
+        }
       }
     }
   }
@@ -172,12 +172,17 @@ class PagePresenter(
   def sendSelectedToStrava(): Unit = {
     val fileIds = selectedIds
     userService.api.get.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId).foreach { a =>
-      a.foreach { i =>
-        println(s"Upload $i started")
+      val fileToPending = a.toMap
+      // some activities might be discarded, fileId is not guaranteed to match fileToPending
+      a.foreach { case (id, i) =>
+        println(s"Upload $i started for $id")
+        pending += pending.get(i).map { addTo =>
+          i -> (addTo + id)
+        }.getOrElse {
+          i -> Set(id)
+        }
       }
-      assert(a.size == fileIds.size)
-      val fileToPending = (fileIds zip a).toMap
-      pending ++= (a zip fileIds).toMap
+      println(s"pending ${pending.size} (added ${fileIds.size})")
       // create upload indication for each activity being uploaded
       model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a => // : ActivityRow makes InteliJ happy
@@ -185,12 +190,13 @@ class PagePresenter(
           a.copy(upload = pendingId.map(id => UploadProgress.Pending(id)).orElse(a.upload))
         }
       }
-      delay(pollPeriodMs).foreach(_ => checkPendingResults())
+      if (pending.nonEmpty) {
+        delay(pollPeriodMs).foreach(_ => checkPendingResults())
+      }
     }
   }
 
   def checkPendingResults(): Unit = {
-    println(s"checkPendingResults ${pending.size}")
     for {
       api <- userService.api
       status <- api.pollUploadResults(pending.keys.toSeq, facade.UdashApp.sessionId)
@@ -199,14 +205,14 @@ class PagePresenter(
         result match {
           case UploadProgress.Pending(uploadId) =>
           case UploadProgress.Done(stravaId, uploadId) =>
+            println(s"$uploadId completed with $result")
             setStrava(uploadId, Some(FileId.StravaId(stravaId)))
             setUploadProgress(uploadId, None)
             pending -= uploadId
-            println(s"$uploadId completed with $result")
           case UploadProgress.Error(uploadId, error) =>
+            println(s"$uploadId completed with error $error")
             setUploadProgress(uploadId, Some(result))
             pending -= uploadId
-            println(s"$uploadId completed with error $error")
         }
       }
       if (pending.nonEmpty) {

@@ -55,7 +55,25 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     }
 
     // TODO: move mergeAndUpload from requests
-    com.github.opengrabeso.mixtio.requests.Process.mergeAndUpload(userAuth, activities, sessionId)
+    import com.github.opengrabeso.mixtio.requests.Process
+
+    val merged = Process.mergeForUpload(userAuth, activities)
+
+    if (merged.nonEmpty) {
+      // TODO: DRY with findMatchingStrava
+      val matching = activities.flatMap { a =>
+        merged.filter(_.id.isMatching(a.id)).map(a.id.id -> _.id.id)
+      }
+
+      val mergedUploadIds = Process.uploadMultiple(merged)(userAuth, sessionId)
+      assert(mergedUploadIds.size == merged.size)
+
+      val mergedToUploads = (merged.map(_.id.id) zip mergedUploadIds).toMap
+
+      matching.map { case (source, matchingMerged) =>
+        source -> mergedToUploads(matchingMerged)
+      }
+    }  else Nil
   }
 
   def pollUploadResults(uploadIds: Seq[String], sessionId: String) = syncResponse {

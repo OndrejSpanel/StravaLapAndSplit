@@ -28,7 +28,7 @@ object Process extends DefineRequest.Post("/process") with ParseFormData with Up
     mergeConsecutiveRecurse(events, Nil).reverse
   }
 
-  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Seq[ActivityEvents], sessionId: String): Seq[String] = {
+  def mergeForUpload(auth: Main.StravaAuthResult, toMerge: Seq[ActivityEvents]): Seq[ActivityEvents] = {
     if (toMerge.nonEmpty) {
 
       val (gpsMoves, attrMovesRaw) = toMerge.partition(_.hasGPS)
@@ -43,11 +43,14 @@ object Process extends DefineRequest.Post("/process") with ParseFormData with Up
       val timelineGPS = gpsMoves.toList.filterNot(filterIgnored).sortBy(_.startTime)
       val timelineAttr = mergeConsecutive(attrMoves.toList.filterNot(filterIgnored).sortBy(_.startTime))
 
-      val merged = moveslink.MovesLinkUploader.processTimelines(timelineGPS, timelineAttr)
-
-      uploadMultiple(merged)(auth, sessionId)
+      moveslink.MovesLinkUploader.processTimelines(timelineGPS, timelineAttr)
 
     } else Nil
+  }
+
+  def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Seq[ActivityEvents], sessionId: String): Seq[String] = {
+    val merged = mergeForUpload(auth, toMerge)
+    uploadMultiple(merged)(auth, sessionId)
   }
 
 

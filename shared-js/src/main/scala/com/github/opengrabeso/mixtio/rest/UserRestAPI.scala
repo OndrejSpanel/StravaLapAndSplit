@@ -28,7 +28,7 @@ trait UserRestAPI {
 
   def deleteActivities(ids: Seq[FileId]): Future[Unit]
 
-  def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String): Future[Seq[String]]
+  def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String): Future[Seq[(FileId, String)]]
 
   def pollUploadResults(uploadIds: Seq[String], sessionId: String): Future[Seq[UploadProgress]]
 
