@@ -7,8 +7,7 @@ import com.google.appengine.api.taskqueue._
 import scala.util.{Failure, Success}
 import scala.xml.NodeSeq
 
-
-trait UploadStatus {
+sealed trait UploadStatus {
   def xml: NodeSeq
   override def toString: String = xml.toString
 }

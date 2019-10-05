@@ -34,6 +34,14 @@ object FileId extends EnhancedRestDataCompanion[FileId] {
     def filename = "events-" + id.toString
     def stravaId = id.toString
   }
+
+  // while uploading we assign each upload a temporary upload id
+  @SerialVersionUID(10L)
+  case class StravaUploadingId(id: String) extends FileId {
+    def filename = "uploading:" + id
+    def stravaId = ""
+    override def toReadableString: String = "Uploading..."
+  }
   @SerialVersionUID(10L)
   case class FilenameId(id: String) extends FileId {
     def filename = id

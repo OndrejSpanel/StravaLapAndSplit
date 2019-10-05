@@ -3,6 +3,7 @@ package rest
 
 import java.time.ZonedDateTime
 
+import com.github.opengrabeso.mixtio.requests.{UploadDone, UploadDuplicate, UploadError, UploadInProgress}
 import shared.Timing
 import common.model._
 
@@ -63,17 +64,25 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
 
     val results = resultsFiles.flatMap { case (uploadId, resultFilename) =>
       val load = Storage.load[requests.UploadStatus](Storage.FullName(uploadResultNamespace, resultFilename, userAuth.userId))
-      load.flatMap { status =>
-        val ret = status.xml
-        if (ret.nonEmpty) {
-          // once reported, delete it
-          Storage.delete(Storage.FullName(uploadResultNamespace, resultFilename, userAuth.userId))
-          Some(uploadId.name -> status.toString)
-        } else {
-          None
+      load.map { x =>
+        val (ended, ret) = x match {
+          case UploadInProgress(_) =>
+            false -> UploadProgress.Pending(uploadId.name)
+          case UploadDone(stravaId) =>
+            true -> UploadProgress.Done(stravaId, uploadId.name)
+          case UploadError(ex) =>
+            true -> UploadProgress.Error(uploadId.name, ex.toString)
+          case UploadDuplicate(dupeId) =>
+            true -> UploadProgress.Error(uploadId.name, s"Duplicate of $dupeId") // Strava no longer seems to return specific error for duplicates
         }
+        if (ended) {
+          // once reported, delete it
+          println(s"Upload ${uploadId.name} of $resultFilename completed")
+          Storage.delete(Storage.FullName(uploadResultNamespace, resultFilename, userAuth.userId))
+        }
+        ret
       }
-    }.toMap
+    }.toSeq
     results
   }
 }

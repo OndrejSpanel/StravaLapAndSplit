@@ -140,7 +140,21 @@ class PagePresenter(
     }
   }
 
-  var pending = Seq.empty[String]
+  var pending = Map.empty[String, FileId]
+
+  private final val pollPeriodMs = 1000
+
+  private def setStrava(uploadId: String, stravaId: Option[FileId.StravaId]) = {
+    val fileId = pending(uploadId)
+    model.subProp(_.activities).set {
+      model.subProp(_.activities).get.map { a =>
+        if (a.staged.id.id == fileId) {
+          println(s"Found Strava $fileId, set to $stravaId")
+          a.copy(strava = stravaId.map(s => a.staged.id.copy(id = s)))
+        } else a
+      }
+    }
+  }
 
   def sendSelectedToStrava(): Unit = {
     val fileIds = selectedIds
@@ -148,33 +162,42 @@ class PagePresenter(
       a.foreach { i =>
         println(s"Upload $i started")
       }
-      pending = a
-      // TODO: create progress bar for each activity being uploaded
-      /*
+      assert(a.size == fileIds.size)
+      val fileToPending = (fileIds zip a).toMap
+      pending = (a zip fileIds).toMap
+      // create upload indication for each activity being uploaded
       model.subProp(_.activities).set {
-        // replace
-        model.subProp(_.activities).get.filter(!_.selected)
+        model.subProp(_.activities).get.map { a: ActivityRow => // : ActivityRow makes InteliJ happy
+          val pendingId = fileToPending.get(a.staged.id.id)
+          val uploadProgressId = pendingId.map(id => a.staged.id.copy(id = FileId.StravaUploadingId(id))).orElse(a.strava)
+          a.copy(strava = uploadProgressId)
+        }
       }
-      */
-      delay(500).foreach(_ => checkPendingResults())
+      delay(pollPeriodMs).foreach(_ => checkPendingResults())
     }
   }
 
   def checkPendingResults(): Unit = {
     println(s"checkPendingResults ${pending.size}")
-    for (api <- userService.api) {
-      for {
-        status <- api.pollUploadResults(pending, facade.UdashApp.sessionId)
-        (uploadId, result) <- status
-      } {
-        println(s"$uploadId completed with $result")
-        // TODO: display results in the table
-        println(s"pending $pending")
-        println(s"uploadId $uploadId")
-        pending = pending diff Seq(uploadId)
+    for {
+      api <- userService.api
+      status <- api.pollUploadResults(pending.keys.toSeq, facade.UdashApp.sessionId)
+    } {
+      for (result <- status) {
+        result match {
+          case UploadProgress.Pending(uploadId) =>
+          case UploadProgress.Done(stravaId, uploadId) =>
+            setStrava(uploadId, Some(FileId.StravaId(stravaId)))
+            pending -= uploadId
+            println(s"$uploadId completed with $result")
+          case UploadProgress.Error(uploadId, error) =>
+            setStrava(uploadId, None)
+            pending -= uploadId
+            println(s"$uploadId completed with error $error")
+        }
       }
       if (pending.nonEmpty) {
-        delay(500).foreach(_ => checkPendingResults())
+        delay(pollPeriodMs).foreach(_ => checkPendingResults())
       }
     }
   }

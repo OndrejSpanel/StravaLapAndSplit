@@ -30,8 +30,7 @@ trait UserRestAPI {
 
   def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String): Future[Seq[String]]
 
-  // TODO: richer result than a String
-  def pollUploadResults(uploadIds: Seq[String], sessionId: String): Future[Map[String, String]]
+  def pollUploadResults(uploadIds: Seq[String], sessionId: String): Future[Seq[UploadProgress]]
 
 }
 
