@@ -71,7 +71,7 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
           case UploadDone(stravaId) =>
             true -> UploadProgress.Done(stravaId, uploadId.name)
           case UploadError(ex) =>
-            true -> UploadProgress.Error(uploadId.name, ex.toString)
+            true -> UploadProgress.Error(uploadId.name, ex.getLocalizedMessage)
           case UploadDuplicate(dupeId) =>
             true -> UploadProgress.Error(uploadId.name, s"Duplicate of $dupeId") // Strava no longer seems to return specific error for duplicates
         }

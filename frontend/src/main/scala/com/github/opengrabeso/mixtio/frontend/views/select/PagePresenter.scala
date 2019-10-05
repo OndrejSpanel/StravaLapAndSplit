@@ -12,6 +12,7 @@ import io.udash._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import PagePresenter._
+import com.github.opengrabeso.mixtio.common.model
 
 import scala.scalajs.js
 
@@ -109,7 +110,7 @@ class PagePresenter(
         val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
 
         val ignored = actStrava.isDefined || mostRecentStrava.exists(_ >= act.id.startTime)
-        ActivityRow(act, actStrava, !ignored)
+        ActivityRow(act, actStrava, !ignored, None)
       })
       model.subProp(_.loading).set(false)
     }
@@ -156,6 +157,18 @@ class PagePresenter(
     }
   }
 
+  private def setUploadProgress(uploadId: String, upload: Option[UploadProgress]) = {
+    val fileId = pending(uploadId)
+    model.subProp(_.activities).set {
+      model.subProp(_.activities).get.map { a =>
+        if (a.staged.id.id == fileId) {
+          println(s"Found Strava $fileId, set to $upload")
+          a.copy(upload = upload)
+        } else a
+      }
+    }
+  }
+
   def sendSelectedToStrava(): Unit = {
     val fileIds = selectedIds
     userService.api.get.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId).foreach { a =>
@@ -164,13 +177,12 @@ class PagePresenter(
       }
       assert(a.size == fileIds.size)
       val fileToPending = (fileIds zip a).toMap
-      pending = (a zip fileIds).toMap
+      pending ++= (a zip fileIds).toMap
       // create upload indication for each activity being uploaded
       model.subProp(_.activities).set {
-        model.subProp(_.activities).get.map { a: ActivityRow => // : ActivityRow makes InteliJ happy
+        model.subProp(_.activities).get.map { a => // : ActivityRow makes InteliJ happy
           val pendingId = fileToPending.get(a.staged.id.id)
-          val uploadProgressId = pendingId.map(id => a.staged.id.copy(id = FileId.StravaUploadingId(id))).orElse(a.strava)
-          a.copy(strava = uploadProgressId)
+          a.copy(upload = pendingId.map(id => UploadProgress.Pending(id)).orElse(a.upload))
         }
       }
       delay(pollPeriodMs).foreach(_ => checkPendingResults())
@@ -188,10 +200,11 @@ class PagePresenter(
           case UploadProgress.Pending(uploadId) =>
           case UploadProgress.Done(stravaId, uploadId) =>
             setStrava(uploadId, Some(FileId.StravaId(stravaId)))
+            setUploadProgress(uploadId, None)
             pending -= uploadId
             println(s"$uploadId completed with $result")
           case UploadProgress.Error(uploadId, error) =>
-            setStrava(uploadId, None)
+            setUploadProgress(uploadId, Some(result))
             pending -= uploadId
             println(s"$uploadId completed with error $error")
         }
