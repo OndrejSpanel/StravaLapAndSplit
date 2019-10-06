@@ -88,19 +88,15 @@ class PageView(
       DisplayAttrib("Type", (ar, _, _) => ar.staged.id.sportName.toString.render),
       DisplayAttrib("Distance", (ar, _, _) => displayDistance(ar.staged.id.distance).render),
       DisplayAttrib("Duration", (ar, _, _) => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
-      DisplayAttrib("Strava activity", { (ar, arProp, nested) => div(
-        nested(showIfElse(arProp.subProp(_.upload).transform(_.isDefined))(
-          div(nested(bind(arProp.subProp(_.upload).transform {
-            case Some(UploadProgress.Pending(_)) =>
-              "Uploading ..."
-            case Some(UploadProgress.Error(_, err)) =>
-              err
-            case _ =>
-              "???"
-          }))).render,
+      DisplayAttrib("Strava activity", { (ar, arProp, nested) => div {
+        nested(showIfElse(arProp.subProp(_.uploading))(
+          div(
+            s.uploading,
+            nested(bind(arProp.subProp(_.uploadState)))
+          ).render,
           ar.strava.map(i => hrefLink(i).render).toSeq
         ))
-      ).render}, Some("Strava")),
+      }.render}, Some("Strava")),
       DisplayAttrib("Data", (ar, _, _) => ar.staged.describeData.render),
       DisplayAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id).render, Some("")),
     )

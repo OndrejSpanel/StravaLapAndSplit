@@ -110,7 +110,7 @@ class PagePresenter(
         val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
 
         val ignored = actStrava.isDefined || mostRecentStrava.exists(_ >= act.id.startTime)
-        ActivityRow(act, actStrava, !ignored, None)
+        ActivityRow(act, actStrava, !ignored)
       })
       model.subProp(_.loading).set(false)
     }
@@ -157,12 +157,12 @@ class PagePresenter(
     }
   }
 
-  private def setUploadProgress(uploadId: String, upload: Option[UploadProgress]): Unit = {
+  private def setUploadProgress(uploadId: String, uploading: Boolean, uploadState: String): Unit = {
     for (fileId <- pending.get(uploadId)) {
       model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a =>
           if (fileId contains a.staged.id.id) {
-            a.copy(upload = upload)
+            a.copy(uploading = uploading, uploadState = uploadState)
           } else a
         }
       }
@@ -187,7 +187,9 @@ class PagePresenter(
       model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a => // : ActivityRow makes InteliJ happy
           val pendingId = fileToPending.get(a.staged.id.id)
-          a.copy(upload = pendingId.map(id => UploadProgress.Pending(id)).orElse(a.upload))
+          if (pendingId.isDefined) {
+            a.copy(uploading = true, uploadState = "Uploading...")
+          } else a
         }
       }
       if (pending.nonEmpty) {
@@ -207,11 +209,11 @@ class PagePresenter(
           case UploadProgress.Done(stravaId, uploadId) =>
             println(s"$uploadId completed with $result")
             setStrava(uploadId, Some(FileId.StravaId(stravaId)))
-            setUploadProgress(uploadId, None)
+            setUploadProgress(uploadId, false, "")
             pending -= uploadId
           case UploadProgress.Error(uploadId, error) =>
             println(s"$uploadId completed with error $error")
-            setUploadProgress(uploadId, Some(result))
+            setUploadProgress(uploadId, true, error)
             pending -= uploadId
         }
       }

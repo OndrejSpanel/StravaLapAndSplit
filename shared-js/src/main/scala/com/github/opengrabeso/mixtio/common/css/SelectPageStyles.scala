@@ -27,6 +27,13 @@ object SelectPageStyles extends CssBase {
     borderWidth(1 px)
   )
 
+  val uploading: CssStyle = style(
+    backgroundColor.lightblue
+  )
+  val error: CssStyle = style(
+    backgroundColor.red
+  )
+
   val limitWidth: CssStyle = style(
     maxWidth(500 px)
   )
