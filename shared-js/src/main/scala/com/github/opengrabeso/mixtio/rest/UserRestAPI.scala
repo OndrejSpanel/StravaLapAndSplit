@@ -32,6 +32,8 @@ trait UserRestAPI {
 
   def pollUploadResults(uploadIds: Seq[String], sessionId: String): Future[Seq[UploadProgress]]
 
+  /// this will create one activity in the "edit" namespace
+  def mergeActivitiesToEdit(ids: Seq[FileId], sessionId: String): Future[Option[FileId]]
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

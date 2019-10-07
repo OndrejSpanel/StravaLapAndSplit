@@ -3,6 +3,8 @@ package rest
 
 import java.time.ZonedDateTime
 
+import com.github.opengrabeso.mixtio.Main.{ActivityEvents, namespace}
+import com.github.opengrabeso.mixtio.requests.MergeAndEditActivity.saveAsNeeded
 import com.github.opengrabeso.mixtio.requests.{UploadDone, UploadDuplicate, UploadError, UploadInProgress}
 import shared.Timing
 import common.model._
@@ -103,4 +105,30 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     }.toSeq
     results
   }
+
+  def mergeActivitiesToEdit(ops: Seq[FileId], sessionId: String) = syncResponse {
+    val toMerge = ops.flatMap { op =>
+      Storage.load[ActivityHeader, ActivityEvents](Storage.getFullName(namespace.stage, op.filename, userAuth.userId)).map(_._2.applyFilters(userAuth))
+    }
+
+    if (toMerge.nonEmpty) {
+      // first merge all GPS data
+      // then merge in all attribute data
+      val (toMergeGPS, toMergeAttrRaw) = toMerge.partition(_.hasGPS)
+      val timeOffset = Settings(userAuth.userId).questTimeOffset
+      val toMergeAttr = toMergeAttrRaw.map(_.timeOffset(-timeOffset))
+
+      val merged = if (toMergeGPS.nonEmpty) {
+        val gpsMerged = toMergeGPS.reduceLeft(_ merge _)
+        (gpsMerged +: toMergeAttr).reduceLeft(_ merge _)
+      } else {
+        toMerge.reduceLeft(_ merge _)
+      }
+      Some(saveAsNeeded(merged)(userAuth).id.id)
+
+    } else {
+      None
+    }
+  }
+
 }

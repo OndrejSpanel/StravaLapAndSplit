@@ -639,6 +639,7 @@ trait ActivityRequestHandler extends UploadResults {
 object MergeAndEditActivity extends DefineRequest.Post("/merge-activity") {
   def saveAsNeeded(activityData: ActivityEvents)(implicit auth: StravaAuthResult) = {
     val prepare = activityData.cleanPositionErrors.processPausesAndEvents
+    // TODO: make sure edited name is unique
     Storage.store(namespace.edit, prepare.id.id.filename, auth.userId, prepare.header, prepare)
     prepare
   }
