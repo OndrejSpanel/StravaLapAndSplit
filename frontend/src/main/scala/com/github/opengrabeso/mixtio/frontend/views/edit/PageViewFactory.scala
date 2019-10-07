@@ -3,13 +3,8 @@ package frontend
 package views.edit
 import common.model._
 
-import java.time.{ZoneOffset, ZonedDateTime}
-
 import routing.{RoutingState, EditPageState}
-import com.github.opengrabeso.mixtio.rest
 import io.udash._
-
-import scala.concurrent.Future
 
 /** Prepares model, view and presenter for demo view. */
 class PageViewFactory(

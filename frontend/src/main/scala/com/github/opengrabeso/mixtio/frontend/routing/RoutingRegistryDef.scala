@@ -16,13 +16,25 @@ class RoutingRegistryDef extends RoutingRegistry[RoutingState] {
     def apply(s: String): String = URIUtils.encodeURIComponent(s)
     def unapply(s: String): Option[String] = Some(URIUtils.decodeURIComponent(s))
   }
+  object ? {
+    def apply(prefix: String, s: Seq[FileId]) = {
+      prefix + s.map(f => URIEncoded(f.toString)).mkString("?", "&", "")
+    }
+    def unapply(s: String): Option[(String, Seq[FileId])] = {
+      val prefix = s.takeWhile(_ != '?')
+      if (prefix.nonEmpty) {
+        val rest = s.drop(prefix.length + 1)
+        val parts = rest.split("&")
+        Some((prefix, parts.flatMap(URIEncoded.unapply(_).map(FileId.parse))))
+      } else {
+        None
+      }
+    }
+  }
   private val (url2State, state2Url) = bidirectional {
     case "/" => SelectPageState
     case "/settings" => SettingsPageState
-    case "/edit" / URIEncoded(s) =>
-      EditPageState(Seq(FileId(s))) // TODO: parse (deserialize) multiple activities
-    case "/edit" / URIEncoded(s1) / URIEncoded(s2) =>
-      EditPageState(Seq(FileId(s1), FileId(s2))) // TODO: parse (deserialize) multiple activities
-    case "/edit" => EditPageState(Nil)
+    case "/edit" ? s =>
+      EditPageState(s)
   }
 }
