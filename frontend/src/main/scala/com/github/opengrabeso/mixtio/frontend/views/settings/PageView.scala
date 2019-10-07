@@ -33,19 +33,6 @@ class PageView(
 
   buttonOnClick(submitButton){presenter.gotoSelect()}
 
-  def showWhenLoaded(property: Property[Int], hint: String = "", maxChars: Int = 3) = {
-    val stringProp: Property[String] = property.transform(_.toString, _.toInt)
-    showIfElse(model.subProp(_.loading))(
-      Seq(
-        span("...").render
-      ),
-      Seq(
-        UdashInputGroup.input(
-          NumberInput(stringProp)(placeholder := hint, maxlength := maxChars).render
-        ),
-      )
-    )
-  }
   def getTemplate: Modifier = {
 
     // TODO: use DataStreamGPS.FilterSettings
@@ -56,7 +43,6 @@ class PageView(
     def transformTime(time: ZonedDateTime): String = {
       import TimeFormatting._
       val js = time.toJSDate
-      println(s"transformTime $time -> $js")
       formatTimeHMS(js)
     }
 

@@ -11,6 +11,9 @@ sealed trait FileId {
 }
 
 object FileId extends EnhancedRestDataCompanion[FileId] {
+  def apply(arg: String): FileId = parse(arg) // apply/unapply needed for RoutingRegistryDef
+  def unapply(arg: FileId): Option[String] = Some(arg.toString)
+
   def parse(actId: String): FileId = {
     if (actId.last == ')') {
       val prefix = actId.takeWhile(_ != '(')

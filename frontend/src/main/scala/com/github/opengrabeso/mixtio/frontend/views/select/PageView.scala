@@ -71,6 +71,7 @@ class PageView(
   buttonOnClick(settingsButton){presenter.gotoSettings()}
   buttonOnClick(uncheckAll)(presenter.unselectAll())
   buttonOnClick(sendToStrava){presenter.sendSelectedToStrava()}
+  buttonOnClick(mergeAndEdit){presenter.mergeAndEdit()}
   buttonOnClick(deleteActivity){presenter.deleteSelected()}
 
   def getTemplate: Modifier = {

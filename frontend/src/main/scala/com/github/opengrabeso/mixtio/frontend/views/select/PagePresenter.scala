@@ -222,6 +222,10 @@ class PagePresenter(
     }
   }
 
+  def mergeAndEdit(): Unit = {
+    val selected = selectedIds
+    application.goTo(EditPageState(selected))
+  }
 
   def gotoSettings(): Unit = {
     application.goTo(SettingsPageState)
