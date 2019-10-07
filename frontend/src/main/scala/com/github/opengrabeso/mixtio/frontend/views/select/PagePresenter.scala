@@ -44,7 +44,6 @@ class PagePresenter(
 
 
   private def notBeforeByStrava(showAll: Boolean, stravaActivities: Seq[ActivityId]): ZonedDateTime = {
-    // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
     if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 24
     else stravaActivities.map(a => a.startTime).min
   }

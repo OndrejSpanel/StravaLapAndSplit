@@ -1,6 +1,6 @@
 package com.github.opengrabeso.mixtio.frontend.views
 
-import java.time.ZonedDateTime
+import java.time.{ZoneOffset, ZonedDateTime}
 
 import scala.scalajs.js
 import org.scalajs.dom.experimental.intl
@@ -35,17 +35,28 @@ trait TimeFormatting {
     ).format(t)
   }
 
+  def formatTimeHMS(t: js.Date) = {
+    new intl.DateTimeFormat(
+      locale,
+      intl.DateTimeFormatOptions(
+        hour = "numeric",
+        minute = "numeric",
+        second = "numeric",
+      )
+    ).format(t)
+  }
+
   implicit class ZonedDateTimeOps(t: ZonedDateTime) {
     def toJSDate: js.Date = {
-      val text = t.toString // (DateTimeFormatter.ISO_ZONED_DATE_TIME)
+      // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
+      val text = t.withZoneSameInstant(ZoneOffset.UTC).toString // (DateTimeFormatter.ISO_ZONED_DATE_TIME)
       new js.Date(js.Date.parse(text))
     }
   }
 
-
   def displayTimeRange(startTime: ZonedDateTime, endTime: ZonedDateTime): String = {
     s"${formatDateTime(startTime.toJSDate)}...${formatTime(endTime.toJSDate)}"
   }
-
-
 }
+
+object TimeFormatting extends TimeFormatting

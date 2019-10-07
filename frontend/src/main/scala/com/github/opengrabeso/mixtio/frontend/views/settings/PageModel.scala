@@ -2,10 +2,10 @@ package com.github.opengrabeso.mixtio
 package frontend
 package views.settings
 
+import java.time.ZonedDateTime
 import common.model._
 import io.udash._
 
-/** The form's model structure. */
-case class PageModel(loading: Boolean, settings: SettingsStorage)
+case class PageModel(loading: Boolean, settings: SettingsStorage, currentTime: ZonedDateTime)
 
 object PageModel extends HasModelPropertyCreator[PageModel]

@@ -1,17 +1,17 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.settings
+package views
+package settings
+
+import java.time.{ZoneId, ZonedDateTime}
 
 import common.model._
 import common.css._
 import io.udash._
 import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.form.{UdashForm, UdashInputGroup}
-import io.udash.bootstrap.table.UdashTable
-import io.udash.bootstrap.utils.BootstrapStyles._
 import io.udash.component.ComponentId
 import io.udash.css._
-import scalacss.internal.ValueT.TypedAttr_MaxLength
 
 
 class PageView(
@@ -52,11 +52,19 @@ class PageView(
     val elevFilterLabel = Array(
       "None", "Weak", "Normal", "Strong"
     )
+
+    def transformTime(time: ZonedDateTime): String = {
+      import TimeFormatting._
+      val js = time.toJSDate
+      println(s"transformTime $time -> $js")
+      formatTimeHMS(js)
+    }
+
     div(
       s.container,s.limitWidth,
 
       div(
-        UdashForm()(factory => Seq[Modifier](
+        UdashForm(inputValidationTrigger = UdashForm.ValidationTrigger.OnChange)(factory => Seq[Modifier](
           h1("Settings"),
           factory.input.formGroup()(
             input = _ => factory.input.numberInput(model.subProp(_.settings.maxHR).transform(_.toString, _.toInt))().render,
@@ -68,6 +76,17 @@ class PageView(
             labelContent = Some(_ => "Additional sensor (e.g. Quest) time offset: ": Modifier),
             helpText = Some(_ => "Adjust up or down so that the time below matches the time on your watch/sensor": Modifier)
           ),
+          p(
+            "Current time: ",
+            bind(model.subProp(_.currentTime).transform(transformTime))
+          ),
+          p {
+            val questTime = (model.subProp(_.currentTime) combine model.subProp(_.settings.questTimeOffset))(_ plusSeconds _)
+            b(
+              "Sensor time: ",
+              bind(questTime.transform(transformTime))
+            )
+          },
           factory.input.formGroup()(
             input = _ => factory.input.radioButtons(
               selectedItem = model.subProp(_.settings.elevFilter),
