@@ -12,7 +12,6 @@ import com.google.api.client.http.json.JsonHttpContent
 import com.fasterxml.jackson.databind.JsonNode
 import com.google.api.client.json.jackson2.JacksonFactory
 
-
 import scala.collection.JavaConverters._
 import common.Util._
 import common.model._
@@ -21,6 +20,7 @@ import shared.Timing
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.util.control.Breaks._
+import scala.xml.Node
 
 object Main extends common.Formatting {
 
@@ -233,6 +233,38 @@ object Main extends common.Formatting {
     storedActivities.toVector
   }
 
+  private def segmentTitle(kind: String, e: SegmentTitle): String = {
+    val segPrefix = if (e.isPrivate) "private segment " else "segment "
+    val segmentName = Main.shortNameString(e.name, 32 - segPrefix.length - kind.length)
+    val complete = if (e.segmentId != 0) {
+      kind + segPrefix + <a title={e.name} href={s"https://www.strava.com/segments/${e.segmentId}"}>{segmentName}</a>
+    } else {
+      kind + segPrefix + segmentName
+    }
+    complete.capitalize
+  }
+
+  def htmlDescription(event: Event): String = event match {
+    case e: PauseEvent =>
+      s"Pause ${Events.niceDuration(e.duration)}"
+    case e: PauseEndEvent =>
+      "Pause end"
+    case e: LapEvent =>
+      "Lap"
+    case e: EndEvent =>
+      "End"
+    case e: BegEvent =>
+      "<b>Start</b>"
+    case e: SplitEvent =>
+      "Split"
+    case e: StartSegEvent =>
+      segmentTitle("", e)
+    case e: EndSegEvent =>
+      segmentTitle("end ", e)
+    case e: ElevationEvent =>
+      Main.shortNameString("Elevation " + e.elev.toInt + " m")
+  }
+
   @SerialVersionUID(10L)
   case object NoActivity
 
@@ -442,7 +474,7 @@ object Main extends common.Formatting {
 
       val ees = events.map { e =>
         val action = e.defaultEvent
-        EditableEvent(action, id.secondsInActivity(e.stamp), distanceForTime(e.stamp), e.listTypes, e.originalEvent, e.description)
+        EditableEvent(action, id.secondsInActivity(e.stamp), distanceForTime(e.stamp), e.listTypes, e.originalEvent, htmlDescription(e))
       }
 
       // consolidate mutliple events with the same time so that all of them have the same action

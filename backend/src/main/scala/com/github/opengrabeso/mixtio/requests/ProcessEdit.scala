@@ -1,7 +1,7 @@
 package com.github.opengrabeso.mixtio
 package requests
 
-import common.model.FileId
+import common.model._
 import com.github.opengrabeso.mixtio.Main.namespace
 import spark.{Request, Response}
 

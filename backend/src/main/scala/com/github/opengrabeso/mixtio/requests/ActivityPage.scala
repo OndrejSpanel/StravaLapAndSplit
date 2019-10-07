@@ -84,7 +84,7 @@ trait ActivityRequestHandler extends UploadResults {
               val action = ee.action
               val eTime = activityData.secondsInActivity(t.stamp)
               <tr>
-                <td> {xml.Unparsed(t.description)} </td>
+                <td> {xml.Unparsed(Main.htmlDescription(t))} </td>
                 <td> <button type="button" onclick={s"selectMapEvent($i)"}>{displaySeconds(eTime)}</button></td>
                 <td> {displayDistance(activityData.distanceForTime(t.stamp))} </td>
                 <td>

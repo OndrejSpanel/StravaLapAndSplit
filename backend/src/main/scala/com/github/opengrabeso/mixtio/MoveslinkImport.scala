@@ -2,7 +2,7 @@ package com.github.opengrabeso.mixtio
 
 import java.io.InputStream
 
-import com.github.opengrabeso.mixtio.Event.Sport
+import common.model.Event.Sport
 import MoveHeader.ActivityType._
 
 import scala.collection.immutable.SortedMap
@@ -10,7 +10,7 @@ import java.time.ZonedDateTime
 import common.Util._
 import common.model._
 import common.model.FileId._
-import com.github.opengrabeso.mixtio.shared.Timing
+import shared.Timing
 
 object MoveslinkImport {
 

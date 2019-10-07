@@ -7,7 +7,7 @@ import com.github.opengrabeso.mixtio.Main.ActivityEvents
 import java.time.{LocalDateTime, ZoneId, ZoneOffset, ZonedDateTime}
 
 import common.Util._
-import common.model._
+import common.model.{Event, _}
 import common.model.FileId._
 
 import scala.collection.immutable.SortedMap

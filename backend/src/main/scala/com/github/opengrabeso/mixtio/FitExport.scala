@@ -6,6 +6,7 @@ import com.garmin.fit
 import com.garmin.fit.{Event => FitEvent, _}
 import Main.ActivityEvents
 import common.Util._
+import common.model._
 import java.time.ZonedDateTime
 
 object FitExport {
