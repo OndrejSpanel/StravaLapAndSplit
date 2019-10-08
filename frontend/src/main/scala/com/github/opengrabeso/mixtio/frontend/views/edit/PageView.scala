@@ -38,7 +38,9 @@ class PageView(
     type EditAttrib = TableFactory.TableAttrib[EditEvent]
     val EditAttrib = TableFactory.TableAttrib
 
+    //case class EditEvent(action: String, time: Int, km: Double, originalAction: String)
     val attribs = Seq[EditAttrib](
+      EditAttrib("Action", (e, _, _) => e.action.render),
       EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
       EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render)
     )

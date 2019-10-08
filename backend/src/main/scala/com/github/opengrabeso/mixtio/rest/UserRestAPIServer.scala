@@ -124,13 +124,13 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
       } else {
         toMerge.reduceLeft(_ merge _)
       }
-      val mergedFileId = saveAsNeeded(merged)(userAuth).id.id
+      val mergedWithEvents = saveAsNeeded(merged)(userAuth)
 
-      val events = merged.events.map { e =>
+      val events = mergedWithEvents.events.map { e =>
         e -> merged.distanceForTime(e.stamp)
       }
 
-      Some((mergedFileId, events))
+      Some((mergedWithEvents.id.id, events))
 
     } else {
       None
