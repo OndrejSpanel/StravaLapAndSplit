@@ -11,12 +11,9 @@ import io.udash._
 import io.udash.bootstrap.utils.BootstrapStyles._
 import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.table.UdashTable
-import io.udash.component.ComponentId
 import io.udash.css._
 import scalatags.JsDom.all._
 import PageView._
-import io.udash.bindings.modifiers.Binding.NestedInterceptor
-import org.scalajs.dom.Node
 import org.scalajs.dom.raw.HTMLElement
 import scalatags.JsDom
 object PageView {
@@ -59,7 +56,7 @@ class PageView(
   }
 
   private val sendToStrava = button(nothingSelected, "Send to Strava".toProperty)
-  private val deleteActivity = button(nothingSelected, s"Delete from ${appName}".toProperty)
+  private val deleteActivity = button(nothingSelected, s"Delete from $appName".toProperty)
   private val mergeAndEdit = button(
     nothingSelected,
     model.subProp(_.activities).transform(a => if (a.count(_.selected) > 1) "Merge and edit..." else "Edit...")
@@ -77,19 +74,19 @@ class PageView(
   def getTemplate: Modifier = {
 
     // value is a callback
-    case class DisplayAttrib(name: String, value: (ActivityRow, ModelProperty[ActivityRow], NestedInterceptor) => Seq[Node], shortName: Option[String] = None)
-    val attribs = Seq(
-      DisplayAttrib(
+    type DisplayAttrib = TableFactory.TableAttrib[ActivityRow]
+    val attribs = Seq[DisplayAttrib](
+      TableFactory.TableAttrib(
         "", (ar, p, nested) => div(
           // TODO: pass nested here?
           nested(checkbox(p.subProp(_.selected)))
         ).render
       ),
-      DisplayAttrib("Time", (ar, _, _) => displayTimeRange(ar.staged.id.startTime, ar.staged.id.endTime).render),
-      DisplayAttrib("Type", (ar, _, _) => ar.staged.id.sportName.toString.render),
-      DisplayAttrib("Distance", (ar, _, _) => displayDistance(ar.staged.id.distance).render),
-      DisplayAttrib("Duration", (ar, _, _) => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
-      DisplayAttrib("Strava activity", { (ar, arProp, nested) => div {
+      TableFactory.TableAttrib("Time", (ar, _, _) => displayTimeRange(ar.staged.id.startTime, ar.staged.id.endTime).render),
+      TableFactory.TableAttrib("Type", (ar, _, _) => ar.staged.id.sportName.toString.render),
+      TableFactory.TableAttrib("Distance", (ar, _, _) => displayDistance(ar.staged.id.distance).render),
+      TableFactory.TableAttrib("Duration", (ar, _, _) => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
+      TableFactory.TableAttrib("Strava activity", { (ar, arProp, nested) => div {
         nested(showIfElse(arProp.subProp(_.uploading))(
           div(
             s.uploading,
@@ -98,35 +95,13 @@ class PageView(
           ar.strava.map(i => hrefLink(i).render).toSeq
         ))
       }.render}, Some("Strava")),
-      DisplayAttrib("Data", (ar, _, _) => ar.staged.describeData.render),
-      DisplayAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id).render, Some("")),
+      TableFactory.TableAttrib("Data", (ar, _, _) => ar.staged.describeData.render),
+      TableFactory.TableAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id).render, Some("")),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
-      headerFactory = Some(_ => tr {
-        attribs.flatMap { a =>
-          a.shortName.map { shortName =>
-            val wide = td(s.wideMedia, b(a.name)).render
-            if (shortName.isEmpty) {
-              Seq(wide)
-            } else {
-              val narrow = td(s.narrowMedia, b(a.shortName)).render
-              Seq(wide, narrow)
-            }
-          }.getOrElse(Seq(th(b(a.name)).render))
-        }
-      }.render),
-      rowFactory = (el,_) => tr(
-        produceWithNested(el) { (ha, nested) =>
-          attribs.flatMap { a =>
-            if (a.shortName.contains("")) {
-              td(s.wideMedia, a.value(ha, el.asModel, nested)).render
-            } else {
-              td(a.value(ha, el.asModel, nested)).render
-            }
-          }
-        }
-      ).render
+      headerFactory = Some(TableFactory.headerFactory(attribs)),
+      rowFactory = TableFactory.rowFactory(attribs)
     )
 
     div(

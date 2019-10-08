@@ -20,7 +20,19 @@ class PageViewFactory(
     for {
       mergedId <- userService.api.get.mergeActivitiesToEdit(activities, UdashApp.sessionId)
     } {
-      model.subProp(_.merged).set(mergedId)
+      val activity = mergedId.map(_._1)
+      val events = mergedId.toSeq.flatMap(_._2)
+      model.subProp(_.merged).set(activity)
+      if (events.nonEmpty) {
+        val first = events.head
+        model.subProp(_.events).set {
+          events.map { case (event, dist) =>
+            EditEvent(first._1.stamp, event, dist)
+          }
+        }
+      } else {
+        model.subProp(_.events).set(Nil)
+      }
       model.subProp(_.loading).set(false)
     }
 

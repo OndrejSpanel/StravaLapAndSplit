@@ -3,18 +3,14 @@ package frontend
 package views
 package edit
 
-import java.time.{ZoneId, ZonedDateTime}
-
+import common.Formatting
 import common.model._
 import common.css._
 import io.udash._
-import io.udash.bindings.modifiers.Binding.NestedInterceptor
 import io.udash.bootstrap.button.UdashButton
-import io.udash.bootstrap.form.{UdashForm, UdashInputGroup}
 import io.udash.bootstrap.table.UdashTable
 import io.udash.component.ComponentId
 import io.udash.css._
-import org.scalajs.dom.Node
 
 
 class PageView(
@@ -39,38 +35,17 @@ class PageView(
   def getTemplate: Modifier = {
 
     // value is a callback
-    case class EditAttrib(name: String, value: (EditEvent, ModelProperty[EditEvent], NestedInterceptor) => Seq[Node], shortName: Option[String] = None)
+    type EditAttrib = TableFactory.TableAttrib[EditEvent]
+    val EditAttrib = TableFactory.TableAttrib
 
-    val attribs = Seq(
-      EditAttrib("Time", (_, _, _) => "00:00".render),
-      EditAttrib("Distance", (_, _, _) => "0.00".render)
+    val attribs = Seq[EditAttrib](
+      EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
+      EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render)
     )
 
     val table = UdashTable(model.subSeq(_.events), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
-      headerFactory = Some(_ => tr {
-        attribs.flatMap { a =>
-          a.shortName.map { shortName =>
-            val wide = td(s.wideMedia, b(a.name)).render
-            if (shortName.isEmpty) {
-              Seq(wide)
-            } else {
-              val narrow = td(s.narrowMedia, b(a.shortName)).render
-              Seq(wide, narrow)
-            }
-          }.getOrElse(Seq(th(b(a.name)).render))
-        }
-      }.render),
-      rowFactory = (el,_) => tr(
-        produceWithNested(el) { (ha, nested) =>
-          attribs.flatMap { a =>
-            if (a.shortName.contains("")) {
-              td(s.wideMedia, a.value(ha, el.asModel, nested)).render
-            } else {
-              td(a.value(ha, el.asModel, nested)).render
-            }
-          }
-        }
-      ).render
+      headerFactory = Some(TableFactory.headerFactory(attribs )),
+      rowFactory = TableFactory.rowFactory(attribs)
     )
 
     div(

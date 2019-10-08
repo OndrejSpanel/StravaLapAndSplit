@@ -3,9 +3,11 @@ package common.model
 
 import java.time.ZonedDateTime
 
+import rest.EnhancedRestDataCompanion
+
 case class EventKind(id: String, display: String)
 
-object Event {
+object Event extends EnhancedRestDataCompanion[Event] {
   final type Sport = SportId.Value
   final val Sport = SportId
 
