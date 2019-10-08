@@ -166,6 +166,6 @@ case class EditableEvent(var action: String, time: Int, km: Double, kinds: Array
     //val selectHtmlSingleLine = select.toString.lines.mkString(" ")
 
     val description = s"""${common.Formatting.displaySeconds(time)} ${common.Formatting.displayDistance(km)}<br />""" + actionDescription
-    s""""$action", $time, $km, '$description', "$actionOriginal""""
+    s""""$action", '$time', '$km', '$description', "$actionOriginal""""
   }
 }
