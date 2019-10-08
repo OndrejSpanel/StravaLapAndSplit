@@ -170,7 +170,7 @@ object Storage extends FileStore {
         None
       case FormatChanged(x) =>
         println(s"load error ${x.getMessage} - $fullName")
-        gcsService.delete(fileId(fullName.name))
+        storage.delete(fileId(fullName.name))
         None
       case x: Exception =>
         x.printStackTrace()
@@ -199,7 +199,7 @@ object Storage extends FileStore {
   }
 
   def delete(toDelete: FullName): Boolean = {
-    gcsService.delete(fileId(toDelete.name))
+    storage.delete(fileId(toDelete.name))
   }
 
 
@@ -260,57 +260,64 @@ object Storage extends FileStore {
     }.contains(true)
   }
 
+  // not used, consider removing (not well tested on GCS)
   def updateMetadata(file: String, metadata: Seq[(String, String)]): Boolean = {
-    val md = storage.get(bucket, file, BlobGetOption.fields(BlobField.values():_*))
+    val blobId = fileId(file)
+    val md = storage.get(blobId, BlobGetOption.fields(BlobField.values():_*))
     val userData = md.getMetadata.asScala
     val matching = metadata.forall { case (key, name) =>
       userData.get(key).contains(name)
     }
     if (!matching) {
       val md = userData ++ metadata
-      ??? // md.toJava
-      gcsService.update(gcsFilename, builder.build())
+      val blobInfo = BlobInfo
+        .newBuilder(blobId)
+        .setMetadata(md.asJava)
+        .build()
+      storage.update(blobInfo)
     }
     !matching
   }
 
-  def move(oldName: String, newName: String) = {
-    val gcsFilenameOld = fileId(oldName)
-    val gcsFilenameNew = fileId(newName)
+  def move(oldName: String, newName: String) : Unit = {
+    if (oldName != newName) {
+      val gcsFilenameOld = fileId(oldName)
+      val gcsFilenameNew = fileId(newName)
 
-    // read metadata
-    val in = input(FullName(oldName))
+      // read metadata
+      val in = input(FullName(oldName))
 
-    val md = gcsService.getMetadata(gcsFilenameOld)
-    val metadata = if (md != null) md.getOptions.getUserMetadata.asScala.toMap
-    else Map.empty
+      val md = storage.get(bucket, oldName, BlobGetOption.fields(BlobField.values(): _*))
+      val metadata = if (md != null) md.getMetadata
+      else null
 
-    val instance = new GcsFileOptions.Builder()
-    for (m <- metadata) {
-      instance.addUserMetadata(m._1, m._2)
+      val instance = BlobInfo.newBuilder(gcsFilenameNew)
+        .setMetadata(metadata)
+        .setContentType("application/octet-stream").build()
+      val channel = storage.writer(instance)
+
+      val output = Channels.newOutputStream(channel)
+      try {
+        IOUtils.copy(in, output)
+        storage.delete(gcsFilenameOld)
+      } finally {
+        output.close()
+      }
     }
-    val channel = gcsService.createOrReplace(gcsFilenameNew, instance.build)
-    val output = Channels.newOutputStream(channel)
-    try {
-      IOUtils.copy(in, output)
-      gcsService.delete(gcsFilenameOld)
-    } finally {
-      output.close()
-    }
-
   }
 
-  type FileItem = ListItem
+  type FileItem = Blob
 
   def listAllItems(): Iterable[FileItem] = {
-    val options = new ListOptions.Builder().setRecursive(true).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
+
+    val blobs = storage.list(bucket)
+    val list = blobs.iterateAll().asScala
     list
   }
 
-  def itemModified(item: FileItem) = Option(item.getLastModified)
+  def itemModified(item: FileItem) = Option(new java.util.Date(item.getUpdateTime))
 
-  def deleteItem(item: FileItem) = gcsService.delete(new GcsFilename(bucket, item.getName))
+  def deleteItem(item: FileItem) = storage.delete(item.getName)
 
   def itemName(item: FileItem): String = item.getName
 
