@@ -5,7 +5,8 @@ import java.net.{URLDecoder, URLEncoder}
 import java.nio.channels.Channels
 
 import collection.JavaConverters._
-import com.google.appengine.tools.cloudstorage._
+import com.google.cloud.storage.{Option => GCSOption, _}
+import com.google.cloud.storage.Storage._
 import org.apache.commons.io.IOUtils
 
 import scala.reflect.ClassTag
@@ -31,7 +32,7 @@ object Storage extends FileStore {
 
   case class FullName(name: String)
 
-  private def fileId(filename: String) = new GcsFilename(bucket, filename)
+  private def fileId(filename: String) = BlobId.of(bucket, filename)
 
   private def userFilename(namespace: String, filename: String, userId: String) = FullName.apply(namespace, filename, userId)
 
@@ -56,26 +57,24 @@ object Storage extends FileStore {
     }
   }
 
-  private final val gcsService = GcsServiceFactory.createGcsService(
-    new RetryParams.Builder()
-    .initialRetryDelayMillis(10)
-    .retryMaxAttempts(10)
-    .totalRetryPeriodMillis(15000)
-    .build()
-  )
+  val storage = StorageOptions.getDefaultInstance.getService
 
   def output(filename: FullName, metadata: Seq[(String, String)]): OutputStream = {
-    val instance = new GcsFileOptions.Builder()
-    for (m <- metadata) {
-      instance.addUserMetadata(m._1, m._2)
-    }
-    val channel = gcsService.createOrReplace(fileId(filename.name), instance.build)
+    val fid = fileId(filename.name)
+    val instance = BlobInfo.newBuilder(fid)
+      .setMetadata(metadata.toMap.asJava)
+      .setContentType("application/octet-stream").build()
+    val channel = storage.writer(instance)
     Channels.newOutputStream(channel)
   }
 
   def input(filename: FullName): InputStream = {
-    val bufferSize = 1 * 1024 * 1024
-    val readChannel = gcsService.openPrefetchingReadChannel(fileId(filename.name), 0, bufferSize)
+    // TODO: check if any prefetch or other large data optimization can be used for GCS
+    // we used openPrefetchingReadChannel with GAE / gcsService
+    //val bufferSize = 1 * 1024 * 1024
+    //val readChannel = gcsService.openPrefetchingReadChannel(fileId(filename.name), 0, bufferSize)
+    val fid = fileId(filename.name)
+    val readChannel = storage.reader(fid)
 
     Channels.newInputStream(readChannel)
   }
@@ -104,12 +103,14 @@ object Storage extends FileStore {
   def getFullName(stage: String, filename: String, userId: String): FullName = {
     val prefix = FullName(stage, filename, userId)
 
-    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
-    val matches = for (iCandidate <- list) yield {
+    val blobs = storage.list(bucket, BlobListOption.prefix(prefix.name))
+
+    val matches = for (iCandidate <- blobs.iterateAll().asScala) yield {
+      // do something with the blob
       assert(iCandidate.getName.startsWith(prefix.name))
       iCandidate.getName
     }
+
     // multiple matches possible, because of -1 .. -N variants added
     // select only real matches
     val realMatches = matches.toList.filter { name =>
@@ -210,8 +211,8 @@ object Storage extends FileStore {
     }
 
     val prefix = userFilename(namespace, "", userId)
-    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
+    val blobs = storage.list(bucket, BlobListOption.prefix(prefix.name))
+    val list = blobs.iterateAll().asScala
     val actStream = for {
       iCandidate <- list
       iName <- filter.map(f => filterByMetadata(iCandidate.getName, f)).getOrElse(Some(iCandidate.getName))
@@ -224,8 +225,8 @@ object Storage extends FileStore {
 
   def enumerateAll(): Iterable[String] = {
     val prefix = ""
-    val options = new ListOptions.Builder().setPrefix(prefix).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
+    val blobs = storage.list(bucket, BlobListOption.prefix(prefix))
+    val list = blobs.iterateAll().asScala
     for (i <- list) yield {
       assert(i.getName.startsWith(prefix))
       val name = i.getName.drop(prefix.length)
@@ -237,16 +238,17 @@ object Storage extends FileStore {
   def check(namespace: String, userId: String, path: String, digest: String): Boolean = {
 
     val prefix = userFilename(namespace, path, userId)
-    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
-    val found = gcsService.list(bucket, options).asScala.toIterable.headOption
+    val blobs = storage.list(bucket, BlobListOption.prefix(prefix.name))
+    val found = blobs.iterateAll().asScala
 
     // there should be at most one result
-    found.flatMap{i =>
+    found.toSeq.flatMap{i =>
       assert(i.getName.startsWith(prefix.name))
       val name = i.getName.drop(prefix.name.length)
       val m = try {
-        val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
-        val userData = md.getOptions.getUserMetadata.asScala
+        // TODO: get digest only
+        val md = storage.get(bucket, i.getName, BlobGetOption.fields(BlobField.values():_*))
+        val userData = md.getMetadata.asScala
         userData.get("digest").map(_ == digest)
       } catch {
         case e: Exception =>
@@ -259,17 +261,14 @@ object Storage extends FileStore {
   }
 
   def updateMetadata(file: String, metadata: Seq[(String, String)]): Boolean = {
-    val gcsFilename = new GcsFilename(bucket, file)
-    val md = gcsService.getMetadata(gcsFilename)
-    val userData = md.getOptions.getUserMetadata.asScala
+    val md = storage.get(bucket, file, BlobGetOption.fields(BlobField.values():_*))
+    val userData = md.getMetadata.asScala
     val matching = metadata.forall { case (key, name) =>
       userData.get(key).contains(name)
     }
     if (!matching) {
-      val builder = new GcsFileOptions.Builder()
-      for (m <- userData ++ metadata) {
-        builder.addUserMetadata(m._1, m._2)
-      }
+      val md = userData ++ metadata
+      ??? // md.toJava
       gcsService.update(gcsFilename, builder.build())
     }
     !matching

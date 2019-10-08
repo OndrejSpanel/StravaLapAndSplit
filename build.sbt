@@ -128,6 +128,7 @@ lazy val backend = (project in file("backend"))
       "com.google.http-client" % "google-http-client-jackson2" % "1.31.0",
       "com.google.apis" % "google-api-services-storage" % "v1-rev158-1.25.0",
       "com.google.appengine.tools" % "appengine-gcs-client" % "0.8",
+      "com.google.cloud" % "google-cloud-storage" % "1.96.0",
 
       "javax.servlet" % "servlet-api" % "2.5" % "provided",
       "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406" % "provided",
