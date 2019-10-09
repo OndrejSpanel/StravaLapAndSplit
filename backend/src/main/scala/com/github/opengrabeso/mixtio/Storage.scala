@@ -4,6 +4,8 @@ import java.io._
 import java.net.{URLDecoder, URLEncoder}
 import java.nio.channels.Channels
 
+import com.google.auth.oauth2.GoogleCredentials
+
 import collection.JavaConverters._
 import com.google.cloud.storage.{Option => GCSOption, _}
 import com.google.cloud.storage.Storage._
@@ -14,7 +16,7 @@ import scala.reflect.ClassTag
 object Storage extends FileStore {
 
 
-  // from https://cloud.google.com/appengine/docs/java/googlecloudstorageclient/read-write-to-cloud-storage
+  // from https://cloud.google.com/appengine/docs/standard/java/using-cloud-storage
 
   final val bucket = "mixtio.appspot.com"
 
@@ -57,7 +59,8 @@ object Storage extends FileStore {
     }
   }
 
-  val storage = StorageOptions.getDefaultInstance.getService
+  val credentials = GoogleCredentials.getApplicationDefault
+  val storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService
 
   def output(filename: FullName, metadata: Seq[(String, String)]): OutputStream = {
     val fid = fileId(filename.name)
