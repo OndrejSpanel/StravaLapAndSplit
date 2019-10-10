@@ -35,8 +35,7 @@ object ConvertOldData extends DefineRequest("/convert-old-data") {
 
   def html(request: Request, resp: Response) = {
     // add start time metadata to any activities missing them
-
-    QueueFactory.getDefaultQueue add TaskOptions.Builder.withPayload(BackgroundConvert)
+    BackgroundTasks.addTask(BackgroundConvert)
 
     <converted><deferred>Background request initiated</deferred></converted>
   }

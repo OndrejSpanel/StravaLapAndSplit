@@ -52,7 +52,7 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
 
       ret match {
         case Failure(ex: HttpResponseException) if ex.getMessage.contains("duplicate of activity") =>
-          // TODO: parse using regex, print info about a duplicate
+          // it seems as of now (2019) this response is never returned
 
           val DupeIdPattern = "duplicate of activity ([0-9]*)".r.unanchored
           val id = ex.getMessage match {
@@ -67,10 +67,9 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
           //DeferredTaskContext.setDoNotRetry(true)
           //throw ex
         case Success(uploadId) =>
-          val queue = QueueFactory.getDefaultQueue
           println(s"Upload started $uploadId")
           val eta = System.currentTimeMillis() + 3000
-          queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(key, uploadId, auth, eta, sessionId))
+          BackgroundTasks.addTask(WaitForStravaUpload(key, uploadId, auth, eta, sessionId))
 
           Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadInProgress(uploadId))
       }
@@ -86,8 +85,7 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
 
 case class WaitForStravaUpload(key: String, id: Long, auth: Main.StravaAuthResult, eta: Long, sessionId: String) extends DeferredTask {
   private def retry(nextEta: Long) = {
-    val queue = QueueFactory.getDefaultQueue
-    queue add TaskOptions.Builder.withPayload(WaitForStravaUpload(key, id, auth, nextEta, sessionId))
+    BackgroundTasks.addTask(WaitForStravaUpload(key, id, auth, nextEta, sessionId))
   }
 
   def run() = {

@@ -22,7 +22,6 @@ trait UploadResults {
   def uploadMultiple(merged: Seq[ActivityEvents])(auth: StravaAuthResult, sessionId: String): Seq[String] = {
     // store everything into a session storage, and make background tasks to upload it to Strava
 
-    val queue = QueueFactory.getDefaultQueue
     for (upload <- merged) yield {
       val uploadFiltered = upload.applyUploadFilters(auth)
       // export here, or in the worker? Both is possible
@@ -32,8 +31,7 @@ trait UploadResults {
       // are any metadata needed?
       Storage.store(namespace.upload(sessionId), uniqueName, auth.userId, uploadFiltered.header, uploadFiltered)
 
-      // using post with param is not recommended, but it should be OK when not using any payload
-      queue add TaskOptions.Builder.withPayload(UploadResultToStrava(uniqueName, auth, sessionId))
+      BackgroundTasks.addTask(UploadResultToStrava(uniqueName, auth, sessionId))
 
       val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
       val uploadId = Storage.FullName(uploadResultNamespace, uniqueName, auth.userId).name
