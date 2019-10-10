@@ -42,7 +42,8 @@ class PageView(
     val attribs = Seq[EditAttrib](
       EditAttrib("Action", (e, _, _) => e.action.render),
       EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
-      EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render)
+      EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
+      EditAttrib("Event", (e, _, _) => e.originalAction.render),
     )
 
     val table = UdashTable(model.subSeq(_.events), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
@@ -52,10 +53,6 @@ class PageView(
 
     div(
       s.container,s.limitWidth,
-
-      div(
-        repeat(model.subSeq(_.activities))(a => p(a.get.toString).render)
-      ),
 
       div(
         showIfElse(model.subProp(_.loading))(
