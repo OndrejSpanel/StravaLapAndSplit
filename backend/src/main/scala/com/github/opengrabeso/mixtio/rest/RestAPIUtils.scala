@@ -1,5 +1,7 @@
 package com.github.opengrabeso.mixtio.rest
 
+import com.github.opengrabeso.mixtio.requests.BackgroundTasks
+
 import scala.concurrent.{ExecutionContext, Future}
 
 trait RestAPIUtils {
@@ -8,7 +10,7 @@ trait RestAPIUtils {
   }
   // note: Not very efficient, there is no thread pool. Use only for heavy-weight tasks
   def asyncResponse[T](t: =>T): Future[T] = {
-    val threadFactory = com.google.appengine.api.ThreadManager.currentRequestThreadFactory()
+    val threadFactory = BackgroundTasks.currentRequestThreadFactory
 
     implicit object EC extends ExecutionContext {
       def execute(runnable: Runnable) = {

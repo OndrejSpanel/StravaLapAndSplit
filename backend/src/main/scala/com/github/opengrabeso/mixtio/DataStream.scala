@@ -6,6 +6,8 @@ import com.google.appengine.api.ThreadManager
 import mapbox.GetElevation
 import java.time.{ZonedDateTime, Duration => JDuration}
 
+import com.github.opengrabeso.mixtio.requests.BackgroundTasks
+
 import scala.collection.immutable.SortedMap
 import common.Util._
 import common.model._
@@ -531,7 +533,7 @@ class DataStreamGPS(override val stream: DataStreamGPS.GPSStream) extends DataSt
     val timing = Timing.start()
     val cache = new GetElevation.TileCache
     // TODO: handle 50 threads per request limitation gracefully
-    implicit val threadFactor = ThreadManager.currentRequestThreadFactory()
+    implicit val threadFactor = BackgroundTasks.currentRequestThreadFactory
     val elevationFutures = stream.toVector.flatMap {
       case (k, v) =>
         v.elevation.map(elev => (k, elev, cache.possibleRange(v.longitude, v.latitude)))
