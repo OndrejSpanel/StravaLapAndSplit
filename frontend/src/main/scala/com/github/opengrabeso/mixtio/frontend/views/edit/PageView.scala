@@ -12,6 +12,8 @@ import io.udash.bootstrap.table.UdashTable
 import io.udash.component.ComponentId
 import io.udash.css._
 
+import io.udash.bootstrap._
+import BootstrapStyles._
 
 class PageView(
   model: ModelProperty[PageModel],
@@ -61,7 +63,27 @@ class PageView(
             table.render,
           ).render
         )
+      ),
+
+      div(
+        Display.flex(),
+        s.map,
+        id := "map",
+        `class` := "map clearfix",
+        script(
+          //language=JavaScript
+          """
+            mapboxgl.accessToken = 'pk.eyJ1Ijoib3NwYW5lbCIsImEiOiJjaXQwMXBqaGcwMDZ4MnpvM21ibzl2aGM5In0.1DeBqAQXvxLPajeeSK4jQQ';
+            var map = new mapboxgl.Map({
+              container: 'map', // container id
+              style: 'mapbox://styles/mapbox/streets-v11', // stylesheet location
+              center: [15, 42], // starting position [lng, lat]
+              zoom: 9 // starting zoom
+            });
+            """
+        )
       )
+
     )
   }
 }

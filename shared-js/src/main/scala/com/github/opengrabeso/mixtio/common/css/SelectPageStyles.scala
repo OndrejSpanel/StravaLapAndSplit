@@ -63,4 +63,14 @@ object SelectPageStyles extends CssBase {
       display.none
     )
   )
+
+  val map: CssStyle = style(
+    paddingLeft(5 px),
+    top(0 px),
+    bottom(0 px),
+    minWidth(200 px),
+    minHeight(200 px)
+
+  )
+
 }
