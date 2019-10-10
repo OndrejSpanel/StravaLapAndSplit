@@ -23,7 +23,7 @@ object Cleanup extends DefineRequest("/cleanup") {
     val periodic = request.queryParams("periodic")
     if (periodic != null) {
 
-      QueueFactory.getDefaultQueue add TaskOptions.Builder.withPayload(BackgroundCleanup)
+      BackgroundTasks.addTask(BackgroundCleanup)
 
       <cleaned><deferred>Background request initiated</deferred></cleaned>
     } else {

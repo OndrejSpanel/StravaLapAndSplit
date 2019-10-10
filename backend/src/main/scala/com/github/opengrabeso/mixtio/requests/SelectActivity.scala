@@ -63,7 +63,7 @@ trait SelectActivityPart extends HtmlPart with ShowPending with UploadResults wi
     timing.logTime("SelectActivity: recentActivities")
 
     if (true) {
-      QueueFactory.getDefaultQueue add TaskOptions.Builder.withPayload(UserCleanup(auth, neverBefore))
+      BackgroundTasks.addTask(UserCleanup(auth, neverBefore))
     }
     //println(s"Staged ${stagedActivities.mkString("\n  ")}")
     //println(s"Recent ${recentActivities.mkString("\n  ")}")

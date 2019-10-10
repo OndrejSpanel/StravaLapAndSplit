@@ -4,8 +4,11 @@ import java.io._
 import java.net.{URLDecoder, URLEncoder}
 import java.nio.channels.Channels
 
+import com.google.auth.oauth2.GoogleCredentials
+
 import collection.JavaConverters._
-import com.google.appengine.tools.cloudstorage._
+import com.google.cloud.storage.{Option => GCSOption, _}
+import com.google.cloud.storage.Storage._
 import org.apache.commons.io.IOUtils
 
 import scala.reflect.ClassTag
@@ -13,7 +16,7 @@ import scala.reflect.ClassTag
 object Storage extends FileStore {
 
 
-  // from https://cloud.google.com/appengine/docs/java/googlecloudstorageclient/read-write-to-cloud-storage
+  // from https://cloud.google.com/appengine/docs/standard/java/using-cloud-storage
 
   final val bucket = "mixtio.appspot.com"
 
@@ -31,7 +34,7 @@ object Storage extends FileStore {
 
   case class FullName(name: String)
 
-  private def fileId(filename: String) = new GcsFilename(bucket, filename)
+  private def fileId(filename: String) = BlobId.of(bucket, filename)
 
   private def userFilename(namespace: String, filename: String, userId: String) = FullName.apply(namespace, filename, userId)
 
@@ -56,26 +59,25 @@ object Storage extends FileStore {
     }
   }
 
-  private final val gcsService = GcsServiceFactory.createGcsService(
-    new RetryParams.Builder()
-    .initialRetryDelayMillis(10)
-    .retryMaxAttempts(10)
-    .totalRetryPeriodMillis(15000)
-    .build()
-  )
+  val credentials = GoogleCredentials.getApplicationDefault
+  val storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService
 
   def output(filename: FullName, metadata: Seq[(String, String)]): OutputStream = {
-    val instance = new GcsFileOptions.Builder()
-    for (m <- metadata) {
-      instance.addUserMetadata(m._1, m._2)
-    }
-    val channel = gcsService.createOrReplace(fileId(filename.name), instance.build)
+    val fid = fileId(filename.name)
+    val instance = BlobInfo.newBuilder(fid)
+      .setMetadata(metadata.toMap.asJava)
+      .setContentType("application/octet-stream").build()
+    val channel = storage.writer(instance)
     Channels.newOutputStream(channel)
   }
 
   def input(filename: FullName): InputStream = {
-    val bufferSize = 1 * 1024 * 1024
-    val readChannel = gcsService.openPrefetchingReadChannel(fileId(filename.name), 0, bufferSize)
+    // TODO: check if any prefetch or other large data optimization can be used for GCS
+    // we used openPrefetchingReadChannel with GAE / gcsService
+    //val bufferSize = 1 * 1024 * 1024
+    //val readChannel = gcsService.openPrefetchingReadChannel(fileId(filename.name), 0, bufferSize)
+    val fid = fileId(filename.name)
+    val readChannel = storage.reader(fid)
 
     Channels.newInputStream(readChannel)
   }
@@ -104,12 +106,14 @@ object Storage extends FileStore {
   def getFullName(stage: String, filename: String, userId: String): FullName = {
     val prefix = FullName(stage, filename, userId)
 
-    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
-    val matches = for (iCandidate <- list) yield {
+    val blobs = storage.list(bucket, BlobListOption.prefix(prefix.name))
+
+    val matches = for (iCandidate <- blobs.iterateAll().asScala) yield {
+      // do something with the blob
       assert(iCandidate.getName.startsWith(prefix.name))
       iCandidate.getName
     }
+
     // multiple matches possible, because of -1 .. -N variants added
     // select only real matches
     val realMatches = matches.toList.filter { name =>
@@ -135,8 +139,8 @@ object Storage extends FileStore {
           throw new InvalidClassException(s"Read class ${any.getClass.getName}, expected ${classTag.runtimeClass.getName}")
       }
     } catch {
-      case ex: FileNotFoundException =>
-        // reading a file which does not exist - return null
+      case x: StorageException if x.getCode == 404 =>
+        // reading a file which does not exist
         None
     }
   }
@@ -165,11 +169,11 @@ object Storage extends FileStore {
     try {
       loadRawName(fullName)
     } catch {
-      case _: FileNotFoundException =>
+      case x: StorageException if x.getCode == 404 =>
         None
       case FormatChanged(x) =>
         println(s"load error ${x.getMessage} - $fullName")
-        gcsService.delete(fileId(fullName.name))
+        storage.delete(fileId(fullName.name))
         None
       case x: Exception =>
         x.printStackTrace()
@@ -198,7 +202,7 @@ object Storage extends FileStore {
   }
 
   def delete(toDelete: FullName): Boolean = {
-    gcsService.delete(fileId(toDelete.name))
+    storage.delete(fileId(toDelete.name))
   }
 
 
@@ -210,8 +214,8 @@ object Storage extends FileStore {
     }
 
     val prefix = userFilename(namespace, "", userId)
-    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
+    val blobs = storage.list(bucket, BlobListOption.prefix(prefix.name))
+    val list = blobs.iterateAll().asScala
     val actStream = for {
       iCandidate <- list
       iName <- filter.map(f => filterByMetadata(iCandidate.getName, f)).getOrElse(Some(iCandidate.getName))
@@ -224,8 +228,8 @@ object Storage extends FileStore {
 
   def enumerateAll(): Iterable[String] = {
     val prefix = ""
-    val options = new ListOptions.Builder().setPrefix(prefix).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
+    val blobs = storage.list(bucket, BlobListOption.prefix(prefix))
+    val list = blobs.iterateAll().asScala
     for (i <- list) yield {
       assert(i.getName.startsWith(prefix))
       val name = i.getName.drop(prefix.length)
@@ -237,16 +241,17 @@ object Storage extends FileStore {
   def check(namespace: String, userId: String, path: String, digest: String): Boolean = {
 
     val prefix = userFilename(namespace, path, userId)
-    val options = new ListOptions.Builder().setPrefix(prefix.name).build()
-    val found = gcsService.list(bucket, options).asScala.toIterable.headOption
+    val blobs = storage.list(bucket, BlobListOption.prefix(prefix.name))
+    val found = blobs.iterateAll().asScala
 
     // there should be at most one result
-    found.flatMap{i =>
+    found.toSeq.flatMap{i =>
       assert(i.getName.startsWith(prefix.name))
       val name = i.getName.drop(prefix.name.length)
       val m = try {
-        val md = gcsService.getMetadata(new GcsFilename(bucket, i.getName))
-        val userData = md.getOptions.getUserMetadata.asScala
+        // TODO: get digest only
+        val md = storage.get(bucket, i.getName, BlobGetOption.fields(BlobField.values():_*))
+        val userData = md.getMetadata.asScala
         userData.get("digest").map(_ == digest)
       } catch {
         case e: Exception =>
@@ -258,60 +263,64 @@ object Storage extends FileStore {
     }.contains(true)
   }
 
+  // not used, consider removing (not well tested on GCS)
   def updateMetadata(file: String, metadata: Seq[(String, String)]): Boolean = {
-    val gcsFilename = new GcsFilename(bucket, file)
-    val md = gcsService.getMetadata(gcsFilename)
-    val userData = md.getOptions.getUserMetadata.asScala
+    val blobId = fileId(file)
+    val md = storage.get(blobId, BlobGetOption.fields(BlobField.values():_*))
+    val userData = md.getMetadata.asScala
     val matching = metadata.forall { case (key, name) =>
       userData.get(key).contains(name)
     }
     if (!matching) {
-      val builder = new GcsFileOptions.Builder()
-      for (m <- userData ++ metadata) {
-        builder.addUserMetadata(m._1, m._2)
-      }
-      gcsService.update(gcsFilename, builder.build())
+      val md = userData ++ metadata
+      val blobInfo = BlobInfo
+        .newBuilder(blobId)
+        .setMetadata(md.asJava)
+        .build()
+      storage.update(blobInfo)
     }
     !matching
   }
 
-  def move(oldName: String, newName: String) = {
-    val gcsFilenameOld = fileId(oldName)
-    val gcsFilenameNew = fileId(newName)
+  def move(oldName: String, newName: String) : Unit = {
+    if (oldName != newName) {
+      val gcsFilenameOld = fileId(oldName)
+      val gcsFilenameNew = fileId(newName)
 
-    // read metadata
-    val in = input(FullName(oldName))
+      // read metadata
+      val in = input(FullName(oldName))
 
-    val md = gcsService.getMetadata(gcsFilenameOld)
-    val metadata = if (md != null) md.getOptions.getUserMetadata.asScala.toMap
-    else Map.empty
+      val md = storage.get(bucket, oldName, BlobGetOption.fields(BlobField.values(): _*))
+      val metadata = if (md != null) md.getMetadata
+      else null
 
-    val instance = new GcsFileOptions.Builder()
-    for (m <- metadata) {
-      instance.addUserMetadata(m._1, m._2)
+      val instance = BlobInfo.newBuilder(gcsFilenameNew)
+        .setMetadata(metadata)
+        .setContentType("application/octet-stream").build()
+      val channel = storage.writer(instance)
+
+      val output = Channels.newOutputStream(channel)
+      try {
+        IOUtils.copy(in, output)
+        storage.delete(gcsFilenameOld)
+      } finally {
+        output.close()
+      }
     }
-    val channel = gcsService.createOrReplace(gcsFilenameNew, instance.build)
-    val output = Channels.newOutputStream(channel)
-    try {
-      IOUtils.copy(in, output)
-      gcsService.delete(gcsFilenameOld)
-    } finally {
-      output.close()
-    }
-
   }
 
-  type FileItem = ListItem
+  type FileItem = Blob
 
   def listAllItems(): Iterable[FileItem] = {
-    val options = new ListOptions.Builder().setRecursive(true).build()
-    val list = gcsService.list(bucket, options).asScala.toIterable
+
+    val blobs = storage.list(bucket)
+    val list = blobs.iterateAll().asScala
     list
   }
 
-  def itemModified(item: FileItem) = Option(item.getLastModified)
+  def itemModified(item: FileItem) = Option(new java.util.Date(item.getUpdateTime))
 
-  def deleteItem(item: FileItem) = gcsService.delete(new GcsFilename(bucket, item.getName))
+  def deleteItem(item: FileItem) = storage.delete(item.getName)
 
   def itemName(item: FileItem): String = item.getName
 

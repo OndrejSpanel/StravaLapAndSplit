@@ -26,3 +26,4 @@ target
 
 /backend/src/main/resources/secret.txt
 
+/backend/src/main/resources/mixtio-*.json
