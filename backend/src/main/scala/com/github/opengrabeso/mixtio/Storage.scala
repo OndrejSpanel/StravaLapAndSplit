@@ -139,8 +139,8 @@ object Storage extends FileStore {
           throw new InvalidClassException(s"Read class ${any.getClass.getName}, expected ${classTag.runtimeClass.getName}")
       }
     } catch {
-      case ex: FileNotFoundException =>
-        // reading a file which does not exist - return null
+      case x: StorageException if x.getCode == 404 =>
+        // reading a file which does not exist
         None
     }
   }
@@ -169,7 +169,7 @@ object Storage extends FileStore {
     try {
       loadRawName(fullName)
     } catch {
-      case _: FileNotFoundException =>
+      case x: StorageException if x.getCode == 404 =>
         None
       case FormatChanged(x) =>
         println(s"load error ${x.getMessage} - $fullName")
