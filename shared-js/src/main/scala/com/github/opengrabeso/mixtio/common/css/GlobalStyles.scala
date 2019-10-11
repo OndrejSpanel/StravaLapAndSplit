@@ -78,21 +78,19 @@ object GlobalStyles extends CssBase {
 
   )
 
-  style(
-    unsafeRoot("#header") (
-      backgroundColor(c"#fca"),
-      overflow.auto,
-      flexGrow(0), // otherwise .container > div overrides
-      flexDirection.column
-    )
+  val headerFooterCommon = mixin(
+    backgroundColor(c"#fca"),
+    overflow.auto,
+    flexGrow(0),
+    flexDirection.column
   )
 
   style(
-    unsafeRoot("#footer") (
-      backgroundColor(c"#fca"),
-      flexGrow(0), // otherwise .container > div overrides
-      overflow.auto
-    )
+    unsafeRoot("#header") (headerFooterCommon)
+  )
+
+  style(
+    unsafeRoot("#footer") (headerFooterCommon)
   )
 
 
