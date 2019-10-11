@@ -3,7 +3,8 @@ package frontend.views
 
 import frontend.model._
 import facade.UdashApp._
-import facade.mapboxgl
+import facade._
+import org.scalajs.dom
 
 import scala.scalajs.js
 import js.Dynamic.literal
@@ -20,9 +21,22 @@ object MapboxMap {
       zoom = 13 // starting zoom
     ))
     val route = js.JSON.parse(geojson).asInstanceOf[js.Array[js.Array[Double]]]
+
+    def moveHandler() = {
+      val existing = map.getSource("events")
+      if (existing.isDefined) {
+        val data = existing.get._data
+        renderGrid(map, data.features.asInstanceOf[js.Array[js.Dynamic]](0).geometry.coordinates.asInstanceOf[js.Array[Double]])
+      }
+    }
+    map.on("moveend", () => moveHandler())
+    map.on("move", () => moveHandler())
+
+
     map.on("load", { () =>
       renderRoute(map, route)
       renderEvents(map, events, route)
+      renderGrid(map, route(0))
     })
 
   }
@@ -202,4 +216,125 @@ object MapboxMap {
     ))
   }
 
+  case class GridAndAlpha(grid: js.Array[js.Array[js.Array[Double]]], alpha: Double)
+
+  def generateGrid(bounds: Bounds, size: Size, fixedPoint: js.Array[Double]): GridAndAlpha = {
+    // TODO: pad the bounds to make sure we draw the lines a little longer
+    val grid_box = bounds
+    val avg_y = (grid_box._ne.lat + grid_box._sw.lat) * 0.5
+    // Meridian length is always the same
+    val meridian = 20003930.0
+    val equator = 40075160
+    val parallel = Math.cos(avg_y * Math.PI / 180) * equator
+    val grid_distance = 1000.0
+    val grid_step_x = grid_distance / parallel * 360
+    val grid_step_y = grid_distance / meridian * 180
+    val minSize = Math.max(size.x, size.y)
+    val minLineDistance = 10
+    val maxLines = minSize / minLineDistance
+    val latLines = _latLines(bounds, fixedPoint, grid_step_y, maxLines)
+    val lngLines = _lngLines(bounds, fixedPoint, grid_step_x, maxLines)
+    val alpha = Math.min(latLines.alpha, lngLines.alpha)
+    if (latLines.lines.length > 0 && lngLines.lines.length > 0) {
+      val grid = latLines.lines.flatMap(i => if (Math.abs(i) > 90) {
+          None
+        } else {
+          Some(_horizontalLine(bounds, i, alpha))
+        })
+      grid ++= lngLines.lines.map { i =>
+        _verticalLine(bounds, i, alpha)
+      }
+      return GridAndAlpha(grid, alpha)
+    }
+    GridAndAlpha(js.Array(), 0)
+  }
+
+  case class Size(x: Double, y: Double)
+
+  def renderGrid(map: mapboxgl.Map, fixedPoint: js.Array[Double]): Unit = {
+    val container = map.getContainer()
+    val size = Size(
+      x = container.clientWidth,
+      y = container.clientHeight
+    )
+    val gridAndAlpha = generateGrid(map.getBounds(), size, fixedPoint)
+    val grid = gridAndAlpha.grid
+    val alpha = gridAndAlpha.alpha
+    val gridData = new js.Object {
+      var `type` = "Feature"
+      var properties = new js.Object {}
+      var geometry = new js.Object {
+        var `type` = "MultiLineString"
+        var coordinates = grid
+      }
+    }
+    val existing = map.getSource("grid")
+    if (existing.isDefined) {
+      existing.get.setData(gridData)
+      map.setPaintProperty("grid", "line-opacity", alpha)
+      map.setLayoutProperty("grid", "visibility", if (alpha > 0) "visible" else "none")
+    } else {
+      map.addSource("grid", new js.Object {
+        var `type` = "geojson"
+        var data = gridData
+      })
+      map.addLayer(new js.Object {
+        var id = "grid"
+        var `type` = "line"
+        var source = "grid"
+        var layout = new js.Object {
+          var `line-join` = "round"
+          var `line-cap` = "round"
+        }
+        var paint = new js.Object {
+          var `line-color` = "#e40"
+          var `line-width` = 2
+          var `line-opacity` = alpha
+        }
+      })
+    }
+    // icon list see https://www.mapbox.com/maki-icons/ or see https://github.com/mapbox/mapbox-gl-styles/tree/master/sprites/basic-v9/_svg
+    // basic geometric shapes, each also with - stroke variant:
+    //   star, star-stroke, circle, circle-stroked, triangle, triangle-stroked, square, square-stroked
+    //
+    // specific, but generic enough:
+    //   marker, cross, heart (Maki only?)
+  }
+
+  private case class AlphaLines(alpha: Double, lines: js.Array[Double])
+
+  private def _latLines(bounds: Bounds, fixedPoint: js.Array[Double], yticks: Double, maxLines: Double): AlphaLines = {
+    _lines(bounds._sw.lat, bounds._ne.lat, yticks, maxLines, fixedPoint(1))
+  }
+
+  private def _lngLines(bounds: Bounds, fixedPoint: js.Array[Double], xticks: Double, maxLines: Double): AlphaLines = {
+    _lines(bounds._sw.lng, bounds._ne.lng, xticks, maxLines, fixedPoint(0))
+  }
+
+  private def _lines(low: Double, high: Double, ticks: Double, maxLines: Double, fixedCoord: Double): AlphaLines = {
+    val delta = high - low
+    val lowAligned = Math.floor((low - fixedCoord) / ticks) * ticks + fixedCoord
+    val lines = new js.Array[Double]
+    if (delta / ticks <= maxLines) {
+      var i = lowAligned;
+      while (i <= high) {
+        lines.push(i)
+        i += ticks
+      }
+    }
+    val aScale = 15
+    val a = maxLines / aScale / (delta / ticks)
+    AlphaLines(
+      lines = lines,
+      alpha = Math.min(1, Math.sqrt(a))
+    )
+  }
+
+  private def _verticalLine(bounds: Bounds, lng: Double, alpha: Double) = {
+    js.Array(js.Array(lng, bounds.getNorth()), js.Array(lng, bounds.getSouth()))
+  }
+
+  private def _horizontalLine(bounds: Bounds, lat: Double, alpha: Double) = {
+    js.Array(js.Array(bounds.getWest(), lat), js.Array(bounds.getEast(), lat))
+  }
 }
