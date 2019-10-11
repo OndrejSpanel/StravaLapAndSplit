@@ -3,6 +3,8 @@ package frontend
 package views.edit
 
 import java.time.ZonedDateTime
+
+import com.github.opengrabeso.mixtio.frontend.model.EditEvent
 import common.model._
 import io.udash._
 

@@ -3,6 +3,7 @@ package frontend
 package views.edit
 import com.github.opengrabeso.mixtio.facade.UdashApp
 import common.model._
+import model._
 import routing.{EditPageState, RoutingState}
 import io.udash._
 

@@ -1,11 +1,10 @@
 package com.github.opengrabeso.mixtio
-package frontend
-package views.edit
-
-import java.time.temporal.ChronoUnit
+package frontend.model
 
 import java.time.ZonedDateTime
-import common.model._
+import java.time.temporal.ChronoUnit
+
+import com.github.opengrabeso.mixtio.common.model.Event
 import io.udash.HasModelPropertyCreator
 
 case class EditEvent(action: String, time: Int, km: Double, originalAction: String)
