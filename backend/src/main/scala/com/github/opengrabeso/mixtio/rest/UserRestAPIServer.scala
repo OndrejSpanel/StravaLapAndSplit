@@ -137,4 +137,16 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     }
   }
 
+  def routeData(id: FileId) = syncResponse {
+    // TODO: consider some activity caching on the frontend/backend side
+    Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId)).fold {
+      "{}" // return empty JSON
+    } { activity =>
+      // TODO: use Json instead of a String for the REST data
+      activity.routeJS
+    }
+
+  }
+
+
 }

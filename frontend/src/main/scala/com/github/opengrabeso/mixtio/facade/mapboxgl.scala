@@ -7,5 +7,11 @@ import scala.scalajs.js.annotation._
 @js.native
 object mapboxgl extends js.Any {
   var accessToken: String = js.native
-  class Map(options: js.Object) extends js.Object
+
+  @js.native
+  class Map(options: js.Object) extends js.Object {
+    def addSource(name: String, content: js.Object): Unit = js.native
+    def addLayer(layer: js.Object): Unit = js.native
+    def on(event: String, callback: js.Function0[Unit]): Unit = js.native
+  }
 }

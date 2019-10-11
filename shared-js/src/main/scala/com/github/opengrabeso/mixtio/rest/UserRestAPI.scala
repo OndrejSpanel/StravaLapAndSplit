@@ -34,6 +34,9 @@ trait UserRestAPI {
 
   /// this will create one activity in the "edit" namespace
   def mergeActivitiesToEdit(ids: Seq[FileId], sessionId: String): Future[Option[(FileId, Seq[(Event, Double)])]]
+
+  /// return GeoJSON directly usable for mapboxgl
+  def routeData(id: FileId): Future[String]
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

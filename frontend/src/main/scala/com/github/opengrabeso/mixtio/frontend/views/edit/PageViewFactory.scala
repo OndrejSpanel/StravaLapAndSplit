@@ -30,11 +30,15 @@ class PageViewFactory(
             EditEvent(first._1.stamp, event, dist)
           }
         }
+        for (routeJs <- userService.api.get.routeData(activity.get)) {
+          model.subProp(_.routeJS).set(Some(routeJs))
+        }
       } else {
         model.subProp(_.events).set(Nil)
       }
       model.subProp(_.loading).set(false)
     }
+
 
     val presenter = new PagePresenter(model, userService, application)
     val view = new PageView(model, presenter)

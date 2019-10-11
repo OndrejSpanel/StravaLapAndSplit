@@ -33,9 +33,9 @@ class PageView(
 
   buttonOnClick(submitButton){presenter.gotoSelect()}
 
-  model.subProp(_.loading).listen { loading =>
-    if (!loading) {
-      displayMapboxMap()
+  model.subProp(_.routeJS).listen {
+    _.foreach { geojson =>
+      displayMapboxMap(geojson)
     }
   }
 
@@ -78,10 +78,12 @@ class PageView(
     )
   }
 
-  def displayMapboxMap(): Unit = {
-    import facade.UdashApp._
-    import facade.mapboxgl
-    import scala.scalajs.js
+  import facade.UdashApp._
+  import facade.mapboxgl
+  import scala.scalajs.js
+  import js.Dynamic.literal
+
+  def displayMapboxMap(geojson: String): Unit = {
     mapboxgl.accessToken = mapBoxToken;
     val map = new mapboxgl.Map(js.Dynamic.literal(
       container = "map", // container id
@@ -89,5 +91,44 @@ class PageView(
       center = js.Array(14.5, 49.8), // starting position [lng, lat]
       zoom = 13 // starting zoom
     ))
+    map.on("load", { () =>
+      renderRoute(map, geojson)
+    })
+
   }
+
+  def renderRoute(map: mapboxgl.Map, routeJson: String): Unit = {
+    val route = js.JSON.parse(routeJson)
+
+    val routeLL = route.asInstanceOf[js.Array[js.Array[Double]]].map { i =>
+      js.Array(i(0).toDouble, i(1).toDouble)
+    }
+
+    map.addSource("route", literal (
+      `type` = "geojson",
+      data = literal(
+        `type` = "Feature",
+        properties = literal(),
+        geometry = literal(
+          `type` = "LineString",
+          coordinates = routeLL
+        )
+      )
+    ));
+
+    map.addLayer(literal(
+      id ="route",
+      `type` = "line",
+      source = "route",
+      layout = literal(
+        "line-join" -> "round",
+        "line-cap" -> "round"
+      ),
+      paint = literal(
+        "line-color" -> "#F44",
+        "line-width" -> 3
+      )
+    ))
+  }
+
 }
