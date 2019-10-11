@@ -11,7 +11,6 @@ import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.table.UdashTable
 import io.udash.component.ComponentId
 import io.udash.css._
-
 import io.udash.bootstrap._
 import BootstrapStyles._
 
@@ -33,6 +32,12 @@ class PageView(
   }
 
   buttonOnClick(submitButton){presenter.gotoSelect()}
+
+  model.subProp(_.loading).listen { loading =>
+    if (!loading) {
+      displayMapboxMap()
+    }
+  }
 
   def getTemplate: Modifier = {
 
@@ -67,21 +72,22 @@ class PageView(
 
       div(
         s.map,
-        id := "map",
-        script(
-          //language=JavaScript
-          """
-            mapboxgl.accessToken = 'pk.eyJ1Ijoib3NwYW5lbCIsImEiOiJjaXQwMXBqaGcwMDZ4MnpvM21ibzl2aGM5In0.1DeBqAQXvxLPajeeSK4jQQ';
-            var map = new mapboxgl.Map({
-              container: 'map', // container id
-              style: 'mapbox://styles/mapbox/streets-v11', // stylesheet location
-              center: [15, 42], // starting position [lng, lat]
-              zoom: 9 // starting zoom
-            });
-            """
-        )
+        id := "map"
       )
 
     )
+  }
+
+  def displayMapboxMap(): Unit = {
+    import facade.UdashApp._
+    import facade.mapboxgl
+    import scala.scalajs.js
+    mapboxgl.accessToken = mapBoxToken;
+    val map = new mapboxgl.Map(js.Dynamic.literal(
+      container = "map", // container id
+      style = "mapbox://styles/ospanel/cjkbfwccz11972rmt4xvmvme6", // stylesheet location
+      center = js.Array(14.5, 49.8), // starting position [lng, lat]
+      zoom = 13 // starting zoom
+    ))
   }
 }

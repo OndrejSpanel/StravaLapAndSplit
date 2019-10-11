@@ -16,9 +16,10 @@ object UdashApp  extends DefineRequest("app") {
         <link href="frontend/main.css" rel="stylesheet" /> {/* Udash generated stylesheet*/ }
         <script src='https://api.mapbox.com/mapbox-gl-js/v1.0.0/mapbox-gl.js'></script>
         <link href='https://api.mapbox.com/mapbox-gl-js/v1.0.0/mapbox-gl.css' rel='stylesheet' />
-        <script>
+        <script> // no secrets should be inserted here, this is readable by any end-user
           var currentUserId = '{auth.userId}';
           var sessionId = `{System.currentTimeMillis().toString}`; // time when the session was created on the server
+          var mapBoxToken = `{auth.mapboxToken}`;
           appMain()
         </script>
       </head>
