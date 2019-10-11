@@ -14,72 +14,9 @@ import io.udash.css._
 import io.udash.bootstrap._
 import BootstrapStyles._
 
-class PageView(
-  model: ModelProperty[PageModel],
-  presenter: PagePresenter,
-) extends FinalView with CssView {
-  val s = EditPageStyles
+import PageView._
 
-  import scalatags.JsDom.all._
-
-  private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
-
-  def buttonOnClick(button: UdashButton)(callback: => Unit): Unit = {
-    button.listen {
-      case UdashButton.ButtonClickEvent(_, _) =>
-        callback
-    }
-  }
-
-  buttonOnClick(submitButton){presenter.gotoSelect()}
-
-  model.subProp(_.routeJS).listen {
-    _.foreach { geojson =>
-      // events should always be ready before the route
-      val events = model.subProp(_.events).get
-      displayMapboxMap(geojson, events)
-    }
-  }
-
-  def getTemplate: Modifier = {
-
-    // value is a callback
-    type EditAttrib = TableFactory.TableAttrib[EditEvent]
-    val EditAttrib = TableFactory.TableAttrib
-
-    //case class EditEvent(action: String, time: Int, km: Double, originalAction: String)
-    val attribs = Seq[EditAttrib](
-      EditAttrib("Action", (e, _, _) => e.action.render),
-      EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
-      EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
-      EditAttrib("Event", (e, _, _) => e.originalAction.render),
-    )
-
-    val table = UdashTable(model.subSeq(_.events), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
-      headerFactory = Some(TableFactory.headerFactory(attribs )),
-      rowFactory = TableFactory.rowFactory(attribs)
-    )
-
-    div(
-      s.container,
-
-      div(
-        showIfElse(model.subProp(_.loading))(
-          p("Loading...").render,
-          div(
-            table.render,
-          ).render
-        )
-      ),
-
-      div(
-        s.map,
-        id := "map"
-      )
-
-    )
-  }
-
+object PageView {
   import facade.UdashApp._
   import facade.mapboxgl
   import scala.scalajs.js
@@ -87,7 +24,7 @@ class PageView(
   import js.JSConverters._
 
   def displayMapboxMap(geojson: String, events: Seq[EditEvent]): Unit = {
-    mapboxgl.accessToken = mapBoxToken;
+    mapboxgl.accessToken = mapBoxToken
     val map = new mapboxgl.Map(js.Dynamic.literal(
       container = "map", // container id
       style = "mapbox://styles/ospanel/cjkbfwccz11972rmt4xvmvme6", // stylesheet location
@@ -104,9 +41,7 @@ class PageView(
 
   def renderRoute(map: mapboxgl.Map, route: js.Array[js.Array[Double]]): Unit = {
 
-    val routeLL = route.map { i =>
-      js.Array(i(0).toDouble, i(1).toDouble)
-    }
+    val routeLL = route.map(i => js.Array(i(0), i(1)))
 
     map.addSource("route", literal (
       `type` = "geojson",
@@ -118,7 +53,7 @@ class PageView(
           coordinates = routeLL
         )
       )
-    ));
+    ))
 
     map.addLayer(literal(
       id ="route",
@@ -220,6 +155,15 @@ class PageView(
 
     val markers = startMarker +: eventMarkers :+ endMarker
 
+    val iconLayout = literal(
+      "icon-image" -> "{icon}-11",
+      "text-field" -> "{title}",
+      "text-font" -> js.Array("Open Sans Semibold", "Arial Unicode MS Bold"),
+      "text-size" -> 10,
+      "text-offset" -> js.Array(0, 0.6),
+      "text-anchor" -> "top"
+    )
+
     map.addSource("events", literal(
       `type` = "geojson",
       data = literal(
@@ -231,14 +175,7 @@ class PageView(
       id = "events",
       `type` = "symbol",
       source = "events",
-      layout = literal(
-        "icon-image" -> "{icon}-11",
-        "text-field" -> "{title}",
-        "text-font" -> js.Array("Open Sans Semibold", "Arial Unicode MS Bold"),
-        "text-size" -> 10,
-        "text-offset" -> js.Array(0, 0.6),
-        "text-anchor" -> "top"
-      )
+      layout = iconLayout
     ))
     var lastKm = 0.0
     val kmMarkers = route.flatMap {r =>
@@ -266,22 +203,81 @@ class PageView(
       `type` = "geojson",
       data = literal(
         `type` = "FeatureCollection",
-        features = kmMarkers
+        features = kmMarkers.toJSArray
       )
     ))
     map.addLayer(literal(
       id = "kms",
       `type` = "symbol",
       source = "kms",
-      layout = literal(
-        "icon-image" -> "{icon}-11",
-        "text-field" -> "{title}",
-        "text-font" -> js.Array("Open Sans Semibold", "Arial Unicode MS Bold"),
-        "text-size" -> 10,
-        "text-offset" -> js.Array(0, 0.6),
-        "text-anchor" -> "top"
-      )
+      layout = iconLayout
     ))
   }
 
+}
+class PageView(
+  model: ModelProperty[PageModel],
+  presenter: PagePresenter,
+) extends FinalView with CssView {
+  val s = EditPageStyles
+
+  import scalatags.JsDom.all._
+
+  private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
+
+  def buttonOnClick(button: UdashButton)(callback: => Unit): Unit = {
+    button.listen {
+      case UdashButton.ButtonClickEvent(_, _) =>
+        callback
+    }
+  }
+
+  buttonOnClick(submitButton){presenter.gotoSelect()}
+
+  model.subProp(_.routeJS).listen {
+    _.foreach { geojson =>
+      // events should always be ready before the route
+      val events = model.subProp(_.events).get
+      displayMapboxMap(geojson, events)
+    }
+  }
+
+  def getTemplate: Modifier = {
+
+    // value is a callback
+    type EditAttrib = TableFactory.TableAttrib[EditEvent]
+    val EditAttrib = TableFactory.TableAttrib
+
+    //case class EditEvent(action: String, time: Int, km: Double, originalAction: String)
+    val attribs = Seq[EditAttrib](
+      EditAttrib("Action", (e, _, _) => e.action.render),
+      EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
+      EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
+      EditAttrib("Event", (e, _, _) => e.originalAction.render),
+    )
+
+    val table = UdashTable(model.subSeq(_.events), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
+      headerFactory = Some(TableFactory.headerFactory(attribs )),
+      rowFactory = TableFactory.rowFactory(attribs)
+    )
+
+    div(
+      s.container,
+
+      div(
+        showIfElse(model.subProp(_.loading))(
+          p("Loading...").render,
+          div(
+            table.render,
+          ).render
+        )
+      ),
+
+      div(
+        s.map,
+        id := "map"
+      )
+
+    )
+  }
 }
