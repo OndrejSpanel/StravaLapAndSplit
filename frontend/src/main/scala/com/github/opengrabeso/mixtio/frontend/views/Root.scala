@@ -79,7 +79,7 @@ object Root {
 
       Seq(
         div(
-          GlobalStyles.header,
+          //GlobalStyles.header,
           id := "header",
           table(
             tbody(
@@ -110,7 +110,7 @@ object Root {
 
     val footer: Seq[HTMLElement] = Seq(
       div(
-        GlobalStyles.footer,
+        //GlobalStyles.footer,
         id := "footer",
         a(
           href := "http://labs.strava.com/",

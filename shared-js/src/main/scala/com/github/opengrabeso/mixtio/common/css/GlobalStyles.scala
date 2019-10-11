@@ -34,19 +34,6 @@ object GlobalStyles extends CssBase {
     )
   )
 
-  val header: CssStyle = style(
-    backgroundColor(c"#fca"),
-    overflow.auto,
-    flexGrow(0).important, // otherwise .container > div overrides
-    flexDirection.column
-  )
-
-  val footer: CssStyle = style(
-    backgroundColor(c"#fca"),
-    flexGrow(0).important, // otherwise .container > div overrides
-    overflow.auto
-  )
-
   val stravaImg: CssStyle = style(
     maxHeight.apply(46 px)
   )
@@ -90,4 +77,23 @@ object GlobalStyles extends CssBase {
     )
 
   )
+
+  style(
+    unsafeRoot("#header") (
+      backgroundColor(c"#fca"),
+      overflow.auto,
+      flexGrow(0), // otherwise .container > div overrides
+      flexDirection.column
+    )
+  )
+
+  style(
+    unsafeRoot("#footer") (
+      backgroundColor(c"#fca"),
+      flexGrow(0), // otherwise .container > div overrides
+      overflow.auto
+    )
+  )
+
+
 }
