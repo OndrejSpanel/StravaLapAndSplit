@@ -103,16 +103,14 @@ object Root {
               )
             )
           )
-        ).render,
-        p().render
+        ).render
       )
     }
 
 
     val footer: Seq[HTMLElement] = Seq(
-      p().render,
       div(
-        GlobalStyles.header,
+        GlobalStyles.footer,
         id := "footer",
         a(
           href := "http://labs.strava.com/",

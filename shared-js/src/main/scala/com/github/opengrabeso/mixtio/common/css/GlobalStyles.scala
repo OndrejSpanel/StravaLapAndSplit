@@ -36,6 +36,14 @@ object GlobalStyles extends CssBase {
 
   val header: CssStyle = style(
     backgroundColor(c"#fca"),
+    overflow.auto,
+    flexGrow(0).important, // otherwise .container > div overrides
+    flexDirection.column
+  )
+
+  val footer: CssStyle = style(
+    backgroundColor(c"#fca"),
+    flexGrow(0).important, // otherwise .container > div overrides
     overflow.auto
   )
 
@@ -48,5 +56,38 @@ object GlobalStyles extends CssBase {
   )
   val footerLink: CssStyle = style(
     color.inherit
+  )
+
+  style(
+    unsafeRoot("body")(
+      display.flex,
+      flexDirection.column,
+      padding.`0`,
+      margin.`0`,
+      height(100 %%)
+    ),
+    unsafeRoot("html")(
+      padding.`0`,
+      margin.`0`,
+      height(100 %%)
+    ),
+    unsafeRoot("#application")(
+      display.flex,
+      flexDirection.column,
+      flexGrow(1)
+    ),
+
+    unsafeRoot(".container")(
+      maxWidth(100 vw).important, // remove default Bootstrap width limitations
+      display.flex,
+      flexDirection.column,
+      flexGrow(1)
+    ),
+    unsafeRoot(".container > div")(
+      display.flex,
+      flexDirection.column,
+      flexGrow(1)
+    )
+
   )
 }

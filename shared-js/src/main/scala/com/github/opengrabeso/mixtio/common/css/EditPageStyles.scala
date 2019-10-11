@@ -4,7 +4,7 @@ import io.udash.css._
 
 import scala.language.postfixOps
 
-object SelectPageStyles extends CssBase {
+object EditPageStyles extends CssBase {
 
   import dsl._
 
@@ -17,8 +17,18 @@ object SelectPageStyles extends CssBase {
   )
 
   val container: CssStyle = style(
-    margin.auto,
     marginTop(10 px),
+
+    flexGrow(1),
+    display.flex,
+    flexDirection.row,
+    media.maxWidth(900 px)(
+      flexDirection.column
+    ),
+    media.maxAspectRatio(1 :/: 1)(
+      flexDirection.column
+    ),
+    flexWrap.wrap,
 
     padding(5 px),
     borderColor.lightgray,
@@ -62,6 +72,16 @@ object SelectPageStyles extends CssBase {
     media.minWidth(minWide)(
       display.none
     )
+  )
+
+  val map: CssStyle = style(
+    flexGrow(1),
+    paddingLeft(5 px),
+    top(0 px),
+    bottom(0 px),
+    minWidth(200 px),
+    minHeight(200 px)
+
   )
 
 }

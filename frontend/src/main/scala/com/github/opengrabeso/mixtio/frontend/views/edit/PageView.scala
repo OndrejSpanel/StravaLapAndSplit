@@ -19,7 +19,7 @@ class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
 ) extends FinalView with CssView {
-  val s = SelectPageStyles
+  val s = EditPageStyles
 
   import scalatags.JsDom.all._
 
@@ -54,7 +54,7 @@ class PageView(
     )
 
     div(
-      s.container,s.limitWidth,
+      s.container,
 
       div(
         showIfElse(model.subProp(_.loading))(
@@ -66,10 +66,8 @@ class PageView(
       ),
 
       div(
-        Display.flex(),
         s.map,
         id := "map",
-        `class` := "map clearfix",
         script(
           //language=JavaScript
           """
