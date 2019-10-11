@@ -13,14 +13,37 @@ import js.JSConverters._
 object MapboxMap {
 
   def display(geojson: String, events: Seq[EditEvent]): Unit = {
+    val route = js.JSON.parse(geojson).asInstanceOf[js.Array[js.Array[Double]]]
+    val routeX = route.map(_(0))
+    val routeY = route.map(_(1))
+    val minX = routeX.min
+    val maxX = routeX.max
+    val minY = routeY.min
+    val maxY = routeY.max
+
+    val bounds = LngLatBounds(
+      _ne = LngLat(
+        lat = minY,
+        lng = minX
+      ),
+      _sw = LngLat (
+        lat = maxY,
+        lng = maxX
+      )
+    )
+
     mapboxgl.accessToken = mapBoxToken
     val map = new mapboxgl.Map(js.Dynamic.literal(
       container = "map", // container id
       style = "mapbox://styles/ospanel/cjkbfwccz11972rmt4xvmvme6", // stylesheet location
-      center = js.Array(14.5, 49.8), // starting position [lng, lat]
+      center = js.Array((minX + maxX) / 2, (minY + maxY) / 2), // starting position [lng, lat]
       zoom = 13 // starting zoom
     ))
-    val route = js.JSON.parse(geojson).asInstanceOf[js.Array[js.Array[Double]]]
+    val fitOptions = literal(
+      padding = 50
+    )
+    map.fitBounds(bounds, fitOptions)
+
 
     def moveHandler() = {
       val existing = map.getSource("events")
@@ -218,7 +241,7 @@ object MapboxMap {
 
   case class GridAndAlpha(grid: js.Array[js.Array[js.Array[Double]]], alpha: Double)
 
-  def generateGrid(bounds: Bounds, size: Size, fixedPoint: js.Array[Double]): GridAndAlpha = {
+  def generateGrid(bounds: LngLatBounds, size: Size, fixedPoint: js.Array[Double]): GridAndAlpha = {
     // TODO: pad the bounds to make sure we draw the lines a little longer
     val grid_box = bounds
     val avg_y = (grid_box._ne.lat + grid_box._sw.lat) * 0.5
@@ -303,11 +326,11 @@ object MapboxMap {
 
   private case class AlphaLines(alpha: Double, lines: js.Array[Double])
 
-  private def _latLines(bounds: Bounds, fixedPoint: js.Array[Double], yticks: Double, maxLines: Double): AlphaLines = {
+  private def _latLines(bounds: LngLatBounds, fixedPoint: js.Array[Double], yticks: Double, maxLines: Double): AlphaLines = {
     _lines(bounds._sw.lat, bounds._ne.lat, yticks, maxLines, fixedPoint(1))
   }
 
-  private def _lngLines(bounds: Bounds, fixedPoint: js.Array[Double], xticks: Double, maxLines: Double): AlphaLines = {
+  private def _lngLines(bounds: LngLatBounds, fixedPoint: js.Array[Double], xticks: Double, maxLines: Double): AlphaLines = {
     _lines(bounds._sw.lng, bounds._ne.lng, xticks, maxLines, fixedPoint(0))
   }
 
@@ -330,11 +353,11 @@ object MapboxMap {
     )
   }
 
-  private def _verticalLine(bounds: Bounds, lng: Double, alpha: Double) = {
+  private def _verticalLine(bounds: LngLatBounds, lng: Double, alpha: Double) = {
     js.Array(js.Array(lng, bounds.getNorth()), js.Array(lng, bounds.getSouth()))
   }
 
-  private def _horizontalLine(bounds: Bounds, lat: Double, alpha: Double) = {
+  private def _horizontalLine(bounds: LngLatBounds, lat: Double, alpha: Double) = {
     js.Array(js.Array(bounds.getWest(), lat), js.Array(bounds.getEast(), lat))
   }
 }
