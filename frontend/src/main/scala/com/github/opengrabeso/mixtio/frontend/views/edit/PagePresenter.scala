@@ -16,12 +16,11 @@ class PagePresenter(
   userContextService: services.UserContextService,
   application: Application[RoutingState]
 )(implicit ec: ExecutionContext) extends Presenter[EditPageState] {
-
   /** We don't need any initialization, so it's empty. */
   override def handleState(state: EditPageState): Unit = {
   }
 
-  def gotoSelect(): Unit = {
-    application.goTo(SelectPageState)
-  }
+  def download(): Unit = ???
+
+  def sendToStrava(): Unit = ???
 }

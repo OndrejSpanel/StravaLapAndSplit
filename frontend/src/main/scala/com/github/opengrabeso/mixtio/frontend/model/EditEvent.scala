@@ -7,12 +7,17 @@ import java.time.temporal.ChronoUnit
 import com.github.opengrabeso.mixtio.common.model.Event
 import io.udash.HasModelPropertyCreator
 
-case class EditEvent(action: String, event: Event, time: Int, dist: Double)
+case class EditEvent(selected: Boolean, action: String, event: Event, time: Int, dist: Double) {
+  /// selected and selectable (selected can often be set for events which are not selectable at all)
+  def processed: Boolean = {
+    selected && action.startsWith("split")
+  }
+}
 
 object EditEvent extends HasModelPropertyCreator[EditEvent] {
-  def apply(startTime: ZonedDateTime, e: Event, dist: Double): EditEvent = {
+  def apply(startTime: ZonedDateTime, e: Event, dist: Double, selected: Boolean): EditEvent = {
     new EditEvent(
-      e.defaultEvent, e, ChronoUnit.SECONDS.between(startTime, e.stamp).toInt, dist
+      selected, e.defaultEvent, e, ChronoUnit.SECONDS.between(startTime, e.stamp).toInt, dist
     )
   }
 }

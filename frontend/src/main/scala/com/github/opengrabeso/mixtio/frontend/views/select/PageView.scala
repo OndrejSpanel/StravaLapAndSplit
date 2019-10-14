@@ -74,16 +74,8 @@ class PageView(
   private val uploadButton = UdashButton()(_ => "Upload activity data...")
   private val settingsButton = UdashButton()(_ => "Settings")
 
-  // TODO: disable as needed
   def nothingSelected: ReadableProperty[Boolean] = {
     model.subProp(_.activities).transform(!_.exists(_.selected))
-  }
-  private def button(disabled: ReadableProperty[Boolean], buttonText: ReadableProperty[String]): UdashButton = {
-    UdashButton(disabled = disabled) { _ => Seq[Modifier](
-        bind(buttonText),
-        Spacing.margin(size = SpacingSize.Small)
-      )
-    }
   }
 
   private val sendToStrava = button(nothingSelected, "Send to Strava".toProperty)

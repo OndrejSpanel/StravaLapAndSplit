@@ -16,7 +16,7 @@ class PageViewFactory(
   import scala.concurrent.ExecutionContext.Implicits.global
 
   override def create(): (View, Presenter[EditPageState]) = {
-    val model = ModelProperty(PageModel(true, activities))
+    val model = ModelProperty(PageModel(loading = true, activities))
 
     for {
       mergedId <- userService.api.get.mergeActivitiesToEdit(activities, UdashApp.sessionId)
@@ -28,7 +28,7 @@ class PageViewFactory(
         val first = events.head
         model.subProp(_.events).set {
           events.map { case (event, dist) =>
-            EditEvent(first._1.stamp, event, dist)
+            EditEvent(first._1.stamp, event, dist, selected = true)
           }
         }
         for (routeJs <- userService.api.get.routeData(activity.get)) {

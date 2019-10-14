@@ -17,19 +17,12 @@ import io.udash.css._
 class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
-) extends FinalView with CssView {
+) extends FinalView with CssView with PageUtils {
   val s = SelectPageStyles
 
   import scalatags.JsDom.all._
 
   private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
-
-  def buttonOnClick(button: UdashButton)(callback: => Unit): Unit = {
-    button.listen {
-      case UdashButton.ButtonClickEvent(_, _) =>
-        callback
-    }
-  }
 
   buttonOnClick(submitButton){presenter.gotoSelect()}
 

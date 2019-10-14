@@ -17,19 +17,18 @@ import scalatags.JsDom.all._
 class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
-) extends FinalView with CssView {
+) extends FinalView with CssView with PageUtils {
   val s = EditPageStyles
 
-  private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
+  private val sendToStrava = button(nothingSelected, "Send selected to Strava".toProperty)
+  private val downloadAsFiles = button(nothingSelected, "Download as files".toProperty)
 
-  def buttonOnClick(button: UdashButton)(callback: => Unit): Unit = {
-    button.listen {
-      case UdashButton.ButtonClickEvent(_, _) =>
-        callback
-    }
+  def nothingSelected: ReadableProperty[Boolean] = {
+    model.subProp(_.events).transform(!_.exists(_.processed))
   }
 
-  buttonOnClick(submitButton){presenter.gotoSelect()}
+  buttonOnClick(sendToStrava){presenter.sendToStrava()}
+  buttonOnClick(downloadAsFiles){presenter.download()}
 
   model.subProp(_.routeJS).listen {
     _.foreach { geojson =>
@@ -53,16 +52,27 @@ class PageView(
 
     //case class EditEvent(action: String, time: Int, km: Double, originalAction: String)
     val attribs = Seq[EditAttrib](
+      EditAttrib("", (e, eModel, _) =>
+        if (e.action.startsWith("split")) {
+          UdashForm() { factory =>
+            factory.input.formGroup()(
+              input = _ => factory.input.checkbox(eModel.subProp(_.selected))().render
+            )
+          }.render
+        } else {
+          span().render
+        }
+      ),
       EditAttrib("Action", (e, _, _) => EventView.eventDescription(e)),
       EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
       EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
-      EditAttrib("Event", { (e, model, _) =>
+      EditAttrib("Event", { (e, eModel, _) =>
         UdashForm() { factory =>
           val possibleActions = e.event.listTypes.map(t => t.id -> t.display).toMap
           val actionIds = possibleActions.keys
           if (actionIds.size > 1) {
             factory.input.formGroup()(
-              input = _ => factory.input.select(model.subProp(_.action), actionIds.toSeq.toSeqProperty)(id => span(possibleActions(id))).render
+              input = _ => factory.input.select(eModel.subProp(_.action), actionIds.toSeq.toSeqProperty)(id => span(possibleActions(id))).render
             )
           } else if (actionIds.nonEmpty) {
             span(possibleActions.head._2).render
@@ -86,6 +96,10 @@ class PageView(
           p("Loading...").render,
           div(
             table.render,
+            div(
+              sendToStrava,
+              downloadAsFiles
+            )
           ).render
         )
       ),
