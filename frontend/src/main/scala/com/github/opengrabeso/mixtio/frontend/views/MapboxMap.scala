@@ -5,10 +5,12 @@ import frontend.model._
 import facade.UdashApp._
 import facade._
 import org.scalajs.dom
+import org.scalajs.dom.Element
 
 import scala.scalajs.js
 import js.Dynamic.literal
 import js.JSConverters._
+import scalatags.JsDom.all._
 
 object MapboxMap {
 
@@ -133,9 +135,9 @@ object MapboxMap {
           coordinates = js.Array(r(0), r(1))
         ),
         properties = literal(
-          title = e.originalAction,
+          title = e.action,
           icon = "circle",
-          description = "" , // TODO: getSelectHtml(e(1), e(3))
+          description = EventView.eventDescription(e), // TODO: getSelectHtml(e(1), e(3))
           color = "#444",
           opacity = 0.5,
         )
@@ -158,7 +160,7 @@ object MapboxMap {
       ),
       properties = literal(
         title = "Begin",
-        description = events(0).originalAction, // TODO: description
+        description = EventView.eventDescription(events.head).render,
         icon = "triangle",
         color = "#F22",
         opacity = 1
@@ -172,7 +174,7 @@ object MapboxMap {
       ),
       properties = literal(
         title = "End",
-        description = events.last.originalAction, // TODO: description
+        description = EventView.eventDescription(events.last).render.toString,
         icon = "circle",
         color = "#2F2",
         opacity = 0.5
