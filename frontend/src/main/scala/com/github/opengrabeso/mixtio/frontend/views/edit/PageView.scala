@@ -3,10 +3,8 @@ package frontend
 package views
 package edit
 
-import facade.mapboxgl
 import common.Formatting
 import common.css._
-import common.model._
 import io.udash._
 import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.form.UdashForm
@@ -60,9 +58,17 @@ class PageView(
       EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
       EditAttrib("Event", { (e, model, _) =>
         UdashForm() { factory =>
-          factory.input.formGroup()(
-            input = _ => factory.input.textInput(model.subProp(_.action))().render
-          )
+          val possibleActions = e.event.listTypes.map(t => t.id -> t.display).toMap
+          val actionIds = possibleActions.keys
+          if (actionIds.size > 1) {
+            factory.input.formGroup()(
+              input = _ => factory.input.select(model.subProp(_.action), actionIds.toSeq.toSeqProperty)(id => span(possibleActions(id))).render
+            )
+          } else if (actionIds.nonEmpty) {
+            span(possibleActions.head._2).render
+          } else {
+            span("").render
+          }
         }.render
       }),
     )
