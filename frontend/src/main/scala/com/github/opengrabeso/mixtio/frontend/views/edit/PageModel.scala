@@ -12,7 +12,7 @@ case class PageModel(
   loading: Boolean, activities: Seq[FileId],
   merged: Option[FileId] = None,
   events: Seq[EditEvent] = Nil,
-  routeJS: Option[String] = None
+  routeJS: Option[Seq[(Double, Double, Double, Double)]] = None
 )
 
 object PageModel extends HasModelPropertyCreator[PageModel]

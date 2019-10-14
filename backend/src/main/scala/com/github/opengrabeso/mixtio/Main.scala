@@ -386,11 +386,20 @@ object Main extends common.Formatting {
     def routeJS: String = {
       val toSend = optimizeRouteForMap
 
-      toSend.map { case (time,g) =>
+      toSend.map { case (time, g) =>
         val t = id.secondsInActivity(time)
         val d = distanceForTime(time)
         s"[${g.longitude},${g.latitude},$t,$d]"
       }.mkString("[\n", ",\n", "]\n")
+    }
+
+    def routeData: Seq[(Double, Double, Double, Double)] = {
+      val toSend = optimizeRouteForMap
+      toSend.map { case (time, g) =>
+        val t = id.secondsInActivity(time)
+        val d = distanceForTime(time)
+        (g.longitude, g.latitude, t.toDouble, d)
+      }
     }
 
     def merge(that: ActivityEvents): ActivityEvents = {

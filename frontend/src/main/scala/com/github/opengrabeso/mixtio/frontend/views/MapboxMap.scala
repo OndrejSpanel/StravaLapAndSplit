@@ -12,8 +12,9 @@ import js.JSConverters._
 
 object MapboxMap {
 
-  def display(geojson: String, events: Seq[EditEvent]): Unit = {
-    val route = js.JSON.parse(geojson).asInstanceOf[js.Array[js.Array[Double]]]
+  def display(geojson: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): Unit = {
+    // TODO: use tupled route representation directly instead of array one
+    val route = geojson.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
     val routeX = route.map(_(0))
     val routeY = route.map(_(1))
     val minX = routeX.min
