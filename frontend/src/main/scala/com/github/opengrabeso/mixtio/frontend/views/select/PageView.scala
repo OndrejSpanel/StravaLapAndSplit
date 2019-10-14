@@ -109,7 +109,6 @@ class PageView(
     val attribs = Seq[DisplayAttrib](
       TableFactory.TableAttrib(
         "", (ar, p, nested) => div(
-          // TODO: pass nested here?
           nested(checkbox(p.subProp(_.selected)))
         ).render
       ),
