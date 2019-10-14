@@ -13,8 +13,7 @@ import js.JSConverters._
 import scalatags.JsDom.all._
 
 object MapboxMap {
-
-  def display(geojson: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): Unit = {
+  def display(geojson: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): mapboxgl.Map = {
     // TODO: use tupled route representation directly instead of array one
     val route = geojson.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
     val routeX = route.map(_(0))
@@ -65,7 +64,22 @@ object MapboxMap {
       renderGrid(map, route(0))
     })
 
+    map
   }
+
+  def changeEvents(map: mapboxgl.Map, e: Seq[EditEvent], route: Seq[(Double, Double, Double, Double)]): Unit = {
+    val routeA = route.map(i => js.Array(i._1, i._2, i._3, i._4)).toJSArray
+
+    val eventsData = mapEventData(e, routeA);
+    val geojson = literal(
+      `type` = "FeatureCollection",
+      features = eventsData.toJSArray
+    )
+
+    map.getSource("events").get.setData(geojson)
+
+  }
+
 
   def renderRoute(map: mapboxgl.Map, route: js.Array[js.Array[Double]]): Unit = {
 
@@ -125,7 +139,7 @@ object MapboxMap {
 
   def mapEventData(events: Seq[EditEvent], route: js.Array[js.Array[Double]]): Seq[js.Object] = {
     val dropStartEnd = events.drop(1).dropRight(1)
-    val markers = dropStartEnd.map { e =>
+    val eventMarkers = dropStartEnd.map { e =>
       // ["split", 0, 0.0, "Run"]
       val r = findPoint(route, e.time)
       val marker = literal(
@@ -144,19 +158,15 @@ object MapboxMap {
       )
       marker
     }
-    markers
-  }
 
-
-  def renderEvents(map: mapboxgl.Map, events: Seq[EditEvent], route: js.Array[js.Array[Double]]): Unit = {
-    val eventMarkers = mapEventData(events, route)
-    val routeLL = route.map(i => js.Array(i(0), i(1)))
+    val routeHead = route.head
+    val routeLast = route.last
 
     val startMarker = literal(
       `type` = "Feature",
       geometry = literal(
         `type` = "Point",
-        coordinates = routeLL(0)
+        coordinates = js.Array(routeHead(0), routeHead(1))
       ),
       properties = literal(
         title = "Begin",
@@ -170,7 +180,7 @@ object MapboxMap {
       `type` = "Feature",
       geometry = literal(
         `type` = "Point",
-        coordinates = routeLL(routeLL.length - 1)
+        coordinates = js.Array(routeLast(0), routeLast(1))
       ),
       properties = literal(
         title = "End",
@@ -181,7 +191,12 @@ object MapboxMap {
       )
     )
 
-    val markers = startMarker +: eventMarkers :+ endMarker
+    startMarker +: eventMarkers :+ endMarker
+  }
+
+
+  def renderEvents(map: mapboxgl.Map, events: Seq[EditEvent], route: js.Array[js.Array[Double]]): Unit = {
+    val markers = mapEventData(events, route)
 
     val iconLayout = literal(
       "icon-image" -> "{icon}-11",

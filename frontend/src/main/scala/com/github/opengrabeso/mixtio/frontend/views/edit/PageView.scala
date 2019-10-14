@@ -3,11 +3,13 @@ package frontend
 package views
 package edit
 
+import facade.mapboxgl
 import common.Formatting
 import common.css._
 import common.model._
 import io.udash._
 import io.udash.bootstrap.button.UdashButton
+import io.udash.bootstrap.form.UdashForm
 import io.udash.bootstrap.table.UdashTable
 import io.udash.component.ComponentId
 import io.udash.css._
@@ -35,7 +37,13 @@ class PageView(
     _.foreach { geojson =>
       // events should always be ready before the route
       val events = model.subProp(_.events).get
-      MapboxMap.display(geojson, events)
+      val map = MapboxMap.display(geojson, events)
+
+      model.subProp(_.events).listen { e =>
+        // TODO: reset the map even data
+        MapboxMap.changeEvents(map, e, model.subProp(_.routeJS).get.get)
+      }
+
     }
   }
 
@@ -47,12 +55,16 @@ class PageView(
 
     //case class EditEvent(action: String, time: Int, km: Double, originalAction: String)
     val attribs = Seq[EditAttrib](
-      EditAttrib("Action", { (e, _, _) =>
-        EventView.eventDescription(e)
-      }),
+      EditAttrib("Action", (e, _, _) => EventView.eventDescription(e)),
       EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
       EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
-      EditAttrib("Event", (e, _, _) => e.event.originalEvent.render),
+      EditAttrib("Event", { (e, model, _) =>
+        UdashForm() { factory =>
+          factory.input.formGroup()(
+            input = _ => factory.input.textInput(model.subProp(_.action))().render
+          )
+        }.render
+      }),
     )
 
     val table = UdashTable(model.subSeq(_.events), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
