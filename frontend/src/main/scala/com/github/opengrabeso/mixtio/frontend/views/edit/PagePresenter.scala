@@ -2,13 +2,11 @@ package com.github.opengrabeso.mixtio
 package frontend
 package views.edit
 
-import java.time.ZonedDateTime
-
+import facade.UdashApp
 import routing._
 import io.udash._
 
 import scala.concurrent.ExecutionContext
-import org.scalajs.dom
 
 /** Contains the business logic of this view. */
 class PagePresenter(
@@ -22,5 +20,15 @@ class PagePresenter(
 
   def download(): Unit = ???
 
-  def sendToStrava(): Unit = ???
+  def sendToStrava(): Unit = {
+    for (fileId <- model.subProp(_.merged).get) {
+      val events = model.subProp(_.events).get
+      val eventsToSend = events.flatMap { e =>
+        if (e.action == "lap") Some((false, e.action, e.time))
+        else if (e.boundary) Some((e.processed, e.action, e.time))
+        else None
+      }
+      userContextService.api.get.sendEditedActivitiesToStrava(fileId, UdashApp.sessionId, eventsToSend)
+    }
+  }
 }

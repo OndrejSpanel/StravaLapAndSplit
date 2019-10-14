@@ -8,9 +8,10 @@ import com.github.opengrabeso.mixtio.common.model.Event
 import io.udash.HasModelPropertyCreator
 
 case class EditEvent(selected: Boolean, action: String, event: Event, time: Int, dist: Double) {
+  def boundary: Boolean = action.startsWith("split")
   /// selected and selectable (selected can often be set for events which are not selectable at all)
   def processed: Boolean = {
-    selected && action.startsWith("split")
+    selected && boundary
   }
 }
 

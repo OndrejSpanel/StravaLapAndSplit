@@ -78,6 +78,21 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     }  else Nil
   }
 
+  def sendEditedActivitiesToStrava(id: FileId, sessionId: String, events: Seq[(Boolean, String, Int)]) = syncResponse {
+    // TODO: some results
+    for (activity <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId))) {
+      val endTime = activity.id.duration
+      val boundaries = events.filter(_._2.startsWith("split"))
+      val boundaryTimes = boundaries.map(_._3) :+ endTime
+      val boundaryIntervals = (boundaryTimes zip boundaryTimes.drop(1)).toMap
+      val selectedBoundaries = events.filter(_._1).map(_._3)
+      val selectedIntervals = selectedBoundaries zip selectedBoundaries.map(boundaryIntervals)
+      println(s"selectedIntervals $selectedIntervals")
+    }
+
+    Nil
+  }
+
   def pollUploadResults(uploadIds: Seq[String], sessionId: String) = syncResponse {
     val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
     val resultsFiles = Storage.enumerate(uploadResultNamespace, userAuth.userId)

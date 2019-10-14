@@ -37,6 +37,9 @@ trait UserRestAPI {
 
   /// return GeoJSON directly usable for mapboxgl
   def routeData(id: FileId): Future[Seq[(Double, Double, Double, Double)]]
+
+  /// this will create one activity in the "edit" namespace
+  def sendEditedActivitiesToStrava(id: FileId, sessionId: String, events: Seq[(Boolean, String, Int)]): Future[Seq[String]]
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

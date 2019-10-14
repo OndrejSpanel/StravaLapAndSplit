@@ -68,11 +68,12 @@ class PageView(
       EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
       EditAttrib("Event", { (e, eModel, _) =>
         UdashForm() { factory =>
-          val possibleActions = e.event.listTypes.map(t => t.id -> t.display).toMap
-          val actionIds = possibleActions.keys
+          val possibleActions = e.event.listTypes.map(t => t.id -> t.display).toSeq
+          val actionIds = possibleActions.map(_._1)
+          val possibleActionsMap = possibleActions.toMap
           if (actionIds.size > 1) {
             factory.input.formGroup()(
-              input = _ => factory.input.select(eModel.subProp(_.action), actionIds.toSeq.toSeqProperty)(id => span(possibleActions(id))).render
+              input = _ => factory.input.select(eModel.subProp(_.action), actionIds.toSeq.toSeqProperty)(id => span(possibleActionsMap(id))).render
             )
           } else if (actionIds.nonEmpty) {
             span(possibleActions.head._2).render
