@@ -326,6 +326,7 @@ object Main extends common.Formatting {
     assert(attributes.forall(_.inTimeRange(id.startTime, id.endTime)))
 
     def secondsInActivity(time: ZonedDateTime): Int  = id.secondsInActivity(time)
+    def timeInActivity(seconds: Int) = id.timeInActivity(seconds)
 
     private def convertGPSToPair(gps: GPSPoint) = (gps.latitude, gps.longitude)
 

@@ -16,6 +16,7 @@ case class ActivityId(id: FileId, digest: String, name: String, startTime: Zoned
   override def toString = s"${id.toString} - $name ($startTime..$endTime)"
 
   def secondsInActivity(time: ZonedDateTime): Int = ChronoUnit.SECONDS.between(startTime, time).toInt
+  def timeInActivity(seconds: Int): ZonedDateTime = startTime.plusSeconds(seconds)
 
   val duration: Int = ChronoUnit.SECONDS.between(startTime, endTime).toInt
 

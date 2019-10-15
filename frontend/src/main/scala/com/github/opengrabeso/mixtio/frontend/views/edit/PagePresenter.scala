@@ -29,6 +29,7 @@ class PagePresenter(
         else None
       }
       userContextService.api.get.sendEditedActivitiesToStrava(fileId, UdashApp.sessionId, eventsToSend)
+      // TODO: show progress / result
     }
   }
 }

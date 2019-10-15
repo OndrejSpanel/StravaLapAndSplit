@@ -4,8 +4,7 @@ package rest
 import java.time.ZonedDateTime
 
 import com.github.opengrabeso.mixtio.Main.{ActivityEvents, namespace}
-import com.github.opengrabeso.mixtio.requests.MergeAndEditActivity.saveAsNeeded
-import com.github.opengrabeso.mixtio.requests.{UploadDone, UploadDuplicate, UploadError, UploadInProgress}
+import requests.{BackgroundTasks, MergeAndEditActivity, UploadDone, UploadDuplicate, UploadError, UploadInProgress, UploadResultToStrava}
 import shared.Timing
 import common.model._
 
@@ -78,19 +77,58 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     }  else Nil
   }
 
-  def sendEditedActivitiesToStrava(id: FileId, sessionId: String, events: Seq[(Boolean, String, Int)]) = syncResponse {
-    // TODO: some results
-    for (activity <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId))) {
+  def processAll[T](id: FileId, events: Seq[(Boolean, String, Int)])(process: Seq[(Int, ActivityEvents)] => T): Option[T] = {
+    for (activity <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId))) yield {
       val endTime = activity.id.duration
       val boundaries = events.filter(_._2.startsWith("split"))
       val boundaryTimes = boundaries.map(_._3) :+ endTime
       val boundaryIntervals = (boundaryTimes zip boundaryTimes.drop(1)).toMap
       val selectedBoundaries = events.filter(_._1).map(_._3)
       val selectedIntervals = selectedBoundaries zip selectedBoundaries.map(boundaryIntervals)
-      println(s"selectedIntervals $selectedIntervals")
+
+      val editedEvents = events.map {
+        case (_, ei, time) if (ei.startsWith("split")) =>
+          val sportName = ei.substring("split".length)
+          SplitEvent(activity.timeInActivity(time), Event.Sport.withName(sportName))
+        case (_, "lap", time) =>
+          LapEvent(activity.timeInActivity(time))
+        // we should receive only laps and splits
+      } :+ EndEvent(activity.endTime) // TODO: EndEvent could probably be removed completely?
+
+      val activityWithEditedEvents = activity.copy(events = editedEvents.toArray)
+
+      val splitFragments = for {
+        splitTime <- selectedBoundaries
+        split <- activityWithEditedEvents.split(splitTime)
+      } yield {
+        splitTime -> split
+      }
+      process(splitFragments)
     }
 
-    Nil
+  }
+
+  def sendEditedActivitiesToStrava(id: FileId, sessionId: String, events: Seq[(Boolean, String, Int)]) = syncResponse {
+    val uploadIds = processAll(id, events) { toUpload =>
+
+      for (upload <- toUpload.map(_._2)) yield {
+        val uploadFiltered = upload.applyUploadFilters(userAuth)
+        // export here, or in the worker? Both is possible
+
+        // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
+        val uniqueName = uploadFiltered.id.id.filename + "_" + System.currentTimeMillis().toString
+        // are any metadata needed?
+        Storage.store(namespace.upload(sessionId), uniqueName, userAuth.userId, uploadFiltered.header, uploadFiltered)
+
+        BackgroundTasks.addTask(UploadResultToStrava(uniqueName, userAuth, sessionId))
+
+        val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
+        val uploadId = Storage.FullName(uploadResultNamespace, uniqueName, userAuth.userId).name
+        println(s"Queued task $uniqueName with uploadId=$uploadId")
+        uploadId
+      }
+    }
+    uploadIds.toSeq.flatten
   }
 
   def pollUploadResults(uploadIds: Seq[String], sessionId: String) = syncResponse {
@@ -139,7 +177,7 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
       } else {
         toMerge.reduceLeft(_ merge _)
       }
-      val mergedWithEvents = saveAsNeeded(merged)(userAuth)
+      val mergedWithEvents = MergeAndEditActivity.saveAsNeeded(merged)(userAuth)
 
       val events = mergedWithEvents.events.map { e =>
         e -> merged.distanceForTime(e.stamp)
