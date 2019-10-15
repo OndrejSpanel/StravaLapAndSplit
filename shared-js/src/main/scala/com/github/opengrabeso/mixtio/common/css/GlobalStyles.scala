@@ -93,5 +93,19 @@ object GlobalStyles extends CssBase {
     unsafeRoot("#footer") (headerFooterCommon)
   )
 
+  style(
+    // we want the tables to be quite compact
+    unsafeRoot("table .form-group")(
+      marginBottom.`0`
+    )
+  )
+
+  style(
+    unsafeRoot("#edit-table .custom-select")(
+      paddingTop.`0`,
+      paddingBottom.`0`,
+      height.inherit
+    )
+  )
 
 }

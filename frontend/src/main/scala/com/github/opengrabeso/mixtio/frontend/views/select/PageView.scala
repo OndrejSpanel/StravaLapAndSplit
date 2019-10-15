@@ -51,7 +51,7 @@ object PageView {
         }
         specialCase.map { case (folder, date) =>
           import TimeFormatting._
-          p(
+          span(
             title := fileId,
             b(folder),
             ": ",

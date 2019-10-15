@@ -13,6 +13,7 @@ import io.udash.css._
 import model.EditEvent
 import scalatags.JsDom.all._
 import io.udash.bootstrap.utils.BootstrapStyles._
+import io.udash.component.ComponentId
 
 class PageView(
   model: ModelProperty[PageModel],
@@ -62,28 +63,32 @@ class PageView(
         }.render
       }),
       EditAttrib("", { (e, eModel, _) =>
-        import io.udash.bootstrap.utils.UdashIcons
+        import io.udash.bootstrap.utils.UdashIcons.FontAwesome._
         def place[T](xs: T) = xs
         if (e.boundary) {
           UdashButtonToolbar()(
             UdashButtonGroup()(
-              place(iconButton(false.toProperty, UdashIcons.FontAwesome.Solid.cloudUploadAlt, "Upload to Strava")
+              place(iconButton(false.toProperty, "Upload to Strava")(Solid.cloudUploadAlt)
                 .onClick(presenter.sendToStrava(e.time)).render),
-              place(iconButton(false.toProperty, UdashIcons.FontAwesome.Solid.fileDownload, "Download")
+              place(iconButton(false.toProperty, "Download")(Solid.fileDownload)
                 .onClick(presenter.download(e.time)).render)
             ).render,
             UdashButtonGroup()(
-              place(iconButton(false.toProperty, UdashIcons.FontAwesome.Solid.trash, "Delete", color = Color.Danger)
-                .onClick(presenter.delete(e.time)).render),
+              place(iconButton(false.toProperty, "Delete")(Solid.trash)
+                .onClick(presenter.delete(e.time)).render)
+            ).render
             // TODO: render progress as well
-          ).render).render
+          ).render
         } else {
           div().render
         }
       })
     )
 
-    val table = UdashTable(model.subSeq(_.events), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
+    val table = UdashTable(
+      model.subSeq(_.events), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty,
+      componentId = ComponentId("edit-table")
+    )(
       headerFactory = Some(TableFactory.headerFactory(attribs )),
       rowFactory = TableFactory.rowFactory(attribs)
     )
