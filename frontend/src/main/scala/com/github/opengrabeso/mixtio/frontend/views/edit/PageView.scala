@@ -36,7 +36,7 @@ class PageView(
   }
 
   def getTemplate: Modifier = {
-
+    import TimeFormatting._
     // value is a callback
     type EditAttrib = TableFactory.TableAttrib[EditEvent]
     val EditAttrib = TableFactory.TableAttrib
@@ -44,7 +44,10 @@ class PageView(
     //case class EditEvent(action: String, time: Int, km: Double, originalAction: String)
     val attribs = Seq[EditAttrib](
       EditAttrib("Action", (e, _, _) => EventView.eventDescription(e)),
-      EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
+      EditAttrib("Time", (e, _, _) => span(
+        title := formatTimeHMS(e.event.stamp.toJSDate),
+        Formatting.displaySeconds(e.time)
+      ).render),
       EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
       EditAttrib("Event", { (e, eModel, _) =>
         UdashForm() { factory =>
