@@ -7,7 +7,7 @@ import java.time.temporal.ChronoUnit
 import com.github.opengrabeso.mixtio.common.model.Event
 import io.udash.HasModelPropertyCreator
 
-case class EditEvent(action: String, event: Event, time: Int, dist: Double) {
+case class EditEvent(action: String, event: Event, time: Int, dist: Double, active: Boolean = true) {
   def boundary: Boolean = action.startsWith("split")
 }
 

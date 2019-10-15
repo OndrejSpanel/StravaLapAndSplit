@@ -48,36 +48,52 @@ class PageView(
       EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
       EditAttrib("Event", { (e, eModel, _) =>
         UdashForm() { factory =>
-          val possibleActions = e.event.listTypes.map(t => t.id -> t.display).toSeq
-          val actionIds = possibleActions.map(_._1)
-          val possibleActionsMap = possibleActions.toMap
-          if (actionIds.size > 1) {
-            factory.input.formGroup()(
-              input = _ => factory.input.select(eModel.subProp(_.action), actionIds.toSeqProperty)(id => span(possibleActionsMap(id))).render
-            )
-          } else if (actionIds.nonEmpty) {
-            span(possibleActions.head._2).render
-          } else {
-            span("").render
+          factory.disabled(eModel.subProp(_.active).transform(!_)) { _ =>
+            val possibleActions = e.event.listTypes.map(t => t.id -> t.display).toSeq
+            val actionIds = possibleActions.map(_._1)
+            val possibleActionsMap = possibleActions.toMap
+            if (actionIds.size > 1) {
+              factory.input.formGroup()(
+                input = { _ =>
+                  factory.input.select(eModel.subProp(_.action), actionIds.toSeqProperty)(id => span(possibleActionsMap(id))).render
+                }
+              )
+            } else if (actionIds.nonEmpty) {
+              span(possibleActions.head._2).render
+            } else {
+              span("").render
+            }
           }
         }.render
       }),
-      EditAttrib("", { (e, eModel, _) =>
-        import io.udash.bootstrap.utils.UdashIcons.FontAwesome._
+      EditAttrib("", { (e, eModel, nested) =>
+        import io.udash.bootstrap.utils.UdashIcons.FontAwesome.Solid
+        import io.udash.bootstrap.utils.UdashIcons.FontAwesome.Modifiers
         def place[T](xs: T) = xs
-        if (e.boundary) {
-          UdashButtonToolbar()(
-            UdashButtonGroup()(
-              place(iconButton(false.toProperty, "Upload to Strava")(Solid.cloudUploadAlt)
-                .onClick(presenter.sendToStrava(e.time)).render),
-              place(iconButton(false.toProperty, "Download")(Solid.fileDownload)
-                .onClick(presenter.download(e.time)).render)
-            ).render,
-            UdashButtonGroup()(
-              place(iconButton(false.toProperty, "Delete")(Solid.trash)
-                .onClick(presenter.delete(e.time)).render)
+        if (e.boundary || !e.active) {
+          val disabled = eModel.subProp(_.active).transform(!_)
+          val disabledDelete = eModel.transform(e => !e.boundary)
+          div(
+            Float.right(),
+            UdashButtonToolbar()(
+              if (e.boundary) {
+                UdashButtonGroup()(
+                  place(iconButton("Upload to Strava", disabled = disabled)(Modifiers.Sizing.xs, Solid.cloudUploadAlt)
+                    .onClick(presenter.sendToStrava(e.time)).render),
+                  place(iconButton("Download", disabled = disabled)(Modifiers.Sizing.xs, Solid.fileDownload)
+                    .onClick(presenter.download(e.time)).render)
+                ).render
+              } else span().render,
+              UdashButtonGroup()(
+                place(iconButton("Delete", disabled = disabledDelete) (
+                  Modifiers.Sizing.xs,
+                  if (e.active) Solid.toggleOn else Solid.toggleOff
+                ).onClick {
+                  presenter.toggleSplitDisable(e.time)
+                }.render)
+              ).render
+              // TODO: render progress as well
             ).render
-            // TODO: render progress as well
           ).render
         } else {
           div().render

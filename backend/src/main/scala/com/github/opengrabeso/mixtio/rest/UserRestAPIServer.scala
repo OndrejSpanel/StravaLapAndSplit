@@ -79,16 +79,20 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
 
   def processOne[T](id: FileId, events: Seq[(String, Int)], time: Int)(process: (Int, ActivityEvents) => T): Option[T] = {
     Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId)).flatMap { activity =>
-      val editedEvents = events.map {
+      val editedEvents = events.collect {
         case (ei, time) if (ei.startsWith("split")) =>
           val sportName = ei.substring("split".length)
           SplitEvent(activity.timeInActivity(time), Event.Sport.withName(sportName))
         case ("lap", time) =>
           LapEvent(activity.timeInActivity(time))
-        // we should receive only laps and splits
+        case ("delete", time) =>
+            ???
+        // we ignore empty events?
       } :+ EndEvent(activity.endTime) // TODO: EndEvent could probably be removed completely?
 
       val activityToUpload = activity.copy(events = editedEvents.toArray).split(time)
+
+      // remove any disabled intervals
 
       activityToUpload.map { a =>
         process(time, a)
