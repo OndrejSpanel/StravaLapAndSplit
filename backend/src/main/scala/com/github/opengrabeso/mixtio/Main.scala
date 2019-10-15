@@ -507,9 +507,11 @@ object Main extends common.Formatting {
 
     }
 
-    def split(splitTime: Int): Option[ActivityEvents] = {
+    def split(splitTime: ZonedDateTime): Option[ActivityEvents] = {
 
-      val splitEvents = events.filter(_.isSplit).toSeq
+      // we always want to keep the splitTime even if it is not a split event. This happens when deleting part of activities
+      // because some split times are suppressed during the process
+      val splitEvents = events.filter(e => e.isSplit || e.stamp == splitTime).toSeq
 
       val splitTimes = splitEvents.map(e => e.stamp)
 
@@ -518,7 +520,7 @@ object Main extends common.Formatting {
 
       val splitRanges = splitEvents zip splitTimes.tail
 
-      val toSplit = splitRanges.find(t => secondsInActivity(t._1.stamp) == splitTime)
+      val toSplit = splitRanges.find(_._1.stamp == splitTime)
 
       toSplit.map { case (beg, endTime) =>
 

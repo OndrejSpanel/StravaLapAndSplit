@@ -134,7 +134,7 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
       // now select the interval we want to process
       for {
         a <- activityWithIntervalsDeleted
-        split <- a.split(time)
+        split <- a.split(activity.timeInActivity(time))
       } yield {
         process(time, split)
       }

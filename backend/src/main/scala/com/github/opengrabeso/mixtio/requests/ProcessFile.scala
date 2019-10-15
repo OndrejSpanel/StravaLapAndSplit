@@ -48,7 +48,7 @@ abstract class ProcessFile(value: String) extends DefineRequest.Post(value) with
       splitTime <- splits
       events <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id, auth.userId))
       adjusted = Main.adjustEvents(events, pars.events)
-      split <- adjusted.split(splitTime)
+      split <- adjusted.split(adjusted.timeInActivity(splitTime))
     } yield {
       splitTime -> split
     }
