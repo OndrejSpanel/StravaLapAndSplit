@@ -94,7 +94,7 @@ object Storage extends FileStore {
     namespace: String, filename: String, userId: String, obj1: AnyRef, obj2: AnyRef,
     metadata: Seq[(String, String)] = Seq.empty, priorityMetaData: Seq[(String, String)] = Seq.empty
   ) = {
-    println(s"store to '$filename' - '$userId'")
+    println(s"store to $namespace: '$filename' - '$userId'")
     val os = output(FullName.withMetadata(namespace, filename, userId, priorityMetaData), metadata)
     val oos = new ObjectOutputStream(os)
     oos.writeObject(obj1)

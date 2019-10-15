@@ -28,7 +28,7 @@ class PageViewFactory(
         val first = events.head
         model.subProp(_.events).set {
           events.map { case (event, dist) =>
-            EditEvent(first._1.stamp, event, dist, selected = true)
+            EditEvent(first._1.stamp, event, dist)
           }
         }
         for (routeJs <- userService.api.get.routeData(activity.get)) {

@@ -77,58 +77,48 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     }  else Nil
   }
 
-  def processAll[T](id: FileId, events: Seq[(Boolean, String, Int)])(process: Seq[(Int, ActivityEvents)] => T): Option[T] = {
-    for (activity <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId))) yield {
-      val endTime = activity.id.duration
-      val boundaries = events.filter(_._2.startsWith("split"))
-      val boundaryTimes = boundaries.map(_._3) :+ endTime
-      val boundaryIntervals = (boundaryTimes zip boundaryTimes.drop(1)).toMap
-      val selectedBoundaries = events.filter(_._1).map(_._3)
-      val selectedIntervals = selectedBoundaries zip selectedBoundaries.map(boundaryIntervals)
-
+  def processOne[T](id: FileId, events: Seq[(String, Int)], time: Int)(process: (Int, ActivityEvents) => T): Option[T] = {
+    Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId)).flatMap { activity =>
       val editedEvents = events.map {
-        case (_, ei, time) if (ei.startsWith("split")) =>
+        case (ei, time) if (ei.startsWith("split")) =>
           val sportName = ei.substring("split".length)
           SplitEvent(activity.timeInActivity(time), Event.Sport.withName(sportName))
-        case (_, "lap", time) =>
+        case ("lap", time) =>
           LapEvent(activity.timeInActivity(time))
         // we should receive only laps and splits
       } :+ EndEvent(activity.endTime) // TODO: EndEvent could probably be removed completely?
 
-      val activityWithEditedEvents = activity.copy(events = editedEvents.toArray)
+      val activityToUpload = activity.copy(events = editedEvents.toArray).split(time)
 
-      val splitFragments = for {
-        splitTime <- selectedBoundaries
-        split <- activityWithEditedEvents.split(splitTime)
-      } yield {
-        splitTime -> split
+      activityToUpload.map { a =>
+        process(time, a)
       }
-      process(splitFragments)
     }
-
   }
 
-  def sendEditedActivitiesToStrava(id: FileId, sessionId: String, events: Seq[(Boolean, String, Int)]) = syncResponse {
-    val uploadIds = processAll(id, events) { toUpload =>
+  def downloadEditedActivity(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int) = syncResponse {
+    ???
+  }
 
-      for (upload <- toUpload.map(_._2)) yield {
-        val uploadFiltered = upload.applyUploadFilters(userAuth)
-        // export here, or in the worker? Both is possible
+  def sendEditedActivityToStrava(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int) = syncResponse {
+    val uploadIds = processOne(id, events, time) { (_, upload) =>
 
-        // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
-        val uniqueName = uploadFiltered.id.id.filename + "_" + System.currentTimeMillis().toString
-        // are any metadata needed?
-        Storage.store(namespace.upload(sessionId), uniqueName, userAuth.userId, uploadFiltered.header, uploadFiltered)
+      val uploadFiltered = upload.applyUploadFilters(userAuth)
+      // export here, or in the worker? Both is possible
 
-        BackgroundTasks.addTask(UploadResultToStrava(uniqueName, userAuth, sessionId))
+      // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
+      val uniqueName = uploadFiltered.id.id.filename + "_" + System.currentTimeMillis().toString
+      // are any metadata needed?
+      Storage.store(namespace.upload(sessionId), uniqueName, userAuth.userId, uploadFiltered.header, uploadFiltered)
 
-        val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
-        val uploadId = Storage.FullName(uploadResultNamespace, uniqueName, userAuth.userId).name
-        println(s"Queued task $uniqueName with uploadId=$uploadId")
-        uploadId
-      }
+      BackgroundTasks.addTask(UploadResultToStrava(uniqueName, userAuth, sessionId))
+
+      val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
+      val uploadId = Storage.FullName(uploadResultNamespace, uniqueName, userAuth.userId).name
+      println(s"Queued task $uniqueName with uploadId=$uploadId")
+      uploadId
     }
-    uploadIds.toSeq.flatten
+    uploadIds
   }
 
   def pollUploadResults(uploadIds: Seq[String], sessionId: String) = syncResponse {

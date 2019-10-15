@@ -9,15 +9,20 @@ import io.udash.bootstrap.button.UdashButton
 import common.css._
 import io.udash.bootstrap._
 import BootstrapStyles._
-import io.udash.css.CssView
+import io.udash.css.{CssStyle, CssView}
 import scalatags.JsDom.all._
 
 trait PageUtils extends common.Formatting with CssView {
-  def buttonOnClick(button: UdashButton)(callback: => Unit): Unit = {
+  def buttonOnClick(button: UdashButton)(callback: => Unit): UdashButton = {
     button.listen {
       case UdashButton.ButtonClickEvent(_, _) =>
         callback
     }
+    button
+  }
+
+  implicit class OnClick(button: UdashButton) {
+    def onClick(callback: => Unit): UdashButton = buttonOnClick(button)(callback)
   }
 
   def checkbox(p: Property[Boolean]): UdashInputGroup = {
@@ -33,4 +38,23 @@ trait PageUtils extends common.Formatting with CssView {
     )}
   }
 
+  def imageButton(disabled: ReadableProperty[Boolean], name: String, altName: String, color: Color = Color.Light): UdashButton = {
+    UdashButton(disabled = disabled, buttonStyle = color.toProperty) { _ => Seq[Modifier](
+      img(
+        src := name,
+        alt := altName,
+        title := altName,
+      )
+    )}
+  }
+
+  def iconButton(disabled: ReadableProperty[Boolean], name: CssStyle, altName: String, color: Color = Color.Light): UdashButton = {
+    UdashButton(disabled = disabled, buttonStyle = color.toProperty) { _ => Seq[Modifier](
+      i(
+        name,
+        alt := altName,
+        title := altName,
+      )
+    )}
+  }
 }

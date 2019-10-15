@@ -6,29 +6,19 @@ package edit
 import common.Formatting
 import common.css._
 import io.udash._
-import io.udash.bootstrap.button.UdashButton
+import io.udash.bootstrap.button.{UdashButtonGroup, UdashButtonToolbar}
 import io.udash.bootstrap.form.UdashForm
 import io.udash.bootstrap.table.UdashTable
-import io.udash.component.ComponentId
 import io.udash.css._
 import model.EditEvent
 import scalatags.JsDom.all._
+import io.udash.bootstrap.utils.BootstrapStyles._
 
 class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
 ) extends FinalView with CssView with PageUtils {
   val s = EditPageStyles
-
-  private val sendToStrava = button(nothingSelected, "Send selected to Strava".toProperty)
-  private val downloadAsFiles = button(nothingSelected, "Download as files".toProperty)
-
-  def nothingSelected: ReadableProperty[Boolean] = {
-    model.subProp(_.events).transform(!_.exists(_.processed))
-  }
-
-  buttonOnClick(sendToStrava){presenter.sendToStrava()}
-  buttonOnClick(downloadAsFiles){presenter.download()}
 
   model.subProp(_.routeJS).listen {
     _.foreach { geojson =>
@@ -52,17 +42,6 @@ class PageView(
 
     //case class EditEvent(action: String, time: Int, km: Double, originalAction: String)
     val attribs = Seq[EditAttrib](
-      EditAttrib("", (e, eModel, _) =>
-        if (e.action.startsWith("split")) {
-          UdashForm() { factory =>
-            factory.input.formGroup()(
-              input = _ => factory.input.checkbox(eModel.subProp(_.selected))().render
-            )
-          }.render
-        } else {
-          span().render
-        }
-      ),
       EditAttrib("Action", (e, _, _) => EventView.eventDescription(e)),
       EditAttrib("Time", (e, _, _) => Formatting.displaySeconds(e.time).render),
       EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
@@ -73,7 +52,7 @@ class PageView(
           val possibleActionsMap = possibleActions.toMap
           if (actionIds.size > 1) {
             factory.input.formGroup()(
-              input = _ => factory.input.select(eModel.subProp(_.action), actionIds.toSeq.toSeqProperty)(id => span(possibleActionsMap(id))).render
+              input = _ => factory.input.select(eModel.subProp(_.action), actionIds.toSeqProperty)(id => span(possibleActionsMap(id))).render
             )
           } else if (actionIds.nonEmpty) {
             span(possibleActions.head._2).render
@@ -82,6 +61,26 @@ class PageView(
           }
         }.render
       }),
+      EditAttrib("", { (e, eModel, _) =>
+        import io.udash.bootstrap.utils.UdashIcons
+        def place[T](xs: T) = xs
+        if (e.boundary) {
+          UdashButtonToolbar()(
+            UdashButtonGroup()(
+              place(iconButton(false.toProperty, UdashIcons.FontAwesome.Solid.cloudUploadAlt, "Upload to Strava")
+                .onClick(presenter.sendToStrava(e.time)).render),
+              place(iconButton(false.toProperty, UdashIcons.FontAwesome.Solid.fileDownload, "Download")
+                .onClick(presenter.download(e.time)).render)
+            ).render,
+            UdashButtonGroup()(
+              place(iconButton(false.toProperty, UdashIcons.FontAwesome.Solid.trash, "Delete", color = Color.Danger)
+                .onClick(presenter.delete(e.time)).render),
+            // TODO: render progress as well
+          ).render).render
+        } else {
+          div().render
+        }
+      })
     )
 
     val table = UdashTable(model.subSeq(_.events), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
@@ -95,13 +94,7 @@ class PageView(
       div(
         showIfElse(model.subProp(_.loading))(
           p("Loading...").render,
-          div(
-            table.render,
-            div(
-              sendToStrava,
-              downloadAsFiles
-            )
-          ).render
+          table.render
         )
       ),
 

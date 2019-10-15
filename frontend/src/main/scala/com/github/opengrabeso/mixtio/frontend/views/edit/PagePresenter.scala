@@ -18,17 +18,32 @@ class PagePresenter(
   override def handleState(state: EditPageState): Unit = {
   }
 
-  def download(): Unit = ???
+  private def eventsToSend = {
+    val events = model.subProp(_.events).get
+    val eventsToSend = events.flatMap { e =>
+      if (e.action == "lap") Some((e.action, e.time))
+      else if (e.boundary) Some((e.action, e.time))
+      else None
+    }
+    eventsToSend
+  }
 
-  def sendToStrava(): Unit = {
+  def download(time: Int): Unit = {
     for (fileId <- model.subProp(_.merged).get) {
-      val events = model.subProp(_.events).get
-      val eventsToSend = events.flatMap { e =>
-        if (e.action == "lap") Some((false, e.action, e.time))
-        else if (e.boundary) Some((e.processed, e.action, e.time))
-        else None
-      }
-      userContextService.api.get.sendEditedActivitiesToStrava(fileId, UdashApp.sessionId, eventsToSend)
+      userContextService.api.get.downloadEditedActivity(fileId, UdashApp.sessionId, eventsToSend, time)
+    }
+  }
+
+  def delete(time: Int): Unit = {
+    for (fileId <- model.subProp(_.merged).get) {
+      ???
+      //userContextService.api.get.downloadEditedActivity(fileId, UdashApp.sessionId, eventsToSend, time)
+    }
+  }
+
+  def sendToStrava(time: Int): Unit = {
+    for (fileId <- model.subProp(_.merged).get) {
+      userContextService.api.get.sendEditedActivityToStrava(fileId, UdashApp.sessionId, eventsToSend, time)
       // TODO: show progress / result
     }
   }
