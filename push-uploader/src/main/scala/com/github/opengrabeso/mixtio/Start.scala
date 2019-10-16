@@ -18,9 +18,10 @@ import akka.util.ByteString
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise, duration}
-import scala.util.Try
+import scala.util.{Success, Try}
 import scala.xml.Elem
-import java.time.{ZoneId,ZonedDateTime}
+import java.time.{ZoneId, ZonedDateTime}
+
 import common.Util._
 import shared.Digest
 
@@ -94,22 +95,55 @@ object Start extends App {
     Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS)))
   }
 
-  private val stravimatLocalUrl = "http://localhost:8080"
-  private val stravimatRemoteUrl = "https://mixtio.appspot.com"
-  private var useLocal = false
-  private lazy val stravimatUrl = if (useLocal) stravimatLocalUrl else stravimatRemoteUrl
+  trait ServerUsed {
+    def url: String
+    def desciption: String
+  }
+  // GAE local server
+  object ServerLocal8080 extends ServerUsed {
+    def url = "http://localhost:8080"
+    def desciption = " to local server"
+  }
+  // Jetty embedded server
+  object ServerLocal4567 extends ServerUsed {
+    def url = "http://localhost:4567"
+    def desciption = " to local Jetty server"
+  }
+  // production server
+  object ServerProduction extends ServerUsed {
+    def url = "https://mixtio.appspot.com"
+    override def desciption = ""
+  }
 
-  private def checkLocalStravimat(): Boolean = {
+  val server: ServerUsed = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val localTest = true
+    val localTest = true // disabling the local test would make uploads faster for used of the production build (no need to wait for the probe timeout)
+    val localFound = Promise[ServerUsed]()
 
-    val localRequest = Http().singleRequest(HttpRequest(uri = stravimatLocalUrl + "/ping")).map(_.discardEntityBytes())
+    def localServerConfirmed(confirmed: ServerUsed): Unit = synchronized {
+      println(s"Confirmed local server ${confirmed.url}")
+      if (!localFound.tryComplete(Success(confirmed))) {
+        // we always use only the first server confirmed
+        // a developer should not run both
+        println("Warning: it seems there are two local servers running")
+      }
+    }
+
+    def tryLocalServer(s: ServerUsed) = {
+      Http().singleRequest(HttpRequest(uri = s.url + "/ping")).map(_.discardEntityBytes()).map(_ => localServerConfirmed(s))
+    }
+
+    if (localTest) {
+      tryLocalServer(ServerLocal8080)
+      tryLocalServer(ServerLocal4567)
+    }
 
     // try communicating with the local Stravimat, if not responding, use the remote one
-    useLocal = localTest && Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS))).isSuccess
-    useLocal
+    Try(Await.result(localFound.future, Duration(2000, duration.MILLISECONDS))).getOrElse(ServerProduction)
   }
+
+  private val stravimatUrl = server.url
 
   private object Tray {
     import java.awt._
@@ -434,12 +468,9 @@ object Start extends App {
   val icon = Tray.show()
 
   def reportProgress(i: Int): Unit = {
-    def localSuffix = if (useLocal) " to local server" else ""
-    def state = s"Uploading $i files" + localSuffix
+    def state = s"Uploading $i files" + server.desciption
     icon.foreach(Tray.changeState(_, state))
   }
-
-  checkLocalStravimat()
 
   private val serverInfo = startHttpServer(serverPort)
 
