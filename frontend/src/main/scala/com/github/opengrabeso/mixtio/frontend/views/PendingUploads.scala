@@ -55,6 +55,7 @@ abstract class PendingUploads(implicit ec: ExecutionContext) {
             pending -= uploadId
           case UploadProgress.Error(uploadId, error) =>
             println(s"$uploadId completed with error $error")
+            // TODO: check and handle most probable error cause: a duplicate activity
             setUploadProgress(uploadId, true, error)
             pending -= uploadId
         }
