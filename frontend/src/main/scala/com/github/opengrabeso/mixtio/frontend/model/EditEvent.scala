@@ -4,10 +4,15 @@ package frontend.model
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
-import com.github.opengrabeso.mixtio.common.model.Event
+import common.model._
 import io.udash.HasModelPropertyCreator
 
-case class EditEvent(action: String, event: Event, time: Int, dist: Double, active: Boolean = true) {
+case class EditEvent(
+  action: String, event: Event, time: Int, dist: Double, active: Boolean = true,
+  uploading: Boolean = false, uploadState: String = "",
+  uploadId: Option[String] = None, // upload progress id
+  strava: Option[FileId.StravaId] = None // upload result
+) {
   def boundary: Boolean = action.startsWith("split")
 }
 

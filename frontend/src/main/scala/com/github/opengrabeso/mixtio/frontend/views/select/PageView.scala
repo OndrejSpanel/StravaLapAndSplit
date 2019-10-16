@@ -116,8 +116,8 @@ class PageView(
         // As `produce` must be called anyway because `activities` have changed, it should not matter.
         if (ar.uploading) {
           div(
-            if (ar.uploadState != "") s.error else s.uploading,
-            if (ar.uploadState != "") ar.uploadState else "Uploading..."
+            if (ar.uploadState.nonEmpty) s.error else s.uploading,
+            if (ar.uploadState.nonEmpty) ar.uploadState else "Uploading..."
           ).render
         } else {
           ar.strava.map(i => hrefLink(i).render).toSeq

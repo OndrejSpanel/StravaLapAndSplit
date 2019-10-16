@@ -13,7 +13,6 @@ import io.udash._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import PagePresenter._
-import com.github.opengrabeso.mixtio.frontend.views.select
 
 import scala.scalajs.js
 
@@ -157,9 +156,13 @@ class PagePresenter(
     application.goTo(SettingsPageState)
   }
 
-  object uploads extends PendingUploads {
+  object uploads extends PendingUploads[FileId] {
+    override def sendToStrava(fileIds: Seq[FileId]): Future[Seq[(FileId, String)]] = {
+      userService.api.get.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId)
+    }
+
     def modifyActivities(fileId: Set[FileId])(modify: ActivityRow => ActivityRow): Unit = {
-      model.subProp(_.activities).set {
+      if (fileId.nonEmpty) model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a =>
           if (fileId contains a.staged.id.id) {
             modify(a)

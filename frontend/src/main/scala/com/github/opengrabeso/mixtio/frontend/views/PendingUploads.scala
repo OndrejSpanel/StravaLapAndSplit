@@ -4,20 +4,22 @@ package frontend.views
 import com.github.opengrabeso.mixtio.common.model.{FileId, UploadProgress}
 import com.github.opengrabeso.mixtio.frontend.views.select.PagePresenter.delay
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
-abstract class PendingUploads(implicit ec: ExecutionContext) {
-  var pending = Map.empty[String, Set[FileId]]
+abstract class PendingUploads[ActId](implicit ec: ExecutionContext) {
+  var pending = Map.empty[String, Set[ActId]]
 
   private final val pollPeriodMs = 1000
 
-  def startUpload(api: rest.UserRestAPI, fileIds: Seq[FileId]) = {
+  def sendToStrava(fileIds: Seq[ActId]): Future[Seq[(ActId, String)]]
+
+  def startUpload(api: rest.UserRestAPI, fileIds: Seq[ActId]) = {
 
     val setOfFileIds = fileIds.toSet
     // set all files as uploading before starting the API to make the UI response immediate
     setUploadProgressFile(setOfFileIds, true, "")
 
-    val uploadStarted = api.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId)
+    val uploadStarted = sendToStrava(fileIds)
 
     uploadStarted.foreach { a =>
       val add = a.toMap
@@ -78,7 +80,7 @@ abstract class PendingUploads(implicit ec: ExecutionContext) {
     }
   }
 
-  def setUploadProgressFile(fileId: Set[FileId], uploading: Boolean, uploadState: String): Unit
-  def setStravaFile(fileId: Set[FileId], stravaId: Option[FileId.StravaId]): Unit
+  def setUploadProgressFile(fileId: Set[ActId], uploading: Boolean, uploadState: String): Unit
+  def setStravaFile(fileId: Set[ActId], stravaId: Option[FileId.StravaId]): Unit
 
 }

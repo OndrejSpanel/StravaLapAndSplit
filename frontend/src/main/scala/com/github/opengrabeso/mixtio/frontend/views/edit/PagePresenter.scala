@@ -1,10 +1,13 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.edit
+package views
+package edit
 
+import model._
 import facade.UdashApp
 import routing._
 import io.udash._
+import common.model._
 
 import scala.concurrent.ExecutionContext
 
@@ -58,8 +61,38 @@ class PagePresenter(
 
   def sendToStrava(time: Int): Unit = {
     for (fileId <- model.subProp(_.merged).get) {
-      userContextService.api.get.sendEditedActivityToStrava(fileId, UdashApp.sessionId, eventsToSend, time)
-      // TODO: show progress / result
+      uploads.startUpload(userContextService.api.get, Seq(time))
+
+      // uploads identified by the starting time
+      // it could be much simpler, as we are starting one upload each time
+      // however we share PendingUploads with the `select` which initiates multiple uploads at the same time
+      object uploads extends PendingUploads[Int] {
+
+        def sendToStrava(fileIds: Seq[Int]) = {
+          userContextService.api.get.sendEditedActivityToStrava(fileId, UdashApp.sessionId, eventsToSend, time).map {
+            _.toSeq.map(time -> _)
+          }
+        }
+
+        def modifyActivities(fileId: Set[Int])(modify: EditEvent => EditEvent): Unit = {
+          if (fileId.nonEmpty) model.subProp(_.events).set {
+            model.subProp(_.events).get.map { e =>
+              if (fileId contains e.time) {
+                modify(e)
+              } else e
+            }
+          }
+        }
+
+        def setStravaFile(fileId: Set[Int], stravaId: Option[FileId.StravaId]): Unit = {
+          modifyActivities(fileId)(_.copy(strava = stravaId))
+        }
+
+        def setUploadProgressFile(fileId: Set[Int], uploading: Boolean, uploadState: String): Unit = {
+          modifyActivities(fileId)(_.copy(uploading = uploading, uploadState = uploadState))
+        }
+
+      }
     }
   }
 }

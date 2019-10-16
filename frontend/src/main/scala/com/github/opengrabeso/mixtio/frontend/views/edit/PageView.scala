@@ -95,8 +95,15 @@ class PageView(
                   presenter.toggleSplitDisable(e.time)
                 }.render)
               ).render
-              // TODO: render progress as well
-            ).render
+            ).render,
+            if (e.uploading) {
+              div(
+                if (e.uploadState.nonEmpty) s.error else s.uploading,
+                if (e.uploadState.nonEmpty) e.uploadState else "Uploading..."
+              )
+            } else {
+              span()
+            }
           ).render
         } else {
           div().render
