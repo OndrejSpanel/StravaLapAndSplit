@@ -12,63 +12,14 @@ import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.table.UdashTable
 import io.udash.css._
 import scalatags.JsDom.all._
-import PageView._
-import org.scalajs.dom.raw.HTMLElement
 
-import scala.scalajs.js
-
-import scala.util.Try
 import io.udash.bootstrap._
 import BootstrapStyles._
-
-object PageView {
-
-  def hrefLink(ai: ActivityId): HTMLElement = {
-    ai.id match {
-      case FileId.StravaId(num) =>
-        a(
-          // TODO: CSS color "#FC4C02"
-          href := s"https://www.strava.com/activities/$num",
-          ai.shortName
-        ).render
-      case FileId.FilenameId(fileId) =>
-        object IsInt {
-          def unapply(x: String): Option[Int] = Try(x.toInt).toOption
-        }
-        // TODO: DRY with com.github.opengrabeso.mixtio.MoveslinkFiles.timestampFromName
-        // GPS filename: Moveslink2/34FB984612000700-2017-05-23T16_27_11-0.sml
-        val gpsPattern = "(.*)/.*-(\\d*)-(\\d*)-(\\d*)T(\\d*)_(\\d*)_(\\d*)-".r.unanchored
-        // Quest filename Moveslink/Quest_2596420792_20170510143253.xml
-        val questPattern = "(.*)/Quest_\\d*_(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)\\.".r.unanchored
-        // note: may be different timezones, but a rough sort in enough for us (date is important)
-        val specialCase = fileId match {
-          case gpsPattern(folder, IsInt(yyyy), IsInt(mm), IsInt(dd), IsInt(h), IsInt(m), IsInt(s)) =>
-            Some(folder, new js.Date(yyyy, mm - 1, dd, h, m, s)) // filename is a local time of the activity beginning
-          case questPattern(folder, IsInt(yyyy), IsInt(mm), IsInt(dd), IsInt(h), IsInt(m), IsInt(s)) =>
-            Some(folder, new js.Date(yyyy, mm - 1, dd, h, m, s)) // filename is a local time when the activity was downloaded
-          case _ =>
-            None
-        }
-        specialCase.map { case (folder, date) =>
-          import TimeFormatting._
-          span(
-            title := fileId,
-            b(folder),
-            ": ",
-            formatDateTime(date)
-          ).render
-        }.getOrElse(div(ai.id.toReadableString).render)
-
-      case _ =>
-        div(ai.id.toReadableString).render
-    }
-  }
-}
 
 class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
-) extends FinalView with CssView with PageUtils with TimeFormatting {
+) extends FinalView with CssView with PageUtils with TimeFormatting with ActivityLink {
   val s = SelectPageStyles
 
   private val uploadButton = UdashButton()(_ => "Upload activity data...")
@@ -120,11 +71,11 @@ class PageView(
             if (ar.uploadState.nonEmpty) ar.uploadState else "Uploading..."
           ).render
         } else {
-          ar.strava.map(i => hrefLink(i).render).toSeq
+          ar.strava.map(i => hrefLink(i.id, i.shortName).render).toSeq
         }
       }.render}, Some("Strava")),
       TableFactory.TableAttrib("Data", (ar, _, _) => ar.staged.describeData.render),
-      TableFactory.TableAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id).render, Some("")),
+      TableFactory.TableAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id.id, ar.staged.id.shortName).render, Some("")),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(

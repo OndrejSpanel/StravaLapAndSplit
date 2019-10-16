@@ -18,7 +18,7 @@ import io.udash.component.ComponentId
 class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
-) extends FinalView with CssView with PageUtils {
+) extends FinalView with CssView with PageUtils with ActivityLink {
   val s = EditPageStyles
 
   model.subProp(_.routeJS).listen {
@@ -102,7 +102,10 @@ class PageView(
                 if (e.uploadState.nonEmpty) e.uploadState else "Uploading..."
               )
             } else {
-              span()
+              // TODO: get the resulting activity name from Strava
+              e.strava.map { strava =>
+                hrefLink(strava, strava.id.toString)
+              }
             }
           ).render
         } else {
