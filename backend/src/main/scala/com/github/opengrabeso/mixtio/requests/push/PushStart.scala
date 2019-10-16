@@ -41,7 +41,8 @@ object PushStart extends DefineRequest("/push-start") {
 
     val since = (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
 
-    resp.redirect(s"http://localhost:$port/auth?user=${URLEncoder.encode(auth.userId, "UTF-8")}&since=$since&session=$sessionId")
+    def encode(x: String) = URLEncoder.encode(x, "UTF-8")
+    resp.redirect(s"http://localhost:$port/auth?user=${encode(auth.userId)}&since=${encode(since.toString)}&session=${encode(sessionId)}")
     NodeSeq.Empty
   }
 }
