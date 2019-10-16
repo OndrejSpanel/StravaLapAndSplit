@@ -28,7 +28,6 @@ class PageView(
       val map = MapboxMap.display(geojson, events)
 
       model.subProp(_.events).listen { e =>
-        // TODO: reset the map even data
         MapboxMap.changeEvents(map, e, model.subProp(_.routeJS).get.get)
       }
 
