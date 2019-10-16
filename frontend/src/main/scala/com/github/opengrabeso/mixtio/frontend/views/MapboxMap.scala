@@ -12,7 +12,7 @@ import js.Dynamic.literal
 import js.JSConverters._
 import scalatags.JsDom.all._
 
-object MapboxMap {
+object MapboxMap extends common.Formatting {
   def display(geojson: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): mapboxgl.Map = {
     // TODO: use tupled route representation directly instead of array one
     val route = geojson.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
@@ -118,7 +118,7 @@ object MapboxMap {
 
   def findPoint(route: js.Array[js.Array[Double]], time: Double): js.Array[Double] = {
     // interpolate between close points if necessary
-    val (before, after) = route.span(_(3) < time)
+    val (before, after) = route.span(_(2) < time)
     if (before.isEmpty) after.head
     else if (after.isEmpty) before.last
     else {
@@ -142,6 +142,7 @@ object MapboxMap {
     val eventMarkers = dropStartEnd.map { e =>
       // ["split", 0, 0.0, "Run"]
       val r = findPoint(route, e.time)
+      val time = displaySeconds(e.time)
       val marker = literal(
         `type` = "Feature",
         geometry = literal(
@@ -149,7 +150,7 @@ object MapboxMap {
           coordinates = js.Array(r(0), r(1))
         ),
         properties = literal(
-          title = e.action,
+          title = if (e.action.nonEmpty) s"$time (${e.action})" else time,
           icon = "circle",
           description = EventView.eventDescription(e), // TODO: getSelectHtml(e(1), e(3))
           color = "#444",
@@ -232,7 +233,7 @@ object MapboxMap {
             coordinates = js.Array(r(0), r(1))
           ),
           properties = literal(
-            title = currKm + " km",
+            title = s"${displaySeconds(r(2).toInt)} ($currKm km)",
             icon = "circle-stroked",
             color = "#2F2",
             opacity = 0.5
