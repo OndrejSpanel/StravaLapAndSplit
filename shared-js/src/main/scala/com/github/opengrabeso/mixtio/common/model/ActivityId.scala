@@ -13,7 +13,7 @@ import SportId._
 @SerialVersionUID(11L)
 case class ActivityId(id: FileId, digest: String, name: String, startTime: ZonedDateTime, endTime: ZonedDateTime, sportName: SportId, distance: Double) {
 
-  override def toString = s"${id.toString} - $name ($startTime..$endTime)"
+  override def toString = s"$startTime..$endTime: '${id.toString}' - '$name'"
 
   def secondsInActivity(time: ZonedDateTime): Int = ChronoUnit.SECONDS.between(startTime, time).toInt
   def timeInActivity(seconds: Int): ZonedDateTime = startTime.plusSeconds(seconds)

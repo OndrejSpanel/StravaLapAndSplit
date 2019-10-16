@@ -508,6 +508,9 @@ object Main extends common.Formatting {
     }
 
     def split(splitTime: ZonedDateTime): Option[ActivityEvents] = {
+      val logging = false
+
+      if (logging) println(s"Split ${id.startTime}..${id.endTime} at $splitTime")
 
       // we always want to keep the splitTime even if it is not a split event. This happens when deleting part of activities
       // because some split times are suppressed during the process
@@ -524,8 +527,8 @@ object Main extends common.Formatting {
 
       toSplit.map { case (beg, endTime) =>
 
-
         val begTime = beg.stamp
+        if (logging) println(s"keep $begTime..$endTime")
 
         val eventsRange = events.dropWhile(_.stamp <= begTime).takeWhile(_.stamp < endTime)
 

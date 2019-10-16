@@ -102,7 +102,6 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
         (activity.timeInActivity(beg), activity.timeInActivity(end))
       }
 
-
       // first remove any disabled intervals
       val activityWithIntervalsDeleted = intervalsToDelete.foldLeft[Option[ActivityEvents]](Some(activityToDeleteFrom)) {
         case (None, _) =>
@@ -114,14 +113,19 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
             None
           } else if (activity.startTime <= end && activity.endTime >= beg) {
             // some overlap, we need to delete the beg..end part, i.e. keep (activity.startTime .. beg) and (end .. activity.endTime)
+            val logging = false
+            if (logging) println(s"Delete ($beg..$end) from $activity")
             val keepBeforeBeg = activity.span(beg)._1
             val keepAfterEnd = activity.span(end)._2
             (keepBeforeBeg, keepAfterEnd) match {
               case (Some(a1), Some(a2)) =>
+                if (logging) println(s"take $a1 + $a2")
                 Some(a1.merge(a2))
               case (Some(a), None) =>
+                if (logging) println(s"take $a")
                 Some(a)
               case (None, Some(a)) =>
+                if (logging) println(s"take $a")
                 Some(a)
               case (None, None) =>
                 None
