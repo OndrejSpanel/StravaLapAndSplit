@@ -158,7 +158,7 @@ class PagePresenter(
   }
 
   object uploads extends PendingUploads {
-    def modifyActivities(fileId: Set[FileId])(modify: select.ActivityRow => select.ActivityRow): Unit = {
+    def modifyActivities(fileId: Set[FileId])(modify: ActivityRow => ActivityRow): Unit = {
       model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a =>
           if (fileId contains a.staged.id.id) {
