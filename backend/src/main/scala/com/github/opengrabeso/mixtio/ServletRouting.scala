@@ -31,8 +31,6 @@ object ServletRouting {
 
     Process, DeleteSelected, CheckUploadStatus,
 
-    SettingsPage,
-
     Cleanup, ConvertOldData,
 
     RouteData

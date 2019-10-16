@@ -31,7 +31,7 @@ class PageViewFactory(
     model.subProp(_.settings.maxHR).addValidator(new NumericRangeValidator(90, 240))
 
     for {
-      userAPI <- facade.UdashApp.currentUserId.toOption.map(rest.RestAPIClient.api.userAPI)
+      userAPI <- userService.api
       userSettings <- userAPI.allSettings
     } {
       model.subProp(_.settings).set(userSettings)

@@ -13,6 +13,15 @@ import org.querki.jquery.{JQueryXHR, _}
 import scala.collection.mutable
 
 object MainJS {
+  @JSExportTopLevel("getCookie")
+  def getCookie(cookieName: String): String = {
+    val allCookies = document.cookie
+    val cookieValue = allCookies.split(";").map(_.trim).find(_.startsWith(cookieName + "=")).map{s =>
+      s.drop(cookieName.length + 1)
+    }
+    cookieValue.orNull
+  }
+
   @JSExportTopLevel("appMain") // called by Version as an entry point
   def appMain(): Unit = {
     jQ((jThis: Element) => {

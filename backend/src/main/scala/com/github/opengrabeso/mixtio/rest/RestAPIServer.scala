@@ -22,13 +22,17 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
     auth
   }
 
-  def userAPI(userId: String): UserRestAPI = {
-    // TODO: require auth cookie to prevent 3rd party else "injecting" into existing user data
+  def userAPI(userId: String, authCode: String): UserRestAPI = {
     val auth = synchronized {
       users(userId)
     }
-    // we might store UserRestAPIServer directly
-    new UserRestAPIServer(auth)
+    // verify user is the one who has authenticated - require the same code cookie to be used to identify the session
+    if (auth.code != authCode) {
+      throw new IllegalAccessException(s"Access denied, provided auth code '$authCode' does not match the one stored on the server")
+    } else {
+      // we might store UserRestAPIServer directly
+      new UserRestAPIServer(auth)
+    }
   }
 
   def now = syncResponse {

@@ -66,7 +66,7 @@ object Main extends common.Formatting {
     }
   }
 
-  case class StravaAuthResult(token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String) {
+  case class StravaAuthResult(code: String, token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String) {
     // userId used for serialization, needs to be stable, cannot be created from a token
     lazy val userId: String = id
   }
@@ -107,7 +107,7 @@ object Main extends common.Formatting {
     val id = athleteJson.path("id").numberValue.toString
     val name = athleteJson.path("firstname").textValue + " " + athleteJson.path("lastname").textValue
 
-    val auth = StravaAuthResult(token, refreshToken, refreshExpire, mapboxToken, id, name)
+    val auth = StravaAuthResult(code, token, refreshToken, refreshExpire, mapboxToken, id, name)
     rest.RestAPIServer.createUser(auth)
     auth
   }
