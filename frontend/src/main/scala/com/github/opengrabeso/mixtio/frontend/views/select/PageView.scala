@@ -109,13 +109,19 @@ class PageView(
       TableFactory.TableAttrib("Distance", (ar, _, _) => displayDistance(ar.staged.id.distance).render),
       TableFactory.TableAttrib("Duration", (ar, _, _) => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
       TableFactory.TableAttrib("Strava activity", { (ar, arProp, nested) => div {
-        nested(showIfElse(arProp.subProp(_.uploading))(
+        // we are inside of `produce`, we can use `if` - `showIfElse` may have some performance advantage,
+        // but this way it is easier to write and seems to work fine. Both `produce` and `showIfElse` are implemented
+        // using `PropertyModifier`. The difference is `produce` is observing `activities` property, `showIfElse` could be more
+        // granular, observing only `uploading` sub-property.
+        // As `produce` must be called anyway because `activities` have changed, it should not matter.
+        if (ar.uploading) {
           div(
-            s.uploading,
-            nested(bind(arProp.subProp(_.uploadState)))
-          ).render,
+            if (ar.uploadState != "") s.error else s.uploading,
+            if (ar.uploadState != "") ar.uploadState else "Uploading..."
+          ).render
+        } else {
           ar.strava.map(i => hrefLink(i).render).toSeq
-        ))
+        }
       }.render}, Some("Strava")),
       TableFactory.TableAttrib("Data", (ar, _, _) => ar.staged.describeData.render),
       TableFactory.TableAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id).render, Some("")),

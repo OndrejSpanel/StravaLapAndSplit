@@ -15,7 +15,7 @@ abstract class PendingUploads(implicit ec: ExecutionContext) {
 
     val setOfFileIds = fileIds.toSet
     // set all files as uploading before starting the API to make the UI response immediate
-    setUploadProgressFile(setOfFileIds, true, "Uploading...")
+    setUploadProgressFile(setOfFileIds, true, "")
 
     val uploadStarted = api.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId)
 
