@@ -1,6 +1,7 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.select
+package views
+package select
 
 import java.time.{ZoneOffset, ZonedDateTime}
 
@@ -12,7 +13,6 @@ import io.udash._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import PagePresenter._
-import com.github.opengrabeso.mixtio.common.model
 
 import scala.scalajs.js
 
@@ -26,7 +26,9 @@ object PagePresenter {
       p.success(())
     }
     p.future
-  }}
+  }
+
+}
 
 /** Contains the business logic of this view. */
 class PagePresenter(
@@ -34,6 +36,7 @@ class PagePresenter(
   application: Application[RoutingState],
   userService: services.UserContextService
 )(implicit ec: ExecutionContext) extends Presenter[SelectPageState.type] {
+
   model.subProp(_.showAll).listen { p =>
     loadActivities(p)
   }
@@ -140,48 +143,10 @@ class PagePresenter(
     }
   }
 
-  var pending = Map.empty[String, Set[FileId]]
-
-  private final val pollPeriodMs = 1000
-
-  private def setStrava(uploadId: String, stravaId: Option[FileId.StravaId]): Unit = {
-    for (fileId <- pending.get(uploadId)) {
-      model.subProp(_.activities).set {
-        model.subProp(_.activities).get.map { a =>
-          if (fileId contains a.staged.id.id) {
-            a.copy(strava = stravaId.map(s => a.staged.id.copy(id = s)))
-          } else a
-        }
-      }
-    }
-  }
-
-  private def setUploadProgress(uploadId: String, uploading: Boolean, uploadState: String): Unit = {
-    for (fileId <- pending.get(uploadId)) {
-      model.subProp(_.activities).set {
-        model.subProp(_.activities).get.map { a =>
-          if (fileId contains a.staged.id.id) {
-            a.copy(uploading = uploading, uploadState = uploadState)
-          } else a
-        }
-      }
-    }
-  }
-
   def sendSelectedToStrava(): Unit = {
     val fileIds = selectedIds
     userService.api.get.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId).foreach { a =>
       val fileToPending = a.toMap
-      // some activities might be discarded, fileId is not guaranteed to match fileToPending
-      a.foreach { case (id, i) =>
-        println(s"Upload $i started for $id")
-        pending += pending.get(i).map { addTo =>
-          i -> (addTo + id)
-        }.getOrElse {
-          i -> Set(id)
-        }
-      }
-      println(s"pending ${pending.size} (added ${fileIds.size})")
       // create upload indication for each activity being uploaded
       model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a => // : ActivityRow makes InteliJ happy
@@ -191,34 +156,7 @@ class PagePresenter(
           } else a
         }
       }
-      if (pending.nonEmpty) {
-        delay(pollPeriodMs).foreach(_ => checkPendingResults())
-      }
-    }
-  }
-
-  def checkPendingResults(): Unit = {
-    for {
-      api <- userService.api
-      status <- api.pollUploadResults(pending.keys.toSeq, facade.UdashApp.sessionId)
-    } {
-      for (result <- status) {
-        result match {
-          case UploadProgress.Pending(uploadId) =>
-          case UploadProgress.Done(stravaId, uploadId) =>
-            println(s"$uploadId completed with $result")
-            setStrava(uploadId, Some(FileId.StravaId(stravaId)))
-            setUploadProgress(uploadId, false, "")
-            pending -= uploadId
-          case UploadProgress.Error(uploadId, error) =>
-            println(s"$uploadId completed with error $error")
-            setUploadProgress(uploadId, true, error)
-            pending -= uploadId
-        }
-      }
-      if (pending.nonEmpty) {
-        delay(pollPeriodMs).foreach(_ => checkPendingResults())
-      }
+      uploads.addPending(userService.api.get, fileToPending)
     }
   }
 
@@ -230,4 +168,27 @@ class PagePresenter(
   def gotoSettings(): Unit = {
     application.goTo(SettingsPageState)
   }
+
+  object uploads extends PendingUploads {
+    def setStravaFile(fileId: Set[FileId], stravaId: Option[FileId.StravaId]): Unit = {
+      model.subProp(_.activities).set {
+        model.subProp(_.activities).get.map { a =>
+          if (fileId contains a.staged.id.id) {
+            a.copy(strava = stravaId.map(s => a.staged.id.copy(id = s)))
+          } else a
+        }
+      }
+    }
+
+    def setUploadProgressFile(fileId: Set[FileId], uploading: Boolean, uploadState: String): Unit = {
+      model.subProp(_.activities).set {
+        model.subProp(_.activities).get.map { a =>
+          if (fileId contains a.staged.id.id) {
+            a.copy(uploading = uploading, uploadState = uploadState)
+          } else a
+        }
+      }
+    }
+  }
+
 }
