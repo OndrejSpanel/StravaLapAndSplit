@@ -11,19 +11,32 @@ abstract class PendingUploads(implicit ec: ExecutionContext) {
 
   private final val pollPeriodMs = 1000
 
-  def addPending(api: rest.UserRestAPI, add: Map[FileId, String]) = {
-    // some activities might be discarded, fileId is not guaranteed to match fileToPending
-    add.foreach { case (id, i) =>
-      println(s"Upload $i started for $id")
-      pending += pending.get(i).map { addTo =>
-        i -> (addTo + id)
-      }.getOrElse {
-        i -> Set(id)
+  def startUpload(api: rest.UserRestAPI, fileIds: Seq[FileId]) = {
+
+    val setOfFileIds = fileIds.toSet
+    // set all files as uploading before starting the API to make the UI response immediate
+    setUploadProgressFile(setOfFileIds, true, "Uploading...")
+
+    val uploadStarted = api.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId)
+
+    uploadStarted.foreach { a =>
+      val add = a.toMap
+      // some activities might be discarded, fileId is not guaranteed to match fileToPending
+      // remove uploading status for the files for which no upload has started
+      setUploadProgressFile(setOfFileIds -- add.keySet, false, "")
+
+      add.foreach { case (id, i) =>
+        println(s"Upload $i started for $id")
+        pending += pending.get(i).map { addTo =>
+          i -> (addTo + id)
+        }.getOrElse {
+          i -> Set(id)
+        }
       }
-    }
-    println(s"pending ${pending.size} (added ${add.size})")
-    if (pending.nonEmpty) {
-      delay(pollPeriodMs).foreach(_ => checkPendingResults(api))
+      println(s"pending ${pending.size} (added ${add.size})")
+      if (pending.nonEmpty) {
+        delay(pollPeriodMs).foreach(_ => checkPendingResults(api))
+      }
     }
 
   }

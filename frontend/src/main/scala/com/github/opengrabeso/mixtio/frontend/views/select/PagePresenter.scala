@@ -144,20 +144,7 @@ class PagePresenter(
   }
 
   def sendSelectedToStrava(): Unit = {
-    val fileIds = selectedIds
-    userService.api.get.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId).foreach { a =>
-      val fileToPending = a.toMap
-      // create upload indication for each activity being uploaded
-      model.subProp(_.activities).set {
-        model.subProp(_.activities).get.map { a => // : ActivityRow makes InteliJ happy
-          val pendingId = fileToPending.get(a.staged.id.id)
-          if (pendingId.isDefined) {
-            a.copy(uploading = true, uploadState = "Uploading...")
-          } else a
-        }
-      }
-      uploads.addPending(userService.api.get, fileToPending)
-    }
+    uploads.startUpload(userService.api.get, selectedIds)
   }
 
   def mergeAndEdit(): Unit = {
