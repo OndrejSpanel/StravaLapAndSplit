@@ -56,13 +56,6 @@ class PagePresenter(
     }
   }
 
-  def delete(time: Int): Unit = {
-    for (fileId <- model.subProp(_.merged).get) {
-      ???
-      //userContextService.api.get.downloadEditedActivity(fileId, UdashApp.sessionId, eventsToSend, time)
-    }
-  }
-
   def sendToStrava(time: Int): Unit = {
     for (fileId <- model.subProp(_.merged).get) {
       userContextService.api.get.sendEditedActivityToStrava(fileId, UdashApp.sessionId, eventsToSend, time)
