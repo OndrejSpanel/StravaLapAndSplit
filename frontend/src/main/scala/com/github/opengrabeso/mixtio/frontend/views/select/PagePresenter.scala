@@ -13,6 +13,7 @@ import io.udash._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import PagePresenter._
+import com.github.opengrabeso.mixtio.frontend.views.select
 
 import scala.scalajs.js
 
@@ -157,23 +158,25 @@ class PagePresenter(
   }
 
   object uploads extends PendingUploads {
-    def setStravaFile(fileId: Set[FileId], stravaId: Option[FileId.StravaId]): Unit = {
+    def modifyActivities(fileId: Set[FileId])(modify: select.ActivityRow => select.ActivityRow): Unit = {
       model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a =>
           if (fileId contains a.staged.id.id) {
-            a.copy(strava = stravaId.map(s => a.staged.id.copy(id = s)))
+            modify(a)
           } else a
         }
       }
     }
 
+    def setStravaFile(fileId: Set[FileId], stravaId: Option[FileId.StravaId]): Unit = {
+      modifyActivities(fileId) { a =>
+        a.copy(strava = stravaId.map(s => a.staged.id.copy(id = s)))
+      }
+    }
+
     def setUploadProgressFile(fileId: Set[FileId], uploading: Boolean, uploadState: String): Unit = {
-      model.subProp(_.activities).set {
-        model.subProp(_.activities).get.map { a =>
-          if (fileId contains a.staged.id.id) {
-            a.copy(uploading = uploading, uploadState = uploadState)
-          } else a
-        }
+      modifyActivities(fileId) { a =>
+        a.copy(uploading = uploading, uploadState = uploadState)
       }
     }
   }
