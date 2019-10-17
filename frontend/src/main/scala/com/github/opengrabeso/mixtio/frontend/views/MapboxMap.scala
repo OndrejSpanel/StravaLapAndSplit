@@ -3,9 +3,8 @@ package frontend.views
 
 import frontend.model._
 import facade.UdashApp._
+import facade.mapboxgl._
 import facade._
-import org.scalajs.dom
-import org.scalajs.dom.Element
 
 import scala.scalajs.js
 import js.Dynamic.literal
@@ -13,7 +12,7 @@ import js.JSConverters._
 import scalatags.JsDom.all._
 
 object MapboxMap extends common.Formatting {
-  def display(geojson: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): mapboxgl.Map = {
+  def display(geojson: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): Map = {
     // TODO: use tupled route representation directly instead of array one
     val route = geojson.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
     val routeX = route.map(_(0))
@@ -34,8 +33,8 @@ object MapboxMap extends common.Formatting {
       )
     )
 
-    mapboxgl.accessToken = mapBoxToken
-    val map = new mapboxgl.Map(js.Dynamic.literal(
+    accessToken = mapBoxToken
+    val map = new Map(js.Dynamic.literal(
       container = "map", // container id
       style = "mapbox://styles/ospanel/cjkbfwccz11972rmt4xvmvme6", // stylesheet location
       center = js.Array((minX + maxX) / 2, (minY + maxY) / 2), // starting position [lng, lat]
@@ -54,11 +53,16 @@ object MapboxMap extends common.Formatting {
         renderGrid(map, data.features.asInstanceOf[js.Array[js.Dynamic]](0).geometry.coordinates.asInstanceOf[js.Array[Double]])
       }
     }
-    map.on("moveend", () => moveHandler())
-    map.on("move", () => moveHandler())
+    map.on("moveend", _ => moveHandler())
+    map.on("move", _ => moveHandler())
 
+    map.on("mousemove", {re =>
+      val e = re.asInstanceOf[MapMouseEvent]
+      val features = map.queryRenderedFeatures(e.point, new js.Object { val layers = js.Array("events") })
+      map.getCanvas().style.cursor = if (features.length != 0) "pointer" else ""
+    })
 
-    map.on("load", { () =>
+    map.on("load", { _ =>
       renderRoute(map, route)
       renderEvents(map, events, route)
       renderGrid(map, route(0))
@@ -67,7 +71,7 @@ object MapboxMap extends common.Formatting {
     map
   }
 
-  def changeEvents(map: mapboxgl.Map, e: Seq[EditEvent], route: Seq[(Double, Double, Double, Double)]): Unit = {
+  def changeEvents(map: Map, e: Seq[EditEvent], route: Seq[(Double, Double, Double, Double)]): Unit = {
     val routeA = route.map(i => js.Array(i._1, i._2, i._3, i._4)).toJSArray
 
     val eventsData = mapEventData(e, routeA);
@@ -81,7 +85,7 @@ object MapboxMap extends common.Formatting {
   }
 
 
-  def renderRoute(map: mapboxgl.Map, route: js.Array[js.Array[Double]]): Unit = {
+  def renderRoute(map: Map, route: js.Array[js.Array[Double]]): Unit = {
 
     val routeLL = route.map(i => js.Array(i(0), i(1)))
 
@@ -196,7 +200,7 @@ object MapboxMap extends common.Formatting {
   }
 
 
-  def renderEvents(map: mapboxgl.Map, events: Seq[EditEvent], route: js.Array[js.Array[Double]]): Unit = {
+  def renderEvents(map: Map, events: Seq[EditEvent], route: js.Array[js.Array[Double]]): Unit = {
     val markers = mapEventData(events, route)
 
     val iconLayout = literal(
@@ -293,7 +297,7 @@ object MapboxMap extends common.Formatting {
 
   case class Size(x: Double, y: Double)
 
-  def renderGrid(map: mapboxgl.Map, fixedPoint: js.Array[Double]): Unit = {
+  def renderGrid(map: Map, fixedPoint: js.Array[Double]): Unit = {
     val container = map.getContainer()
     val size = Size(
       x = container.clientWidth,
