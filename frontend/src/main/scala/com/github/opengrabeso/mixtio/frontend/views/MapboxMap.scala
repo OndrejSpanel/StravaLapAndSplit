@@ -4,7 +4,9 @@ package frontend.views
 import frontend.model._
 import facade.UdashApp._
 import facade.mapboxgl._
+import facade.mapboxgl_util._
 import facade._
+import org.scalajs.dom
 
 import scala.scalajs.js
 import js.Dynamic.literal
@@ -56,16 +58,46 @@ object MapboxMap extends common.Formatting {
     map.on("moveend", _ => moveHandler())
     map.on("move", _ => moveHandler())
 
-    map.on("mousemove", {re =>
-      val e = re.asInstanceOf[MapMouseEvent]
-      val features = map.queryRenderedFeatures(e.point, new js.Object { val layers = js.Array("events") })
-      map.getCanvas().style.cursor = if (features.length != 0) "pointer" else ""
-    })
 
     map.on("load", { _ =>
       renderRoute(map, route)
       renderEvents(map, events, route)
       renderGrid(map, route(0))
+
+      map.on("mousemove", {re =>
+        val e = re.asInstanceOf[MapMouseEvent]
+        val features = map.queryRenderedFeatures(e.point, new js.Object { val layers = js.Array("events") })
+        map.getCanvas().style.cursor = if (features.length != 0) "pointer" else ""
+      })
+
+      var currentPopup: Popup = null
+
+      map.on("click", (re) => {
+        val e = re.asInstanceOf[MapMouseEvent]
+        val features = map.queryRenderedFeatures(e.point, new js.Object {
+          val layers = js.Array("events")
+        })
+        if (features.nonEmpty) {
+          val feature = features(0)
+          if (currentPopup != null) currentPopup.remove()
+          // Populate the popup and set its coordinates
+          // based on the feature found.
+          val popup = new mapboxgl.Popup().setLngLat(feature.geometry.coordinates)
+          feature.properties.description match {
+            case node: dom.Node =>
+              // it would be nice to pass description directly as HTML DOM Node, but somehow only string seems to survive inside of Mapbox source
+              popup.setDOMContent(node)
+            case s =>
+              popup.setHTML(s.asInstanceOf[String])
+          }
+
+          popup.addTo(map)
+          currentPopup = popup
+        }
+      })
+
+
+
     })
 
     map
@@ -156,7 +188,7 @@ object MapboxMap extends common.Formatting {
         properties = literal(
           title = if (e.action.nonEmpty) s"$time (${e.action})" else time,
           icon = "circle",
-          description = EventView.eventDescription(e), // TODO: getSelectHtml(e(1), e(3))
+          description = EventView.eventDescription(e).outerHTML, // TODO: getSelectHtml(e(1), e(3))
           color = "#444",
           opacity = 0.5,
         )
@@ -175,7 +207,7 @@ object MapboxMap extends common.Formatting {
       ),
       properties = literal(
         title = "Begin",
-        description = EventView.eventDescription(events.head).render,
+        description = EventView.eventDescription(events.head).outerHTML,
         icon = "triangle",
         color = "#F22",
         opacity = 1
@@ -189,7 +221,7 @@ object MapboxMap extends common.Formatting {
       ),
       properties = literal(
         title = "End",
-        description = EventView.eventDescription(events.last).render.toString,
+        description = EventView.eventDescription(events.last).outerHTML,
         icon = "circle",
         color = "#2F2",
         opacity = 0.5
