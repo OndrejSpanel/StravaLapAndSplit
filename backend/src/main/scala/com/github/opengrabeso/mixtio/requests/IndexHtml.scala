@@ -7,7 +7,7 @@ object IndexHtml extends DefineRequest("/") {
 
   def html(request: Request, resp: Response) = {
     val query = Option(request.queryString)
-    val defaultPage = "/selectActivity"
+    val defaultPage = "/app"
     query.fold {
       resp.redirect(defaultPage)
     } { q =>
