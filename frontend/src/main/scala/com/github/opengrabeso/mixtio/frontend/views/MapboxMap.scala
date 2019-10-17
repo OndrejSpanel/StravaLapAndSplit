@@ -179,6 +179,7 @@ object MapboxMap extends common.Formatting {
       // ["split", 0, 0.0, "Run"]
       val r = findPoint(route, e.time)
       val time = displaySeconds(e.time)
+      val eventTitle = if (e.action.nonEmpty) s"$time (${e.action})" else time
       val marker = literal(
         `type` = "Feature",
         geometry = literal(
@@ -186,9 +187,9 @@ object MapboxMap extends common.Formatting {
           coordinates = js.Array(r(0), r(1))
         ),
         properties = literal(
-          title = if (e.action.nonEmpty) s"$time (${e.action})" else time,
+          title = eventTitle,
           icon = "circle",
-          description = EventView.eventDescription(e).outerHTML, // TODO: getSelectHtml(e(1), e(3))
+          description = EventView.getSelectHtml(e, eventTitle).outerHTML,
           color = "#444",
           opacity = 0.5,
         )

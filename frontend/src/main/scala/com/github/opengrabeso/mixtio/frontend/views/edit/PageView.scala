@@ -14,6 +14,7 @@ import model.EditEvent
 import scalatags.JsDom.all._
 import io.udash.bootstrap.utils.BootstrapStyles._
 import io.udash.component.ComponentId
+import io.udash.wrappers.jquery.jQ
 
 class PageView(
   model: ModelProperty[PageModel],
@@ -57,7 +58,10 @@ class PageView(
             if (actionIds.size > 1) {
               factory.input.formGroup()(
                 input = { _ =>
-                  factory.input.select(eModel.subProp(_.action), actionIds.toSeqProperty)(id => span(possibleActionsMap(id))).render
+                  factory.input.select(
+                    eModel.subProp(_.action), actionIds.toSeqProperty,
+                    inputId = EventView.selectId(e.time)
+                  )(id => span(possibleActionsMap(id))).render
                 }
               )
             } else if (actionIds.nonEmpty) {
@@ -127,7 +131,9 @@ class PageView(
       div(
         showIfElse(model.subProp(_.loading))(
           p("Loading...").render,
-          table.render
+          div(
+            table.render
+          ).render
         )
       ),
 

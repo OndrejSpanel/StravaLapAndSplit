@@ -4,15 +4,20 @@ package frontend.views
 import common.Formatting
 import common.model._
 import frontend.model._
-import org.scalajs.dom._
-import scalatags.JsDom.all._
+import io.udash.component.ComponentId
+import org.scalajs.dom
+import scalatags.JsDom.all.{raw, select => tag_select, _}
+import io.udash._
+import org.scalajs.dom.raw.HTMLOptionElement
+
+import scala.scalajs.js.annotation.JSExportTopLevel
 
 object EventView {
   implicit class Text(s: String) {
     def text = span(s).render
   }
 
-  def segmentTitle(kind: String, e: SegmentTitle): Element = {
+  def segmentTitle(kind: String, e: SegmentTitle): dom.Element = {
     val segPrefix = if (e.isPrivate) "private segment " else "segment "
     val segmentName = Formatting.shortNameString(e.name, 32 - segPrefix.length - kind.length)
     if (e.segmentId != 0) {
@@ -29,7 +34,7 @@ object EventView {
     }
   }
 
-  def eventDescription(e: EditEvent): Element = {
+  def eventDescription(e: EditEvent): dom.Element = {
     e.event match {
       case e: PauseEvent =>
         s"Pause ${Events.niceDuration(e.duration)}".text
@@ -53,4 +58,28 @@ object EventView {
 
   }
 
+  def selectId(time: Int): ComponentId = ComponentId("actionSelect").subcomponent(time.toString)
+
+  def getSelectHtml(editEvent: EditEvent, title: String): dom.Element = {
+    // replicate the option used in the table
+    val tableOption = dom.document.getElementById(selectId(editEvent.time).id)
+    val html = tableOption.innerHTML
+
+    span(
+      title,
+      br,
+      tag_select(
+        raw(html),
+        // we cannot use onchange attribute using :+=, as that way it does not seem to be stored in the HTML - and HTML is the only thing which is used
+        // expects a global onChangeEvent function - defined below
+        onchange := s"onChangeEvent(this.options[this.selectedIndex].value,${editEvent.time})",
+      )
+    ).render
+  }
+
+  @JSExportTopLevel("onChangeEvent")
+  def onChangeEvent(value: String, time: Int): Unit = {
+    val option = dom.document.getElementById(selectId(time).id).asInstanceOf[HTMLOptionElement]
+    option.value = value
+  }
 }
