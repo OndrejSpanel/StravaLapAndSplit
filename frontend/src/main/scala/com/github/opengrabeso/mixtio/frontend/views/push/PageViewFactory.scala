@@ -1,10 +1,10 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.settings
+package views.push
 
 import java.time.ZonedDateTime
 
-import routing.{RoutingState, SettingsPageState}
+import routing.{RoutingState, PushPageState}
 import io.udash._
 
 import scala.concurrent.Future
@@ -13,10 +13,10 @@ import scala.concurrent.Future
 class PageViewFactory(
   application: Application[RoutingState],
   userService: services.UserContextService,
-) extends ViewFactory[SettingsPageState.type] {
+) extends ViewFactory[PushPageState.type] {
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  override def create(): (View, Presenter[SettingsPageState.type]) = {
+  override def create(): (View, Presenter[PushPageState.type]) = {
     val model = ModelProperty(PageModel(true, SettingsStorage(), ZonedDateTime.now()))
 
     class NumericRangeValidator(from: Int, to: Int) extends Validator[Int] {

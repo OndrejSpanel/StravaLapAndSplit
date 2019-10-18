@@ -34,6 +34,7 @@ class RoutingRegistryDef extends RoutingRegistry[RoutingState] {
   private val (url2State, state2Url) = bidirectional {
     case "/" => SelectPageState
     case "/settings" => SettingsPageState
+    case "/push" => PushPageState
     case "/edit" ? s =>
       EditPageState(s)
   }
