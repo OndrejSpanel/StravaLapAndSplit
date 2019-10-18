@@ -124,10 +124,7 @@ class PagePresenter(
 
   }
 
-
-
-    override def handleState(state: SelectPageState.type): Unit = {
-  }
+  override def handleState(state: SelectPageState.type): Unit = {}
 
   def unselectAll(): Unit = {
     model.subProp(_.activities).set {
@@ -150,6 +147,26 @@ class PagePresenter(
 
   def sendSelectedToStrava(): Unit = {
     uploads.startUpload(userService.api.get, selectedIds)
+  }
+
+  def importFromStrava(act: ActivityHeader): Unit = {
+    val stravaImport = act.id.id match {
+      case FileId.StravaId(stravaId) =>
+        // TODO: some progress indication
+        userService.api.get.importFromStrava(stravaId)
+      case _ =>
+        Future.failed(new NoSuchElementException)
+    }
+    stravaImport.foreach { actId =>
+      println(s"Strava ${act.id.id} imported as $actId")
+      model.subProp(_.activities).set {
+        model.subProp(_.activities).get.map { a =>
+          if (a.strava.contains(act)) {
+            a.copy(staged = Some(act.copy(id = actId)))
+          } else a
+        }
+      }
+    }
   }
 
   def mergeAndEdit(): Unit = {

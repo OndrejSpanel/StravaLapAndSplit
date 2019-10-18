@@ -44,6 +44,12 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
     }
   }
 
+  def importFromStrava(stravaNumId: Long) = syncResponse {
+    val activityData = Main.getEventsFrom(userAuth.token, stravaNumId.toString)
+    com.github.opengrabeso.mixtio.requests.Process.storeActivity(Main.namespace.stage, activityData, userAuth.userId)
+    activityData.id
+  }
+
   /* Send activities from staging area to Strava, directly, with no editing, merge smart
   * */
   def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String) = syncResponse {

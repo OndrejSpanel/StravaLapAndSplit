@@ -14,7 +14,6 @@ import model.EditEvent
 import scalatags.JsDom.all._
 import io.udash.bootstrap.utils.BootstrapStyles._
 import io.udash.component.ComponentId
-import io.udash.wrappers.jquery.jQ
 
 class PageView(
   model: ModelProperty[PageModel],

@@ -11,13 +11,9 @@ object ActivityFromStrava extends DefineRequest("/activityFromStrava") with Acti
     withAuth(request, resp) { auth =>
       val actId = request.queryParams("activityId")
 
-      val stravaId = FileId.StravaId(actId.toLong)
+      val stravaId = actId.toLong
 
-      val activityData = stravaId match {
-        case FileId.StravaId(idNum) =>
-          Main.getEventsFrom(auth.token, idNum.toString)
-      }
-
+      val activityData = Main.getEventsFrom(auth.token, stravaId.toString)
 
       storeActivity(Main.namespace.stage, activityData, auth.userId)
 

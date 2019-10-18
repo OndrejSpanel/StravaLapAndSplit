@@ -50,8 +50,7 @@ class PageView(
     // value is a callback
     type DisplayAttrib = TableFactory.TableAttrib[ActivityRow]
     val attribs = Seq[DisplayAttrib](
-      TableFactory.TableAttrib(
-        "", (ar, p, nested) =>
+      TableFactory.TableAttrib("", (ar, p, nested) =>
           if (ar.staged.isDefined) {
             div(nested(checkbox(p.subProp(_.selected)))).render
           } else div().render
@@ -76,7 +75,18 @@ class PageView(
         }
       }.render}, Some("Strava")),
       TableFactory.TableAttrib("Data", (ar, _, _) => ar.header.describeData.render),
-      TableFactory.TableAttrib("Source", (ar, _, _) => ar.staged.map(h => hrefLink(h.id.id, h.id.shortName)).render, Some("")),
+      TableFactory.TableAttrib("Source", { (ar, _, _) =>
+        import io.udash.bootstrap.utils.UdashIcons.FontAwesome.Solid
+        import io.udash.bootstrap.utils.UdashIcons.FontAwesome.Modifiers
+        if (ar.strava.nonEmpty && ar.staged.isEmpty) {
+          iconButton("Import from Strava to Mixtio")(Modifiers.Sizing.xs, Solid.cloudDownloadAlt)
+            .onClick{
+              presenter.importFromStrava(ar.strava.get)
+            }.render
+        } else {
+          ar.staged.map(h => hrefLink(h.id.id, h.id.shortName)).render
+        }
+      }, Some("")),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(

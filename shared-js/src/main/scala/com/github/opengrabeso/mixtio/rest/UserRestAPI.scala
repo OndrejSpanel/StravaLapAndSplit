@@ -30,6 +30,8 @@ trait UserRestAPI {
 
   def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String): Future[Seq[(FileId, String)]]
 
+  def importFromStrava(stravaId: Long): Future[ActivityId]
+
   def pollUploadResults(uploadIds: Seq[String], sessionId: String): Future[Seq[UploadProgress]]
 
   /// this will create one activity in the "edit" namespace
