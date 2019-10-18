@@ -22,7 +22,10 @@ import scala.util.{Success, Try}
 import scala.xml.Elem
 import java.time.{ZoneId, ZonedDateTime}
 
+import com.github.opengrabeso.mixtio.rest.RestAPI
+import com.softwaremill.sttp.SttpBackend
 import common.Util._
+import io.udash.rest.SttpRestClient
 import shared.Digest
 
 import scala.util.control.NonFatal
@@ -291,7 +294,7 @@ object Start extends App {
     val sinceTime = ZonedDateTime.parse(since)
     authData = Some(AuthData(userId, sinceTime, sessionId))
     authDone.countDown()
-    val doPushUrl = s"$stravimatUrl/push-do"
+    val doPushUrl = s"$stravimatUrl/app#push"
     redirect(doPushUrl, StatusCodes.Found)
   }
 
@@ -388,25 +391,30 @@ object Start extends App {
     val encodingHeader = if (useGzip && !gzipCustom) Some(headers.`Content-Encoding`(HttpEncodings.gzip)) else None
     val contentType = if (useGzip && gzipCustom) ContentTypes.`application/octet-stream` else ContentTypes.`text/plain(UTF-8)` // it is XML in fact, but not fully conformant
 
-    val req = Http().singleRequest(
-      HttpRequest(
-        uri = s"$stravimatUrl/push-put-start?$requestParams&total-files=${sortedFiles.size}",
-        method = HttpMethods.POST,
-        headers = List(sessionCookie)
-      )
-    ).map { resp =>
-      resp.discardEntityBytes()
+    object RestAPIClient {
+      val api: RestAPI = {
+        implicit val sttpBackend: SttpBackend[Future, Nothing] = SttpRestClient.defaultBackend()
+        SttpRestClient[RestAPI](s"$stravimatUrl/rest")
+      }
+      def apply(): RestAPI = api
     }
 
-    Await.result(req, Duration.Inf)
+    val api = RestAPIClient()
 
-    val reqs = for {
+    val filesToSend = for {
       f <- sortedFiles
       fileBytes <- MoveslinkFiles.get(f)
     } yield {
       // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
+      (f, digest, fileBytes)
+    }
 
+    api.userAPI(???, ???).push.offerFiles(filesToSend.map(f => f._1 -> f._2))
+
+    val reqs = for {
+      (f, digest, fileBytes) <- filesToSend
+    } yield {
       // it seems production App Engine already decodes gziped request body, but development one does not
       // as I do not see any clean way how to indicate the development server it should do its own decoding
       // I do no use GZip on development server as a workaround

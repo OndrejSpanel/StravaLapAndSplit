@@ -242,5 +242,6 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
 
   }
 
+  def push: PushRestAPI =  new PushRestAPIServer(this)
 
 }

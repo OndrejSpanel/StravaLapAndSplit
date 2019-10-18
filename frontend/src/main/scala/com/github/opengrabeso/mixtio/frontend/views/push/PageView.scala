@@ -44,7 +44,7 @@ class PageView(
 
       div(
         UdashForm(inputValidationTrigger = UdashForm.ValidationTrigger.OnChange)(factory => Seq[Modifier](
-          h1("Settings"),
+          h1("Sending activities..."),
           factory.input.formGroup()(
             input = _ => factory.input.numberInput(model.subProp(_.settings.maxHR).transform(_.toString, _.toInt))().render,
             labelContent = Some(_ => "Max HR": Modifier),

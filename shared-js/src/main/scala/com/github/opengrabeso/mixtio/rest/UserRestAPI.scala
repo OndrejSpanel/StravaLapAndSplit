@@ -43,6 +43,8 @@ trait UserRestAPI {
   def sendEditedActivityToStrava(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int): Future[Option[String]]
 
   def downloadEditedActivity(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int): Future[Option[String]]
+
+  def push: PushRestAPI
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)
