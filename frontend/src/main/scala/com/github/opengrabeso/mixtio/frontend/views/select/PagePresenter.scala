@@ -17,7 +17,7 @@ import PagePresenter._
 import scala.scalajs.js
 
 object PagePresenter {
-  case class LoadedActivities(staged: Seq[ActivityHeader], strava: Seq[ActivityId])
+  case class LoadedActivities(staged: Seq[ActivityHeader], strava: Seq[ActivityHeader])
 
   // TODO: move to some Utils
   def delay(milliseconds: Int): Future[Unit] = {
@@ -46,9 +46,9 @@ class PagePresenter(
   final private val normalCount = 15
 
 
-  private def notBeforeByStrava(showAll: Boolean, stravaActivities: Seq[ActivityId]): ZonedDateTime = {
+  private def notBeforeByStrava(showAll: Boolean, stravaActivities: Seq[ActivityHeader]): ZonedDateTime = {
     if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 24
-    else stravaActivities.map(a => a.startTime).min
+    else stravaActivities.map(a => a.id.startTime).min
   }
 
   def doLoadActivities(showAll: Boolean): Future[LoadedActivities] = {
@@ -89,30 +89,35 @@ class PagePresenter(
     for (LoadedActivities(stagedActivities, allStravaActivities) <- load) {
       println(s"loadActivities loaded staged: ${stagedActivities.size}, Strava: ${allStravaActivities.size}")
 
-      def filterListed(activity: ActivityHeader, strava: Option[ActivityId]) = showAll || strava.isEmpty
-      def findMatchingStrava(ids: Seq[ActivityHeader], strava: Seq[ActivityId]): Seq[(ActivityHeader, Option[ActivityId])] = {
-        ids.map( a => a -> strava.find(_ isMatching a.id))
+      def filterListed(activity: ActivityHeader, strava: Option[ActivityHeader]) = showAll || strava.isEmpty
+      def findMatchingStrava(ids: Seq[ActivityHeader], strava: Seq[ActivityHeader]): Seq[(ActivityHeader, Option[ActivityHeader])] = {
+        ids.map( a => a -> strava.find(_.id isMatching a.id))
       }
 
       val (stravaActivities, oldStravaActivities) = allStravaActivities.splitAt(normalCount)
-      val neverBefore = alwaysIgnoreBefore(stravaActivities)
+      val neverBefore = alwaysIgnoreBefore(stravaActivities.map(_.id))
 
       // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
       val notBefore = if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 24
-      else stravaActivities.map(a => a.startTime).min
+      else stravaActivities.map(a => a.id.startTime).min
 
       // never display any activity which should be cleaned by UserCleanup
       val oldStagedActivities = stagedActivities.filter(_.id.startTime < neverBefore)
       val toCleanup = findMatchingStrava(oldStagedActivities, oldStravaActivities).flatMap { case (k,v) => v.map(k -> _)}
       val recentActivities = (stagedActivities diff toCleanup.map(_._1)).filter(_.id.startTime >= notBefore).sortBy(_.id.startTime)
 
-      val recentToStrava = findMatchingStrava(recentActivities, stravaActivities ++ oldStravaActivities).filter((filterListed _).tupled)
+      val recentToStrava = findMatchingStrava(recentActivities, allStravaActivities).filter((filterListed _).tupled)
 
-      model.subProp(_.activities).set(recentToStrava.map { case (act, actStrava) =>
-        val mostRecentStrava = stravaActivities.headOption.map(_.startTime)
+      // list Strava activities which have no Mixtio storage counterpart
+      val stravaOnly = if (showAll) allStravaActivities.filterNot(a => recentActivities.exists(_.id.isMatchingExactly(a.id))).map(a => a -> None) else Nil
+
+      val toShow = (recentToStrava ++ stravaOnly).sortBy(_._1.id.startTime)
+      val mostRecentStrava = stravaActivities.headOption.map(_.id.startTime)
+
+      model.subProp(_.activities).set(toShow.map { case (act, actStrava) =>
 
         val ignored = actStrava.isDefined || mostRecentStrava.exists(_ >= act.id.startTime)
-        ActivityRow(act, actStrava, !ignored)
+        ActivityRow(act, actStrava.map(_.id), !ignored)
       })
       model.subProp(_.loading).set(false)
     }

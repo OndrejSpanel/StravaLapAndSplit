@@ -18,6 +18,7 @@ import common.model._
 import shared.Timing
 
 import scala.annotation.tailrec
+import scala.collection.immutable
 import scala.collection.immutable.SortedMap
 import scala.util.control.Breaks._
 import scala.xml.Node
@@ -139,14 +140,18 @@ object Main extends common.Formatting {
   }
 
 
-  def loadActivityId(json: JsonNode): ActivityId = {
-    // https://strava.github.io/api/v3/activities/
+  def loadActivityId(json: JsonNode): ActivityHeader = {
+    // https://developers.strava.com/docs/reference/#api-Activities-getActivityById
     val name = json.path("name").textValue
     val id = json.path("id").longValue
     val time = ZonedDateTime.parse(json.path("start_date").textValue)
     val sportName = json.path("type").textValue
     val duration = json.path("elapsed_time").intValue
     val distance = json.path("distance").doubleValue
+    val hasGPS = !json.path("start_latlng").isMissingNode && !json.path("start_latlng").isNull
+    val hasHR = json.path("has_heartrate").booleanValue
+    val avgSpeed = json.path("average_speed").doubleValue
+    val maxSpeed = json.path("max_speed").doubleValue
     val actDigest = digest(json.toString)
 
     def sportFromName(name: String): Event.Sport = {
@@ -157,10 +162,11 @@ object Main extends common.Formatting {
       }
     }
 
-    ActivityId(FileId.StravaId(id), actDigest, name, time, time.plusSeconds(duration), sportFromName(sportName), distance)
+    val actId = ActivityId(FileId.StravaId(id), actDigest, name, time, time.plusSeconds(duration), sportFromName(sportName), distance)
+    ActivityHeader(actId,hasGPS,hasHR,SpeedStats(avgSpeed, avgSpeed, maxSpeed))
   }
 
-  def parseStravaActivities(content: InputStream) = {
+  def parseStravaActivities(content: InputStream): Seq[ActivityHeader] = {
     val responseJson = jsonMapper.readTree(content)
 
     val stravaActivities = (0 until responseJson.size).map { i =>
@@ -175,7 +181,7 @@ object Main extends common.Formatting {
     val uri = "https://www.strava.com/api/v3/athlete/activities"
     val request = buildGetRequest(uri, auth.token, s"per_page=$count")
 
-    val ret = parseStravaActivities(request.execute().getContent)
+    val ret = parseStravaActivities(request.execute().getContent).map(_.id)
     timing.logTime(s"lastStravaActivities ($count)")
     ret
   }
@@ -1181,7 +1187,7 @@ object Main extends common.Formatting {
 
     val responseJson = jsonMapper.readTree(request.execute().getContent)
 
-    val actId = loadActivityId(responseJson)
+    val actId = loadActivityId(responseJson).id
     val startDateStr = responseJson.path("start_date").textValue
     val startTime = ZonedDateTime.parse(startDateStr)
 

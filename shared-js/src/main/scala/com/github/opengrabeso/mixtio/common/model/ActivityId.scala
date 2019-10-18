@@ -24,12 +24,22 @@ case class ActivityId(id: FileId, digest: String, name: String, startTime: Zoned
 
   def isMatching(that: ActivityId): Boolean = {
     // check overlap time
-
     val commonBeg = Seq(startTime,that.startTime).max
     val commonEnd = Seq(endTime,that.endTime).min
     if (commonEnd > commonBeg) {
       val commonDuration = ChronoUnit.SECONDS.between(commonBeg, commonEnd)
       commonDuration > (duration min that.duration) * 0.75f
+    } else false
+  }
+
+  def isMatchingExactly(that: ActivityId, maxError: Double = 0.01): Boolean = {
+    def secondsBetween(a: ZonedDateTime, b: ZonedDateTime) = ChronoUnit.SECONDS.between(a, b)
+    val commonBeg = Seq(startTime,that.startTime).max
+    val commonEnd = Seq(endTime,that.endTime).min
+    if (commonEnd > commonBeg) {
+      val commonDuration = secondsBetween(commonBeg, commonEnd)
+      val maxAbsError = commonDuration * maxError
+      secondsBetween(startTime, that.startTime).abs < maxAbsError && secondsBetween(endTime, that.endTime).abs < maxAbsError
     } else false
   }
 

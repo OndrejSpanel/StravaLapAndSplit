@@ -21,7 +21,7 @@ trait UserRestAPI {
   def name: Future[String]
 
   @GET
-  def lastStravaActivities(@whenAbsent(15) count: Int): Future[Seq[ActivityId]]
+  def lastStravaActivities(@whenAbsent(15) count: Int): Future[Seq[ActivityHeader]]
 
   @GET
   def stagedActivities(@Query @whenAbsent(Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC)) notBefore: ZonedDateTime): Future[Seq[ActivityHeader]]
