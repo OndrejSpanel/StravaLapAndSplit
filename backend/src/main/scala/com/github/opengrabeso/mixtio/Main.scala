@@ -221,6 +221,8 @@ object Main extends common.Formatting {
     def upload(session: String) = "upload-" + session
     // upload results - report upload status and resulting id
     def uploadResult(session: String) = "upload-result-" + session
+    // upload results - report upload status and resulting id
+    def pushProgress(session: String) = "push-pending-" + session
     // user settings
     val settings = "settings"
   }

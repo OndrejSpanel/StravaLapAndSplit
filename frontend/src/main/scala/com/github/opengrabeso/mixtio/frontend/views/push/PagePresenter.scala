@@ -15,7 +15,7 @@ class PagePresenter(
   model: ModelProperty[PageModel],
   userContextService: services.UserContextService,
   application: Application[RoutingState]
-)(implicit ec: ExecutionContext) extends Presenter[PushPageState.type] {
+)(implicit ec: ExecutionContext) extends Presenter[PushPageState] {
 
   // time changes once per 1000 ms, but we do not know when. If one would use 1000 ms, the error could be almost 1 sec if unlucky.
   // By using 200 ms we are sure the error will be under 200 ms
@@ -26,7 +26,7 @@ class PagePresenter(
   model.subProp(_.settings.questTimeOffset).listen(p => userContextService.api.foreach(_.settings.quest_time_offset(p)))
 
   /** We don't need any initialization, so it's empty. */
-  override def handleState(state: PushPageState.type): Unit = {
+  override def handleState(state: PushPageState): Unit = {
   }
 
   def gotoSelect(): Unit = {

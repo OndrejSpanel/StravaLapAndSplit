@@ -4,8 +4,9 @@ package views.push
 
 import java.time.ZonedDateTime
 
-import routing.{RoutingState, PushPageState}
+import routing.{PushPageState, RoutingState}
 import io.udash._
+import org.scalajs.dom
 
 import scala.concurrent.Future
 
@@ -13,11 +14,23 @@ import scala.concurrent.Future
 class PageViewFactory(
   application: Application[RoutingState],
   userService: services.UserContextService,
-) extends ViewFactory[PushPageState.type] {
+  sessionId: String
+) extends ViewFactory[PushPageState] {
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  override def create(): (View, Presenter[PushPageState.type]) = {
-    val model = ModelProperty(PageModel(true, SettingsStorage(), ZonedDateTime.now()))
+  private def updatePending(model: ModelProperty[PageModel]) = {
+    for (pending <- userService.api.get.push(sessionId, "").expected) {
+      if (pending != Seq("")) {
+        model.subProp(_.pending).set(pending)
+      }
+      if (pending.nonEmpty) {
+        dom.window.setTimeout(() => model.subProp(_.currentTime).set(ZonedDateTime.now()), 500) // TODO: once long-poll is implemented, reduce or remove the delay
+      }
+    }
+  }
+
+  override def create(): (View, Presenter[PushPageState]) = {
+    val model = ModelProperty(PageModel(true, SettingsStorage(), ZonedDateTime.now(), Seq()))
 
     class NumericRangeValidator(from: Int, to: Int) extends Validator[Int] {
       def apply(value: Int) = Future.successful{
@@ -29,13 +42,11 @@ class PageViewFactory(
     model.subProp(_.settings.questTimeOffset).addValidator(new NumericRangeValidator(-120, +120))
     model.subProp(_.settings.maxHR).addValidator(new NumericRangeValidator(90, 240))
 
-    for {
-      userAPI <- userService.api
-      userSettings <- userAPI.allSettings
-    } {
+    for (userSettings <- userService.api.get.allSettings) {
       model.subProp(_.settings).set(userSettings)
       model.subProp(_.loading).set(false)
     }
+    updatePending(model)
 
     val presenter = new PagePresenter(model, userService, application)
     val view = new PageView(model, presenter)

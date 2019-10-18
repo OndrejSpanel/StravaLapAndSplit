@@ -32,7 +32,7 @@ import scala.util.control.NonFatal
 
 object Start extends App {
 
-  case class AuthData(userId: String, since: ZonedDateTime, sessionId: String)
+  case class AuthData(userId: String, since: ZonedDateTime, sessionId: String, authCode: String)
 
   private val instanceId = System.currentTimeMillis()
   private var authData = Option.empty[AuthData]
@@ -287,14 +287,14 @@ object Start extends App {
   }
 
 
-  def authHandler(userId: String, since: String, sessionId: String) = {
+  def authHandler(userId: String, since: String, sessionId: String, authCode: String) = {
     // session is authorized, we can continue sending the data
     serverInfo.stop()
     println(s"Auth done - $appName user id $userId, session $sessionId")
     val sinceTime = ZonedDateTime.parse(since)
-    authData = Some(AuthData(userId, sinceTime, sessionId))
+    authData = Some(AuthData(userId, sinceTime, sessionId, authCode))
     authDone.countDown()
-    val doPushUrl = s"$stravimatUrl/app#push"
+    val doPushUrl = s"$stravimatUrl/app#push/session=$sessionId"
     redirect(doPushUrl, StatusCodes.Found)
   }
 
@@ -322,7 +322,9 @@ object Start extends App {
 
     val requests = path("auth") {
       parameters('user, 'since, 'session) { (user, since, session) =>
-        authHandler(user, since, session)
+        cookie("authCode") { authCode =>
+          authHandler(user, since, session, authCode.value)
+        }
       }
     } ~ path("shutdown") {
       parameter('id) {
@@ -365,7 +367,7 @@ object Start extends App {
 
   def performUpload(data: AuthData) = {
 
-    val AuthData(userId, since, sessionId) = data
+    val AuthData(userId, since, sessionId, authCode) = data
 
     val sinceDate = since minusDays 1
 
@@ -381,93 +383,55 @@ object Start extends App {
 
     val localTimeZone = ZoneId.systemDefault.toString
 
-    val requestParams = s"user=$userId&timezone=${URLEncoder.encode(localTimeZone, "UTF-8")}"
-
-    val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
-    val useGzip = true // !useLocal
-    // do not use encoding headers, as we want to encode / decoce on own own
+    val useGzip = true
+    // it seems production App Engine already decodes gziped request body, but development one does not
+    // do not use encoding headers, as we want to encode / decoce on our own
     // this was done to keep payload small as a workaround for https://issuetracker.google.com/issues/63371955
-    val gzipCustom = true
-    val encodingHeader = if (useGzip && !gzipCustom) Some(headers.`Content-Encoding`(HttpEncodings.gzip)) else None
-    val contentType = if (useGzip && gzipCustom) ContentTypes.`application/octet-stream` else ContentTypes.`text/plain(UTF-8)` // it is XML in fact, but not fully conformant
 
-    object RestAPIClient {
-      val api: RestAPI = {
-        implicit val sttpBackend: SttpBackend[Future, Nothing] = SttpRestClient.defaultBackend()
-        SttpRestClient[RestAPI](s"$stravimatUrl/rest")
-      }
-      def apply(): RestAPI = api
+    val api = {
+      implicit val sttpBackend: SttpBackend[Future, Nothing] = SttpRestClient.defaultBackend()
+      SttpRestClient[RestAPI](s"$stravimatUrl/rest")
     }
-
-    val api = RestAPIClient()
 
     val filesToSend = for {
       f <- sortedFiles
       fileBytes <- MoveslinkFiles.get(f)
     } yield {
-      // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
       (f, digest, fileBytes)
     }
 
-    api.userAPI(???, ???).push.offerFiles(filesToSend.map(f => f._1 -> f._2))
+    val ping = Await.result(api.identity("ping"), Duration.Inf)
+    println(s"ping -> $ping")
 
-    val reqs = for {
-      (f, digest, fileBytes) <- filesToSend
-    } yield {
-      // it seems production App Engine already decodes gziped request body, but development one does not
-      // as I do not see any clean way how to indicate the development server it should do its own decoding
-      // I do no use GZip on development server as a workaround
+    // auth. cookie should be submitted by the system (inherited from the current session)
+    val userAPI = api.userAPI(userId, authCode)
+
+    val name = Await.result(userAPI.name, Duration.Inf)
+    println(s"name -> $name")
+
+
+    val pushAPI = userAPI.push(sessionId, localTimeZone)
+
+    val fileContent = filesToSend.map(f => f._1 -> (f._2, f._3)).toMap
+
+    val toOffer = filesToSend.map(f => f._1 -> f._2)
+
+    for {
+      needed <- pushAPI.offerFiles(toOffer)
+      _ = reportProgress(needed.size)
+      id <- needed
+    } {
+      val (digest, content) = fileContent(id)
       def gzipEncoded(bytes: Array[Byte]) = if (useGzip) Gzip.encode(ByteString(bytes)) else ByteString(bytes)
 
-      val req = Http().singleRequest(
-        HttpRequest(
-          uri = s"$stravimatUrl/push-put-digest?$requestParams&path=$f",
-          method = HttpMethods.POST,
-          headers = List(sessionCookie),
-          entity = HttpEntity(digest)
-        )
-      ).flatMap { resp =>
-        resp.discardEntityBytes()
-        println(s"File status $f = ${resp.status}")
-        resp.status match {
-          case StatusCodes.NoContent =>
-            Future.successful(())
-          case StatusCodes.OK =>
-            // digest not matching, we need to send full content
-            val bodyBytes = gzipEncoded(fileBytes)
-            val uploadReq = Http().singleRequest(
-              HttpRequest(
-                uri = s"$stravimatUrl/push-put?$requestParams&path=$f&digest=$digest",
-                method = HttpMethods.POST,
-                headers = List(sessionCookie) ++ encodingHeader,
-                entity = HttpEntity(contentType, bodyBytes)
-              )
-            ).map { resp =>
-              resp.discardEntityBytes()
-              resp.status
-            }
-            println(s"  Upload started: $f ${fileBytes.length.toByteSize} -> ${bodyBytes.length.toByteSize}")
-            uploadReq.map { status =>
-              println(s"    Async upload $f status $status")
-              status
-            }
+      val upload = pushAPI.uploadFile(id, gzipEncoded(content).toArray, digest)
+      // consider async processing here - a few requests in parallel could improve throughput
+      Await.result(upload, Duration.Inf)
+      // TODO: reportProgress after each file
 
-          case _ => // unexpected - what to do?
-            Future.successful(())
-        }
-      }
-      f -> req
     }
-
-    reportProgress(reqs.size)
-
-    reqs.zipWithIndex.foreach { case ((f, r), i) =>
-      Await.result(r, Duration.Inf)
-      // TODO: handle upload failures somehow
-      println(s"  Await upload $f status $r")
-      reportProgress(reqs.size + 1 - i)
-    }
+    reportProgress(0)
 
     serverInfo.system.terminate()
 

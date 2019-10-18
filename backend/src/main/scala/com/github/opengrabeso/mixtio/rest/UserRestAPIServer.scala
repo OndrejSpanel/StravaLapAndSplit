@@ -8,7 +8,7 @@ import requests.{BackgroundTasks, MergeAndEditActivity, UploadDone, UploadDuplic
 import shared.Timing
 import common.model._
 
-class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils {
+class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils {
   def name = syncResponse {
     userAuth.name
   }
@@ -242,6 +242,8 @@ class UserRestAPIServer(userAuth: Main.StravaAuthResult) extends UserRestAPI wit
 
   }
 
-  def push: PushRestAPI =  new PushRestAPIServer(this)
+  def push(session: String, localTimeZone: String): PushRestAPI = {
+    new PushRestAPIServer(this, session, localTimeZone)
+  }
 
 }

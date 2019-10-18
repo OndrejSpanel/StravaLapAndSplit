@@ -15,7 +15,11 @@ trait PushRestAPI {
 
   // upload a single file
   @PUT
-  def uploadFile(@Query id: String, content: Array[Byte]): Future[Unit]
+  def uploadFile(@Query id: String, content: Array[Byte], digest: String): Future[Unit]
+
+  // check which files are still pending (offered but not uploaded)
+  @GET
+  def expected: Future[Seq[String]]
 }
 
 object PushRestAPI extends RestApiCompanion[EnhancedRestImplicits,PushRestAPI](EnhancedRestImplicits)

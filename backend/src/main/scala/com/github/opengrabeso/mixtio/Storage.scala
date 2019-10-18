@@ -238,6 +238,7 @@ object Storage extends FileStore {
   }
 
 
+  // return true when the digest is matching (i.e. file does not need to be updated)
   def check(namespace: String, userId: String, path: String, digest: String): Boolean = {
 
     val prefix = userFilename(namespace, path, userId)

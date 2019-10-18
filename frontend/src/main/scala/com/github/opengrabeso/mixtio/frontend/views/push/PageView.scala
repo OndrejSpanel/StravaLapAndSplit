@@ -78,18 +78,16 @@ class PageView(
             labelContent = Some(_ => "Elevation filter:": Modifier),
             helpText = Some(_ => "Elevation data smoothing": Modifier)
           ),
-          submitButton
-          //factory.disabled()
-          //factory.disabled()(_ => UdashButton()("Send").render)
-          /*
-          factory.input.radioButtons(
-            selectedItem = user.subProp(_.shirtSize),
-            options = Seq[ShirtSize](Small, Medium, Large).toSeqProperty,
-            inline = true.toProperty,
-            validationTrigger = UdashForm.ValidationTrigger.None
-          )(labelContent = (item, _, _) => Some(label(shirtSizeToLabel(item)))),
-          factory.disabled()(_ => UdashButton()("Send").render)
-           */
+          hr(),
+          produce(model.subSeq(_.pending)) { pending =>
+            if (pending.nonEmpty) {
+              pending.map(file =>
+                p(file).render
+              )
+            } else {
+              submitButton.render
+            }
+          }
         ))
       ),
 
