@@ -51,14 +51,15 @@ class PageView(
     type DisplayAttrib = TableFactory.TableAttrib[ActivityRow]
     val attribs = Seq[DisplayAttrib](
       TableFactory.TableAttrib(
-        "", (ar, p, nested) => div(
-          nested(checkbox(p.subProp(_.selected)))
-        ).render
+        "", (ar, p, nested) =>
+          if (ar.staged.isDefined) {
+            div(nested(checkbox(p.subProp(_.selected)))).render
+          } else div().render
       ),
-      TableFactory.TableAttrib("Time", (ar, _, _) => displayTimeRange(ar.staged.id.startTime, ar.staged.id.endTime).render),
-      TableFactory.TableAttrib("Type", (ar, _, _) => ar.staged.id.sportName.toString.render),
-      TableFactory.TableAttrib("Distance", (ar, _, _) => displayDistance(ar.staged.id.distance).render),
-      TableFactory.TableAttrib("Duration", (ar, _, _) => displaySeconds(ChronoUnit.SECONDS.between(ar.staged.id.startTime, ar.staged.id.endTime).toInt).render),
+      TableFactory.TableAttrib("Time", (ar, _, _) => displayTimeRange(ar.id.startTime, ar.id.endTime).render),
+      TableFactory.TableAttrib("Type", (ar, _, _) => ar.id.sportName.toString.render),
+      TableFactory.TableAttrib("Distance", (ar, _, _) => displayDistance(ar.id.distance).render),
+      TableFactory.TableAttrib("Duration", (ar, _, _) => displaySeconds(ChronoUnit.SECONDS.between(ar.id.startTime, ar.id.endTime).toInt).render),
       TableFactory.TableAttrib("Strava activity", { (ar, arProp, nested) => div {
         // we are inside of `produce`, we can use `if` - `showIfElse` may have some performance advantage,
         // but this way it is easier to write and seems to work fine. Both `produce` and `showIfElse` are implemented
@@ -71,11 +72,11 @@ class PageView(
             if (ar.uploadState.nonEmpty) ar.uploadState else "Uploading..."
           ).render
         } else {
-          ar.strava.map(i => hrefLink(i.id, i.shortName).render).toSeq
+          ar.strava.map(i => hrefLink(i.id.id, i.id.shortName).render).toSeq
         }
       }.render}, Some("Strava")),
-      TableFactory.TableAttrib("Data", (ar, _, _) => ar.staged.describeData.render),
-      TableFactory.TableAttrib("Source", (ar, _, _) => hrefLink(ar.staged.id.id, ar.staged.id.shortName).render, Some("")),
+      TableFactory.TableAttrib("Data", (ar, _, _) => ar.header.describeData.render),
+      TableFactory.TableAttrib("Source", (ar, _, _) => ar.staged.map(h => hrefLink(h.id.id, h.id.shortName)).render, Some("")),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(

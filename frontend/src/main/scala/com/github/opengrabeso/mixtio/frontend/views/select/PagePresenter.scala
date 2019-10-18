@@ -106,18 +106,18 @@ class PagePresenter(
       val toCleanup = findMatchingStrava(oldStagedActivities, oldStravaActivities).flatMap { case (k,v) => v.map(k -> _)}
       val recentActivities = (stagedActivities diff toCleanup.map(_._1)).filter(_.id.startTime >= notBefore).sortBy(_.id.startTime)
 
-      val recentToStrava = findMatchingStrava(recentActivities, allStravaActivities).filter((filterListed _).tupled)
+      val recentToStrava = findMatchingStrava(recentActivities, allStravaActivities).filter((filterListed _).tupled).map(a => (Some(a._1), a._2))
 
       // list Strava activities which have no Mixtio storage counterpart
-      val stravaOnly = if (showAll) allStravaActivities.filterNot(a => recentActivities.exists(_.id.isMatchingExactly(a.id))).map(a => a -> None) else Nil
+      val stravaOnly = if (showAll) allStravaActivities.filterNot(a => recentActivities.exists(_.id.isMatchingExactly(a.id))).map(a => None -> Some(a)) else Nil
 
-      val toShow = (recentToStrava ++ stravaOnly).sortBy(_._1.id.startTime)
+      val toShow = (recentToStrava ++ stravaOnly).sortBy(a => a._1.orElse(a._2).get.id.startTime)
       val mostRecentStrava = stravaActivities.headOption.map(_.id.startTime)
 
       model.subProp(_.activities).set(toShow.map { case (act, actStrava) =>
 
-        val ignored = actStrava.isDefined || mostRecentStrava.exists(_ >= act.id.startTime)
-        ActivityRow(act, actStrava.map(_.id), !ignored)
+        val ignored = actStrava.isDefined || mostRecentStrava.exists(s => act.exists(s >= _.id.startTime))
+        ActivityRow(act, actStrava, !ignored)
       })
       model.subProp(_.loading).set(false)
     }
@@ -136,7 +136,7 @@ class PagePresenter(
   }
 
   private def selectedIds = {
-    model.subProp(_.activities).get.filter(_.selected).map(_.staged.id.id)
+    model.subProp(_.activities).get.filter(_.selected).flatMap(_.staged).map(_.id.id)
   }
 
   def deleteSelected(): Unit = {
@@ -169,7 +169,7 @@ class PagePresenter(
     def modifyActivities(fileId: Set[FileId])(modify: ActivityRow => ActivityRow): Unit = {
       if (fileId.nonEmpty) model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a =>
-          if (fileId contains a.staged.id.id) {
+          if (fileId.exists(a.staged.contains)) {
             modify(a)
           } else a
         }
@@ -178,7 +178,7 @@ class PagePresenter(
 
     def setStravaFile(fileId: Set[FileId], stravaId: Option[FileId.StravaId]): Unit = {
       modifyActivities(fileId) { a =>
-        a.copy(strava = stravaId.map(s => a.staged.id.copy(id = s)))
+        a.copy(strava = stravaId.flatMap(s => a.staged.map(i => i.copy(id = i.id.copy(id = s)))))
       }
     }
 
