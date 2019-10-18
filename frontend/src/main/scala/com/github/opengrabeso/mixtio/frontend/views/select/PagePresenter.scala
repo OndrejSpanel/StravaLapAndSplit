@@ -15,6 +15,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import PagePresenter._
 
 import scala.scalajs.js
+import scala.util.{Failure, Success}
 
 object PagePresenter {
   case class LoadedActivities(staged: Seq[ActivityHeader], strava: Seq[ActivityHeader])
@@ -157,12 +158,22 @@ class PagePresenter(
       case _ =>
         Future.failed(new NoSuchElementException)
     }
-    stravaImport.foreach { actId =>
-      println(s"Strava ${act.id.id} imported as $actId")
+    stravaImport.onComplete { i =>
+      println(s"Strava ${act.id.id} imported as $i")
       model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a =>
           if (a.strava.contains(act)) {
-            a.copy(staged = Some(act.copy(id = actId)))
+            i match {
+              case Success(actId) =>
+                a.copy(staged = Some(act.copy(id = actId)))
+              case Failure(ex) =>
+                val Regex = "^HTTP ERROR (\\d+):.*".r.unanchored
+                val message = ex.getMessage match {
+                  case Regex(code) => s"HTTP Error $code" // provide short message for expected causes
+                  case x => x // unexpected cause - provide full error
+                }
+                a.copy(downloadState = message)
+            }
           } else a
         }
       }

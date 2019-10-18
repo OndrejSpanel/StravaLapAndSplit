@@ -75,14 +75,23 @@ class PageView(
         }
       }.render}, Some("Strava")),
       TableFactory.TableAttrib("Data", (ar, _, _) => ar.header.describeData.render),
-      TableFactory.TableAttrib("Source", { (ar, _, _) =>
+      TableFactory.TableAttrib("Source", { (ar, p, _) =>
         import io.udash.bootstrap.utils.UdashIcons.FontAwesome.Solid
         import io.udash.bootstrap.utils.UdashIcons.FontAwesome.Modifiers
         if (ar.strava.nonEmpty && ar.staged.isEmpty) {
-          iconButton("Import from Strava to Mixtio")(Modifiers.Sizing.xs, Solid.cloudDownloadAlt)
-            .onClick{
-              presenter.importFromStrava(ar.strava.get)
-            }.render
+          if (ar.downloadingStrava) {
+            div (
+              if (ar.downloadState.nonEmpty) s.error else s.uploading,
+              if (ar.downloadState.nonEmpty) ar.downloadState else "Importing..."
+            ).render
+          } else {
+            iconButton("Import from Strava to Mixtio")(Modifiers.Sizing.xs, Solid.cloudDownloadAlt)
+              .onClick {
+                p.subProp(_.downloadingStrava).set(true)
+                p.subProp(_.downloadState).set("")
+                presenter.importFromStrava(ar.strava.get)
+              }.render
+          }
         } else {
           ar.staged.map(h => hrefLink(h.id.id, h.id.shortName)).render
         }
