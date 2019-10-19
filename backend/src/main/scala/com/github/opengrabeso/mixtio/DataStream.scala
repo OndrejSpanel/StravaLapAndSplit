@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-@SerialVersionUID(-4477339787979943124L)
+@SerialVersionUID(12L)
 case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(val in_accuracy: Option[Double]) {
   override def toString = {
     s"GPSPoint($latitude,$longitude,$elevation)($in_accuracy)"
