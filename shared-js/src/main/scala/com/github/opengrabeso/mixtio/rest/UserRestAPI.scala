@@ -44,7 +44,7 @@ trait UserRestAPI {
 
   def downloadEditedActivity(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int): Future[Option[String]]
 
-  def push(session: String, localTimeZone: String): PushRestAPI
+  def push(sessionId: String, localTimeZone: String): PushRestAPI
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

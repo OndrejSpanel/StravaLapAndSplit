@@ -294,7 +294,7 @@ object Start extends App {
     val sinceTime = ZonedDateTime.parse(since)
     authData = Some(AuthData(userId, sinceTime, sessionId, authCode))
     authDone.countDown()
-    val doPushUrl = s"$stravimatUrl/app#push/session=$sessionId"
+    val doPushUrl = s"$stravimatUrl/app#push/$sessionId"
     redirect(doPushUrl, StatusCodes.Found)
   }
 
@@ -401,16 +401,7 @@ object Start extends App {
       (f, digest, fileBytes)
     }
 
-    val ping = Await.result(api.identity("ping"), Duration.Inf)
-    println(s"ping -> $ping")
-
-    // auth. cookie should be submitted by the system (inherited from the current session)
     val userAPI = api.userAPI(userId, authCode)
-
-    val name = Await.result(userAPI.name, Duration.Inf)
-    println(s"name -> $name")
-
-
     val pushAPI = userAPI.push(sessionId, localTimeZone)
 
     val fileContent = filesToSend.map(f => f._1 -> (f._2, f._3)).toMap

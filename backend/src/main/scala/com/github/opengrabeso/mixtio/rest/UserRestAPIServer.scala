@@ -242,8 +242,6 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
 
   }
 
-  def push(session: String, localTimeZone: String): PushRestAPI = {
-    new PushRestAPIServer(this, session, localTimeZone)
-  }
+  def push(sessionId: String, localTimeZone: String): PushRestAPI = new PushRestAPIServer(this, sessionId, localTimeZone)
 
 }

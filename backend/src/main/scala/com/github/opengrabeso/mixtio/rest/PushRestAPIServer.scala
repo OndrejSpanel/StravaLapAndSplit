@@ -15,27 +15,30 @@ object PushRestAPIServer {
     if (signature(0) == 0x1f.toByte && signature(1) == 0x8b.toByte) new GZIPInputStream(pushbackInputStream)
     else pushbackInputStream
   }
+
+  // we want the file to exist, but we do not care for the content (and we are never reading it)
+  @SerialVersionUID(10L)
+  case object Anything
 }
 
 class PushRestAPIServer(parent: UserRestAPIServer, session: String, localTimeZone: String) extends PushRestAPI with RestAPIUtils {
+  private final val markerFileName = "/started"
 
   private def userId: String = parent.userAuth.id
 
   def offerFiles(files: Seq[(String, String)]) = syncResponse {
+    // check which files do not match a digest
     val needed = files.filterNot { case (file, digest) =>
       Storage.check(Main.namespace.stage, userId, file, digest)
     }.map(_._1)
 
-
-    @SerialVersionUID(10L)
-    case object Anything
-    println(s"offered ${files.size}, needed ${needed.size}")
     for (f <- needed) {
-      println(s"offered $f for $userId")
+      // TODO: store some file information (size, ...)
       Storage.store(Main.namespace.pushProgress(session), f, userId, Anything, Anything)
     }
     // write started tag once the pending files information is complete, to mark it can be scanned now
-    Storage.store(Main.namespace.pushProgress(session), "/started", userId, Anything, Anything)
+    Storage.store(Main.namespace.pushProgress(session), markerFileName, userId, Anything, Anything)
+    println(s"offered $needed for $userId")
     needed
   }
 
@@ -47,23 +50,26 @@ class PushRestAPIServer(parent: UserRestAPIServer, session: String, localTimeZon
 
     requests.Upload.storeFromStreamWithDigest(userId, id, localTimeZone, decompressed, digest)
     val pushNamespace = Main.namespace.pushProgress(session)
-    Storage.delete(Storage.FullName(pushNamespace, id, userId))
+    if (false) { // debugging - prevent any upload to debug the upload progress view
+      Storage.delete(Storage.FullName(pushNamespace, id, userId))
+    }
     println(s"pushed $id for $userId")
   }
 
   def expected = syncResponse {
     val pushNamespace = Main.namespace.pushProgress(session)
-    val started = Storage.enumerate(pushNamespace, userId, Some(f => f == "started")).nonEmpty
+    val sessionPushProgress = Storage.enumerate(pushNamespace, userId)
+    val started = sessionPushProgress.exists(_._2 == markerFileName)
     if (!started) {
       Seq("") // special response - not empty, but not the list of the files yes
     } else {
-      val pending = for (f <- Storage.enumerate(pushNamespace, userId)) yield f._2
-      for (f <- pending) {
-        Storage.delete(Storage.FullName(pushNamespace, f, userId))
-      }
+      val pending = for {
+        (_, f) <- sessionPushProgress
+        if f != markerFileName
+      } yield f
       if (pending.isEmpty) {
         // once we return empty response, we can delete the "started" marker file
-        Storage.delete(Storage.FullName(pushNamespace, "started", userId))
+        Storage.delete(Storage.FullName(pushNamespace, markerFileName, userId))
       }
       pending.toSeq
     }
