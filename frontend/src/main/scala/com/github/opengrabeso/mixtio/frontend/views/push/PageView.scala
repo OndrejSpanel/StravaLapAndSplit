@@ -13,26 +13,41 @@ import scalatags.JsDom.all._
 class PageView(
   model: ModelProperty[PageModel],
   presenter: PagePresenter,
-) extends FinalView with CssView with PageUtils with settings_base.SettingsView {
+) extends FinalView with CssView with PageUtils with settings_base.SettingsView with ActivityLink {
   val s = SelectPageStyles
+  val ss = SettingsPageStyles
 
-  private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Submit")
+  private val submitButton = UdashButton(componentId = ComponentId("about"))(_ => "Proceed...")
 
   buttonOnClick(submitButton){presenter.gotoSelect()}
 
   def getTemplate: Modifier = {
 
     div(
-      s.container,s.limitWidth,
-      template(model.subModel(_.s), presenter),
+      ss.flexContainer,
+      div(
+        ss.container,
+        ss.flexItem,
+        template(model.subModel(_.s), presenter),
+      ),
       hr(),
       produce(model.subSeq(_.pending)) { pending =>
         if (pending.nonEmpty) {
-          pending.map(file =>
-            p(file).render
-          )
+          div(
+            ss.container,
+            ss.flexItem,
+            table(
+              tr(th(h2("Uploading:"))),
+              pending.map(file =>
+                tr(td(niceFileName(file)))
+              )
+            )
+          ).render
         } else {
-          submitButton.render
+          div(
+            ss.flexItem,
+            submitButton
+          ).render
         }
       }
     )

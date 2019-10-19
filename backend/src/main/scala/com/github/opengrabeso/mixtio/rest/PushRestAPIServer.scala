@@ -50,7 +50,7 @@ class PushRestAPIServer(parent: UserRestAPIServer, session: String, localTimeZon
 
     requests.Upload.storeFromStreamWithDigest(userId, id, localTimeZone, decompressed, digest)
     val pushNamespace = Main.namespace.pushProgress(session)
-    if (false) { // debugging - prevent any upload to debug the upload progress view
+    if (true) { // disable for debugging - prevent any upload to debug the upload progress view
       Storage.delete(Storage.FullName(pushNamespace, id, userId))
     }
     println(s"pushed $id for $userId")

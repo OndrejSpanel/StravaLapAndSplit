@@ -24,7 +24,6 @@ trait SettingsView extends TimeFormatting {
   def template(model: ModelProperty[SettingsModel], presenter: SettingsPresenter): dom.Element = {
     div(
       UdashForm(inputValidationTrigger = UdashForm.ValidationTrigger.OnChange)(factory => Seq[Modifier](
-        h1("Sending activities..."),
         factory.input.formGroup()(
           input = _ => factory.input.numberInput(model.subProp(_.settings.maxHR).transform(_.toString, _.toInt))().render,
           labelContent = Some(_ => "Max HR": Modifier),
@@ -33,7 +32,7 @@ trait SettingsView extends TimeFormatting {
         factory.input.formGroup()(
           input = _ => factory.input.numberInput(model.subProp(_.settings.questTimeOffset).transform(_.toString, _.toInt))().render,
           labelContent = Some(_ => "Additional sensor (e.g. Quest) time offset: ": Modifier),
-          helpText = Some(_ => "Adjust up or down so that the time below matches the time on your watch/sensor": Modifier)
+          helpText = Some(_ => "Adjust so that the time below matches the time on your watches/sensor": Modifier)
         ),
         p(
           "Current time: ",

@@ -17,6 +17,7 @@ object FrontendStyle extends DefineRequest("frontend/main.css") {
   private val styles = Seq(
     GlobalStyles,
     SelectPageStyles,
+    SettingsPageStyles,
     EditPageStyles
   )
   def html(request: Request, resp: Response) = {

@@ -3,13 +3,9 @@ package frontend
 package views
 package push
 
-import java.time.ZonedDateTime
-
 import routing.{PushPageState, RoutingState}
 import io.udash._
 import org.scalajs.dom
-
-import scala.concurrent.Future
 
 /** Prepares model, view and presenter for demo view. */
 class PageViewFactory(
@@ -25,7 +21,7 @@ class PageViewFactory(
         model.subProp(_.pending).set(pending)
       }
       if (pending.nonEmpty) {
-        dom.window.setTimeout(() => updatePending(model), 500) // TODO: once long-poll is implemented, reduce or remove the delay
+        dom.window.setTimeout(() => updatePending(model), 1000) // TODO: once long-poll is implemented, reduce or remove the delay
       }
     }
   }

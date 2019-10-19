@@ -16,15 +16,18 @@ object SelectPageStyles extends CssBase {
     fontSize(1 rem)
   )
 
-  val container: CssStyle = style(
-    margin.auto,
-    marginTop(10 px),
-
+  val containerBorder = mixin(
+    margin(10 px),
     padding(5 px),
     borderColor.lightgray,
     borderRadius(10 px),
     borderStyle.solid,
     borderWidth(1 px)
+  )
+
+  val container: CssStyle = style(
+    margin.auto,
+    containerBorder,
   )
 
   val uploading: CssStyle = style(
