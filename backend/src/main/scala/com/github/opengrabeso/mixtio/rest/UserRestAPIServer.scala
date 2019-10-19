@@ -4,7 +4,7 @@ package rest
 import java.time.ZonedDateTime
 
 import com.github.opengrabeso.mixtio.Main.{ActivityEvents, namespace}
-import requests.{BackgroundTasks, UploadDone, UploadDuplicate, UploadError, UploadInProgress, UploadResultToStrava}
+import requests.{UploadDone, UploadDuplicate, UploadError, UploadInProgress}
 import shared.Timing
 import common.model._
 
@@ -156,22 +156,8 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
   }
 
   def sendEditedActivityToStrava(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int) = syncResponse {
-    val uploadIds = processOne(id, events, time) { (_, upload) =>
-
-      val uploadFiltered = upload.applyUploadFilters(userAuth)
-      // export here, or in the worker? Both is possible
-
-      // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
-      val uniqueName = uploadFiltered.id.id.filename + "_" + System.currentTimeMillis().toString
-      // are any metadata needed?
-      Storage.store(namespace.upload(sessionId), uniqueName, userAuth.userId, uploadFiltered.header, uploadFiltered)
-
-      BackgroundTasks.addTask(UploadResultToStrava(uniqueName, userAuth, sessionId))
-
-      val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
-      val uploadId = Storage.FullName(uploadResultNamespace, uniqueName, userAuth.userId).name
-      println(s"Queued task $uniqueName with uploadId=$uploadId")
-      uploadId
+    val uploadIds = processOne(id, events, time) { (_, up) =>
+      upload(up)(userAuth, sessionId)
     }
     uploadIds
   }
