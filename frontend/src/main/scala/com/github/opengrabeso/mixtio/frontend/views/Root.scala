@@ -53,6 +53,8 @@ object Root {
             model.subProp(_.athleteName).set(null)
             model.subProp(_.userId).set(null)
             facade.UdashApp.currentUserId = scalajs.js.undefined
+            MainJS.deleteCookie("authCode")
+            application.redirectTo("/app")
           case Failure(_) =>
         }
       }
