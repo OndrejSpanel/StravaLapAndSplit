@@ -8,8 +8,11 @@ import facade.UdashApp
 import routing._
 import io.udash._
 import common.model._
+import org.scalajs.dom
 
 import scala.concurrent.ExecutionContext
+import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
 
 /** Contains the business logic of this view. */
 class PagePresenter(
@@ -55,7 +58,11 @@ class PagePresenter(
 
   def download(time: Int): Unit = {
     for (fileId <- model.subProp(_.merged).get) {
-      userContextService.api.get.downloadEditedActivity(fileId, UdashApp.sessionId, eventsToSend, time)
+      for (data <- userContextService.api.get.downloadEditedActivity(fileId, UdashApp.sessionId, eventsToSend, time)) {
+        val bArray = js.typedarray.Int8Array.from(data.data.toJSArray)
+        val blob = new dom.Blob(js.Array(bArray), dom.BlobPropertyBag(`type` = "application/octet-stream"))
+        Download.download(blob, "download.fit", "application/octet-stream")
+      }
     }
   }
 

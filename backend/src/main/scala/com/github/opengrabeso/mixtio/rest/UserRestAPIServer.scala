@@ -152,7 +152,10 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
   }
 
   def downloadEditedActivity(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int) = syncResponse {
-    ???
+    val data = processOne(id, events, time) { (_, up) =>
+      FitExport.export(up)
+    }
+    BinaryData(data.get)
   }
 
   def sendEditedActivityToStrava(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int) = syncResponse {
