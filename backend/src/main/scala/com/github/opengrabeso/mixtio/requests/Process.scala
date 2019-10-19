@@ -5,7 +5,7 @@ import Main._
 import common.Util._
 import spark.{Request, Response}
 
-object Process extends UploadResults with ActivityStorage {
+object Process extends ActivityStorage {
 
   private def follows(first: ActivityEvents, second: ActivityEvents) = {
     val secondGap = second.secondsInActivity(first.endTime)

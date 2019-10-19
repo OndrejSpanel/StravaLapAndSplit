@@ -11,13 +11,25 @@ trait ActivityStorage {
     Storage.store(stage, act.id.id.filename, userId, act.header, act, Seq("digest" -> act.id.digest), Seq("startTime" -> act.id.startTime.toString))
   }
 
+  def uploadMultiple(merged: Seq[ActivityEvents])(auth: StravaAuthResult, sessionId: String): Seq[String] = {
+    // store everything into a session storage, and make background tasks to upload it to Strava
 
-  def loadActivity(stage: String, actId: FileId, userId: String) = {
-    val fullName = Storage.getFullName(stage, actId.filename, userId)
+    for (upload <- merged) yield {
+      val uploadFiltered = upload.applyUploadFilters(auth)
+      // export here, or in the worker? Both is possible
 
-    Storage.load[ActivityHeader, ActivityEvents](fullName).map(_._2)
+      // filename is not strong enough guarantee of uniqueness, timestamp should be (in single user namespace)
+      val uniqueName = uploadFiltered.id.id.filename + "_" + System.currentTimeMillis().toString
+      // are any metadata needed?
+      Storage.store(namespace.upload(sessionId), uniqueName, auth.userId, uploadFiltered.header, uploadFiltered)
+
+      BackgroundTasks.addTask(UploadResultToStrava(uniqueName, auth, sessionId))
+
+      val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
+      val uploadId = Storage.FullName(uploadResultNamespace, uniqueName, auth.userId).name
+      println(s"Queued task $uniqueName with uploadId=$uploadId")
+      uploadId
+    }
   }
-
-
 
 }

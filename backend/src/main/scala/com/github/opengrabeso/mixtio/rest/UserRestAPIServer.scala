@@ -4,11 +4,11 @@ package rest
 import java.time.ZonedDateTime
 
 import com.github.opengrabeso.mixtio.Main.{ActivityEvents, namespace}
-import requests.{BackgroundTasks, MergeAndEditActivity, UploadDone, UploadDuplicate, UploadError, UploadInProgress, UploadResultToStrava}
+import requests.{BackgroundTasks, UploadDone, UploadDuplicate, UploadError, UploadInProgress, UploadResultToStrava}
 import shared.Timing
 import common.model._
 
-class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils {
+class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils with requests.ActivityStorage {
   def name = syncResponse {
     userAuth.name
   }
@@ -222,13 +222,16 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
       } else {
         toMerge.reduceLeft(_ merge _)
       }
-      val mergedWithEvents = MergeAndEditActivity.saveAsNeeded(merged)(userAuth)
 
-      val events = mergedWithEvents.events.map { e =>
+      val prepare = merged.cleanPositionErrors.processPausesAndEvents
+      // TODO: make sure edited name is unique
+      Storage.store(namespace.edit, prepare.id.id.filename, userAuth.userId, prepare.header, prepare)
+
+      val events = prepare.events.map { e =>
         e -> merged.distanceForTime(e.stamp)
       }
 
-      Some((mergedWithEvents.id.id, events))
+      Some((prepare.id.id, events))
 
     } else {
       None
