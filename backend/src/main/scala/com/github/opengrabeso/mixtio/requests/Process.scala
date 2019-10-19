@@ -5,7 +5,7 @@ import Main._
 import common.Util._
 import spark.{Request, Response}
 
-object Process extends DefineRequest.Post("/process") with ParseFormData with UploadResults with ActivityStorage {
+object Process extends UploadResults with ActivityStorage {
 
   private def follows(first: ActivityEvents, second: ActivityEvents) = {
     val secondGap = second.secondsInActivity(first.endTime)
@@ -47,30 +47,8 @@ object Process extends DefineRequest.Post("/process") with ParseFormData with Up
 
     } else Nil
   }
-
   def mergeAndUpload(auth: Main.StravaAuthResult, toMerge: Seq[ActivityEvents], sessionId: String): Seq[String] = {
     val merged = mergeForUpload(auth, toMerge)
     uploadMultiple(merged)(auth, sessionId)
-  }
-
-
-  override def html(request: Request, resp: Response) = {
-
-    val session = request.session()
-    implicit val auth = session.attribute[Main.StravaAuthResult]("auth")
-    val sessionId = session.attribute[String]("sid")
-
-    assert(sessionId != null)
-
-    val ops = activities(request)._1
-
-    val toMerge = ops.flatMap { op =>
-      loadActivity(Main.namespace.stage, op, auth.userId).map(_.applyFilters(auth))
-    }
-
-    val uploadCount = mergeAndUpload(auth, toMerge, sessionId).size
-
-    countResponse(uploadCount)
-
   }
 }

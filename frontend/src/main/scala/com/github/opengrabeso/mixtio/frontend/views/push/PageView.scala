@@ -29,10 +29,7 @@ class PageView(
         ss.container,
         ss.flexItem,
         template(model.subModel(_.s), presenter),
-        showIf(model.subSeq(_.pending).transform(_.isEmpty))(div(
-          ss.flexItem,
-          submitButton.render
-        ).render)
+        showIf(model.subSeq(_.pending).transform(_.isEmpty))(submitButton.render)
       ),
       produce(model.subSeq(_.pending)) { pending =>
         if (pending.nonEmpty) {

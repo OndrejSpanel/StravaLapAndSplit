@@ -13,8 +13,7 @@ object Cleanup extends DefineRequest("/cleanup") {
   case object BackgroundCleanup extends DeferredTask {
     override def run(): Unit = {
       val cleanedCloudStorage = Storage.cleanup()
-      val cleanedDataStore = DStorage.cleanup()
-      println(s"Cleaned $cleanedCloudStorage storage items, $cleanedDataStore datastore items")
+      println(s"Cleaned $cleanedCloudStorage storage items")
     }
   }
 

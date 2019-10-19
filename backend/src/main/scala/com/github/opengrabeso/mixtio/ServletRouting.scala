@@ -17,23 +17,14 @@ object ServletRouting {
   }
 
   val handlers: Seq[DefineRequest] = Seq(
-    IndexHtml, LogOut,
+    IndexHtml,
 
     FrontendStyle,
     FrontendScript, UdashApp,
 
-    push.Ping, push.PushStart, push.PushDo,
+    push.Ping, push.PushStart,
 
-    push.upload.PutStart, push.upload.PutFile, push.upload.PutDigest, push.upload.ListPending,
-
-    ManageActivities, LoadFromStrava, ActivityFromStrava, Upload, GetFiles, Staging,
-    MergeAndEditActivity, EditActivity, Download, UploadToStrava, ProcessEdit,
-
-    Process, DeleteSelected, CheckUploadStatus,
-
-    Cleanup, ConvertOldData,
-
-    RouteData
+    Cleanup
   )
 
   def init() {

@@ -271,14 +271,13 @@ object Start extends App {
   }
 
   private def startBrowser() = {
-    /*
+    /**
     Authentication dance
     - request Stravimat to perform authentication, including user selection
      - http://stravimat/push-start?port=<XXXX>
     - Stravimat knowns or gets the Strava auth token (user id hash)
-    - it generates a Stravimat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt>
-     - this is captured by authHandler
-    - we receive the token and redirect to a page http://stravimat/push-push?token=<XXXX>
+    - it generates a Stravimat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt> (see [[startHttpServer]])
+     - this is captured by [[com.github.opengrabeso.mixtio.Start.authHandler]] and redirected to /app#push
     */
     val sessionId = System.currentTimeMillis()
     val startPushUrl = s"$stravimatUrl/push-start?port=$serverPort&session=$sessionId"
