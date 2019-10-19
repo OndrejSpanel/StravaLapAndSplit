@@ -1,6 +1,7 @@
 package com.github.opengrabeso.mixtio
 package frontend
-package views.push
+package views
+package push
 
 import java.time.ZonedDateTime
 
@@ -15,37 +16,25 @@ class PageViewFactory(
   application: Application[RoutingState],
   userService: services.UserContextService,
   sessionId: String
-) extends ViewFactory[PushPageState] {
+) extends ViewFactory[PushPageState] with settings_base.SettingsFactory with PageFactoryUtils {
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  private def updatePending(model: ModelProperty[PageModel]) = {
+  private def updatePending(model: ModelProperty[PageModel]): Unit = {
     for (pending <- userService.api.get.push(sessionId, "").expected) {
       if (pending != Seq("")) {
         model.subProp(_.pending).set(pending)
       }
       if (pending.nonEmpty) {
-        dom.window.setTimeout(() => model.subProp(_.currentTime).set(ZonedDateTime.now()), 500) // TODO: once long-poll is implemented, reduce or remove the delay
+        dom.window.setTimeout(() => updatePending(model), 500) // TODO: once long-poll is implemented, reduce or remove the delay
       }
     }
   }
 
   override def create(): (View, Presenter[PushPageState]) = {
-    val model = ModelProperty(PageModel(true, SettingsStorage(), ZonedDateTime.now(), Seq()))
+    val model = ModelProperty(PageModel(settings_base.SettingsModel(), Seq(""))) // start with non-empty placeholder until real state is confirmed
 
-    class NumericRangeValidator(from: Int, to: Int) extends Validator[Int] {
-      def apply(value: Int) = Future.successful{
-        if (value >= from && value <= to) Valid
-        else Invalid(DefaultValidationError(s"Expected value between $from and $to"))
-      }
-    }
+    loadSettings(model.subModel(_.s), userService)
 
-    model.subProp(_.settings.questTimeOffset).addValidator(new NumericRangeValidator(-120, +120))
-    model.subProp(_.settings.maxHR).addValidator(new NumericRangeValidator(90, 240))
-
-    for (userSettings <- userService.api.get.allSettings) {
-      model.subProp(_.settings).set(userSettings)
-      model.subProp(_.loading).set(false)
-    }
     updatePending(model)
 
     val presenter = new PagePresenter(model, userService, application)
