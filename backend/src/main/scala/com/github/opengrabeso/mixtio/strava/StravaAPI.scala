@@ -2,13 +2,14 @@ package com.github.opengrabeso.mixtio
 package strava
 
 import java.io._
-
 import java.time.ZonedDateTime
 import java.util.zip.GZIPOutputStream
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.google.api.client.http._
 import resource.managed
 import common.Util._
+import requests._
 
 import scala.util.{Failure, Success, Try}
 
@@ -75,7 +76,7 @@ class StravaAPI(authString: String) {
     request.execute()
   }
 
-  def uploadRawFileGz(moveBytesOriginal: Array[Byte], fileType: String): Try[Long] = {
+  def uploadRawFileGz(moveBytesOriginal: Array[Byte], fileType: String): UploadStatus = {
 
     val baos = new ByteArrayOutputStream()
     managed(new GZIPOutputStream(baos)).foreach(_.write(moveBytesOriginal))
@@ -83,10 +84,29 @@ class StravaAPI(authString: String) {
     uploadRawFile(baos.toByteArray, fileType)
   }
 
-  /**
-  * @return Either[id, pending] pending is true if the result is not definitive yet
-    */
-  def activityIdFromUploadId(id: Long): Try[Option[Long]] = {
+  def statusFromUploadJson(resultJson: JsonNode): UploadStatus = {
+    val DupeRegex = ".* duplicate of activity (\\d+).*".r
+
+    val id = resultJson.path("id").longValue()
+    (
+      Option(resultJson.path("status").textValue),
+      Option(resultJson.path("activity_id").numberValue),
+      Option(resultJson.path("error").textValue)
+    ) match {
+      case (Some(status), _, _) if status == "Your activity is still being processed." =>
+        UploadInProgress(id)
+      case (Some(_), _, Some(DupeRegex(dupeId))) =>
+        UploadDuplicate(dupeId.toLong)
+      case (_, Some(actId), _) if actId.longValue != 0 =>
+        UploadDone(actId.longValue)
+      case (Some(status), _, _)  =>
+        UploadError(new UnsupportedOperationException(status))
+      case _ =>
+        UploadError(new UnsupportedOperationException)
+    }
+  }
+
+  def activityIdFromUploadId(id: Long): UploadStatus = {
     try {
       val request = buildGetRequest(buildURI(s"uploads/$id"), authString, "")
       request.getHeaders.set("Expect",Array("100-continue"))
@@ -94,29 +114,18 @@ class StravaAPI(authString: String) {
 
       val response = request.execute()
       val resultJson = jsonMapper.readTree(response.getContent)
-
-      val activityId = (Option(resultJson.path("status").textValue), Option(resultJson.path("activity_id").numberValue)) match {
-        case (Some(status), _) if status == "Your activity is still being processed." =>
-          Success(None)
-        case (_, Some(actId)) if actId.longValue != 0 =>
-          Success(Some(actId.longValue))
-        case (Some(status), _)  =>
-          Failure(new UnsupportedOperationException(status))
-        case _ =>
-          Failure(new UnsupportedOperationException)
-      }
-      activityId
+      statusFromUploadJson(resultJson)
     } catch {
       case ex: HttpResponseException if ex.getStatusCode == 404 =>
-        Failure(ex)
+        UploadError(ex)
       case ex: Exception =>
         ex.printStackTrace()
-        Failure(ex)
+        UploadError(ex)
     }
 
   }
 
-  def uploadRawFile(sendBytes: Array[Byte], fileType: String): Try[Long] = {
+  def uploadRawFile(sendBytes: Array[Byte], fileType: String): UploadStatus = {
 
     Try {
       // see https://strava.github.io/api/v3/uploads/ -
@@ -141,7 +150,7 @@ class StravaAPI(authString: String) {
       body.addPart(binaryPart("file", "file." + fileType, sendBytes))
 
       val request = buildPostRequest(buildURI("uploads"), authString, "", body)
-      request.getHeaders.set("Expect",Array("100-continue"))
+      request.getHeaders.set("Expect", Array("100-continue"))
       request.getHeaders.setAccept("*/*")
 
       val response = request.execute()
@@ -149,10 +158,9 @@ class StravaAPI(authString: String) {
 
       // we expect to receive 201
 
-      val resultJson = jsonMapper.readTree(resultString)
-      val id = Option(resultJson.path("id").numberValue)
-      id.get.longValue
-    }
-  }
+      val json = jsonMapper.readTree(resultString)
 
+      statusFromUploadJson(json)
+    } .fold(UploadError, identity)
+  }
 }

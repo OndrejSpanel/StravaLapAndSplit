@@ -101,7 +101,7 @@ class PageView(
             if (e.uploading) {
               div(
                 if (e.uploadState.nonEmpty) s.error else s.uploading,
-                if (e.uploadState.nonEmpty) e.uploadState else "Uploading..."
+                if (e.uploadState.nonEmpty) raw(e.uploadState) else "Uploading..."
               )
             } else {
               // TODO: get the resulting activity name from Strava

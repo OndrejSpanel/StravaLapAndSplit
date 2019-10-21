@@ -60,6 +60,10 @@ abstract class PendingUploads[ActId](implicit ec: ExecutionContext) {
             // TODO: check and handle most probable error cause: a duplicate activity
             setUploadProgress(uploadId, true, error)
             pending -= uploadId
+          case UploadProgress.Duplicate(uploadId, dupeStravaId) =>
+            println(s"$uploadId completed as duplicate of $dupeStravaId")
+            setUploadProgress(uploadId, true, s"Duplicate of <a href=https://https://www.strava.com/activities/$dupeStravaId>$dupeStravaId</a>")
+            pending -= uploadId
         }
       }
       if (pending.nonEmpty) {

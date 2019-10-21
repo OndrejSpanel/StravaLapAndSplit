@@ -50,33 +50,15 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
 
       val ret = api.uploadRawFileGz(export, "fit.gz")
 
+      Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), ret)
       ret match {
-        case Failure(ex: HttpResponseException) if ex.getMessage.contains("duplicate of activity") =>
-          // it seems as of now (2019) this response is never returned
-
-          val DupeIdPattern = "duplicate of activity ([0-9]*)".r.unanchored
-          val id = ex.getMessage match {
-            case DupeIdPattern(dupeId) => dupeId.toLong
-            case _ => 0L
-          }
-
-          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadDuplicate(id))
-        case Failure(ex) =>
-          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadError(ex))
-          // https://stackoverflow.com/questions/45353793/how-to-use-deferredtaskcontext-setdonotretry-with-google-app-engine-in-java
-          //DeferredTaskContext.setDoNotRetry(true)
-          //throw ex
-        case Success(uploadId) =>
+        case UploadInProgress(uploadId) =>
           println(s"Upload started $uploadId")
+          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadInProgress(uploadId))
           val eta = System.currentTimeMillis() + 3000
           BackgroundTasks.addTask(WaitForStravaUpload(key, uploadId, auth, eta, sessionId))
-
-          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadInProgress(uploadId))
       }
-
       Storage.delete(Storage.FullName(uploadNamespace, key, auth.userId))
-
-
     }
 
   }
@@ -99,15 +81,11 @@ case class WaitForStravaUpload(key: String, id: Long, auth: Main.StravaAuthResul
       val uploadResultNamespace = Main.namespace.uploadResult(sessionId)
       val done = api.activityIdFromUploadId(id)
       done match {
-        case Success(Some(actId)) =>
-          println(s"Uploaded as $actId")
-          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadDone(actId))
-        case Success(None) =>
+        case UploadInProgress(_) =>
           // still processing - retry
           retry(now + 2000)
-        case Failure(ex) =>
-          println(s"Upload $id failed")
-          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadError(ex))
+        case _ =>
+          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), done)
 
       }
 

@@ -68,7 +68,7 @@ class PageView(
         if (ar.uploading) {
           div(
             if (ar.uploadState.nonEmpty) s.error else s.uploading,
-            if (ar.uploadState.nonEmpty) ar.uploadState else "Uploading..."
+            if (ar.uploadState.nonEmpty) raw(ar.uploadState) else "Uploading..."
           ).render
         } else {
           ar.strava.map(i => hrefLink(i.id.id, i.id.shortName).render).toSeq
@@ -82,7 +82,7 @@ class PageView(
           if (ar.downloadingStrava) {
             div (
               if (ar.downloadState.nonEmpty) s.error else s.uploading,
-              if (ar.downloadState.nonEmpty) ar.downloadState else "Importing..."
+              if (ar.downloadState.nonEmpty) raw(ar.downloadState) else "Importing..."
             ).render
           } else {
             iconButton("Import from Strava to Mixtio")(Modifiers.Sizing.xs, Solid.cloudDownloadAlt)

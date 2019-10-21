@@ -10,4 +10,6 @@ object UploadProgress extends rest.EnhancedRestDataCompanion[UploadProgress] {
   object Done extends rest.EnhancedRestDataCompanion[Done]
   case class Error(id: String, error: String) extends UploadProgress
   object Error extends rest.EnhancedRestDataCompanion[Error]
+  case class Duplicate(id: String, stravaId: Long) extends UploadProgress
+  object Duplicate extends rest.EnhancedRestDataCompanion[Error]
 }
