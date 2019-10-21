@@ -59,7 +59,6 @@ class PageView(
   private val collapse = UdashCollapse()(_ => Seq(
     div(Card.card, Card.body, Background.color(Color.Light)) {
       val selectedFiles = model.subSeq(_.uploads.selectedFiles)
-      val uploadState = model.subProp(_.uploads.state)
 
       div(
         FileInput(selectedFiles, acceptMultipleFiles = true.toProperty)("files"),

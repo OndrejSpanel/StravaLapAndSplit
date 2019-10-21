@@ -46,6 +46,9 @@ trait UserRestAPI {
   def downloadEditedActivity(id: FileId, sessionId: String, events: Seq[(String, Int)], time: Int): Future[BinaryData]
 
   def push(sessionId: String, localTimeZone: String): PushRestAPI
+
+  // upload a file to Mixtio
+  @CustomBody def upload(files: HttpBody): Future[Seq[ActivityHeader]]
 }
 
 object UserRestAPI extends RestApiCompanion[EnhancedRestImplicits,UserRestAPI](EnhancedRestImplicits)

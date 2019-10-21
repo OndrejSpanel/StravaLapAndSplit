@@ -1,14 +1,19 @@
 package com.github.opengrabeso.mixtio
 package rest
 
-import java.time.ZonedDateTime
+import java.io.ByteArrayInputStream
+import java.time.{ZoneId, ZonedDateTime}
 
 import com.github.opengrabeso.mixtio.Main.{ActivityEvents, namespace}
+import com.github.opengrabeso.mixtio.requests.Upload.storeFromStream
 import com.google.api.client.http.HttpResponseException
 import requests.{UploadDone, UploadDuplicate, UploadError, UploadInProgress}
 import shared.Timing
 import common.model._
-import io.udash.rest.raw.{HttpBody, HttpErrorException, RestResponse}
+import io.udash.rest.raw.{HttpBody, HttpErrorException}
+import org.apache.commons.fileupload.{FileItemStream, RequestContext}
+import org.apache.commons.fileupload.disk.DiskFileItemFactory
+import org.apache.commons.fileupload.servlet.ServletFileUpload
 
 class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils with requests.ActivityStorage {
   def name = syncResponse {
@@ -244,4 +249,46 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
 
   def push(sessionId: String, localTimeZone: String): PushRestAPI = new PushRestAPIServer(this, sessionId, localTimeZone)
 
+  def upload(files: HttpBody) = syncResponse {
+
+    files match {
+      case body: HttpBody.NonEmpty =>
+        val fif = new DiskFileItemFactory()
+        val maxMB = 32
+        fif.setSizeThreshold(maxMB * 1024 * 1024)
+
+        val upload = new ServletFileUpload(fif)
+
+        object simulatedServletContext extends RequestContext {
+          def getCharacterEncoding = "utf-8" // is this correct?
+          def getContentType = body.contentType
+          def getContentLength = body.bytes.length
+          def getInputStream = new ByteArrayInputStream(body.bytes)
+        }
+        val items = upload.getItemIterator(simulatedServletContext)
+
+        val itemsIterator = new Iterator[FileItemStream] {
+          def hasNext = items.hasNext
+
+          def next() = items.next
+        }
+
+        val builder = Seq.newBuilder[ActivityHeader]
+        // TODO: obtain client timezone - neeeded when uploading Quest XML files
+        val timezone = ZoneId.systemDefault().toString
+        itemsIterator.foreach { item =>
+          if (!item.isFormField && item.getFieldName == "files") {
+            if (item.getName != "") {
+              builder ++= storeFromStream(userAuth.userId, item.getName, timezone, item.openStream()).map { e =>
+                ActivityHeader(e.id, e.hasGPS, e.hasAttributes, e.computeSpeedStats)
+              }
+            }
+          }
+        }
+        builder.result()
+      case _ =>
+        throw HttpErrorException(400)
+    }
+
+  }
 }

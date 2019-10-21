@@ -14,40 +14,8 @@ import spark.{Request, Response}
 
 import scala.util.Try
 
-object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
-  override def html(request: Request, resp: Response) = {
-    withAuth(request, resp) { auth =>
-
-      val fif = new DiskFileItemFactory()
-      val maxMB = 32
-      fif.setSizeThreshold(maxMB * 1024 * 1024)
-
-      val upload = new ServletFileUpload(fif)
-
-      val items = upload.getItemIterator(request.raw)
-
-      val itemsIterator = new Iterator[FileItemStream] {
-        def hasNext = items.hasNext
-
-        def next() = items.next
-      }
-
-      // TODO: obtain client timezone - neeeded when uploading Quest XML files
-      val timezone = ZoneId.systemDefault().toString
-      itemsIterator.foreach { item =>
-        if (!item.isFormField && item.getFieldName == "files") {
-          if (item.getName != "") {
-            storeFromStream(auth.userId, item.getName, timezone, item.openStream())
-          }
-        }
-      }
-      resp.status(200)
-      Nil
-    }
-  }
-
-
-  def storeFromStreamWithDigest(userId: String, name: String, timezone: String, stream: InputStream, digest: String) = {
+object Upload extends ActivityStorage {
+  def storeFromStreamWithDigest(userId: String, name: String, timezone: String, stream: InputStream, digest: String): Seq[Main.ActivityEvents] = {
     import MoveslinkImport._
     val timing = Timing.start()
 
@@ -76,18 +44,21 @@ object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
         }.toOption.toSeq
     }
     timing.logTime("Import file")
-    if (actData.nonEmpty) {
-      for (act <- actData) {
+    val ret = if (actData.nonEmpty) {
+      for (act <- actData) yield {
         val actOpt = act.cleanPositionErrors // .optimize
         storeActivity(Main.namespace.stage, actOpt, userId)
+        actOpt
       }
     } else {
       Storage.store(Main.namespace.stage, name, userId, NoActivity, NoActivity, Seq("digest" -> digest))
+      Nil
     }
     timing.logTime("Store file")
+    ret
   }
 
-  def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream) = {
+  def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream): Seq[Main.ActivityEvents] = {
     val fileBytes = IOUtils.toByteArray(streamOrig)
     val digest = Main.digest(fileBytes)
 

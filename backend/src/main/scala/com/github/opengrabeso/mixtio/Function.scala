@@ -30,7 +30,7 @@ object Function {
       smoothingRecurse(todo.head +: done, prev :+ todo.head, todo.tail)
     } else {
       val newWindow = (prev :+ todo.head).keepSize
-      val duration = newWindow.duration
+      //val duration = newWindow.duration
       //val interval = ChronoUnit.SECONDS.between(prev.endTime, todo.head._1).getSeconds
       val smoothDist = newWindow.speed
       smoothingRecurse((todo.head._1 -> smoothDist) +: done, newWindow, todo.tail)

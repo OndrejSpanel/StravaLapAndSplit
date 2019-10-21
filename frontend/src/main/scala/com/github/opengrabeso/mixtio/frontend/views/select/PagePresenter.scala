@@ -156,7 +156,7 @@ class PagePresenter(
 
     val userId = userService.userId.get
 
-    val uploader = new FileUploader(Url("/upload"))
+    val uploader = new FileUploader(Url(s"/rest/user/$userId/upload"))
     val uploadModel = uploader.upload("files", selectedFiles)
     uploadModel.listen(p => model.subProp(_.uploads.state).set(p))
   }
