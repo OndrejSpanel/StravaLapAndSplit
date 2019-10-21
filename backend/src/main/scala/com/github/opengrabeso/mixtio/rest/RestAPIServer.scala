@@ -5,6 +5,8 @@ import com.github.opengrabeso.mixtio.Main.StravaAuthResult
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
+import io.udash.rest.raw.HttpErrorException
+
 import scala.collection.mutable
 
 object RestAPIServer extends RestAPI with RestAPIUtils {
@@ -24,11 +26,16 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
 
   def userAPI(userId: String, authCode: String): UserRestAPI = {
     val auth = synchronized {
-      users(userId)
+      try {
+        users(userId)
+      } catch {
+        case _: NoSuchElementException =>
+          throw HttpErrorException(401, "User ID not authenticated. Page reload may be necessary.")
+      }
     }
     // verify user is the one who has authenticated - require the same code cookie to be used to identify the session
     if (auth.code != authCode) {
-      throw new IllegalAccessException(s"Access denied, provided auth code '$authCode' does not match the one stored on the server")
+      throw HttpErrorException(401, "Provided auth code '$authCode' does not match the one stored on the server")
     } else {
       // we might store UserRestAPIServer directly
       new UserRestAPIServer(auth)
