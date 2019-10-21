@@ -13,6 +13,7 @@ import io.udash._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import PagePresenter._
+import org.scalajs.dom.File
 
 import scala.scalajs.js
 import scala.util.{Failure, Success}
@@ -37,6 +38,8 @@ class PagePresenter(
   application: Application[RoutingState],
   userService: services.UserContextService
 )(implicit ec: ExecutionContext) extends Presenter[SelectPageState.type] {
+  def uploadNewActivity(files: Seq[File]) = {
+  }
 
   model.subProp(_.showAll).listen { p =>
     loadActivities(p)

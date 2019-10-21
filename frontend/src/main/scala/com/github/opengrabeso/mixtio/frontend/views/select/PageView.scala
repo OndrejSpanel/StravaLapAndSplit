@@ -12,9 +12,10 @@ import io.udash.bootstrap.button.UdashButton
 import io.udash.bootstrap.table.UdashTable
 import io.udash.css._
 import scalatags.JsDom.all._
-
 import io.udash.bootstrap._
 import BootstrapStyles._
+import io.udash.bootstrap.collapse.UdashCollapse
+import org.scalajs.dom
 
 class PageView(
   model: ModelProperty[PageModel],
@@ -44,6 +45,30 @@ class PageView(
   buttonOnClick(sendToStrava){presenter.sendSelectedToStrava()}
   buttonOnClick(mergeAndEdit){presenter.mergeAndEdit()}
   buttonOnClick(deleteActivity){presenter.deleteSelected()}
+
+  private val collapse = UdashCollapse()(
+    div(Card.card, Card.body, Background.color(Color.Light)) {
+      val acceptMultipleFiles = Property(true)
+      val selectedFiles = SeqProperty.blank[dom.File]
+      Seq(
+        div(
+          FileInput(selectedFiles, acceptMultipleFiles)("files"),
+          h4("Selected files"),
+          ul(repeat(selectedFiles)(file => {
+            li(file.get.name).render
+          })),
+          uploadButton
+        ),
+      )
+      buttonOnClick(uploadButton){presenter.uploadNewActivity(selectedFiles.get)}
+    }
+  )
+  private val uploadShowHideButton = UdashButton(
+    buttonStyle = Color.Primary.toProperty
+  )(_ => Seq[Modifier](collapse.toggleButtonAttrs(), "Upload..."))
+
+  buttonOnClick(uploadShowHideButton){collapse.toggle()}
+
 
   def getTemplate: Modifier = {
 
@@ -106,7 +131,7 @@ class PageView(
     div(
       s.container,
       div(Grid.row)(
-        div(Grid.col)(uploadButton.render),
+        div(Grid.col)(uploadShowHideButton.render, collapse.render),
         div(Grid.col)(filterCheckbox.render, label("Show all": Modifier)),
         div(Grid.col)(settingsButton.render),
       ),
