@@ -197,7 +197,7 @@ class PagePresenter(
     def modifyActivities(fileId: Set[FileId])(modify: ActivityRow => ActivityRow): Unit = {
       if (fileId.nonEmpty) model.subProp(_.activities).set {
         model.subProp(_.activities).get.map { a =>
-          if (fileId.exists(a.staged.contains)) {
+          if (a.staged.exists(a => fileId.contains(a.id.id))) {
             modify(a)
           } else a
         }
