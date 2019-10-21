@@ -2,6 +2,8 @@ package com.github.opengrabeso.mixtio
 package rest
 
 import java.time.ZonedDateTime
+
+import com.github.opengrabeso.mixtio.common.model.BinaryData
 import io.udash.rest._
 
 import scala.concurrent.Future

@@ -5,6 +5,7 @@ import com.github.opengrabeso.mixtio.Main.StravaAuthResult
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
+import common.model._
 import io.udash.rest.raw.HttpErrorException
 
 import scala.collection.mutable

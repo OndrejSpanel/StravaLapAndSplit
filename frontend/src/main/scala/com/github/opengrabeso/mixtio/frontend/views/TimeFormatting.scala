@@ -13,37 +13,52 @@ trait TimeFormatting {
   }
 
   def formatDateTime(t: js.Date): String = {
-    new intl.DateTimeFormat(
-      locale,
-      intl.DateTimeFormatOptions(
-        year = "numeric",
-        month = "numeric",
-        day = "numeric",
-        hour = "numeric",
-        minute = "numeric"
-      )
-    ).format(t)
+    try {
+      new intl.DateTimeFormat(
+        locale,
+        intl.DateTimeFormatOptions(
+          year = "numeric",
+          month = "numeric",
+          day = "numeric",
+          hour = "numeric",
+          minute = "numeric"
+        )
+      ).format(t)
+    } catch {
+      case _: Exception =>
+        s"Invalid time"
+    }
   }
 
   def formatTime(t: js.Date) = {
-    new intl.DateTimeFormat(
-      locale,
-      intl.DateTimeFormatOptions(
-        hour = "numeric",
-        minute = "numeric",
-      )
-    ).format(t)
+    try {
+      new intl.DateTimeFormat(
+        locale,
+        intl.DateTimeFormatOptions(
+          hour = "numeric",
+          minute = "numeric",
+        )
+      ).format(t)
+    } catch {
+      case _: Exception =>
+        s"Invalid time"
+    }
   }
 
   def formatTimeHMS(t: js.Date) = {
-    new intl.DateTimeFormat(
-      locale,
-      intl.DateTimeFormatOptions(
-        hour = "numeric",
-        minute = "numeric",
-        second = "numeric",
-      )
-    ).format(t)
+    try {
+      new intl.DateTimeFormat(
+        locale,
+        intl.DateTimeFormatOptions(
+          hour = "numeric",
+          minute = "numeric",
+          second = "numeric",
+        )
+      ).format(t)
+    } catch {
+      case _: Exception =>
+        s"Invalid time"
+    }
   }
 
   implicit class ZonedDateTimeOps(t: ZonedDateTime) {

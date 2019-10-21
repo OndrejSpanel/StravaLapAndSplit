@@ -8,7 +8,7 @@ import com.google.api.client.http.HttpResponseException
 import requests.{UploadDone, UploadDuplicate, UploadError, UploadInProgress}
 import shared.Timing
 import common.model._
-import io.udash.rest.raw.{HttpErrorException, RestResponse}
+import io.udash.rest.raw.{HttpBody, HttpErrorException, RestResponse}
 
 class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils with requests.ActivityStorage {
   def name = syncResponse {

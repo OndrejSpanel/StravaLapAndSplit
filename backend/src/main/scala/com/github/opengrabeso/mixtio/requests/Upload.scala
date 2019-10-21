@@ -2,6 +2,7 @@ package com.github.opengrabeso.mixtio
 package requests
 
 import java.io.{ByteArrayInputStream, InputStream, ObjectInputStream}
+import java.time.ZoneId
 
 import Main.NoActivity
 import shared.Timing
@@ -31,18 +32,16 @@ object Upload extends DefineRequest.Post("/upload") with ActivityStorage {
         def next() = items.next
       }
 
-      var timezone = Option.empty[String]
+      // TODO: obtain client timezone - neeeded when uploading Quest XML files
+      val timezone = ZoneId.systemDefault().toString
       itemsIterator.foreach { item =>
-        if (!item.isFormField && item.getFieldName == "activities") {
+        if (!item.isFormField && item.getFieldName == "files") {
           if (item.getName != "") {
-            storeFromStream(auth.userId, item.getName, timezone.get, item.openStream())
+            storeFromStream(auth.userId, item.getName, timezone, item.openStream())
           }
-        } else if (item.isFormField && item.getFieldName == "timezone") {
-          timezone = Some(IOUtils.toString(item.openStream(), "UTF-8"))
         }
       }
-
-      resp.redirect("/selectActivity")
+      resp.status(200)
       Nil
     }
   }

@@ -23,6 +23,7 @@ object ServletRouting {
     FrontendScript, UdashApp,
 
     push.Ping, push.PushStart,
+    Upload,
 
     Cleanup
   )
