@@ -38,8 +38,6 @@ class PagePresenter(
   application: Application[RoutingState],
   userService: services.UserContextService
 )(implicit ec: ExecutionContext) extends Presenter[SelectPageState.type] {
-  def uploadNewActivity(files: Seq[File]) = {
-  }
 
   model.subProp(_.showAll).listen { p =>
     loadActivities(p)
@@ -151,6 +149,16 @@ class PagePresenter(
 
   def sendSelectedToStrava(): Unit = {
     uploads.startUpload(userService.api.get, selectedIds)
+  }
+
+  def uploadNewActivity() = {
+    val selectedFiles = model.subSeq(_.uploads.selectedFiles).get
+
+    val userId = userService.userId.get
+
+    val uploader = new FileUploader(Url(s"rest/$userId/upload"))
+    val uploadModel = uploader.upload("files", selectedFiles)
+    uploadModel.listen(p => model.subProp(_.uploads.state).set(p))
   }
 
   def importFromStrava(act: ActivityHeader): Unit = {

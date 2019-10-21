@@ -27,6 +27,16 @@ trait Formatting {
     }
   }
 
+  def normalizeSize(size: Double): String = {
+    val units = Iterator("B", "KB", "MB", "GB", "TB")
+    var selectedUnit = units.next()
+    var sizeWithUnit = size
+    while (sizeWithUnit >= 1024) {
+      sizeWithUnit /= 1024
+      selectedUnit = units.next()
+    }
+    "%.2f %s".format(sizeWithUnit, selectedUnit)
+  }
 }
 
 object Formatting extends Formatting
