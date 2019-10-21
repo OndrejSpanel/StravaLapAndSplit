@@ -4,9 +4,11 @@ package rest
 import java.time.ZonedDateTime
 
 import com.github.opengrabeso.mixtio.Main.{ActivityEvents, namespace}
+import com.google.api.client.http.HttpResponseException
 import requests.{UploadDone, UploadDuplicate, UploadError, UploadInProgress}
 import shared.Timing
 import common.model._
+import io.udash.rest.raw.{HttpErrorException, RestResponse}
 
 class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils with requests.ActivityStorage {
   def name = syncResponse {
@@ -45,9 +47,15 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
   }
 
   def importFromStrava(stravaNumId: Long) = syncResponse {
-    val activityData = Main.getEventsFrom(userAuth.token, stravaNumId.toString)
-    com.github.opengrabeso.mixtio.requests.Process.storeActivity(Main.namespace.stage, activityData, userAuth.userId)
-    activityData.id
+    try {
+      val activityData = Main.getEventsFrom(userAuth.token, stravaNumId.toString)
+      com.github.opengrabeso.mixtio.requests.Process.storeActivity(Main.namespace.stage, activityData, userAuth.userId)
+      activityData.id
+    } catch {
+      case ex: HttpResponseException if ex.getStatusCode == 404 =>
+        throw HttpErrorException(400, "Activity data not found", ex.getCause)
+
+    }
   }
 
   /* Send activities from staging area to Strava, directly, with no editing, merge smart
