@@ -18,9 +18,8 @@ import scala.collection.mutable.ArrayBuffer
   */
 object FitImport {
 
-  private def fromTimestamp(timeMs: Long): ZonedDateTime = {
-    val smartTime = if (timeMs < 1e10) timeMs * 1000 else timeMs
-    val localTime = LocalDateTime.ofEpochSecond(smartTime, 0, ZoneOffset.UTC)
+  private def fromTimestamp(time: Long): ZonedDateTime = {
+    val localTime = LocalDateTime.ofEpochSecond(time + DateTime.OFFSET / 1000, 0, ZoneOffset.UTC)
     ZonedDateTime.of(localTime, ZoneOffset.UTC)
   }
 
