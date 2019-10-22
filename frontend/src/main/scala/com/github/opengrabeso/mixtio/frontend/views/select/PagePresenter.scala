@@ -156,9 +156,27 @@ class PagePresenter(
 
     val userId = userService.userId.get
 
-    val uploader = new ActivityUploader(Url(s"/rest/user/$userId/upload"))
+    val uploader = new FileUploader(Url(s"/rest/user/$userId/upload"))
     val uploadModel = uploader.upload("files", selectedFiles, extraData = Map(("timezone":js.Any) -> (TimeFormatting.timezone:js.Any)))
-    uploadModel.listen(p => model.subProp(_.uploads.state).set(p))
+    uploadModel.listen { p =>
+      model.subProp(_.uploads.state).set(p)
+      for {
+        response <- p.response
+        responseJson <- response.text
+      } {
+        val activities = JsonUtils.read[Seq[ActivityHeader]](responseJson)
+        // insert the activities into the list
+        model.subProp(_.activities).set {
+          val oldAct = model.subProp(_.activities).get
+          val newAct = activities.filterNot(a => oldAct.exists(_.staged.exists(_.id == a.id)))
+          val all = oldAct ++ newAct.map { a=>
+            println(s"Add $a")
+            ActivityRow(Some(a), None, selected = true)
+          }
+          all.sortBy(a => a.staged.orElse(a.strava).get.id.startTime)
+        }
+      }
+    }
   }
 
   def importFromStrava(act: ActivityHeader): Unit = {
