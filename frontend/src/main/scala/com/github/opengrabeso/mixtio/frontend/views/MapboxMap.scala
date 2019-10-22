@@ -17,9 +17,9 @@ object MapboxMap extends common.Formatting {
   final val eventsName = "events" // used for both layer and source
   final val routeName = "route"
 
-  def display(geojson: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): Map = {
+  def display(routeData: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): Map = {
     // TODO: use tupled route representation directly instead of array one
-    val route = geojson.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
+    val route = routeData.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
     val routeX = route.map(_(0))
     val routeY = route.map(_(1))
     val minX = routeX.min
@@ -92,13 +92,23 @@ object MapboxMap extends common.Formatting {
           // it would be nice to pass HTML DOM Node directly, but it is not possible
           // see https://docs.mapbox.com/mapbox-gl-js/api#map#queryrenderedfeatures:
           // > For GeoJSON sources, only string and numeric property values are supported (i.e. null, Array, and Object values are not supported).
-          replacePopup(feature.geometry.coordinates, feature.properties.description.asInstanceOf[String])
+          val deleteButton = if (feature.properties.time.asInstanceOf[js.UndefOr[Int]].isDefined) {
+            val time = feature.properties.time.asInstanceOf[Int]
+            // TODO: hide popup
+            s"<br><button type='button' onclick='deleteEvent($time)'>Delete Event</button> "
+          } else ""
+          replacePopup(feature.geometry.coordinates, feature.properties.description.asInstanceOf[String] + deleteButton)
         } else if (routeFeatures.nonEmpty) {
-          val feature = routeFeatures.head
           val coordinate = map.unproject(e.point)
-          // find coordinate in feature.geometry.coordinates
-          val nearest = findNearestPoint(feature.geometry.coordinates.asInstanceOf[js.Array[js.Array[Double]]], coordinate)
-          replacePopup(coordinate, s"Feature ${feature.`type`}, $nearest")
+          // use route, not feature.geometry.coordinates, because it contains time / distance as well
+          val nearest = findNearestPoint(route, coordinate)
+          val nearestAsArray = nearest.mkString("[", ",", "]")
+          replacePopup(
+            coordinate,
+            // TODO: use Scalatags instead
+            // TODO: hide popup
+            s"${displaySeconds(nearest(2).toInt)} (${displayDistance(nearest(3))})<br><button type='button' onclick='createLap($nearestAsArray)'>Create lap</button> "
+          )
         }
 
       })
@@ -135,7 +145,7 @@ object MapboxMap extends common.Formatting {
         properties = literal(),
         geometry = literal(
           `type` = "LineString",
-          coordinates = routeLL
+          coordinates = route // we provide additional data (distance, time) - this should do no harm
         )
       )
     ))
@@ -180,7 +190,7 @@ object MapboxMap extends common.Formatting {
   }
 
   def findNearestPoint(route: js.Array[js.Array[Double]], coord: LngLat): js.Array[Double] = {
-    // geojson is longitude and latitude - see https://tools.ietf.org/html/rfc7946#section-3.1.1
+    // GeoJSON is longitude and latitude - see https://tools.ietf.org/html/rfc7946#section-3.1.1
     val nearest = route.minBy { point =>
       val lngDist = coord.lng - point(0)
       val latDist = coord.lat - point(1)
@@ -207,6 +217,7 @@ object MapboxMap extends common.Formatting {
           title = eventTitle,
           icon = "circle",
           description = EventView.getSelectHtml(e, eventTitle).outerHTML,
+          time = e.time,
           color = "#444",
           opacity = 0.5,
         )
