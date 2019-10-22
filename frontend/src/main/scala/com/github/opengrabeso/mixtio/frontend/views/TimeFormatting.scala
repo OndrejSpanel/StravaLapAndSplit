@@ -23,7 +23,8 @@ trait TimeFormatting {
 
   def formatDateTime(t: js.Date): String = {
     try {
-      new DateTimeFormatX(
+      new intl.DateTimeFormat(
+        locale,
         options = intl.DateTimeFormatOptions(
           year = "numeric",
           month = "numeric",
@@ -40,7 +41,8 @@ trait TimeFormatting {
 
   def formatTime(t: js.Date) = {
     try {
-      new DateTimeFormatX(
+      new intl.DateTimeFormat(
+        locale,
         options = intl.DateTimeFormatOptions(
           hour = "numeric",
           minute = "numeric",
@@ -54,7 +56,8 @@ trait TimeFormatting {
 
   def formatTimeHMS(t: js.Date) = {
     try {
-      new DateTimeFormatX(
+      new intl.DateTimeFormat(
+        locale,
         options = intl.DateTimeFormatOptions(
           hour = "numeric",
           minute = "numeric",
