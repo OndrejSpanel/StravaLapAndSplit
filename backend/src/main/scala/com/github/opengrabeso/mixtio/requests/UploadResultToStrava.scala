@@ -57,6 +57,8 @@ case class UploadResultToStrava(key: String, auth: Main.StravaAuthResult, sessio
           Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), UploadInProgress(uploadId))
           val eta = System.currentTimeMillis() + 3000
           BackgroundTasks.addTask(WaitForStravaUpload(key, uploadId, auth, eta, sessionId))
+        case done =>
+          Storage.store(Storage.FullName(uploadResultNamespace, key, auth.userId), done)
       }
       Storage.delete(Storage.FullName(uploadNamespace, key, auth.userId))
     }
