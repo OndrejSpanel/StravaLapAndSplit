@@ -14,6 +14,7 @@ import io.udash.rest.raw.{HttpBody, HttpErrorException}
 import org.apache.commons.fileupload.{FileItemStream, RequestContext}
 import org.apache.commons.fileupload.disk.DiskFileItemFactory
 import org.apache.commons.fileupload.servlet.ServletFileUpload
+import org.apache.commons.io.IOUtils
 
 class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI with RestAPIUtils with requests.ActivityStorage {
   def name = syncResponse {
@@ -275,11 +276,17 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
 
         val builder = Seq.newBuilder[ActivityHeader]
         // TODO: obtain client timezone - neeeded when uploading Quest XML files
-        val timezone = ZoneId.systemDefault().toString
+        var timezone = Option.empty[String]
         itemsIterator.foreach { item =>
-          if (!item.isFormField && item.getFieldName == "files") {
+          if (item.isFormField && item.getFieldName == "timezone") {
+            timezone = Some(IOUtils.toString(item.openStream(), "UTF-8"))
+          } else if (!item.isFormField && item.getFieldName == "files") {
             if (item.getName != "") {
-              builder ++= storeFromStream(userAuth.userId, item.getName, timezone, item.openStream()).map { e =>
+              val useTimezone = timezone.getOrElse {
+                println("Warning: timezone not provided in the request, using system default instead")
+                ZoneId.systemDefault().toString
+              }
+              builder ++= storeFromStream(userAuth.userId, item.getName, useTimezone, item.openStream()).map { e =>
                 ActivityHeader(e.id, e.hasGPS, e.hasAttributes, e.computeSpeedStats)
               }
             }

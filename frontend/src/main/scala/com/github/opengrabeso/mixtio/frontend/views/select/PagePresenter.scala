@@ -157,7 +157,7 @@ class PagePresenter(
     val userId = userService.userId.get
 
     val uploader = new ActivityUploader(Url(s"/rest/user/$userId/upload"))
-    val uploadModel = uploader.upload("files", selectedFiles)
+    val uploadModel = uploader.upload("files", selectedFiles, extraData = Map(("timezone":js.Any) -> (TimeFormatting.timezone:js.Any)))
     uploadModel.listen(p => model.subProp(_.uploads.state).set(p))
   }
 

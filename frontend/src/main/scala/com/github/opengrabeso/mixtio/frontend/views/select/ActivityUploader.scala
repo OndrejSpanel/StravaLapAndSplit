@@ -37,17 +37,15 @@ class ActivityUploader(url: Url) {
     xhr.addEventListener("load", (ev: Event) => {
       p.subProp(_.response).set(Some(new HttpResponse(xhr)))
       p.subProp(_.state).set(xhr.status / 100 match {
-        case 2 => FileUploadState.Completed
-        case _ => FileUploadState.Failed
+        case 2 =>
+          FileUploadState.Completed
+        case _ =>
+          FileUploadState.Failed
       })
     }
     )
-    xhr.addEventListener("error", (ev: Event) =>
-      p.subProp(_.state).set(FileUploadState.Failed)
-    )
-    xhr.addEventListener("abort", (ev: Event) =>
-      p.subProp(_.state).set(FileUploadState.Cancelled)
-    )
+    xhr.addEventListener("error", (_: Event) => p.subProp(_.state).set(FileUploadState.Failed))
+    xhr.addEventListener("abort", (_: Event) => p.subProp(_.state).set(FileUploadState.Cancelled))
     xhr.open(method = "POST", url = url.value)
     xhr.send(data)
 

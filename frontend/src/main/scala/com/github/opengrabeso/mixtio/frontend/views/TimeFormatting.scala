@@ -4,7 +4,12 @@ import java.time.{ZoneOffset, ZonedDateTime}
 
 import scala.scalajs.js
 import org.scalajs.dom.experimental.intl
+import org.scalajs.dom.experimental.intl.DateTimeFormatOptions
 
+import scala.scalajs.js.annotation.JSGlobal
+import scala.scalajs.js.|
+
+import TimeFormatting._
 trait TimeFormatting {
   def locale: String = {
     import org.scalajs.dom
@@ -12,11 +17,14 @@ trait TimeFormatting {
     firstLanguage.getOrElse(dom.window.navigator.language)
   }
 
+  def timezone: String = {
+    new DateTimeFormatX().resolvedOptions().timeZone.getOrElse("Etc/GMT")
+  }
+
   def formatDateTime(t: js.Date): String = {
     try {
-      new intl.DateTimeFormat(
-        locale,
-        intl.DateTimeFormatOptions(
+      new DateTimeFormatX(
+        options = intl.DateTimeFormatOptions(
           year = "numeric",
           month = "numeric",
           day = "numeric",
@@ -32,9 +40,8 @@ trait TimeFormatting {
 
   def formatTime(t: js.Date) = {
     try {
-      new intl.DateTimeFormat(
-        locale,
-        intl.DateTimeFormatOptions(
+      new DateTimeFormatX(
+        options = intl.DateTimeFormatOptions(
           hour = "numeric",
           minute = "numeric",
         )
@@ -47,9 +54,8 @@ trait TimeFormatting {
 
   def formatTimeHMS(t: js.Date) = {
     try {
-      new intl.DateTimeFormat(
-        locale,
-        intl.DateTimeFormatOptions(
+      new DateTimeFormatX(
+        options = intl.DateTimeFormatOptions(
           hour = "numeric",
           minute = "numeric",
           second = "numeric",
@@ -74,4 +80,17 @@ trait TimeFormatting {
   }
 }
 
-object TimeFormatting extends TimeFormatting
+object TimeFormatting extends TimeFormatting {
+  // workaround for https://github.com/scala-js/scala-js-dom/issues/384
+  @js.native
+  @JSGlobal("Intl.DateTimeFormat")
+  class DateTimeFormatX(locales: js.UndefOr[String | js.Array[String]] = js.undefined,
+    options: js.UndefOr[DateTimeFormatOptions] = js.undefined)
+    extends js.Object {
+    def format(date: js.Date): String = js.native
+    def resolvedOptions(): DateTimeFormatOptions = js.native
+    def supportedLocalesOf(locales: String | js.Array[String],
+      options: js.Any): js.Array[String] = js.native
+  }
+
+}
