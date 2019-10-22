@@ -47,7 +47,7 @@ class PageView(
         title := formatTimeHMS(e.event.stamp.toJSDate),
         Formatting.displaySeconds(e.time)
       ).render),
-      EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.time).render),
+      EditAttrib("Distance", (e, _, _) => Formatting.displayDistance(e.dist).render),
       EditAttrib("Event", { (e, eModel, _) =>
         UdashForm() { factory =>
           factory.disabled(eModel.subProp(_.active).transform(!_)) { _ =>
