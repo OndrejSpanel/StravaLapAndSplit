@@ -22,7 +22,7 @@ object Upload extends ActivityStorage {
     val extension = name.split('.').last
     val actData: Seq[Main.ActivityEvents] = extension.toLowerCase match {
       case "fit" =>
-        FitImport(name, stream).toSeq
+        FitImport(name, digest, stream).toSeq
       case "sml" =>
         loadSml(name, digest, stream).toSeq
       case "xml" =>
@@ -45,10 +45,17 @@ object Upload extends ActivityStorage {
     }
     timing.logTime("Import file")
     val ret = if (actData.nonEmpty) {
-      for (act <- actData) yield {
-        val actOpt = act.cleanPositionErrors // .optimize
-        storeActivity(Main.namespace.stage, actOpt, userId)
-        actOpt
+      actData.flatMap { act =>
+        val oldDigest = Storage.digest(Main.namespace.stage, userId, act.id.id.filename)
+        if (oldDigest.contains(act.id.digest)) {
+          // exact duplicate
+          None
+        } else {
+          // same name, different content - create a unique name
+          val actOpt = act.cleanPositionErrors.copy(id = act.id.copy(name = act.id.name + System.currentTimeMillis().toString))
+          storeActivity(Main.namespace.stage, actOpt, userId)
+          Some(actOpt)
+        }
       }
     } else {
       Storage.store(Main.namespace.stage, name, userId, NoActivity, NoActivity, Seq("digest" -> digest))

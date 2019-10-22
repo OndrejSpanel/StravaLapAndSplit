@@ -237,37 +237,39 @@ object Storage extends FileStore {
     }
   }
 
-
-  // return true when the digest is matching (i.e. file does not need to be updated)
-  def check(namespace: String, userId: String, path: String, digest: String): Boolean = {
-
+  def digest(namespace: String, userId: String, path: String): Option[String] = {
     val prefix = userFilename(namespace, path, userId)
     val blobs = storage.list(bucket, BlobListOption.prefix(prefix.name))
     val found = blobs.iterateAll().asScala
 
     // there should be at most one result
-    found.toSeq.flatMap{i =>
+    found.toSeq.flatMap { i =>
       assert(i.getName.startsWith(prefix.name))
       val name = i.getName.drop(prefix.name.length)
       val m = try {
-        // TODO: get digest only
-        val md = storage.get(bucket, i.getName, BlobGetOption.fields(BlobField.values():_*))
+        val md = storage.get(bucket, i.getName, BlobGetOption.fields(BlobField.METADATA))
         val userData = md.getMetadata.asScala
-        userData.get("digest").map(_ == digest)
+        userData.get("digest")
       } catch {
         case e: Exception =>
           e.printStackTrace()
           None
       }
-      //println(s"enum '$name' - '$userId': md '$m'")
       m
-    }.contains(true)
+      //println(s"enum '$name' - '$userId': md '$m'")
+    }.headOption
+  }
+
+  // return true when the digest is matching (i.e. file does not need to be updated)
+  def check(namespace: String, userId: String, path: String, digestToCompare: String): Boolean = {
+    val oldDigest = digest(namespace, userId, path)
+    oldDigest.contains(digestToCompare)
   }
 
   // not used, consider removing (not well tested on GCS)
   def updateMetadata(file: String, metadata: Seq[(String, String)]): Boolean = {
     val blobId = fileId(file)
-    val md = storage.get(blobId, BlobGetOption.fields(BlobField.values():_*))
+    val md = storage.get(blobId, BlobGetOption.fields(BlobField.METADATA))
     val userData = md.getMetadata.asScala
     val matching = metadata.forall { case (key, name) =>
       userData.get(key).contains(name)
@@ -291,9 +293,8 @@ object Storage extends FileStore {
       // read metadata
       val in = input(FullName(oldName))
 
-      val md = storage.get(bucket, oldName, BlobGetOption.fields(BlobField.values(): _*))
-      val metadata = if (md != null) md.getMetadata
-      else null
+      val md = storage.get(bucket, oldName, BlobGetOption.fields(BlobField.METADATA))
+      val metadata = md.getMetadata
 
       val instance = BlobInfo.newBuilder(gcsFilenameNew)
         .setMetadata(metadata)

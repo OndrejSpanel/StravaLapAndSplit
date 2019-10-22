@@ -29,7 +29,7 @@ object FitImport {
   }
 
 
-  def apply(filename: String, in: InputStream): Option[ActivityEvents] = {
+  def apply(filename: String, digest: String, in: InputStream): Option[ActivityEvents] = {
     val decode = new Decode
     try {
 
@@ -133,7 +133,7 @@ object FitImport {
       val endTime = allStreams.map(_.last._1).max
 
       // TODO: digest
-      val id = ActivityId(FilenameId(filename), "", "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
+      val id = ActivityId(FilenameId(filename), digest, "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
 
       object ImportedStreams extends Main.ActivityStreams {
 
