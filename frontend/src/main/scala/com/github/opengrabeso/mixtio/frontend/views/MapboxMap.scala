@@ -14,6 +14,9 @@ import js.JSConverters._
 import scalatags.JsDom.all._
 
 object MapboxMap extends common.Formatting {
+  final val eventsName = "events" // used for both layer and source
+  final val routeName = "route"
+
   def display(geojson: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): Map = {
     // TODO: use tupled route representation directly instead of array one
     val route = geojson.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
@@ -49,7 +52,7 @@ object MapboxMap extends common.Formatting {
 
 
     def moveHandler() = {
-      val existing = map.getSource("events")
+      val existing = map.getSource(eventsName)
       if (existing.isDefined) {
         val data = existing.get._data
         renderGrid(map, data.features.asInstanceOf[js.Array[js.Dynamic]](0).geometry.coordinates.asInstanceOf[js.Array[Double]])
@@ -66,34 +69,38 @@ object MapboxMap extends common.Formatting {
 
       map.on("mousemove", {re =>
         val e = re.asInstanceOf[MapMouseEvent]
-        val features = map.queryRenderedFeatures(e.point, new js.Object { val layers = js.Array("events") })
-        map.getCanvas().style.cursor = if (features.length != 0) "pointer" else ""
+        val features = map.queryRenderedFeatures(e.point, new js.Object { val layers = js.Array(eventsName) })
+        val routeFeatures = map.queryRenderedFeatures(e.point, new js.Object {val layers = js.Array(routeName)})
+        map.getCanvas().style.cursor = if (features.nonEmpty) "pointer" else if (routeFeatures.nonEmpty) "context-menu" else ""
       })
 
       var currentPopup: Popup = null
 
+      def replacePopup(coord: LngLat, html: String) = {
+        if (currentPopup != null) currentPopup.remove()
+        val popup = new mapboxgl.Popup().setLngLat(coord)
+        popup.setHTML(html)
+        popup.addTo(map)
+        currentPopup = popup
+      }
       map.on("click", (re) => {
         val e = re.asInstanceOf[MapMouseEvent]
-        val features = map.queryRenderedFeatures(e.point, new js.Object {
-          val layers = js.Array("events")
-        })
+        val features = map.queryRenderedFeatures(e.point, new js.Object {val layers = js.Array(eventsName)})
+        val routeFeatures = map.queryRenderedFeatures(e.point, new js.Object {val layers = js.Array(routeName)})
         if (features.nonEmpty) {
-          val feature = features(0)
-          if (currentPopup != null) currentPopup.remove()
-          // Populate the popup and set its coordinates
-          // based on the feature found.
-          val popup = new mapboxgl.Popup().setLngLat(feature.geometry.coordinates)
-          feature.properties.description match {
-            case node: dom.Node =>
-              // it would be nice to pass description directly as HTML DOM Node, but somehow only string seems to survive inside of Mapbox source
-              popup.setDOMContent(node)
-            case s =>
-              popup.setHTML(s.asInstanceOf[String])
-          }
-
-          popup.addTo(map)
-          currentPopup = popup
+          val feature = features.head
+          // it would be nice to pass HTML DOM Node directly, but it is not possible
+          // see https://docs.mapbox.com/mapbox-gl-js/api#map#queryrenderedfeatures:
+          // > For GeoJSON sources, only string and numeric property values are supported (i.e. null, Array, and Object values are not supported).
+          replacePopup(feature.geometry.coordinates, feature.properties.description.asInstanceOf[String])
+        } else if (routeFeatures.nonEmpty) {
+          val feature = routeFeatures.head
+          val coordinate = map.unproject(e.point)
+          // find coordinate in feature.geometry.coordinates
+          val nearest = findNearestPoint(feature.geometry.coordinates.asInstanceOf[js.Array[js.Array[Double]]], coordinate)
+          replacePopup(coordinate, s"Feature ${feature.`type`}, $nearest")
         }
+
       })
 
 
@@ -112,7 +119,7 @@ object MapboxMap extends common.Formatting {
       features = eventsData.toJSArray
     )
 
-    map.getSource("events").get.setData(geojson)
+    map.getSource(eventsName).get.setData(geojson)
 
   }
 
@@ -121,7 +128,7 @@ object MapboxMap extends common.Formatting {
 
     val routeLL = route.map(i => js.Array(i(0), i(1)))
 
-    map.addSource("route", literal (
+    map.addSource(routeName, literal (
       `type` = "geojson",
       data = literal(
         `type` = "Feature",
@@ -134,9 +141,9 @@ object MapboxMap extends common.Formatting {
     ))
 
     map.addLayer(literal(
-      id ="route",
+      id = routeName,
       `type` = "line",
-      source = "route",
+      source = routeName,
       layout = literal(
         "line-join" -> "round",
         "line-cap" -> "round"
@@ -170,6 +177,16 @@ object MapboxMap extends common.Formatting {
         lerp(prev(3), next(3), f)
       )
     }
+  }
+
+  def findNearestPoint(route: js.Array[js.Array[Double]], coord: LngLat): js.Array[Double] = {
+    // geojson is longitude and latitude - see https://tools.ietf.org/html/rfc7946#section-3.1.1
+    val nearest = route.minBy { point =>
+      val lngDist = coord.lng - point(0)
+      val latDist = coord.lat - point(1)
+      lngDist * lngDist + latDist * latDist
+    }
+    nearest
   }
 
 
@@ -245,7 +262,7 @@ object MapboxMap extends common.Formatting {
       "text-anchor" -> "top"
     )
 
-    map.addSource("events", literal(
+    map.addSource(eventsName, literal(
       `type` = "geojson",
       data = literal(
         `type` = "FeatureCollection",
@@ -253,9 +270,9 @@ object MapboxMap extends common.Formatting {
       )
     ))
     map.addLayer(literal(
-      id = "events",
+      id = eventsName,
       `type` = "symbol",
-      source = "events",
+      source = eventsName,
       layout = iconLayout
     ))
     var lastKm = 0.0

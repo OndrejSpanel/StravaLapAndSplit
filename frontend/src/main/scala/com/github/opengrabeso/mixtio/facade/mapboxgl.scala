@@ -53,6 +53,7 @@ object mapboxgl extends js.Any {
     def setPaintProperty(name1: String, name2: String, value: js.Any): Unit = js.native
     def setLayoutProperty(name1: String, name2: String, value: js.Any): Unit = js.native
     def fitBounds(bounds: LngLatBounds, options: js.Object = js.native, eventData: js.Object = js.native): Unit = js.native
+    def unproject(p: Point): LngLat = js.native
   }
 
   @js.native // https://github.com/mapbox/mapbox-gl-js/blob/master/src/ui/popup.js
