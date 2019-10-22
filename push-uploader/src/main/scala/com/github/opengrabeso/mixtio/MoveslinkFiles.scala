@@ -1,9 +1,7 @@
 package com.github.opengrabeso.mixtio
-import org.joda.time.{DateTime => ZonedDateTime}
-
+import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
 import java.io.File
 import java.nio.file.Files
-
 import java.nio.charset.StandardCharsets
 
 import scala.util.Try
@@ -51,15 +49,15 @@ object MoveslinkFiles {
   def timestampFromName(name: String): Option[ZonedDateTime] = {
     // extract timestamp
     // GPS filename: Moveslink2/34FB984612000700-2017-05-23T16_27_11-0.sml
-    val gpsPattern = "\\/.*-(\\d*)-(\\d*)-(\\d*)T(\\d*)_(\\d*)_(\\d*)-".r.unanchored
+    val gpsPattern = "/.*-(\\d*)-(\\d*)-(\\d*)T(\\d*)_(\\d*)_(\\d*)-".r.unanchored
     // Quest filename Moveslink/Quest_2596420792_20170510143253.xml
-    val questPattern = "\\/Quest_\\d*_(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)\\.".r.unanchored
+    val questPattern = "/Quest_\\d*_(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)(\\d\\d)\\.".r.unanchored
     // note: may be different timezones, but a rough sort in enough for us (date is important)
     name match {
       case gpsPattern(yyyy,mm,dd,h,m,s) =>
-        Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s")) // TODO: DRY
+        Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s+00:00")) // TODO: DRY
       case questPattern(yyyy,mm,dd,h,m,s) =>
-        Some(ZonedDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s")) // TODO: DRY
+        Some(LocalDateTime.parse(s"$yyyy-$mm-${dd}T$h:$m:$s").atZone(ZoneId.systemDefault)) // TODO: DRY
       case _ =>
         None
     }

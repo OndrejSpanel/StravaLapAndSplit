@@ -1,22 +1,75 @@
 import sbt.Keys.scalacOptions
+// shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
   version := "0.1.10-beta",
-  scalaVersion := "2.11.12",
+  scalaVersion := "2.12.10",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
+val udashVersion = "0.8.0"
+
+val bootstrapVersion = "4.3.1"
+
+val udashJQueryVersion = "3.0.1"
+
+// TODO: try to share
+lazy val jvmLibs = Seq(
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test",
+
+  "io.udash" %% "udash-core" % udashVersion,
+  "io.udash" %% "udash-rest" % udashVersion,
+  "io.udash" %% "udash-rpc" % udashVersion,
+  "io.udash" %% "udash-css" % udashVersion,
+)
+
+lazy val jsLibs = libraryDependencies ++= Seq(
+  "org.scalatest" %%% "scalatest" % "3.0.8" % "test",
+  "org.scala-js" %%% "scalajs-dom" % "0.9.7",
+  "org.querki" %%% "jquery-facade" % "1.2",
+
+  "io.udash" %%% "udash-core" % udashVersion,
+  "io.udash" %%% "udash-rest" % udashVersion,
+  "io.udash" %%% "udash-rpc" % udashVersion,
+  "io.udash" %%% "udash-css" % udashVersion,
+
+  "io.udash" %%% "udash-bootstrap4" % udashVersion,
+  "io.udash" %%% "udash-charts" % udashVersion,
+  "io.udash" %%% "udash-jquery" % udashJQueryVersion,
+
+  "com.zoepepper" %%% "scalajs-jsjoda" % "1.1.1",
+  "com.zoepepper" %%% "scalajs-jsjoda-as-java-time" % "1.1.1"
+)
+
+lazy val jsDeps = jsDependencies ++= Seq(
+  // "jquery.js" is provided by "udash-jquery" dependency
+  "org.webjars" % "bootstrap" % bootstrapVersion / "bootstrap.bundle.js" minified "bootstrap.bundle.min.js" dependsOn "jquery.js",
+  "org.webjars.npm" % "js-joda" % "1.10.1" / "dist/js-joda.js" minified "dist/js-joda.min.js"
+)
+
 lazy val commonLibs = Seq(
-  "joda-time" % "joda-time" % "2.10",
-  "org.joda" % "joda-convert" % "1.8.1",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test",
-  "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
+  "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
 )
 
 val jacksonVersion = "2.9.9"
 
+lazy val sharedJs = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure).in(file("shared-js"))
+  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .settings(commonSettings)
+  .jvmSettings(libraryDependencies ++= jvmLibs)
+  .jsSettings(
+    jsLibs,
+    jsDeps
+  )
+
+lazy val sharedJs_JVM = sharedJs.jvm
+lazy val sharedJs_JS = sharedJs.js
+
 lazy val shared = (project in file("shared"))
+  .dependsOn(sharedJs.jvm)
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .settings(
     commonSettings,
@@ -26,39 +79,66 @@ lazy val shared = (project in file("shared"))
 
 lazy val pushUploader = (project in file("push-uploader"))
   .enablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared)
+  .dependsOn(shared, sharedJs_JVM)
   .settings(
     name := "MixtioStart",
     commonSettings,
     libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
-    libraryDependencies ++= commonLibs
+    libraryDependencies ++= commonLibs ++ jvmLibs
   )
 
+def inDevMode = true || sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
 
+def addJavaScriptToServerResources(): Def.SettingsDefinition = {
+  val optJs = if (inDevMode) fastOptJS else fullOptJS
+  (resources in Compile) += (optJs in(frontend, Compile)).value.data
+}
 
-lazy val mixtio = (project in file("."))
+def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
+  val depJs = if (inDevMode) packageJSDependencies else packageMinifiedJSDependencies
+  (resources in Compile) += (depJs in(frontend, Compile)).value
+}
+
+lazy val frontend = project.settings(
+    commonSettings,
+    jsLibs
+  ).enablePlugins(ScalaJSPlugin)
+    .dependsOn(sharedJs_JS)
+
+lazy val backend = (project in file("backend"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared)
+  .dependsOn(shared, sharedJs_JVM)
   .settings(
-    appengineSettings,
-
     name := "Mixtio",
+
+    addJavaScriptToServerResources(),
+    addJSDependenciesToServerResources(),
+
+    resourceGenerators in Compile += Def.task {
+      val file = (resourceManaged in Compile).value / "config.properties"
+      val contents = s"devMode=${inDevMode}"
+      IO.write(file, contents)
+      Seq(file)
+    }.taskValue,
 
     commonSettings,
 
-    libraryDependencies ++= commonLibs ++ Seq(
+    libraryDependencies ++= commonLibs ++ jvmLibs ++ Seq(
       "com.google.http-client" % "google-http-client-appengine" % "1.31.0",
       "com.google.http-client" % "google-http-client-jackson2" % "1.31.0",
       "com.google.apis" % "google-api-services-storage" % "v1-rev158-1.25.0",
       "com.google.appengine.tools" % "appengine-gcs-client" % "0.8",
+      "com.google.cloud" % "google-cloud-storage" % "1.96.0",
 
-      "javax.servlet" % "servlet-api" % "2.5" % "provided",
-      "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406" % "container",
+      "javax.servlet" % "javax.servlet-api" % "4.0.1" % "provided",
+      "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406" % "provided",
 
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
       "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
 
       "com.fasterxml" % "aalto-xml" % "1.0.0",
+
+      //"org.webjars" % "webjars-locator-core" % "0.39",
 
       "fr.opensagres.xdocreport.appengine-awt" % "appengine-awt" % "1.0.0",
 
@@ -73,3 +153,4 @@ lazy val mixtio = (project in file("."))
     )
   )
 
+lazy val root = (project in file(".")).aggregate(backend)

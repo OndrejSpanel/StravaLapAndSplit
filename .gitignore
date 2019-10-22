@@ -14,13 +14,16 @@
 # IntelliJ
 /out/
 
+# IntelliJ seems to build the artifact here when "root" is placed in file(".")
+/classes/
+
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
-/target/
-/project/target/
-/project/project/
-/shared/target/
-/push-uploader/target/
+target
 
-/src/main/resources/secret.txt
+/project/project/
+
+/backend/src/main/resources/secret.txt
+
+/backend/src/main/resources/mixtio-*.json

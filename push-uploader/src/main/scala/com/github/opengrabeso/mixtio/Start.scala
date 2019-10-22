@@ -4,7 +4,7 @@ import java.awt.Desktop
 import java.net.{URL, URLEncoder}
 import java.util.concurrent.CountDownLatch
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Terminated}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.coding._
@@ -18,17 +18,21 @@ import akka.util.ByteString
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise, duration}
-import scala.util.Try
+import scala.util.{Success, Try}
 import scala.xml.Elem
-import org.joda.time.{DateTimeZone, DateTime => ZonedDateTime}
-import shared.Util._
+import java.time.{ZoneId, ZonedDateTime}
+
+import com.github.opengrabeso.mixtio.rest.RestAPI
+import com.softwaremill.sttp.SttpBackend
+import common.Util._
+import io.udash.rest.SttpRestClient
 import shared.Digest
 
 import scala.util.control.NonFatal
 
 object Start extends App {
 
-  case class AuthData(userId: String, since: ZonedDateTime, sessionId: String)
+  case class AuthData(userId: String, since: ZonedDateTime, sessionId: String, authCode: String)
 
   private val instanceId = System.currentTimeMillis()
   private var authData = Option.empty[AuthData]
@@ -68,16 +72,21 @@ object Start extends App {
   private val serverPort = 8088 // do not use 8080, would conflict with Google App Engine Dev Server
 
   private case class ServerInfo(system: ActorSystem, binding: Future[ServerBinding]) {
-    def stop(): Unit = {
+    def stop(): Future[Unit] = {
       implicit val executionContext = system.dispatcher
-      binding.flatMap(_.unbind()) // trigger unbinding from the port
+      // trigger unbinding from the port
+      binding
+        .flatMap(_.unbind())
+        .flatMap(_ => system.terminate()) // and shutdown when done
+        .map(_ => ())
     }
 
-    def shutdown(): Unit = {
+    def shutdown(): Future[Unit] = {
       implicit val executionContext = system.dispatcher
       binding
         .flatMap(_.unbind()) // trigger unbinding from the port
-        .onComplete(_ => system.terminate()) // and shutdown when done
+        .flatMap(_ => system.terminate()) // and shutdown when done
+        .map(_ => ())
 
     }
 
@@ -94,22 +103,55 @@ object Start extends App {
     Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS)))
   }
 
-  private val stravimatLocalUrl = "http://localhost:8080"
-  private val stravimatRemoteUrl = "https://mixtio.appspot.com"
-  private var useLocal = false
-  private lazy val stravimatUrl = if (useLocal) stravimatLocalUrl else stravimatRemoteUrl
+  trait ServerUsed {
+    def url: String
+    def desciption: String
+  }
+  // GAE local server
+  object ServerLocal8080 extends ServerUsed {
+    def url = "http://localhost:8080"
+    def desciption = " to local server"
+  }
+  // Jetty embedded server
+  object ServerLocal4567 extends ServerUsed {
+    def url = "http://localhost:4567"
+    def desciption = " to local Jetty server"
+  }
+  // production server
+  object ServerProduction extends ServerUsed {
+    def url = "https://mixtio.appspot.com"
+    override def desciption = ""
+  }
 
-  private def checkLocalStravimat(): Boolean = {
+  val server: ServerUsed = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val localTest = true
+    val localTest = true // disabling the local test would make uploads faster for used of the production build (no need to wait for the probe timeout)
+    val localFound = Promise[ServerUsed]()
 
-    val localRequest = Http().singleRequest(HttpRequest(uri = stravimatLocalUrl + "/ping")).map(_.discardEntityBytes())
+    def localServerConfirmed(confirmed: ServerUsed): Unit = synchronized {
+      println(s"Confirmed local server ${confirmed.url}")
+      if (!localFound.tryComplete(Success(confirmed))) {
+        // we always use only the first server confirmed
+        // a developer should not run both
+        println("Warning: it seems there are two local servers running")
+      }
+    }
+
+    def tryLocalServer(s: ServerUsed) = {
+      Http().singleRequest(HttpRequest(uri = s.url + "/ping")).map(_.discardEntityBytes()).map(_ => localServerConfirmed(s))
+    }
+
+    if (localTest) {
+      tryLocalServer(ServerLocal8080)
+      tryLocalServer(ServerLocal4567)
+    }
 
     // try communicating with the local Stravimat, if not responding, use the remote one
-    useLocal = localTest && Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS))).isSuccess
-    useLocal
+    Try(Await.result(localFound.future, Duration(2000, duration.MILLISECONDS))).getOrElse(ServerProduction)
   }
+
+  private val stravimatUrl = server.url
 
   private object Tray {
     import java.awt._
@@ -139,7 +181,7 @@ object Start extends App {
         val imageSized = image.getScaledInstance(iconSize.width, iconSize.height, Image.SCALE_SMOOTH)
 
 
-        val trayIcon = new TrayIcon(imageSized, shared.appName)
+        val trayIcon = new TrayIcon(imageSized, appName)
 
         import java.awt.event.MouseAdapter
 
@@ -196,7 +238,7 @@ object Start extends App {
     private def changeStateImpl(icon: TrayIcon, s: String): Unit = {
       assert(SwingUtilities.isEventDispatchThread)
       state = s
-      val title = shared.appName
+      val title = appName
       val text = if (state.isEmpty) title else title + ": " + state
       icon.setToolTip(text)
     }
@@ -234,14 +276,13 @@ object Start extends App {
   }
 
   private def startBrowser() = {
-    /*
+    /**
     Authentication dance
     - request Stravimat to perform authentication, including user selection
      - http://stravimat/push-start?port=<XXXX>
     - Stravimat knowns or gets the Strava auth token (user id hash)
-    - it generates a Stravimat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt>
-     - this is captured by authHandler
-    - we receive the token and redirect to a page http://stravimat/push-push?token=<XXXX>
+    - it generates a Stravimat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt> (see [[startHttpServer]])
+     - this is captured by [[com.github.opengrabeso.mixtio.Start.authHandler]] and redirected to /app#push
     */
     val sessionId = System.currentTimeMillis()
     val startPushUrl = s"$stravimatUrl/push-start?port=$serverPort&session=$sessionId"
@@ -250,14 +291,14 @@ object Start extends App {
   }
 
 
-  def authHandler(userId: String, since: String, sessionId: String) = {
+  def authHandler(userId: String, since: String, sessionId: String, authCode: String) = {
     // session is authorized, we can continue sending the data
     serverInfo.stop()
-    println(s"Auth done - ${shared.appName} user id $userId, session $sessionId")
-    val sinceTime = new ZonedDateTime(since)
-    authData = Some(AuthData(userId, sinceTime, sessionId))
+    println(s"Auth done - $appName user id $userId, session $sessionId")
+    val sinceTime = ZonedDateTime.parse(since)
+    authData = Some(AuthData(userId, sinceTime, sessionId, authCode))
     authDone.countDown()
-    val doPushUrl = s"$stravimatUrl/push-do"
+    val doPushUrl = s"$stravimatUrl/app#push/$sessionId"
     redirect(doPushUrl, StatusCodes.Found)
   }
 
@@ -285,7 +326,9 @@ object Start extends App {
 
     val requests = path("auth") {
       parameters('user, 'since, 'session) { (user, since, session) =>
-        authHandler(user, since, session)
+        cookie("authCode") { authCode =>
+          authHandler(user, since, session, authCode.value)
+        }
       }
     } ~ path("shutdown") {
       parameter('id) {
@@ -318,7 +361,6 @@ object Start extends App {
     try {
       val _ = Await.result(serverInfo.binding, Duration.Inf)
       authDone.await()
-
     } catch {
       case NonFatal(_) =>
         println("Server not started")
@@ -328,7 +370,7 @@ object Start extends App {
 
   def performUpload(data: AuthData) = {
 
-    val AuthData(userId, since, sessionId) = data
+    val AuthData(userId, since, sessionId, authCode) = data
 
     val sinceDate = since minusDays 1
 
@@ -342,104 +384,58 @@ object Start extends App {
 
     val sortedFiles = wantedFiles.sortBy(MoveslinkFiles.timestampFromName)
 
-    val localTimeZone = DateTimeZone.getDefault.toString
+    val localTimeZone = ZoneId.systemDefault.toString
 
-    val requestParams = s"user=$userId&timezone=${URLEncoder.encode(localTimeZone, "UTF-8")}"
-
-    val sessionCookie = headers.Cookie("sessionid", sessionId) // we might want to set this as HTTP only - does it matter?
-    val useGzip = true // !useLocal
-    // do not use encoding headers, as we want to encode / decoce on own own
+    val useGzip = true
+    // it seems production App Engine already decodes gziped request body, but development one does not
+    // do not use encoding headers, as we want to encode / decoce on our own
     // this was done to keep payload small as a workaround for https://issuetracker.google.com/issues/63371955
-    val gzipCustom = true
-    val encodingHeader = if (useGzip && !gzipCustom) Some(headers.`Content-Encoding`(HttpEncodings.gzip)) else None
-    val contentType = if (useGzip && gzipCustom) ContentTypes.`application/octet-stream` else ContentTypes.`text/plain(UTF-8)` // it is XML in fact, but not fully conformant
 
-    val req = Http().singleRequest(
-      HttpRequest(
-        uri = s"$stravimatUrl/push-put-start?$requestParams&total-files=${sortedFiles.size}",
-        method = HttpMethods.POST,
-        headers = List(sessionCookie)
-      )
-    ).map { resp =>
-      resp.discardEntityBytes()
+    val api = {
+      implicit val sttpBackend: SttpBackend[Future, Nothing] = SttpRestClient.defaultBackend()
+      SttpRestClient[RestAPI](s"$stravimatUrl/rest")
     }
 
-    Await.result(req, Duration.Inf)
-
-    val reqs = for {
+    val filesToSend = for {
       f <- sortedFiles
       fileBytes <- MoveslinkFiles.get(f)
     } yield {
-      // consider async processing here - a few requests in parallel could improve throughput
       val digest = Digest.digest(fileBytes)
+      (f, digest, fileBytes)
+    }
 
-      // it seems production App Engine already decodes gziped request body, but development one does not
-      // as I do not see any clean way how to indicate the development server it should do its own decoding
-      // I do no use GZip on development server as a workaround
+    val userAPI = api.userAPI(userId, authCode)
+    val pushAPI = userAPI.push(sessionId, localTimeZone)
+
+    val fileContent = filesToSend.map(f => f._1 -> (f._2, f._3)).toMap
+
+    val toOffer = filesToSend.map(f => f._1 -> f._2)
+
+    for {
+      needed <- pushAPI.offerFiles(toOffer)
+      _ = reportProgress(needed.size)
+      id <- needed
+    } {
+      val (digest, content) = fileContent(id)
       def gzipEncoded(bytes: Array[Byte]) = if (useGzip) Gzip.encode(ByteString(bytes)) else ByteString(bytes)
 
-      val req = Http().singleRequest(
-        HttpRequest(
-          uri = s"$stravimatUrl/push-put-digest?$requestParams&path=$f",
-          method = HttpMethods.POST,
-          headers = List(sessionCookie),
-          entity = HttpEntity(digest)
-        )
-      ).flatMap { resp =>
-        resp.discardEntityBytes()
-        println(s"File status $f = ${resp.status}")
-        resp.status match {
-          case StatusCodes.NoContent =>
-            Future.successful(())
-          case StatusCodes.OK =>
-            // digest not matching, we need to send full content
-            val bodyBytes = gzipEncoded(fileBytes)
-            val uploadReq = Http().singleRequest(
-              HttpRequest(
-                uri = s"$stravimatUrl/push-put?$requestParams&path=$f&digest=$digest",
-                method = HttpMethods.POST,
-                headers = List(sessionCookie) ++ encodingHeader,
-                entity = HttpEntity(contentType, bodyBytes)
-              )
-            ).map { resp =>
-              resp.discardEntityBytes()
-              resp.status
-            }
-            println(s"  Upload started: $f ${fileBytes.length.toByteSize} -> ${bodyBytes.length.toByteSize}")
-            uploadReq.map { status =>
-              println(s"    Async upload $f status $status")
-              status
-            }
+      val upload = pushAPI.uploadFile(id, gzipEncoded(content).toArray, digest)
+      // consider async processing here - a few requests in parallel could improve throughput
+      Await.result(upload, Duration.Inf)
+      // TODO: reportProgress after each file
 
-          case _ => // unexpected - what to do?
-            Future.successful(())
-        }
-      }
-      f -> req
     }
+    reportProgress(0)
 
-    reportProgress(reqs.size)
-
-    reqs.zipWithIndex.foreach { case ((f, r), i) =>
-      Await.result(r, Duration.Inf)
-      // TODO: handle upload failures somehow
-      println(s"  Await upload $f status $r")
-      reportProgress(reqs.size + 1 - i)
-    }
-
-    serverInfo.system.terminate()
 
   }
 
   val icon = Tray.show()
 
   def reportProgress(i: Int): Unit = {
-    def localSuffix = if (useLocal) " to local server" else ""
-    def state = s"Uploading $i files" + localSuffix
+    def state = s"Uploading $i files" + server.desciption
     icon.foreach(Tray.changeState(_, state))
   }
-
-  checkLocalStravimat()
 
   private val serverInfo = startHttpServer(serverPort)
 
@@ -454,7 +450,10 @@ object Start extends App {
     performUpload(data)
   }
 
+  serverInfo.system.terminate()
   Await.result(serverInfo.system.whenTerminated, Duration.Inf)
   println("System stopped")
   icon.foreach(Tray.remove)
+  // force stop - some threads seem to be preventing this and I am unable to find why
+  System.exit(0)
 }
