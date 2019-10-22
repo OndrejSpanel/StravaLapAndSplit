@@ -20,7 +20,7 @@ lazy val jvmLibs = Seq(
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
 
   "io.udash" %% "udash-core" % udashVersion,
-  "io.udash" %% "udash-rest" % udashVersion,
+  "io.udash" %% "udash-rest" % udashVersion excludeAll ExclusionRule(organization = "io.netty"),
   "io.udash" %% "udash-rpc" % udashVersion,
   "io.udash" %% "udash-css" % udashVersion,
 )
