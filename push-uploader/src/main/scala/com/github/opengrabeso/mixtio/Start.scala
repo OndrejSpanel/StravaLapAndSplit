@@ -4,7 +4,7 @@ import java.awt.Desktop
 import java.net.{URL, URLEncoder}
 import java.util.concurrent.CountDownLatch
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Terminated}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.coding._
@@ -72,16 +72,21 @@ object Start extends App {
   private val serverPort = 8088 // do not use 8080, would conflict with Google App Engine Dev Server
 
   private case class ServerInfo(system: ActorSystem, binding: Future[ServerBinding]) {
-    def stop(): Unit = {
+    def stop(): Future[Unit] = {
       implicit val executionContext = system.dispatcher
-      binding.flatMap(_.unbind()) // trigger unbinding from the port
+      // trigger unbinding from the port
+      binding
+        .flatMap(_.unbind())
+        .flatMap(_ => system.terminate()) // and shutdown when done
+        .map(_ => ())
     }
 
-    def shutdown(): Unit = {
+    def shutdown(): Future[Unit] = {
       implicit val executionContext = system.dispatcher
       binding
         .flatMap(_.unbind()) // trigger unbinding from the port
-        .onComplete(_ => system.terminate()) // and shutdown when done
+        .flatMap(_ => system.terminate()) // and shutdown when done
+        .map(_ => ())
 
     }
 
@@ -356,7 +361,6 @@ object Start extends App {
     try {
       val _ = Await.result(serverInfo.binding, Duration.Inf)
       authDone.await()
-
     } catch {
       case NonFatal(_) =>
         println("Server not started")
@@ -423,7 +427,6 @@ object Start extends App {
     }
     reportProgress(0)
 
-    serverInfo.system.terminate()
 
   }
 
@@ -447,7 +450,10 @@ object Start extends App {
     performUpload(data)
   }
 
+  serverInfo.system.terminate()
   Await.result(serverInfo.system.whenTerminated, Duration.Inf)
   println("System stopped")
   icon.foreach(Tray.remove)
+  // force stop - some threads seem to be preventing this and I am unable to find why
+  System.exit(0)
 }
