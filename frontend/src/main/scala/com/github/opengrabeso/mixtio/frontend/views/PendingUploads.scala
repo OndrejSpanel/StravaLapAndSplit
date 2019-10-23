@@ -1,10 +1,10 @@
 package com.github.opengrabeso.mixtio
 package frontend.views
 
-import com.github.opengrabeso.mixtio.common.model.{FileId, UploadProgress}
-import com.github.opengrabeso.mixtio.frontend.views.select.PagePresenter.delay
+import common.model._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.scalajs.js
 
 abstract class PendingUploads[ActId](implicit ec: ExecutionContext) {
   var pending = Map.empty[String, Set[ActId]]
@@ -12,6 +12,15 @@ abstract class PendingUploads[ActId](implicit ec: ExecutionContext) {
   private final val pollPeriodMs = 1000
 
   def sendToStrava(fileIds: Seq[ActId]): Future[Seq[(ActId, String)]]
+
+  def delay(milliseconds: Int): Future[Unit] = {
+    val p = Promise[Unit]()
+    js.timers.setTimeout(milliseconds) {
+      p.success(())
+    }
+    p.future
+  }
+
 
   def startUpload(api: rest.UserRestAPI, fileIds: Seq[ActId]) = {
 

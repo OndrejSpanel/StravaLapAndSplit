@@ -9,6 +9,7 @@ import io.udash.bootstrap.button.UdashButton
 import io.udash.component.ComponentId
 import io.udash.css._
 import common.css._
+import org.scalajs.dom
 import org.scalajs.dom.raw.HTMLElement
 
 import scala.concurrent.ExecutionContext
@@ -25,6 +26,7 @@ object Root {
     userContextService: services.UserContextService,
     application: Application[RoutingState]
   )(implicit ec: ExecutionContext) extends Presenter[RootState.type] {
+
     // start the login
     login()
 
@@ -58,6 +60,10 @@ object Root {
           case Failure(_) =>
         }
       }
+    }
+
+    def gotoMain() = {
+      application.goTo(SelectPageState)
     }
   }
 
@@ -93,7 +99,13 @@ object Root {
                 td(
                   table(
                     tbody(
-                      tr(td(a(href := "/", appName))),
+                      tr(td(a(
+                        href := "/", appName,
+                        onclick :+= {_: dom.Event =>
+                          presenter.gotoMain()
+                          true
+                        }
+                      ))),
                       tr(td(
                         "Athlete:",
                         produce(userId) { s =>

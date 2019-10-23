@@ -12,25 +12,10 @@ import routing._
 import io.udash._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import PagePresenter._
-import org.scalajs.dom.File
+import services.UserContextService
 
 import scala.scalajs.js
 import scala.util.{Failure, Success}
-
-object PagePresenter {
-  case class LoadedActivities(staged: Seq[ActivityHeader], strava: Seq[ActivityHeader])
-
-  // TODO: move to some Utils
-  def delay(milliseconds: Int): Future[Unit] = {
-    val p = Promise[Unit]()
-    js.timers.setTimeout(milliseconds) {
-      p.success(())
-    }
-    p.future
-  }
-
-}
 
 /** Contains the business logic of this view. */
 class PagePresenter(
@@ -43,52 +28,16 @@ class PagePresenter(
     loadActivities(p)
   }
 
-  var loaded = Option.empty[(Boolean, Future[LoadedActivities])]
-
-  final private val normalCount = 15
-
-
-  private def notBeforeByStrava(showAll: Boolean, stravaActivities: Seq[ActivityHeader]): ZonedDateTime = {
-    if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 24
-    else stravaActivities.map(a => a.id.startTime).min
-  }
-
-  def doLoadActivities(showAll: Boolean): Future[LoadedActivities] = {
-    println(s"loadActivities showAll=$showAll")
-    model.subProp(_.loading).set(true)
-    model.subProp(_.activities).set(Nil)
-
-    userService.api match {
-      case Some(userAPI) =>
-        userAPI.lastStravaActivities(normalCount * 2).flatMap { allActivities =>
-          val stravaActivities = allActivities.take(normalCount)
-          val notBefore = notBeforeByStrava(showAll, stravaActivities)
-
-          val ret = userAPI.stagedActivities(notBefore).map { stagedActivities =>
-            LoadedActivities(stagedActivities, allActivities)
-          }
-          loaded = Some(showAll, ret)
-          ret
-        }
-      case None =>
-        Future.failed(new NoSuchElementException)
-
-    }
-  }
-
-  private def loadCached(level: Boolean): Future[LoadedActivities] = {
-    println(s"loadCached $level")
-    if (loaded.isEmpty || loaded.exists(!_._1 && level)) {
-      doLoadActivities(level)
-    } else {
-      loaded.get._2
-    }
-  }
-
   def loadActivities(showAll: Boolean) = {
-    val load = loadCached(showAll)
+    val load = userService.loadCached(showAll)
 
-    for (LoadedActivities(stagedActivities, allStravaActivities) <- load) {
+    if (!load.isCompleted) {
+      // if not completed immediately, show as pending
+      model.subProp(_.loading).set(true)
+      model.subProp(_.activities).set(Nil)
+    }
+
+    for (UserContextService.LoadedActivities(stagedActivities, allStravaActivities) <- load) {
       println(s"loadActivities loaded staged: ${stagedActivities.size}, Strava: ${allStravaActivities.size}")
 
       def filterListed(activity: ActivityHeader, strava: Option[ActivityHeader]) = showAll || strava.isEmpty
@@ -96,7 +45,7 @@ class PagePresenter(
         ids.map( a => a -> strava.find(_.id isMatching a.id))
       }
 
-      val (stravaActivities, oldStravaActivities) = allStravaActivities.splitAt(normalCount)
+      val (stravaActivities, oldStravaActivities) = allStravaActivities.splitAt(UserContextService.normalCount)
       val neverBefore = alwaysIgnoreBefore(stravaActivities.map(_.id))
 
       // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
