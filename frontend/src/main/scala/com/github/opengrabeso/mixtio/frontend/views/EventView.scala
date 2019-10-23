@@ -70,9 +70,12 @@ object EventView {
       br,
       tag_select(
         raw(html),
-        // we cannot use onchange attribute using :+=, as that way it does not seem to be stored in the HTML - and HTML is the only thing which is used
-        // expects a global onChangeEvent function - defined below
-        onchange := s"onChangeEvent(this.options[this.selectedIndex].value,${editEvent.time})",
+        onchange :+= { e: dom.Event =>
+          val target = e.target.asInstanceOf[HTMLOptionElement]
+          onChangeEvent(target.value, editEvent.time)
+          false
+        }
+
       )
     ).render
   }

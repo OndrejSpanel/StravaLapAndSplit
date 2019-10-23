@@ -21,13 +21,11 @@ class PageView(
 ) extends FinalView with CssView with PageUtils with ActivityLink {
   val s = EditPageStyles
 
-  edit.PagePresenter.passPresenterAroundJS = presenter
-
   model.subProp(_.routeJS).listen {
     _.foreach { geojson =>
       // events should always be ready before the route
-      val events = model.subProp(_.events).get
-      val map = MapboxMap.display(geojson, events)
+      val events = model.subProp(_.events)
+      val map = MapboxMap.display(geojson, events, presenter)
 
       model.subProp(_.events).listen { e =>
         MapboxMap.changeEvents(map, e, model.subProp(_.routeJS).get.get)

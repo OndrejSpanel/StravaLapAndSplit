@@ -12,12 +12,17 @@ import scala.scalajs.js
 import js.Dynamic.literal
 import js.JSConverters._
 import scalatags.JsDom.all._
+import io.udash._
 
 object MapboxMap extends common.Formatting {
   final val eventsName = "events" // used for both layer and source
   final val routeName = "route"
 
-  def display(routeData: Seq[(Double, Double, Double, Double)], events: Seq[EditEvent]): Map = {
+  private def onClick(handler: Event => Boolean) = {
+    onclick :+= handler
+  }
+
+  def display(routeData: Seq[(Double, Double, Double, Double)], events: Property[Seq[EditEvent]], presenter: edit.PagePresenter): Map = {
     // TODO: use tupled route representation directly instead of array one
     val route = routeData.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
     val routeX = route.map(_(0))
@@ -64,7 +69,7 @@ object MapboxMap extends common.Formatting {
 
     map.on("load", { _ =>
       renderRoute(map, route)
-      renderEvents(map, events, route)
+      renderEvents(map, events.get, route)
       renderGrid(map, route(0))
 
       map.on("mousemove", {re =>
@@ -76,12 +81,16 @@ object MapboxMap extends common.Formatting {
 
       var currentPopup: Popup = null
 
-      def replacePopup(coord: LngLat, html: String) = {
-        if (currentPopup != null) currentPopup.remove()
+      def replacePopup(coord: LngLat)(init: Popup => Unit) = {
+        hidePopup()
         val popup = new mapboxgl.Popup().setLngLat(coord)
-        popup.setHTML(html)
+        init(popup)
         popup.addTo(map)
         currentPopup = popup
+      }
+      def hidePopup() = {
+        if (currentPopup != null) currentPopup.remove()
+        currentPopup = null
       }
       map.on("click", (re) => {
         val e = re.asInstanceOf[MapMouseEvent]
@@ -89,26 +98,64 @@ object MapboxMap extends common.Formatting {
         val routeFeatures = map.queryRenderedFeatures(e.point, new js.Object {val layers = js.Array(routeName)})
         if (features.nonEmpty) {
           val feature = features.head
-          // it would be nice to pass HTML DOM Node directly, but it is not possible
-          // see https://docs.mapbox.com/mapbox-gl-js/api#map#queryrenderedfeatures:
-          // > For GeoJSON sources, only string and numeric property values are supported (i.e. null, Array, and Object values are not supported).
-          val deleteButton = if (feature.properties.time.asInstanceOf[js.UndefOr[Int]].isDefined) {
-            val time = feature.properties.time.asInstanceOf[Int]
-            // TODO: hide popup
-            s"<br><button type='button' onclick='deleteEvent($time)'>Delete Event</button> "
-          } else ""
-          replacePopup(feature.geometry.coordinates, feature.properties.description.asInstanceOf[String] + deleteButton)
+
+          val time = feature.properties.time.asInstanceOf[js.UndefOr[Int]]
+          val description = feature.properties.description.asInstanceOf[js.UndefOr[String]]
+          val title = feature.properties.title.asInstanceOf[String]
+          println(s"$time, $description, $title")
+          val showPopupAt = replacePopup(feature.geometry.coordinates)(_)
+          if (description.contains("event") && time.isDefined) {
+
+            // we generate DOM here, as passing it via feature.properties is not supported by Mapbox
+            // see https://docs.mapbox.com/mapbox-gl-js/api#map#queryrenderedfeatures:
+            // > For GeoJSON sources, only string and numeric property values are supported (i.e. null, Array, and Object values are not supported).
+            showPopupAt { popup =>
+              events.get.find(_.time == time.get).map { event =>
+                popup.setDOMContent(
+                  div(
+                    EventView.getSelectHtml(event, title),
+                    br(),
+                    button(
+                      `type` := "button",
+                      "Delete",
+                      onClick{ _ =>
+                        presenter.deleteEvent(time.get)
+                        hidePopup()
+                        false
+                      }
+                    )
+                  ).render
+                )
+              }.getOrElse {
+                showPopupAt(_.setText(title))
+              }
+            }
+          }
+
         } else if (routeFeatures.nonEmpty) {
           val coordinate = map.unproject(e.point)
           // use route, not feature.geometry.coordinates, because it contains time / distance as well
           val nearest = findNearestPoint(route, coordinate)
-          val nearestAsArray = nearest.mkString("[", ",", "]")
-          replacePopup(
-            coordinate,
+          replacePopup(coordinate) {
             // TODO: use Scalatags instead
             // TODO: hide popup
-            s"${displaySeconds(nearest(2).toInt)} (${displayDistance(nearest(3))})<br><button type='button' onclick='createLap($nearestAsArray)'>Create lap</button> "
-          )
+            _.setDOMContent(
+              div(
+                s"${displaySeconds(nearest(2).toInt)} (${displayDistance(nearest(3))})",
+                br(),
+                button(
+                  `type` := "button",
+                  // TODO: insert selection instead
+                  "Create lap",
+                  onClick { _ =>
+                    presenter.createLap(nearest)
+                    hidePopup()
+                    false
+                  }
+                )
+              ).render
+            )
+          }
         }
 
       })
@@ -216,7 +263,7 @@ object MapboxMap extends common.Formatting {
         properties = literal(
           title = eventTitle,
           icon = "circle",
-          description = EventView.getSelectHtml(e, eventTitle).outerHTML,
+          description = "event",
           time = e.time,
           color = "#444",
           opacity = 0.5,

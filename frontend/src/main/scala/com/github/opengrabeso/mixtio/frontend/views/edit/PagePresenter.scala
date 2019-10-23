@@ -118,7 +118,7 @@ class PagePresenter(
       //val addLap = EditEvent()
       // TODO: use cleanupEvents instead
       // TODO: inherit "active" from surrounding events
-      (EditEvent("lap", event, time, dist) +: events).sortBy(_.time)
+      (EditEvent(start, event, dist) +: events).sortBy(_.time)
     }
   }
 
@@ -126,21 +126,5 @@ class PagePresenter(
     model.subProp(_.events).set {
       model.subProp(_.events).get.filterNot(_.time == time)
     }
-  }
-}
-
-object PagePresenter {
-  // ugly hack to provide parameter passing for a global JS function
-  // this is because I cannot find a way how to pass Scala.js functions as event handlers to mapbox event handlers
-  var passPresenterAroundJS: PagePresenter = _
-
-  @JSExportTopLevel("createLap")
-  def createLap(coord: js.Array[Double]): Unit = {
-    passPresenterAroundJS.createLap(coord)
-  }
-
-  @JSExportTopLevel("deleteEvent")
-  def deleteEvent(time: Int): Unit = {
-    passPresenterAroundJS.deleteEvent(time)
   }
 }
