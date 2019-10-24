@@ -237,7 +237,7 @@ object Storage extends FileStore {
     }
   }
 
-  def digest(namespace: String, userId: String, path: String): Option[String] = {
+  def metadata(namespace: String, userId: String, path: String): Seq[(String, String)] = {
     val prefix = userFilename(namespace, path, userId)
     val blobs = storage.list(bucket, BlobListOption.prefix(prefix.name))
     val found = blobs.iterateAll().asScala
@@ -245,19 +245,26 @@ object Storage extends FileStore {
     // there should be at most one result
     found.toSeq.flatMap { i =>
       assert(i.getName.startsWith(prefix.name))
-      val name = i.getName.drop(prefix.name.length)
       val m = try {
         val md = storage.get(bucket, i.getName, BlobGetOption.fields(BlobField.METADATA))
-        val userData = md.getMetadata.asScala
-        userData.get("digest")
+        md.getMetadata.asScala.toSeq
       } catch {
         case e: Exception =>
           e.printStackTrace()
-          None
+          Nil
       }
       m
       //println(s"enum '$name' - '$userId': md '$m'")
-    }.headOption
+    }
+  }
+
+  def metadataValue(namespace: String, userId: String, path: String, name: String): Option[String] = {
+    val md = metadata(namespace, userId, path)
+    md.find(_._1 == name).map(_._2)
+  }
+
+  def digest(namespace: String, userId: String, path: String): Option[String] = {
+    metadataValue(namespace, userId, path, "digest")
   }
 
   // return true when the digest is matching (i.e. file does not need to be updated)
@@ -266,11 +273,10 @@ object Storage extends FileStore {
     oldDigest.contains(digestToCompare)
   }
 
-  // not used, consider removing (not well tested on GCS)
   def updateMetadata(file: String, metadata: Seq[(String, String)]): Boolean = {
     val blobId = fileId(file)
     val md = storage.get(blobId, BlobGetOption.fields(BlobField.METADATA))
-    val userData = md.getMetadata.asScala
+    val userData = Option(md.getMetadata).getOrElse(new java.util.HashMap[String, String]).asScala
     val matching = metadata.forall { case (key, name) =>
       userData.get(key).contains(name)
     }

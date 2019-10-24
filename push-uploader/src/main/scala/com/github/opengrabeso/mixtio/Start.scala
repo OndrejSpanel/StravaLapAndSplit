@@ -405,26 +405,33 @@ object Start extends App {
     }
 
     val userAPI = api.userAPI(userId, authCode)
+
+    if (true) {
+      val name = Await.result(userAPI.name, Duration.Inf)
+      println(s"Uploading as $name")
+    }
+
     val pushAPI = userAPI.push(sessionId, localTimeZone)
 
     val fileContent = filesToSend.map(f => f._1 -> (f._2, f._3)).toMap
 
     val toOffer = filesToSend.map(f => f._1 -> f._2)
 
-    for {
-      needed <- pushAPI.offerFiles(toOffer)
-      _ = reportProgress(needed.size)
-      id <- needed
-    } {
-      val (digest, content) = fileContent(id)
-      def gzipEncoded(bytes: Array[Byte]) = if (useGzip) Gzip.encode(ByteString(bytes)) else ByteString(bytes)
+    val wait = pushAPI.offerFiles(toOffer).map { needed =>
+      reportProgress(needed.size)
 
-      val upload = pushAPI.uploadFile(id, gzipEncoded(content).toArray, digest)
-      // consider async processing here - a few requests in parallel could improve throughput
-      Await.result(upload, Duration.Inf)
-      // TODO: reportProgress after each file
+      needed.foreach { id =>
+        val (digest, content) = fileContent(id)
+        def gzipEncoded(bytes: Array[Byte]) = if (useGzip) Gzip.encode(ByteString(bytes)) else ByteString(bytes)
 
+        val upload = pushAPI.uploadFile(id, gzipEncoded(content).toArray, digest)
+        // consider async processing here - a few requests in parallel could improve throughput
+        Await.result(upload, Duration.Inf)
+        // TODO: reportProgress after each file
+
+      }
     }
+    Await.result(wait, Duration.Inf)
     reportProgress(0)
 
 

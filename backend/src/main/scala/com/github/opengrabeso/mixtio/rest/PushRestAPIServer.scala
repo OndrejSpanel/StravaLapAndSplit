@@ -32,12 +32,13 @@ class PushRestAPIServer(parent: UserRestAPIServer, session: String, localTimeZon
       Storage.check(Main.namespace.stage, userId, file, digest)
     }.map(_._1)
 
+    val pushNamespace = Main.namespace.pushProgress(session)
     for (f <- needed) {
       // TODO: store some file information (size, ...)
-      Storage.store(Main.namespace.pushProgress(session), f, userId, Anything, Anything)
+      Storage.store(pushNamespace, f, userId, Anything, Anything, metadata = Seq("status" -> "offered"))
     }
     // write started tag once the pending files information is complete, to mark it can be scanned now
-    Storage.store(Main.namespace.pushProgress(session), markerFileName, userId, Anything, Anything)
+    Storage.store(pushNamespace, markerFileName, userId, Anything, Anything)
     println(s"offered $needed for $userId")
     needed
   }
@@ -48,11 +49,11 @@ class PushRestAPIServer(parent: UserRestAPIServer, session: String, localTimeZon
     val stream = new ByteArrayInputStream(content)
     val decompressed = decompressStream(stream)
 
-    requests.Upload.storeFromStreamWithDigest(userId, id, localTimeZone, decompressed, digest)
-    val pushNamespace = Main.namespace.pushProgress(session)
-    if (true) { // disable for debugging - prevent any upload to debug the upload progress view
-      Storage.delete(Storage.FullName(pushNamespace, id, userId))
+    if (true) { // disable for debugging
+      requests.Upload.storeFromStreamWithDigest(userId, id, localTimeZone, decompressed, digest)
     }
+    val pushNamespace = Main.namespace.pushProgress(session)
+    Storage.updateMetadata(Storage.FullName(pushNamespace, id, userId).name, metadata = Seq("status" -> "pushed"))
     println(s"pushed $id for $userId")
   }
 
@@ -61,17 +62,26 @@ class PushRestAPIServer(parent: UserRestAPIServer, session: String, localTimeZon
     val sessionPushProgress = Storage.enumerate(pushNamespace, userId)
     val started = sessionPushProgress.exists(_._2 == markerFileName)
     if (!started) {
-      Seq("") // special response - not empty, but not the list of the files yes
+      (Seq(""), Nil) // special response - not empty, but not the list of the files yes
     } else {
-      val pending = for {
+      val pendingOrDone = for {
         (_, f) <- sessionPushProgress
         if f != markerFileName
-      } yield f
+      } yield {
+        // check metadata, if done, we can delete the file once reported
+        if (Storage.metadataValue(pushNamespace, userId, f, "status").contains("pushed")) {
+          Storage.delete(Storage.FullName(pushNamespace, f, userId))
+          f -> true
+        } else {
+          f -> false
+        }
+      }
+      val (pending, done) = pendingOrDone.toSeq.partition(_._2)
       if (pending.isEmpty) {
         // once we return empty response, we can delete the "started" marker file
         Storage.delete(Storage.FullName(pushNamespace, markerFileName, userId))
       }
-      pending.toSeq
+      (pending.map(_._1), done.map(_._1))
     }
   }
 

@@ -16,9 +16,10 @@ class PageViewFactory(
   import scala.concurrent.ExecutionContext.Implicits.global
 
   private def updatePending(model: ModelProperty[PageModel]): Unit = {
-    for (pending <- userService.api.get.push(sessionId, "").expected) {
+    for ((pending, done) <- userService.api.get.push(sessionId, "").expected) {
       if (pending != Seq("")) {
         model.subProp(_.pending).set(pending)
+        model.subProp(_.done).set(model.subProp(_.done).get ++ done)
       }
       if (pending.nonEmpty) {
         dom.window.setTimeout(() => updatePending(model), 1000) // TODO: once long-poll is implemented, reduce or remove the delay
@@ -27,7 +28,7 @@ class PageViewFactory(
   }
 
   override def create(): (View, Presenter[PushPageState]) = {
-    val model = ModelProperty(PageModel(settings_base.SettingsModel(), Seq(""))) // start with non-empty placeholder until real state is confirmed
+    val model = ModelProperty(PageModel(settings_base.SettingsModel())) // start with non-empty placeholder until real state is confirmed
 
     loadSettings(model.subModel(_.s), userService)
 

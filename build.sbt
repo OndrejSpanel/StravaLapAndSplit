@@ -4,7 +4,7 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
-  version := "0.1.10-beta",
+  version := "0.1.11-beta",
   scalaVersion := "2.12.10",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
@@ -20,7 +20,7 @@ lazy val jvmLibs = Seq(
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
 
   "io.udash" %% "udash-core" % udashVersion,
-  "io.udash" %% "udash-rest" % udashVersion excludeAll ExclusionRule(organization = "io.netty"),
+  "io.udash" %% "udash-rest" % udashVersion,
   "io.udash" %% "udash-rpc" % udashVersion,
   "io.udash" %% "udash-css" % udashVersion,
 )
@@ -84,7 +84,13 @@ lazy val pushUploader = (project in file("push-uploader"))
     name := "MixtioStart",
     commonSettings,
     libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
-    libraryDependencies ++= commonLibs ++ jvmLibs
+    libraryDependencies ++= commonLibs ++ jvmLibs,
+    assemblyMergeStrategy in assembly := {
+      case x if x.contains("io.netty.versions.properties") => MergeStrategy.discard
+      case x =>
+        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        oldStrategy(x)
+    }
   )
 
 def inDevMode = true || sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))

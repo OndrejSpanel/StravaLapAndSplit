@@ -23,22 +23,15 @@ class PageView(
 
   def getTemplate: Modifier = {
 
-    div(
-      ss.flexContainer,
-      div(
-        ss.container,
-        ss.flexItem,
-        template(model.subModel(_.s), presenter),
-        showIf(model.subSeq(_.pending).transform(_.isEmpty))(submitButton.render)
-      ),
-      produce(model.subSeq(_.pending)) { pending =>
-        if (pending.nonEmpty) {
+    def produceList(seq: ReadableSeqProperty[String], title: String) = {
+      produce(seq) { file =>
+        if (file.nonEmpty) {
           div(
             ss.container,
             ss.flexItem,
             table(
-              tr(th(h2("Uploading:"))),
-              pending.map(file =>
+              tr(th(h2(title))),
+              file.map(file =>
                 tr(td(niceFileName(file)))
               )
             )
@@ -47,6 +40,19 @@ class PageView(
           div().render
         }
       }
+    }
+
+    div(
+      ss.flexContainer,
+      div(
+        ss.container,
+        ss.flexItem,
+        template(model.subModel(_.s), presenter),
+        showIf(model.subSeq(_.pending).transform(_.isEmpty))(submitButton.render)
+      ),
+
+      produceList(model.subSeq(_.pending), "Uploading:"),
+      produceList(model.subSeq(_.done), "Uploaded:")
     )
   }
 }
