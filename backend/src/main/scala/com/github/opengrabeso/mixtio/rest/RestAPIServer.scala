@@ -12,27 +12,21 @@ import scala.collection.mutable
 
 object RestAPIServer extends RestAPI with RestAPIUtils {
 
-  val users = mutable.Map.empty[String, StravaAuthResult]
-
   def identity(in: String) = {
     syncResponse(in)
   }
 
   def createUser(auth: StravaAuthResult): StravaAuthResult = {
-    synchronized {
-      users(auth.id) = auth
-    }
+    val session = ServletRest.session.get
+    session.setAttribute("auth", auth)
     auth
   }
 
   def userAPI(userId: String, authCode: String): UserRestAPI = {
-    val auth = synchronized {
-      try {
-        users(userId)
-      } catch {
-        case _: NoSuchElementException =>
-          throw HttpErrorException(401, "User ID not authenticated. Page reload may be necessary.")
-      }
+    val session = ServletRest.session.get
+    val auth = session.getAttribute("auth").asInstanceOf[StravaAuthResult]
+    if (auth == null) {
+      throw HttpErrorException(401, "User ID not authenticated. Page reload may be necessary.")
     }
     // verify user is the one who has authenticated - require the same code cookie to be used to identify the session
     if (auth.code != authCode) {

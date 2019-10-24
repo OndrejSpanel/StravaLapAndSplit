@@ -7,7 +7,7 @@ import com.avsystem.commons._
 import io.udash.rest.RestServlet
 import io.udash.rest.RestServlet.CookieHeader
 import io.udash.rest.raw.{HttpBody, HttpErrorException, HttpMethod, IMapping, Mapping, PlainValue, RawRest, RestParameters, RestRequest, RestResponse}
-import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
+import javax.servlet.http.{HttpServletRequest, HttpServletResponse, HttpSession}
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success}
@@ -112,6 +112,18 @@ trait WriteResponse {
   }
 }
 
+object ServletRest {
+  // ugly hack, but passing via parameter seems impossible
+  var session = new ThreadLocal[HttpSession]
+
+  def withSession[T](s: HttpSession)(code: => T):T = {
+    session.set(s)
+    val ret = code
+    session.remove()
+    ret
+  }
+}
+
 /**
   * Class based on io.udash.rest.RestServlet
   * GAE currently does not support async requests, therefore rewrite of that class was required.
@@ -122,7 +134,9 @@ class ServletRest(handleRequest: RawRest.HandleRequest) extends RestServlet(hand
 
   override def service(request: HttpServletRequest, response: HttpServletResponse): Unit = {
     //val threadFactory = com.google.appengine.api.ThreadManager.currentRequestThreadFactory()
-    val r = handleRequest(readRequest(request))
+    val r = ServletRest.withSession(request.getSession) {
+      handleRequest(readRequest(request))
+    }
     // async - is it a problem? executed on com.avsystem.commons.concurrent.RunNowEC when the request was using
     RawRest.safeAsync(r) {
       case Success(restResponse) =>
