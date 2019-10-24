@@ -18,12 +18,19 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
 
   def createUser(auth: StravaAuthResult): StravaAuthResult = {
     val session = ServletRest.session.get
+    println(s"createUser ${auth.userId}, session ${session.getId}")
     session.setAttribute("auth", auth)
     auth
   }
 
+  def limitedSession(userId: String, authCode: String) = syncResponse {
+    val auth = StravaAuthResult(authCode, "", "", 0, "", userId, "")
+    createUser(auth)
+  }
+
   def userAPI(userId: String, authCode: String): UserRestAPI = {
     val session = ServletRest.session.get
+    println(s"get session for $userId, session ${session.getId}")
     val auth = session.getAttribute("auth").asInstanceOf[StravaAuthResult]
     if (auth == null) {
       throw HttpErrorException(401, "User ID not authenticated. Page reload may be necessary.")
@@ -40,9 +47,4 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
   def now = syncResponse {
     ZonedDateTime.now()
   }
-
-  def elapsed(time: ZonedDateTime) = syncResponse {
-    ChronoUnit.SECONDS.between(time, ZonedDateTime.now())
-  }
-
 }

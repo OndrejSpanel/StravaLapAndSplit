@@ -404,6 +404,9 @@ object Start extends App {
       (f, digest, fileBytes)
     }
 
+    val createSession = api.limitedSession(userId, authCode)
+    Await.result(createSession, Duration.Inf)
+
     val userAPI = api.userAPI(userId, authCode)
 
     if (true) {

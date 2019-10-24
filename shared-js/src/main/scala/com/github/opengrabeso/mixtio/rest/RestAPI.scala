@@ -18,8 +18,8 @@ trait RestAPI {
   @GET
   def now: Future[ZonedDateTime]
 
-  @GET
-  def elapsed(time: ZonedDateTime): Future[Long]
+  // create a limited session (no Strava access) - used for push uploader
+  def limitedSession(userId: String, authCode: String): Future[Unit]
 }
 
 object RestAPI extends RestApiCompanion[EnhancedRestImplicits,RestAPI](EnhancedRestImplicits)
