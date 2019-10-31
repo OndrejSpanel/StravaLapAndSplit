@@ -13,23 +13,12 @@ import common.Util._
 object PushStart extends DefineRequest("/push-start") {
   override def showSuuntoUploadInstructions = false // no need to show this, user already launched it
 
-  def storedQueryParam(req: Request, prefix: String, name: String): String = {
-    val session = req.session()
-    val p = req.queryParams(name)
-    if (p != null) {
-      session.attribute(prefix + name, p)
-      p
-    } else {
-      session.attribute[String](prefix + name)
-    }
-  }
-
   def html(req: Request, resp: Response) = withAuth(req, resp) { auth =>
     val session = req.session()
     // We need the ID to be unique for a given user, timestamps seems reasonable for this.
     // Normal web app session ID is not unique, sessions get reused.
-    val sessionId = storedQueryParam(req, "push-", "session")
-    val port = storedQueryParam(req, "push-", "port").toInt
+    val sessionId = req.queryParams("session")
+    val port = req.queryParams("port").toInt
 
     val stravaActivities = Main.recentStravaActivities(auth)
     session.attribute("stravaActivities", stravaActivities)

@@ -30,27 +30,24 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
 
   def apply(request: Request, resp: Response): AnyRef = {
 
-    rest.ServletRest.withSession(request.raw.getSession) {
+    import com.google.appengine.api.utils.SystemProperty
 
-      import com.google.appengine.api.utils.SystemProperty
-
-      if (SystemProperty.environment.value() == SystemProperty.Environment.Value.Development) {
-        // logging on production server is counter-productive, logs are already sorted by request
-        println(s"Request ${request.url()}")
-      }
-      val nodes = html(request, resp)
-      if (nodes.nonEmpty) {
-        nodes.head match {
-          case <html>{_*}</html> =>
-            val docType = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd" >"""
-            docType + nodes.toString
-          case _ =>
-            resp.`type`("text/xml; charset=utf-8")
-            val xmlPrefix = """<?xml version="1.0" encoding="UTF-8"?>""" + "\n"
-            xmlPrefix + nodes.toString
-        }
-      } else resp
+    if (SystemProperty.environment.value() == SystemProperty.Environment.Value.Development) {
+      // logging on production server is counter-productive, logs are already sorted by request
+      println(s"Request ${request.url()}")
     }
+    val nodes = html(request, resp)
+    if (nodes.nonEmpty) {
+      nodes.head match {
+        case <html>{_*}</html> =>
+          val docType = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd" >"""
+          docType + nodes.toString
+        case _ =>
+          resp.`type`("text/xml; charset=utf-8")
+          val xmlPrefix = """<?xml version="1.0" encoding="UTF-8"?>""" + "\n"
+          xmlPrefix + nodes.toString
+      }
+    } else resp
   }
 
   def html(request: Request, resp: Response): NodeSeq
@@ -122,6 +119,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     val authResult = Try(Main.stravaAuth(code))
     authResult.foreach { auth =>
       resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
+      resp.cookie("sessionId", auth.sessionId, 3600 * 24 * 30) // 30 days
       storeAuth(session, auth)
     }
     authResult

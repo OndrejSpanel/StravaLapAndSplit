@@ -284,7 +284,7 @@ object Start extends App {
     - it generates a Stravimat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt> (see [[startHttpServer]])
      - this is captured by [[com.github.opengrabeso.mixtio.Start.authHandler]] and redirected to /app#push
     */
-    val sessionId = System.currentTimeMillis()
+    val sessionId = "push-session-" + System.currentTimeMillis().toString
     val startPushUrl = s"$stravimatUrl/push-start?port=$serverPort&session=$sessionId"
     println(s"Starting browser $startPushUrl")
     Desktop.getDesktop.browse(new URL(startPushUrl).toURI)
@@ -405,14 +405,9 @@ object Start extends App {
     }
 
     val createSession = api.limitedSession(userId, authCode)
-    Await.result(createSession, Duration.Inf)
+    val pushSessionId = Await.result(createSession, Duration.Inf)
 
-    val userAPI = api.userAPI(userId, authCode)
-
-    if (true) {
-      val name = Await.result(userAPI.name, Duration.Inf)
-      println(s"Uploading as $name")
-    }
+    val userAPI = api.userAPI(userId, authCode, pushSessionId)
 
     val pushAPI = userAPI.push(sessionId, localTimeZone)
 

@@ -16,31 +16,37 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
     syncResponse(in)
   }
 
+  private def sessionFileName(session: String, userId: String, file: String) = {
+    Storage.FullName(Main.namespace.session(session), file, userId)
+  }
+  /**
+    * @return session id
+    */
   def createUser(auth: StravaAuthResult): StravaAuthResult = {
-    val session = ServletRest.session.get
-    println(s"createUser ${auth.userId}, session ${session.getId}")
-    session.setAttribute("auth", auth)
+    Storage.store(sessionFileName(auth.sessionId, auth.userId, "auth"), auth)
+    println(s"createUser ${auth.userId}, session ${auth.sessionId}")
     auth
   }
 
   def limitedSession(userId: String, authCode: String) = syncResponse {
-    val auth = StravaAuthResult(authCode, "", "", 0, "", userId, "")
+    val sessionId = "limited-session-" + System.currentTimeMillis().toString
+    val auth = StravaAuthResult(authCode, "", "", 0, "", userId, "", sessionId)
     createUser(auth)
+    auth.sessionId
   }
 
-  def userAPI(userId: String, authCode: String): UserRestAPI = {
-    val session = ServletRest.session.get
-    println(s"get session for $userId, session ${session.getId}")
-    val auth = session.getAttribute("auth").asInstanceOf[StravaAuthResult]
-    if (auth == null) {
+  def userAPI(userId: String, authCode: String, session: String): UserRestAPI = {
+    println(s"Try userAPI for user $userId, session $session")
+    val auth = Storage.load[StravaAuthResult](sessionFileName(session, userId, "auth"))
+    auth.map { a =>
+      if (a.code == authCode) {
+        println(s"Get userAPI for user $userId, session $session, auth.session ${a.sessionId}")
+        new UserRestAPIServer(a)
+      } else {
+        throw HttpErrorException(401, "Provided auth code '$authCode' does not match the one stored on the server")
+      }
+    }.getOrElse {
       throw HttpErrorException(401, "User ID not authenticated. Page reload may be necessary.")
-    }
-    // verify user is the one who has authenticated - require the same code cookie to be used to identify the session
-    if (auth.code != authCode) {
-      throw HttpErrorException(401, "Provided auth code '$authCode' does not match the one stored on the server")
-    } else {
-      // we might store UserRestAPIServer directly
-      new UserRestAPIServer(auth)
     }
   }
 

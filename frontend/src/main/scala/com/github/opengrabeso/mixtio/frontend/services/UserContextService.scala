@@ -15,11 +15,11 @@ object UserContextService {
 
   case class LoadedActivities(staged: Seq[ActivityHeader], strava: Seq[ActivityHeader])
 
-  class UserContextData(userId: String, authCode: String, rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
+  class UserContextData(userId: String, val sessionId: String, authCode: String, rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
     var loaded = Option.empty[(Boolean, Future[LoadedActivities])]
     var context = UserContext(userId, authCode)
 
-    def userAPI: rest.UserRestAPI = rpc.userAPI(context.userId, context.authCode)
+    def userAPI: rest.UserRestAPI = rpc.userAPI(context.userId, context.authCode, sessionId)
 
     private def notBeforeByStrava(showAll: Boolean, stravaActivities: Seq[ActivityHeader]): ZonedDateTime = {
       if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 24
@@ -56,7 +56,9 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
   private var userData: Option[UserContextData] = None
 
   def login(userId: String, authCode: String): UserContext = {
-    val ctx = new UserContextData(userId, authCode, rpc)
+    val sessionId = "api-session-" + System.currentTimeMillis().toString
+    println(s"Login user $userId session $sessionId")
+    val ctx = new UserContextData(userId, sessionId, authCode, rpc)
     userData = Some(ctx)
     ctx.context
   }
@@ -73,9 +75,8 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
     userData.get.loadCached(level)
   }
 
-
-  // TODO: double check authCode usage is safe here (it should be, we are frontend only here)
   def api: Option[rest.UserRestAPI] = userData.map { data =>
-    rpc.userAPI(data.context.userId, data.context.authCode)
+    println(s"Call userAPI user ${data.context.userId} session ${data.sessionId}")
+    rpc.userAPI(data.context.userId, data.context.authCode, data.sessionId)
   }
 }
