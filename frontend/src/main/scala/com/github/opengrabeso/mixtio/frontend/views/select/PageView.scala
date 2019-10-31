@@ -142,9 +142,12 @@ class PageView(
               }.render
           }
         } else {
-          ar.staged.map(h => hrefLink(h.id.id, h.id.shortName)).render
+          div(
+            s.wideMedia,
+            ar.staged.map(h => hrefLink(h.id.id, h.id.shortName)).render
+          ).render
         }
-      }, Some("")),
+      }),
     )
 
     val table = UdashTable(model.subSeq(_.activities), striped = true.toProperty, bordered = true.toProperty, hover = true.toProperty, small = true.toProperty)(
