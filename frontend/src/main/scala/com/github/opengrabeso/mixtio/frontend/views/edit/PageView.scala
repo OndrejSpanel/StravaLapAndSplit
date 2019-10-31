@@ -131,6 +131,7 @@ class PageView(
         showIfElse(model.subProp(_.loading))(
           p("Loading...").render,
           div(
+            s.tableContainer,
             table.render
           ).render
         )

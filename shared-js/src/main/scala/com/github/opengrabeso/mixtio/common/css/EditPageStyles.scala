@@ -37,6 +37,18 @@ object EditPageStyles extends CssBase {
     borderWidth(1 px)
   )
 
+  val tableContainer: CssStyle = style(
+    maxHeight(600 px),
+    media.maxWidth(900 px)(
+      // map below, keep table height low
+      maxHeight(400 px)
+    ),
+    media.maxAspectRatio(1 :/: 1)(
+      maxHeight(400 px)
+    ),
+    overflow.auto
+  )
+
   val uploading: CssStyle = style(
     backgroundColor.lightblue
   )
