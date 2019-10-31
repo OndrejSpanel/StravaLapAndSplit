@@ -18,7 +18,7 @@ object EventView {
   }
 
   def segmentTitle(kind: String, e: SegmentTitle): dom.Element = {
-    val segPrefix = if (e.isPrivate) "private segment " else "segment "
+    val segPrefix = if (e.isPrivate) "private " else ""
     val segmentName = Formatting.shortNameString(e.name, 32 - segPrefix.length - kind.length)
     if (e.segmentId != 0) {
       span(
