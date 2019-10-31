@@ -13,7 +13,7 @@ trait RestAPI {
   def identity(@Path in: String): Future[String]
 
   @Prefix("user")
-  def userAPI(@Path userId: String, @Cookie authCode: String, @Cookie sessionId: String): UserRestAPI
+  def userAPI(@Path userId: String, @Path authCode: String, @Path sessionId: String): UserRestAPI
 
   @GET
   def now: Future[ZonedDateTime]

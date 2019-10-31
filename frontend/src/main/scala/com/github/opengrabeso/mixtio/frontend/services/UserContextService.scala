@@ -56,7 +56,7 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
   private var userData: Option[UserContextData] = None
 
   def login(userId: String, authCode: String): UserContext = {
-    val sessionId = "api-session-" + System.currentTimeMillis().toString
+    val sessionId = facade.UdashApp.sessionId
     println(s"Login user $userId session $sessionId")
     val ctx = new UserContextData(userId, sessionId, authCode, rpc)
     userData = Some(ctx)
@@ -76,7 +76,7 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
   }
 
   def api: Option[rest.UserRestAPI] = userData.map { data =>
-    println(s"Call userAPI user ${data.context.userId} session ${data.sessionId}")
+    //println(s"Call userAPI user ${data.context.userId} session ${data.sessionId}")
     rpc.userAPI(data.context.userId, data.context.authCode, data.sessionId)
   }
 }

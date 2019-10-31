@@ -36,11 +36,12 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
   }
 
   def userAPI(userId: String, authCode: String, session: String): UserRestAPI = {
-    println(s"Try userAPI for user $userId, session $session")
+    val logging = false
+    if (logging) println(s"Try userAPI for user $userId, session $session")
     val auth = Storage.load[StravaAuthResult](sessionFileName(session, userId, "auth"))
     auth.map { a =>
       if (a.code == authCode) {
-        println(s"Get userAPI for user $userId, session $session, auth.session ${a.sessionId}")
+        if (logging) println(s"Get userAPI for user $userId, session $session, auth.session ${a.sessionId}")
         new UserRestAPIServer(a)
       } else {
         throw HttpErrorException(401, "Provided auth code '$authCode' does not match the one stored on the server")
