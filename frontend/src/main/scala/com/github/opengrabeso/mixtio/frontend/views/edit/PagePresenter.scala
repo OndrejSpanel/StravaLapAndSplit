@@ -106,6 +106,12 @@ class PagePresenter(
     }
   }
 
+  def uploadAll(): Unit = {
+    for (e <- model.subProp(_.events).get) {
+      if (e.action.startsWith("split")) sendToStrava(e.time)
+    }
+  }
+
   def createLap(coord: js.Array[Double]): Unit = {
     val lng = coord(0)
     val lat = coord(1)
@@ -188,8 +194,9 @@ class PagePresenter(
     model.subProp(_.events).transform(e => !e.exists(f) && e.exists(f))
   }
 
-  def isSingleUpload: ReadableProperty[Boolean] = model.subProp(_.events).transform { events =>
-    events.count(_.action.startsWith("split")) == 1
+  def singleUploadAction: ReadableProperty[Option[String]] = model.subProp(_.events).transform { events =>
+    val splits = events.filter(_.action.startsWith("split"))
+    if (splits.size == 1) splits.headOption.map(_.action) else None
   }
 
   def testPredicateUnchecked(f: EditEvent => Boolean): ReadableProperty[Boolean] = {

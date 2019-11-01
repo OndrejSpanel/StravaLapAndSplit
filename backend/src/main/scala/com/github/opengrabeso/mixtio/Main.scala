@@ -58,15 +58,6 @@ object Main extends common.Formatting {
     prop.getProperty("devMode").toBoolean
   }
 
-  def hrefLink(a: ActivityId) = {
-    a.id match {
-      case FileId.StravaId(num) =>
-        <a href={s"https://www.strava.com/activities/$num"}><font color="#FC4C02">{a.shortName}</font></a>
-      case _ =>
-        <div>{a.id.toReadableString}</div>
-    }
-  }
-
   case class StravaAuthResult(code: String, token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String, sessionId: String) {
     // userId used for serialization, needs to be stable, cannot be created from a token
     lazy val userId: String = id

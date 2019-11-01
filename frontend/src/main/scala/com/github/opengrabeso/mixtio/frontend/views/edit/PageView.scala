@@ -142,6 +142,16 @@ class PageView(
               button(presenter.testPredicateUnchecked(presenter.wasAnyPause), "All pauses".toProperty).onClick(presenter.lapsSelectAllPauses()),
               button(presenter.testPredicateUnchecked(presenter.wasLongPause), "Long pauses".toProperty).onClick(presenter.lapsSelectLongPauses()),
               button(presenter.testPredicateUnchecked(presenter.wasHill), "Climbs / Descends".toProperty).onClick(presenter.lapsSelectHills())
+            ),
+            h4("Result"),
+            div(
+              button(false.toProperty, presenter.singleUploadAction.transform {
+                case Some(action) =>
+                  val sport = action.drop("split".length)
+                  s"Send $sport to Strava"
+                case None =>
+                  "Send all to Strava"
+              }).onClick(presenter.uploadAll())
             )
           ).render
         )

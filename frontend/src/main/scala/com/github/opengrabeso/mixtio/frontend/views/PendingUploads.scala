@@ -71,7 +71,7 @@ abstract class PendingUploads[ActId](implicit ec: ExecutionContext) {
             pending -= uploadId
           case UploadProgress.Duplicate(uploadId, dupeStravaId) =>
             println(s"$uploadId completed as duplicate of $dupeStravaId")
-            setUploadProgress(uploadId, true, s"Duplicate of <a href=https://https://www.strava.com/activities/$dupeStravaId>$dupeStravaId</a>")
+            setUploadProgress(uploadId, true, s"Duplicate of <a href=https://www.strava.com/activities/$dupeStravaId>$dupeStravaId</a>")
             pending -= uploadId
         }
       }
