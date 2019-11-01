@@ -131,8 +131,18 @@ class PageView(
         showIfElse(model.subProp(_.loading))(
           p("Loading...").render,
           div(
-            s.tableContainer,
-            table.render
+            div(
+              s.tableContainer,
+              table.render
+            ),
+            h4("Laps"),
+            div(
+              button(presenter.testPredicate(presenter.isCheckedLap), "Uncheck all".toProperty).onClick(presenter.removeAllLaps()),
+              button(presenter.testPredicateUnchecked(presenter.wasUserLap), "User laps".toProperty).onClick(presenter.lapsSelectUser()),
+              button(presenter.testPredicateUnchecked(presenter.wasAnyPause), "All pauses".toProperty).onClick(presenter.lapsSelectAllPauses()),
+              button(presenter.testPredicateUnchecked(presenter.wasLongPause), "Long pauses".toProperty).onClick(presenter.lapsSelectLongPauses()),
+              button(presenter.testPredicateUnchecked(presenter.wasHill), "Climbs / Descends".toProperty).onClick(presenter.lapsSelectHills())
+            )
           ).render
         )
       ),

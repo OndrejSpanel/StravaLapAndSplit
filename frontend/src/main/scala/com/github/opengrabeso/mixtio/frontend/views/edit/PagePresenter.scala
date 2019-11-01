@@ -23,6 +23,7 @@ class PagePresenter(
   application: Application[RoutingState]
 )(implicit ec: ExecutionContext) extends Presenter[EditPageState] {
 
+
   /** We don't need any initialization, so it's empty. */
   override def handleState(state: EditPageState): Unit = {
   }
@@ -126,5 +127,72 @@ class PagePresenter(
     model.subProp(_.events).set {
       model.subProp(_.events).get.filterNot(_.time == time)
     }
+  }
+
+
+  def isCheckedLap(e: EditEvent) = {
+    e.action == "lap"
+  }
+  // was test original event state
+
+  def wasUserLap(e: EditEvent) = {
+    e.event.originalEvent == "lap"
+  }
+
+  def wasLongPause(e: EditEvent) = {
+    e.event.originalEvent.lastIndexOf("long pause") == 0
+  }
+
+  def wasAnyPause(e: EditEvent) = {
+    e.event.originalEvent == "pause" || wasLongPause(e)
+  }
+
+  def wasSegment(e: EditEvent) = {
+    e.event.originalEvent.lastIndexOf("segment") == 0 || e.event.originalEvent.lastIndexOf("private segment") == 0
+  }
+
+  def wasHill(e: EditEvent) = {
+    e.event.originalEvent == "elevation"
+  }
+
+  private def actionByPredicate(f: EditEvent => Boolean, newAction: String = "lap"): Unit = {
+    model.subProp(_.events).set {
+      model.subProp(_.events).get.map { e =>
+        if (f(e)) e.copy(action = newAction)
+        else e
+      }
+    }
+  }
+
+  def lapsSelectUser(): Unit = {
+    actionByPredicate(wasUserLap)
+  }
+
+  def lapsSelectLongPauses(): Unit = {
+    actionByPredicate(wasLongPause)
+  }
+
+  def lapsSelectAllPauses(): Unit = {
+    actionByPredicate(wasAnyPause)
+  }
+
+  def lapsSelectHills(): Unit = {
+    actionByPredicate(wasHill)
+  }
+
+  def removeAllLaps(): Unit = {
+    actionByPredicate(isCheckedLap, "")
+  }
+
+  def testPredicate(f: EditEvent => Boolean): ReadableProperty[Boolean] = {
+    model.subProp(_.events).transform(e => !e.exists(f) && e.exists(f))
+  }
+
+  def isSingleUpload: ReadableProperty[Boolean] = model.subProp(_.events).transform { events =>
+    events.count(_.action.startsWith("split")) == 1
+  }
+
+  def testPredicateUnchecked(f: EditEvent => Boolean): ReadableProperty[Boolean] = {
+    model.subProp(_.events).transform(events => !events.exists(e => f(e) && !isCheckedLap(e)))
   }
 }
