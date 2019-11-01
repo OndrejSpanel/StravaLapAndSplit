@@ -191,7 +191,7 @@ class PagePresenter(
   }
 
   def testPredicate(f: EditEvent => Boolean): ReadableProperty[Boolean] = {
-    model.subProp(_.events).transform(e => !e.exists(f) && e.exists(f))
+    model.subProp(_.events).transform(e => !e.exists(f))
   }
 
   def singleUploadAction: ReadableProperty[Option[String]] = model.subProp(_.events).transform { events =>
