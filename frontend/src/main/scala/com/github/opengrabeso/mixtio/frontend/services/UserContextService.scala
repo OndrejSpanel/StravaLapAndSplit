@@ -78,8 +78,11 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
 
   def api: Option[rest.UserRestAPI] = userData.map { data =>
     //println(s"Call userAPI user ${data.context.userId} session ${data.sessionId}")
-    assert(MainJS.getCookie("authCode") == data.context.authCode)
-    assert(MainJS.getCookie("sessionId") == data.sessionId)
+    def weak_assert[T](name: String, l: T, r: T) = if (l != r) {
+      println(s"$name not matching ($l!=$r)")
+    }
+    weak_assert("authCode", MainJS.getCookie("authCode"), data.context.authCode)
+    weak_assert("sessionId", MainJS.getCookie("sessionId"), data.sessionId)
 
     rpc.userAPI(data.context.userId, data.context.authCode, data.sessionId)
   }
