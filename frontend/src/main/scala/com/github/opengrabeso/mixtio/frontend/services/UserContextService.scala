@@ -10,6 +10,8 @@ import common.Util._
 import scala.concurrent.{ExecutionContext, Future}
 import UserContextService._
 
+import org.scalajs.dom
+
 object UserContextService {
   final val normalCount = 15
 
@@ -55,8 +57,7 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
 
   private var userData: Option[UserContextData] = None
 
-  def login(userId: String, authCode: String): UserContext = {
-    val sessionId = facade.UdashApp.sessionId
+  def login(userId: String, authCode: String, sessionId: String): UserContext = {
     println(s"Login user $userId session $sessionId")
     val ctx = new UserContextData(userId, sessionId, authCode, rpc)
     userData = Some(ctx)
@@ -77,6 +78,9 @@ class UserContextService(rpc: rest.RestAPI)(implicit ec: ExecutionContext) {
 
   def api: Option[rest.UserRestAPI] = userData.map { data =>
     //println(s"Call userAPI user ${data.context.userId} session ${data.sessionId}")
+    assert(MainJS.getCookie("authCode") == data.context.authCode)
+    assert(MainJS.getCookie("sessionId") == data.sessionId)
+
     rpc.userAPI(data.context.userId, data.context.authCode, data.sessionId)
   }
 }

@@ -35,9 +35,8 @@ object Root {
     def login() = {
       val globalUserId = facade.UdashApp.currentUserId.orNull
       val globalAuthCode = facade.UdashApp.currentAuthCode.orNull
-      // note: even if we did not provide the cookie, it would be inherited from the main page request
-      // providing it explicitly should do no harm and could make it more robust (e.g. if any requests would be made from other context)
-      val ctx = userContextService.login(globalUserId, globalAuthCode)
+      val sessionId = facade.UdashApp.sessionId
+      val ctx = userContextService.login(globalUserId, globalAuthCode, sessionId)
       userContextService.userName.foreach(_.foreach { name =>
         model.subProp(_.athleteName).set(name)
       })
