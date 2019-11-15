@@ -188,7 +188,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
         val clientId = secret.appId
         val uri = "https://www.strava.com/oauth/authorize?"
         val state = afterLoginParams.fold("")(pars => "&state=" + URLEncoder.encode(pars, "UTF-8"))
-        val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + afterLogin + state + "&scope=write,view_private&approval_prompt=force"
+        val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + afterLogin + state + "&scope=read,activity:read_all,activity:write&approval_prompt=force"
         <h3>Work in progress, use at your own risk.</h3>
           <p>
             Automated uploading and processing of Suunto data to Strava
