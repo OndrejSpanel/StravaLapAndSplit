@@ -137,8 +137,6 @@ object MapboxMap extends common.Formatting {
           // use route, not feature.geometry.coordinates, because it contains time / distance as well
           val nearest = findNearestPoint(route, coordinate)
           replacePopup(coordinate) {
-            // TODO: use Scalatags instead
-            // TODO: hide popup
             _.setDOMContent(
               div(
                 s"${displaySeconds(nearest(2).toInt)} (${displayDistance(nearest(3))})",
