@@ -9,6 +9,10 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
+lazy val jsCommonSettings = Seq(
+  scalacOptions ++= Seq("-P:scalajs:sjsDefinedByDefault")
+)
+
 val udashVersion = "0.8.0"
 
 val bootstrapVersion = "4.3.1"
@@ -61,6 +65,7 @@ lazy val sharedJs = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .jvmSettings(libraryDependencies ++= jvmLibs)
   .jsSettings(
+    jsCommonSettings,
     jsLibs,
     jsDeps
   )
@@ -107,6 +112,7 @@ def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
 
 lazy val frontend = project.settings(
     commonSettings,
+    jsCommonSettings,
     jsLibs
   ).enablePlugins(ScalaJSPlugin)
     .dependsOn(sharedJs_JS)

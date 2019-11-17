@@ -22,6 +22,15 @@ object MapboxMap extends common.Formatting {
     onclick :+= handler
   }
 
+  class LngLatV(override val lat: Double, override val lng: Double) extends LngLat
+  implicit class LngLatOps(a: LngLat) {
+    def - (b: LngLat): LngLat = new LngLatV(lat = a.lat - b.lat, lng = a.lng - b.lng)
+    def + (b: LngLat): LngLat = new LngLatV(lat = a.lat + b.lat, lng = a.lng + b.lng)
+    def * (x: Double): LngLat = new LngLatV(lat = a.lat * x, lng = a.lng * x)
+    def dotProduct(b: LngLat) = a.lng * b.lng + a.lat * b.lat
+    def dist2(b: LngLat) = (a-b) dotProduct (a-b)
+  }
+
   def display(routeData: Seq[(Double, Double, Double, Double)], events: Property[Seq[EditEvent]], presenter: edit.PagePresenter): Map = {
     // TODO: use tupled route representation directly instead of array one
     val route = routeData.map(t => js.Array(t._1, t._2, t._3, t._4)).toJSArray
@@ -235,13 +244,33 @@ object MapboxMap extends common.Formatting {
   }
 
   def findNearestPoint(route: js.Array[js.Array[Double]], coord: LngLat): js.Array[Double] = {
-    // GeoJSON is longitude and latitude - see https://tools.ietf.org/html/rfc7946#section-3.1.1
-    val nearest = route.minBy { point =>
-      val lngDist = coord.lng - point(0)
-      val latDist = coord.lat - point(1)
-      lngDist * lngDist + latDist * latDist
+
+    def nearestOnSegmentT(p: LngLat, v: LngLat, w: LngLat) = {
+      val l2 = v dist2 w
+      if (l2 == 0d) 0d
+      else {
+        val t = ((p - v) dotProduct (w - v)) / l2
+        if (t < 0) 0d
+        else if (t > 1) 1d
+        else t
+      }
     }
-    nearest
+
+    // GeoJSON is longitude and latitude - see https://tools.ietf.org/html/rfc7946#section-3.1.1
+    def lngLat(p: js.Array[Double]) = new LngLatV(lng = p(0), lat = p(1))
+    val segments = (route zip route.drop(1))
+    val nearestPoints = segments.map { case (p0, p1) =>
+      val lp0 = lngLat(p0)
+      val lp1 = lngLat(p1)
+      val t = nearestOnSegmentT(coord, lp0, lp1)
+      val p = (lp1 - lp0) * t + lp0
+      val dist2 = coord dist2 p
+      (p, dist2, lerp(p0(2), p1(2), t), lerp(p0(3), p1(3), t))
+    }
+    val nearest = nearestPoints.minBy(_._2)
+    val r = js.Array(nearest._1.lng, nearest._1.lat, nearest._3, nearest._4)
+    println(s"nearest $nearest -> $r")
+    r
   }
 
 

@@ -3,10 +3,9 @@ package com.github.opengrabeso.mixtio.facade
 import scala.scalajs.js
 
 package object mapboxgl_util {
-  @js.native
-  trait LngLat extends js.Any {
-    def lat: Double = js.native
-    def lng: Double = js.native
+  abstract class LngLat extends js.Object {
+    def lat: Double
+    def lng: Double
   }
 
   object LngLat {
