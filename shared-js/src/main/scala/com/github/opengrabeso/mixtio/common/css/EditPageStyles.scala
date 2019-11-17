@@ -86,14 +86,21 @@ object EditPageStyles extends CssBase {
     )
   )
 
-  val map: CssStyle = style(
+  val mapBase = mixin(
     flexGrow(1),
     paddingLeft(5 px),
     top(0 px),
     bottom(0 px),
     minWidth(200 px),
     minHeight(200 px)
+  )
+  val map: CssStyle = style(
+    mapBase
 
+  )
+  val noMap: CssStyle = style(
+    mapBase,
+    backgroundColor(c"#efc")
   )
 
 }

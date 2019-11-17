@@ -24,11 +24,13 @@ class PageView(
   model.subProp(_.routeJS).listen {
     _.foreach { geojson =>
       // events should always be ready before the route
-      val events = model.subProp(_.events)
-      val map = MapboxMap.display(geojson, events, presenter)
+      if (geojson.nonEmpty) {
+        val events = model.subProp(_.events)
+        val map = MapboxMap.display(geojson, events, presenter)
 
-      model.subProp(_.events).listen { e =>
-        MapboxMap.changeEvents(map, e, model.subProp(_.routeJS).get.get)
+        model.subProp(_.events).listen { e =>
+          MapboxMap.changeEvents(map, e, model.subProp(_.routeJS).get.get)
+        }
       }
 
     }
@@ -157,9 +159,16 @@ class PageView(
         )
       ),
 
-      div(
-        s.map,
-        id := "map"
+      // hide map when we already have route data and they are empty
+      showIfElse(model.subProp(_.routeJS).transform(o => o.isEmpty || o.exists(_.nonEmpty))) (
+        div(
+          s.map,
+          id := "map"
+        ).render,
+        div(
+          s.noMap,
+          "No GPS data"
+        ).render
       )
 
     )

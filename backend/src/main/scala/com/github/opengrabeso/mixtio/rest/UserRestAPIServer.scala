@@ -226,7 +226,8 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
         toMerge.reduceLeft(_ merge _)
       }
 
-      val prepare = merged.cleanPositionErrors.processPausesAndEvents
+      // we cannot perform and pause processing when there are no GPS data
+      val prepare = if (toMergeGPS.nonEmpty) merged.cleanPositionErrors.processPausesAndEvents else merged
       // TODO: make sure edited name is unique
       Storage.store(namespace.edit, prepare.id.id.filename, userAuth.userId, prepare.header, prepare)
 
