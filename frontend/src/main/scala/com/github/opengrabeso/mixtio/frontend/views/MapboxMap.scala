@@ -4,7 +4,6 @@ package frontend.views
 import frontend.model._
 import facade.UdashApp._
 import facade.mapboxgl._
-import facade.mapboxgl_util._
 import facade._
 import org.scalajs.dom
 
@@ -22,11 +21,10 @@ object MapboxMap extends common.Formatting {
     onclick :+= handler
   }
 
-  class LngLatV(override val lat: Double, override val lng: Double) extends LngLat
   implicit class LngLatOps(a: LngLat) {
-    def - (b: LngLat): LngLat = new LngLatV(lat = a.lat - b.lat, lng = a.lng - b.lng)
-    def + (b: LngLat): LngLat = new LngLatV(lat = a.lat + b.lat, lng = a.lng + b.lng)
-    def * (x: Double): LngLat = new LngLatV(lat = a.lat * x, lng = a.lng * x)
+    def - (b: LngLat): LngLat = new LngLat(lat = a.lat - b.lat, lng = a.lng - b.lng)
+    def + (b: LngLat): LngLat = new LngLat(lat = a.lat + b.lat, lng = a.lng + b.lng)
+    def * (x: Double): LngLat = new LngLat(lat = a.lat * x, lng = a.lng * x)
     def dotProduct(b: LngLat) = a.lng * b.lng + a.lat * b.lat
     def dist2(b: LngLat) = (a-b) dotProduct (a-b)
   }
@@ -41,12 +39,12 @@ object MapboxMap extends common.Formatting {
     val minY = routeY.min
     val maxY = routeY.max
 
-    val bounds = LngLatBounds(
-      _ne = LngLat(
+    val bounds = new LngLatBounds(
+      _ne = new LngLat(
         lat = minY,
         lng = minX
       ),
-      _sw = LngLat (
+      _sw = new LngLat (
         lat = maxY,
         lng = maxX
       )
@@ -257,7 +255,7 @@ object MapboxMap extends common.Formatting {
     }
 
     // GeoJSON is longitude and latitude - see https://tools.ietf.org/html/rfc7946#section-3.1.1
-    def lngLat(p: js.Array[Double]) = new LngLatV(lng = p(0), lat = p(1))
+    def lngLat(p: js.Array[Double]) = new LngLat(lng = p(0), lat = p(1))
     val segments = (route zip route.drop(1))
     val nearestPoints = segments.map { case (p0, p1) =>
       val lp0 = lngLat(p0)

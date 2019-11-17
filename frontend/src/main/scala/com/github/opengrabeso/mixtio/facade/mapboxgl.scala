@@ -5,13 +5,25 @@ import org.scalajs.dom
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-import mapboxgl_util._
 import GeoJSON._
 
 @JSGlobal
 @js.native
 object mapboxgl extends js.Any {
   var accessToken: String = js.native
+
+  // https://docs.mapbox.com/mapbox-gl-js/api/#lnglatlike
+  @js.native
+  class LngLat(var lng: Double = js.native, var lat: Double = js.native) extends js.Object
+
+  @js.native
+  class LngLatBounds(var _ne: LngLat = js.native, var _sw: LngLat = js.native) extends js.Object {
+    def getNorth(): Double = js.native
+    def getSouth(): Double = js.native
+    def getEast(): Double = js.native
+    def getWest(): Double = js.native
+  }
+
 
   @js.native // https://github.com/mapbox/mapbox-gl-js/blob/master/flow-typed/point-geometry.js
   class Point(val x: Double, val y: Double) extends js.Object {

@@ -1,6 +1,6 @@
 package com.github.opengrabeso.mixtio.facade
 
-import mapboxgl_util._
+import mapboxgl.LngLat
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
