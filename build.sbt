@@ -139,7 +139,7 @@ lazy val backend = (project in file("backend"))
       "com.google.http-client" % "google-http-client-appengine" % "1.31.0",
       "com.google.http-client" % "google-http-client-jackson2" % "1.31.0",
       "com.google.apis" % "google-api-services-storage" % "v1-rev158-1.25.0",
-      "com.google.appengine.tools" % "appengine-gcs-client" % "0.8",
+      "com.google.appengine.tools" % "appengine-gcs-client" % "0.8" exclude("javax.servlet", "servlet.api"),
       "com.google.cloud" % "google-cloud-storage" % "1.96.0",
 
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
@@ -164,7 +164,7 @@ lazy val backend = (project in file("backend"))
 
 lazy val jetty = (project in file("jetty")).dependsOn(backend).settings(
   libraryDependencies ++= Seq(
-    "javax.servlet" % "javax.servlet-api" % "4.0.1",
+    // "javax.servlet" % "javax.servlet-api" % "4.0.1", // version 3.1.0 provided by the jetty-server should be fine
     "org.eclipse.jetty" % "jetty-server" % "9.3.18.v20170406"
   )
 )
