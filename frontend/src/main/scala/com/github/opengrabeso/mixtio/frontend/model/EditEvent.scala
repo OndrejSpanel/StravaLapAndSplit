@@ -14,6 +14,7 @@ case class EditEvent(
   strava: Option[FileId.StravaId] = None // upload result
 ) {
   def boundary: Boolean = action.startsWith("split")
+  def shouldBeUploaded: Boolean = boundary && active
 }
 
 object EditEvent extends HasModelPropertyCreator[EditEvent] {

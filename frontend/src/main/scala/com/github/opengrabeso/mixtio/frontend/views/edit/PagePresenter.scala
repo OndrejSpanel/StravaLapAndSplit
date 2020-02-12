@@ -108,7 +108,7 @@ class PagePresenter(
 
   def uploadAll(): Unit = {
     for (e <- model.subProp(_.events).get) {
-      if (e.action.startsWith("split")) sendToStrava(e.time)
+      if (e.shouldBeUploaded) sendToStrava(e.time)
     }
   }
 
@@ -195,7 +195,7 @@ class PagePresenter(
   }
 
   def singleUploadAction: ReadableProperty[Option[String]] = model.subProp(_.events).transform { events =>
-    val splits = events.filter(_.action.startsWith("split"))
+    val splits = events.filter(_.shouldBeUploaded)
     if (splits.size == 1) splits.headOption.map(_.action) else None
   }
 
