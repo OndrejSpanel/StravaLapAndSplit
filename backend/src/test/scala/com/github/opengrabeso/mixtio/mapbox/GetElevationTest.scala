@@ -1,12 +1,12 @@
 package com.github.opengrabeso.mixtio.mapbox
 
 import org.scalactic.TolerantNumerics
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-class GetElevationTest extends FunSuite {
+class GetElevationTest extends AnyFunSuite {
 
   implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(0.1)
 

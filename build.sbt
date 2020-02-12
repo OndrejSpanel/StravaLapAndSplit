@@ -13,7 +13,7 @@ lazy val jsCommonSettings = Seq(
   scalacOptions ++= Seq("-P:scalajs:sjsDefinedByDefault")
 )
 
-val udashVersion = "0.8.0"
+val udashVersion = "0.8.2"
 
 val bootstrapVersion = "4.3.1"
 
@@ -21,7 +21,7 @@ val udashJQueryVersion = "3.0.1"
 
 // TODO: try to share
 lazy val jvmLibs = Seq(
-  "org.scalatest" %% "scalatest" % "3.0.8" % "test",
+  "org.scalatest" %% "scalatest" % "3.1.0" % "test",
 
   "io.udash" %% "udash-core" % udashVersion,
   "io.udash" %% "udash-rest" % udashVersion,
@@ -30,7 +30,7 @@ lazy val jvmLibs = Seq(
 )
 
 lazy val jsLibs = libraryDependencies ++= Seq(
-  "org.scalatest" %%% "scalatest" % "3.0.8" % "test",
+  "org.scalatest" %%% "scalatest" % "3.1.0" % "test",
   "org.scala-js" %%% "scalajs-dom" % "0.9.7",
   "org.querki" %%% "jquery-facade" % "1.2",
 

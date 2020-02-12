@@ -1,8 +1,8 @@
 package com.github.opengrabeso.mixtio
 
-import org.scalatest._
+import org.scalatest.funsuite._
 
-class MainJS extends FunSuite {
+class MainJS extends AnyFunSuite {
   test("Dummy test") {
     info("Test running OK")
   }

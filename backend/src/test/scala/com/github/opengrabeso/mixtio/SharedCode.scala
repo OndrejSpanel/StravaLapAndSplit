@@ -1,8 +1,8 @@
 package com.github.opengrabeso.mixtio
 
-import org.scalatest._
+import org.scalatest.funsuite.AnyFunSuite
 
-class SharedCode extends FunSuite {
+class SharedCode extends AnyFunSuite {
   test("Use shared code") {
     val name = appName
     assert(name.nonEmpty)

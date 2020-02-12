@@ -1,8 +1,8 @@
 package com.github.opengrabeso.mixtio.mapbox
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class TileBeltTest extends FunSuite {
+class TileBeltTest extends AnyFunSuite {
 
   /* ScalaFromJS: 2017-10-23 09:41:46.284*/
 
