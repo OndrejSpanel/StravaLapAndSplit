@@ -18,7 +18,7 @@ import akka.util.ByteString
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise, duration}
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 import scala.xml.Elem
 import java.time.{ZoneId, ZonedDateTime}
 
@@ -26,6 +26,7 @@ import com.github.opengrabeso.mixtio.rest.RestAPI
 import com.softwaremill.sttp.SttpBackend
 import common.Util._
 import io.udash.rest.SttpRestClient
+import io.udash.rest.raw.HttpErrorException
 import shared.Digest
 
 import scala.util.control.NonFatal
@@ -404,33 +405,56 @@ object Start extends App {
       (f, digest, fileBytes)
     }
 
-    val createSession = api.limitedSession(userId, authCode)
-    val pushSessionId = Await.result(createSession, Duration.Inf)
+    val createSession = api.uploadSession(userId, authCode, RestAPI.apiVersion)
+    Try {
+      Await.result(createSession, Duration.Inf)
+    } match {
+      case Success(pushSessionId) =>
 
-    val userAPI = api.userAPI(userId, authCode, pushSessionId)
+        val userAPI = api.userAPI(userId, authCode, pushSessionId)
 
-    val pushAPI = userAPI.push(sessionId, localTimeZone)
+        val pushAPI = userAPI.push(sessionId, localTimeZone)
 
-    val fileContent = filesToSend.map(f => f._1 -> (f._2, f._3)).toMap
+        val fileContent = filesToSend.map(f => f._1 -> (f._2, f._3)).toMap
 
-    val toOffer = filesToSend.map(f => f._1 -> f._2)
+        val toOffer = filesToSend.map(f => f._1 -> f._2)
 
-    val wait = pushAPI.offerFiles(toOffer).map { needed =>
-      reportProgress(needed.size)
+        val wait = pushAPI.offerFiles(toOffer).map { needed =>
+          reportProgress(needed.size)
 
-      needed.foreach { id =>
-        val (digest, content) = fileContent(id)
-        def gzipEncoded(bytes: Array[Byte]) = if (useGzip) Gzip.encode(ByteString(bytes)) else ByteString(bytes)
+          needed.foreach { id =>
+            val (digest, content) = fileContent(id)
+            def gzipEncoded(bytes: Array[Byte]) = if (useGzip) Gzip.encode(ByteString(bytes)) else ByteString(bytes)
 
-        val upload = pushAPI.uploadFile(id, gzipEncoded(content).toArray, digest)
-        // consider async processing here - a few requests in parallel could improve throughput
-        Await.result(upload, Duration.Inf)
-        // TODO: reportProgress after each file
+            val upload = pushAPI.uploadFile(id, gzipEncoded(content).toArray, digest)
+            // consider async processing here - a few requests in parallel could improve throughput
+            Await.result(upload, Duration.Inf)
+          }
+        }
+        Await.result(wait, Duration.Inf)
+        reportProgress(0)
+      case Failure(exception) =>
+        println(s"Unable to connect to the server upload session, error $exception")
+        // event if connecting to the session has failed, try to established a session to report the error
+        // such session has no version requirements, therefore it should always succeed
+        val reportError = api.reportUploadSessionError(userId, authCode)
+        val pushSessionId = Await.result(reportError, Duration.Inf)
 
-      }
+
+        val userAPI = api.userAPI(userId, authCode, pushSessionId)
+        val errorString = exception match {
+          case http: HttpErrorException =>
+            if (http.payload.isEmpty) {
+              s"HTTP Error ${http.code}"
+            } else {
+              s"HTTP Error ${http.code}: ${http.payload.get}"
+            }
+          case ex =>
+            ex.toString
+        }
+        val wait = userAPI.push(sessionId, localTimeZone).reportError(errorString)
+        Await.result(wait, Duration.Inf)
     }
-    Await.result(wait, Duration.Inf)
-    reportProgress(0)
 
 
   }

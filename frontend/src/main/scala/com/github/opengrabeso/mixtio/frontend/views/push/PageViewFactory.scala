@@ -16,13 +16,16 @@ class PageViewFactory(
   import scala.concurrent.ExecutionContext.Implicits.global
 
   private def updatePending(model: ModelProperty[PageModel]): Unit = {
-    for ((pending, done) <- userService.api.get.push(sessionId, "").expected) {
+    for ((pending, done, result) <- userService.api.get.push(sessionId, "").expected) {
       if (pending != Seq("")) {
         model.subProp(_.pending).set(pending)
         model.subProp(_.done).set(model.subProp(_.done).get ++ done)
       }
       if (pending.nonEmpty) {
         dom.window.setTimeout(() => updatePending(model), 1000) // TODO: once long-poll is implemented, reduce or remove the delay
+      }
+      result.foreach { r =>
+        model.subProp(_.result).set(r)
       }
     }
   }

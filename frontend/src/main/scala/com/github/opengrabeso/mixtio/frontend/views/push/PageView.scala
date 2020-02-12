@@ -48,7 +48,8 @@ class PageView(
         ss.container,
         ss.flexItem,
         template(model.subModel(_.s), presenter),
-        showIf(model.subSeq(_.pending).transform(_.isEmpty))(submitButton.render)
+        showIf(model.subSeq(_.pending).transform(_.isEmpty))(submitButton.render),
+        div(h3(bind(model.subProp(_.result)))).render
       ),
 
       produceList(model.subSeq(_.pending), "Uploading:"),

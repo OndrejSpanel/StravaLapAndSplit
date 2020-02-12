@@ -28,11 +28,23 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
     auth
   }
 
-  def limitedSession(userId: String, authCode: String) = syncResponse {
+  private def createUploadSession(userId: String, authCode: String) = {
     val sessionId = "limited-session-" + System.currentTimeMillis().toString
     val auth = StravaAuthResult(authCode, "", "", 0, "", userId, "", sessionId)
     createUser(auth)
     auth.sessionId
+
+  }
+  def uploadSession(userId: String, authCode: String, version: String) = syncResponse {
+    if (version != RestAPI.apiVersion) {
+      throw HttpErrorException(403, s"API version required: $version, client API version ${RestAPI.apiVersion} ")
+    } else {
+      createUploadSession(userId, authCode)
+    }
+  }
+
+  def reportUploadSessionError(userId: String, authCode: String) = syncResponse {
+    createUploadSession(userId, authCode)
   }
 
   def userAPI(userId: String, authCode: String, session: String): UserRestAPI = {
