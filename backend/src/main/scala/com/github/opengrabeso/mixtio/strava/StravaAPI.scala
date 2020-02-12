@@ -129,25 +129,32 @@ class StravaAPI(authString: String) {
 
     Try {
       // see https://strava.github.io/api/v3/uploads/ -
-      val body = new MultipartContent()
+      val body = new MultipartContent() // default is "multipart/related"
+      body.getMediaType.setSubType("form-data") // use the current type so that it contains a "boundary"
+      //body.setMediaType(new HttpMediaType("multipart", "form-data"))
 
       def textPart(name: String, value: String) = {
         new MultipartContent.Part(
-          new HttpHeaders().set("Content-Disposition", s"""name="$name""""),
+          new HttpHeaders().set("Content-Disposition", s"""form-data; name="$name""""),
           ByteArrayContent.fromString("text/plain", value)
         )
       }
       def binaryPart(name: String, filename: String, bytes: Array[Byte]) = {
         new MultipartContent.Part(
-          new HttpHeaders().set("Content-Disposition", s"""attachment; name="$name"; filename="$filename""""),
+          new HttpHeaders().set("Content-Disposition", s"""form-data; name="$name"; filename="$filename""""),
           new ByteArrayContent("application/octet-stream", bytes)
         )
       }
 
-      body.addPart(textPart("data_type", fileType))
-      body.addPart(textPart("private", "1"))
-
       body.addPart(binaryPart("file", "file." + fileType, sendBytes))
+      body.addPart(textPart("data_type", fileType))
+      //body.addPart(textPart("private", "1"))
+
+
+      //def buildURI(x: String) = "http://localhost:3000/multipart/singlefileupload"
+      //def buildURI(x: String) = "https://ptsv2.com/t/39e9v-1581500835/post"
+      //def buildURI(x: String) = "https://enl1aic4z66k.x.pipedream.net"
+      //def authString = "Bearer xxxxxxx"
 
       val request = buildPostRequest(buildURI("uploads"), authString, "", body)
       request.getHeaders.set("Expect", Array("100-continue"))
