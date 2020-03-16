@@ -118,9 +118,13 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
   def performAuth(code: String, resp: Response, session: Session): Try[StravaAuthResult] = {
     val authResult = Try(Main.stravaAuth(code))
     authResult.foreach { auth =>
+      println("Login done, create authCode cookie")
       resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
       resp.cookie("sessionId", auth.sessionId, 3600 * 24 * 30) // 30 days
       storeAuth(session, auth)
+    }
+    if (authResult.isFailure) {
+      println("Strava authentication failed")
     }
     authResult
   }
@@ -176,6 +180,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
   def showSuuntoUploadInstructions = true
 
   def loginPage(request: Request, resp: Response, afterLogin: String, afterLoginParams: Option[String]): NodeSeq = {
+    println("Login page, delete authCode cookie")
     resp.cookie("authCode", "", 0) // delete the cookie
     <html>
       <head>

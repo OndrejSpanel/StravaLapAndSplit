@@ -31,6 +31,10 @@ object PushStart extends DefineRequest("/push-start") {
     val since = (Seq(ignoreBeforeNow) ++ ignoreBeforeLast ++ ignoreBeforeFirst).max
 
     def encode(x: String) = URLEncoder.encode(x, "UTF-8")
+
+    // hotfix - sometimes the cookies seem missing after withAuth
+    resp.cookie("authCode", auth.code, 3600 * 24 * 30) // 30 days
+    resp.cookie("sessionId", auth.sessionId, 3600 * 24 * 30) // 30 days
     resp.redirect(s"http://localhost:$port/auth?user=${encode(auth.userId)}&since=${encode(since.toString)}&session=${encode(sessionId)}")
     NodeSeq.Empty
   }
