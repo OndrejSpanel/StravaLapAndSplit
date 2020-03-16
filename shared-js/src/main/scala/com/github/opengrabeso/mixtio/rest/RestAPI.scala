@@ -28,5 +28,5 @@ trait RestAPI {
 }
 
 object RestAPI extends RestApiCompanion[EnhancedRestImplicits,RestAPI](EnhancedRestImplicits) {
-  final val apiVersion = "1.1"
+  final val apiVersion = "2.1-beta"
 }

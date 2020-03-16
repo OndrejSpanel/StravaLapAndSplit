@@ -406,6 +406,7 @@ object Start extends App {
       (f, digest, fileBytes)
     }
 
+    //println(s"uploadSession ${RestAPI.apiVersion}")
     val createSession = api.uploadSession(userId, authCode, RestAPI.apiVersion)
     Try {
       Await.result(createSession, Duration.Inf)

@@ -37,7 +37,7 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
   }
   def uploadSession(userId: String, authCode: String, version: String) = syncResponse {
     if (version != RestAPI.apiVersion) {
-      throw HttpErrorException(403, s"API version required: $version, client API version ${RestAPI.apiVersion} ")
+      throw HttpErrorException(403, s"Client version $version, required: ${RestAPI.apiVersion}")
     } else {
       createUploadSession(userId, authCode)
     }

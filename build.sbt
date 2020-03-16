@@ -4,7 +4,7 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
-  version := "0.4.1-beta",
+  version := "0.4.2-beta",
   scalaVersion := "2.12.10",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
