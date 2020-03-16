@@ -326,9 +326,10 @@ object Start extends App {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val requests = path("auth") {
-      parameters('user, 'since, 'session) { (user, since, session) =>
-        cookie("authCode") { authCode =>
-          authHandler(user, since, session, authCode.value)
+      parameters('user, 'since, 'session, 'auth.?) { (user, since, session, authQuery) =>
+        optionalCookie("authCode") { authCookie =>
+          val authCode = authCookie.map(_.value).orElse(authQuery).get // throw when missing
+          authHandler(user, since, session, authCode)
         }
       }
     } ~ path("shutdown") {

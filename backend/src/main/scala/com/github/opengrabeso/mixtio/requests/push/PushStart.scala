@@ -33,9 +33,11 @@ object PushStart extends DefineRequest("/push-start") {
     def encode(x: String) = URLEncoder.encode(x, "UTF-8")
 
     // hotfix - sometimes the cookies seem missing after withAuth
+    println(s"Setting authCode cookie ${auth.code.length}")
+    println(s"Setting authCode sessionId ${auth.sessionId}")
     resp.cookie("authCode", auth.code, 3600 * 24 * 30) // 30 days
-    resp.cookie("sessionId", auth.sessionId, 3600 * 24 * 30) // 30 days
-    resp.redirect(s"http://localhost:$port/auth?user=${encode(auth.userId)}&since=${encode(since.toString)}&session=${encode(sessionId)}")
+    resp.cookie("sessionId", auth.sessionId) // session cookie - no expiry
+    resp.redirect(s"http://localhost:$port/auth?user=${encode(auth.userId)}&since=${encode(since.toString)}&session=${encode(sessionId)}&auth=${auth.code}")
     NodeSeq.Empty
   }
 }

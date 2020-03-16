@@ -120,7 +120,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     authResult.foreach { auth =>
       println("Login done, create authCode cookie")
       resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
-      resp.cookie("sessionId", auth.sessionId, 3600 * 24 * 30) // 30 days
+      resp.cookie("sessionId", auth.sessionId) // session cookie - no expiry
       storeAuth(session, auth)
     }
     if (authResult.isFailure) {
@@ -138,15 +138,19 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       codePar.fold {
         val code = Option(req.cookie("authCode"))
         code.flatMap { code =>
+          println("withAuth performAuth")
           performAuth(code, resp, session).toOption.map(body)
-        }.getOrElse(
+        }.getOrElse {
+          println("withAuth loginPage")
           loginPage(req, resp, req.url, Option(req.queryString))
-        )
+        }
       } { code =>
         if (performAuth(code, resp, session).isSuccess) {
+          println("withAuth performAuth redirect")
           resp.redirect(req.url() + statePar.fold("")("?" + _))
           NodeSeq.Empty
         } else {
+          println("withAuth performAuth loginPage")
           loginPage(req, resp, req.url, statePar)
         }
       }
@@ -156,18 +160,23 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       codePar.fold {
         // try issuing the request, if failed, perform auth as needed
         val res = Try {
+          println("withAuth codePar stravaAuthRefresh")
           val newAuth = stravaAuthRefresh(auth)
+          resp.cookie("authCode", newAuth.code, 3600 * 24 * 30) // 30 days
+          resp.cookie("sessionId", auth.sessionId) // session cookie - no expiry
           storeAuth(session, newAuth)
           body(newAuth)
         }
         val resRecovered = res.recover {
           case err: HttpResponseException if err.getStatusCode == 401 => // unauthorized
             val query = req.queryString
+            println("withAuth resRecovered loginPage")
             loginPage(req, resp, req.url, Option(query))
         }
         resRecovered.get
       } { code =>
         // called as a callback, process the token
+        println("withAuth performAuth callback")
         performAuth(code, resp, session).map(body).get
       }
 
