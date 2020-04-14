@@ -100,7 +100,7 @@ object Start extends App {
 
     val localRequest = Http().singleRequest(HttpRequest(uri = localServerUrl)).map(_.discardEntityBytes())
 
-    // try communicating with the local Stravimat, if not responding, use the remote one
+    // try communicating with the local Mixtio, if not responding, use the remote one
     Try(Await.result(localRequest, Duration(2000, duration.MILLISECONDS)))
   }
 
@@ -148,11 +148,11 @@ object Start extends App {
       tryLocalServer(ServerLocal4567)
     }
 
-    // try communicating with the local Stravimat, if not responding, use the remote one
+    // try communicating with the local Mixtio, if not responding, use the remote one
     Try(Await.result(localFound.future, Duration(2000, duration.MILLISECONDS))).getOrElse(ServerProduction)
   }
 
-  private val stravimatUrl = server.url
+  private val mixtioUrl = server.url
 
   private object Tray {
     import java.awt._
@@ -279,14 +279,14 @@ object Start extends App {
   private def startBrowser() = {
     /**
     Authentication dance
-    - request Stravimat to perform authentication, including user selection
-     - http://stravimat/push-start?port=<XXXX>
-    - Stravimat knowns or gets the Strava auth token (user id hash)
-    - it generates a Stravimat token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt> (see [[startHttpServer]])
+    - request Mixtio to perform authentication, including user selection
+     - http://mixtio/push-start?port=<XXXX>
+    - Mixtio knowns or gets the Strava auth token (user id hash)
+    - it generates a Strava token and sends it back by calling http://localhost:<XXXX>/auth?token=<ttttttttttt> (see [[startHttpServer]])
      - this is captured by [[com.github.opengrabeso.mixtio.Start.authHandler]] and redirected to /app#push
     */
     val sessionId = "push-session-" + System.currentTimeMillis().toString
-    val startPushUrl = s"$stravimatUrl/push-start?port=$serverPort&session=$sessionId"
+    val startPushUrl = s"$mixtioUrl/push-start?port=$serverPort&session=$sessionId"
     println(s"Starting browser $startPushUrl")
     Desktop.getDesktop.browse(new URL(startPushUrl).toURI)
   }
@@ -299,7 +299,7 @@ object Start extends App {
     val sinceTime = ZonedDateTime.parse(since)
     authData = Some(AuthData(userId, sinceTime, sessionId, authCode))
     authDone.countDown()
-    val doPushUrl = s"$stravimatUrl/app#push/$sessionId"
+    val doPushUrl = s"$mixtioUrl/app#push/$sessionId"
     redirect(doPushUrl, StatusCodes.Found)
   }
 
@@ -395,7 +395,7 @@ object Start extends App {
 
     val api = {
       implicit val sttpBackend: SttpBackend[Future, Nothing] = SttpRestClient.defaultBackend()
-      SttpRestClient[RestAPI](s"$stravimatUrl/rest")
+      SttpRestClient[RestAPI](s"$mixtioUrl/rest")
     }
 
     val filesToSend = for {
