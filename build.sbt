@@ -121,7 +121,6 @@ lazy val backend = (project in file("backend"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .dependsOn(shared, sharedJs_JVM)
   .settings(
-    name := "Mixtio",
 
     addJavaScriptToServerResources(),
     addJSDependenciesToServerResources(),
@@ -169,4 +168,6 @@ lazy val jetty = (project in file("jetty")).dependsOn(backend).settings(
   )
 )
 
-lazy val root = (project in file(".")).aggregate(backend)
+lazy val root = (project in file(".")).aggregate(backend).settings(
+  name := "Mixtio"
+)
