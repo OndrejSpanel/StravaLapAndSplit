@@ -49,7 +49,7 @@ class PagePresenter(
       val neverBefore = alwaysIgnoreBefore(stravaActivities.map(_.id))
 
       // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
-      val notBefore = if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 24
+      val notBefore = if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 3
       else stravaActivities.map(a => a.id.startTime).min
 
       // never display any activity which should be cleaned by UserCleanup
