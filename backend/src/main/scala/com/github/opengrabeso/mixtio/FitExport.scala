@@ -1,19 +1,19 @@
 package com.github.opengrabeso.mixtio
 
 import java.time.temporal.ChronoUnit
-
 import com.garmin.fit
 import com.garmin.fit.{Event => FitEvent, _}
 import Main.ActivityEvents
 import common.Util._
 import common.model._
+
 import java.time.ZonedDateTime
 
 object FitExport {
   type Encoder = MesgListener with MesgDefinitionListener
 
   private def createEncoder: BufferEncoder = {
-    new BufferEncoder
+    new BufferEncoder(Fit.ProtocolVersion.V1_0)
   }
 
   def encodeHeader(encoder: Encoder): Unit = {
