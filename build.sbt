@@ -81,6 +81,13 @@ lazy val shared = (project in file("shared"))
     libraryDependencies ++= commonLibs
   )
 
+lazy val core = (project in file("core"))
+  .dependsOn(shared)
+  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .settings(
+    commonSettings,
+    libraryDependencies ++= commonLibs
+  )
 
 lazy val pushUploader = (project in file("push-uploader"))
   .enablePlugins(sbtassembly.AssemblyPlugin)
@@ -99,7 +106,7 @@ lazy val pushUploader = (project in file("push-uploader"))
   )
 
 lazy val fitConvert = (project in file("fit-convert"))
-  .dependsOn(shared, sharedJs_JVM)
+  .dependsOn(core, sharedJs_JVM)
   .settings(
     name := "FitConvert",
     commonSettings,
@@ -128,7 +135,7 @@ lazy val frontend = project.settings(
 
 lazy val backend = (project in file("backend"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared, sharedJs_JVM)
+  .dependsOn(core, sharedJs_JVM)
   .settings(
 
     addJavaScriptToServerResources(),
