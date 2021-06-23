@@ -98,6 +98,15 @@ lazy val pushUploader = (project in file("push-uploader"))
     }
   )
 
+lazy val fitConvert = (project in file("fit-convert"))
+  .dependsOn(shared, sharedJs_JVM)
+  .settings(
+    name := "FitConvert",
+    commonSettings,
+    libraryDependencies ++= commonLibs ++ jvmLibs
+  )
+
+
 def inDevMode = true || sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
 
 def addJavaScriptToServerResources(): Def.SettingsDefinition = {
