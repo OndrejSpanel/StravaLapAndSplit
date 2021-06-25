@@ -5,6 +5,7 @@ import Main._
 
 import common.model._
 
+import Optimize._
 trait ActivityStorage {
 
   def storeActivity(stage: String, act: ActivityEvents, userId: String) = {

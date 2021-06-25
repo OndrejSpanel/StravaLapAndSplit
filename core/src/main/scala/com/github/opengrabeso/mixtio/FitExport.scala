@@ -3,7 +3,6 @@ package com.github.opengrabeso.mixtio
 import java.time.temporal.ChronoUnit
 import com.garmin.fit
 import com.garmin.fit.{Event => FitEvent, _}
-import Main.ActivityEvents
 import common.Util._
 import common.model._
 

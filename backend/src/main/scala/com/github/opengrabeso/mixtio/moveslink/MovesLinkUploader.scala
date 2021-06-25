@@ -1,7 +1,6 @@
 package com.github.opengrabeso.mixtio
 package moveslink
 
-import Main.ActivityEvents
 import common.Util._
 
 import scala.annotation.tailrec
@@ -14,7 +13,7 @@ object MovesLinkUploader {
 
     val speedStats = DataStreamGPS.speedStats(speedStream)
 
-    val detectSport = Main.detectSportBySpeed(speedStats, data.id.sportName)
+    val detectSport = ActivityEvents.detectSportBySpeed(speedStats, data.id.sportName)
 
     data.copy(id = data.id.copy(sportName = detectSport))
 

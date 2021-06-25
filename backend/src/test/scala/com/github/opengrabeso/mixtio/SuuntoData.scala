@@ -3,7 +3,7 @@ package com.github.opengrabeso.mixtio
 import java.time.ZoneId
 
 trait SuuntoData {
-  protected def gpsPodMove: Option[Main.ActivityEvents] = {
+  protected def gpsPodMove: Option[ActivityEvents] = {
     val res = getClass.getResourceAsStream("/suuntoMerge/Moveslink2/gps.sml")
 
     val move = moveslink2.XMLParser.parseXML("gps.sml", res, "")

@@ -15,12 +15,12 @@ import spark.{Request, Response}
 import scala.util.Try
 
 object Upload extends ActivityStorage {
-  def storeFromStreamWithDigest(userId: String, name: String, timezone: String, stream: InputStream, digest: String): Seq[Main.ActivityEvents] = {
+  def storeFromStreamWithDigest(userId: String, name: String, timezone: String, stream: InputStream, digest: String): Seq[ActivityEvents] = {
     import MoveslinkImport._
     val timing = Timing.start()
 
     val extension = name.split('.').last
-    val actData: Seq[Main.ActivityEvents] = extension.toLowerCase match {
+    val actData: Seq[ActivityEvents] = extension.toLowerCase match {
       case "fit" =>
         FitImport(name, digest, stream).toSeq
       case "sml" =>
@@ -38,7 +38,7 @@ object Upload extends ActivityStorage {
           val _ = ois.readObject()
           val obj = ois.readObject()
           obj match {
-            case act: Main.ActivityEvents =>
+            case act: ActivityEvents =>
               act
           }
         }.toOption.toSeq
@@ -65,7 +65,7 @@ object Upload extends ActivityStorage {
     ret
   }
 
-  def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream): Seq[Main.ActivityEvents] = {
+  def storeFromStream(userId: String, name: String, timezone: String, streamOrig: InputStream): Seq[ActivityEvents] = {
     val fileBytes = IOUtils.toByteArray(streamOrig)
     val digest = Main.digest(fileBytes)
 
