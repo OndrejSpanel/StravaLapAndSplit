@@ -110,7 +110,9 @@ lazy val fitConvert = (project in file("fit-convert"))
   .settings(
     name := "FitConvert",
     commonSettings,
-    libraryDependencies ++= commonLibs ++ jvmLibs
+    libraryDependencies ++= commonLibs ++ jvmLibs,
+    libraryDependencies += "commons-io" % "commons-io" % "2.1",
+
   )
 
 
