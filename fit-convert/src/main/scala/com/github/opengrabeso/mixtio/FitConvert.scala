@@ -1,7 +1,9 @@
 package com.github.opengrabeso.mixtio
 
-import java.io.{File, FileInputStream, FileOutputStream}
+import com.garmin.fit._
+
 import scala.collection.JavaConverters._
+import java.io.{BufferedWriter, File, FileInputStream, FileOutputStream, OutputStreamWriter, PrintWriter, Writer}
 
 object FitConvert {
   def convertOneFile(inFile: File, outFile: File): Unit = {
@@ -16,10 +18,37 @@ object FitConvert {
     outStream.close()
   }
 
+  def dumpOneFile(inFile: File, outFile: File): Unit = {
+    val in = new FileInputStream(inFile)
+
+    val outStream = new FileOutputStream(outFile)
+    val writer = new OutputStreamWriter(outStream, "UTF-8")
+    val outWriter = new PrintWriter(writer)
+    val decode = new Decode
+
+    val listener = new MesgListener {
+      override def onMesg(mesg: Mesg): Unit = {
+        outWriter.println(mesg.getName)
+        val fields = mesg.getFields.asScala
+        for (field <- fields) {
+          outWriter.println("  " + field.getName)
+        }
+      }
+    }
+
+    decode.read(in, listener)
+    outWriter.close()
+    writer.close()
+    outStream.close()
+
+  }
+
   def main(args: Array[String]): Unit = {
-    if (args.length == 2) {
-      val in = args(0)
-      val out = args(1)
+    val (options, files) = args.partition(_.startsWith("-"))
+    val dump = options.contains("-dump")
+    if (files.length == 2) {
+      val in = files(0)
+      val out = files(1)
       val inFile = new File(in)
       if (inFile.exists && inFile.isDirectory) {
         new File(out).mkdirs()
@@ -27,10 +56,19 @@ object FitConvert {
         for (f <- inFile.listFiles) {
           val shortName = f.getName
           val outName = new File(out).toPath.resolve(shortName)
-          convertOneFile(f, outName.toFile)
+          if (dump) {
+            val outName = new File(out).toPath.resolve(shortName)
+            dumpOneFile(f, new File(outName.toString + ".txt"))
+          } else {
+            convertOneFile(f, outName.toFile)
+          }
         }
       } else {
-        convertOneFile(inFile, new File(out))
+        if (dump) {
+          dumpOneFile(inFile, new File(out))
+        } else {
+          convertOneFile(inFile, new File(out))
+        }
       }
     }
   }
