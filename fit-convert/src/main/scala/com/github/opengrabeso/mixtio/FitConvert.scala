@@ -31,7 +31,22 @@ object FitConvert {
         outWriter.println(mesg.getName)
         val fields = mesg.getFields.asScala
         for (field <- fields) {
-          outWriter.println("  " + field.getName)
+          import Fit._
+          val fieldValue = if (field.getName == "timestamp") {
+            val garminTimestamp = field.getLongValue
+            FitImport.fromTimestamp(garminTimestamp).toString
+          } else {
+            field.getType match {
+              case BASE_TYPE_UINT32 | BASE_TYPE_SINT32 | BASE_TYPE_UINT16 | BASE_TYPE_SINT16 | BASE_TYPE_UINT8 | BASE_TYPE_SINT8 =>
+                field.getLongValue.toString
+              case BASE_TYPE_ENUM =>
+                s"enum ${field.getLongValue}"
+              case x =>
+                f"? (type $x%X)"
+
+            }
+          }
+          outWriter.println(s"  ${field.getName} = $fieldValue")
         }
       }
     }

@@ -17,12 +17,12 @@ import scala.collection.mutable.ArrayBuffer
   */
 object FitImport {
 
-  private def fromTimestamp(time: Long): ZonedDateTime = {
+  def fromTimestamp(time: Long): ZonedDateTime = {
     val localTime = LocalDateTime.ofEpochSecond(time + DateTime.OFFSET / 1000, 0, ZoneOffset.UTC)
     ZonedDateTime.of(localTime, ZoneOffset.UTC)
   }
 
-  private def decodeLatLng(lat: Int, lng: Int, elev: Option[java.lang.Float]): GPSPoint = {
+  def decodeLatLng(lat: Int, lng: Int, elev: Option[java.lang.Float]): GPSPoint = {
     val longLatScale = (1L << 31).toDouble / 180
     GPSPoint(lat / longLatScale, lng / longLatScale, elev.map(_.toInt))(None)
   }
