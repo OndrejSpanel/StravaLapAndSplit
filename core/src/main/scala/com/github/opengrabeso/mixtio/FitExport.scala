@@ -180,8 +180,8 @@ object FitExport {
 
     val (sport, subsport) = events.id.sportName match {
       // TODO: handle other sports
-      case Event.Sport.Run => (Sport.RUNNING, SubSport.STREET)
-      case Event.Sport.Ride => (Sport.CYCLING, SubSport.ROAD)
+      case Event.Sport.Run => (Sport.RUNNING, SubSport.GENERIC)
+      case Event.Sport.Ride => (Sport.CYCLING, SubSport.GENERIC)
       case Event.Sport.Swim => (Sport.SWIMMING, SubSport.GENERIC)
       case Event.Sport.Hike => (Sport.HIKING, SubSport.GENERIC)
       case Event.Sport.Walk => (Sport.WALKING, SubSport.GENERIC)
