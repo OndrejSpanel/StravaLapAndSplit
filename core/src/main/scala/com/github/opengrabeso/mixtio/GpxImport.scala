@@ -62,9 +62,13 @@ object GpxImport {
           "trkseg" tag {
             "trkpt" tagWithOpen(
               samples += new Sample,
-              "ele" text (text => samples.last.elevation = Some(text.toInt)),
+              "ele" text (text => samples.last.elevation = Some(text.toDouble.round.toInt)),
               "time" text (text => samples.last.time = safeParse(text).toOption),
-              // TODO: add extensions
+              "extensions" tag (
+                "TrackPointExtension" tag (
+                  "hr" text (text => samples.last.heartRate = Some(text.toInt))
+                )
+              )
             ) attrs (
               "lat" attr (text => samples.last.latitude = Some(text.toDouble)),
               "lon" attr (text => samples.last.longitude = Some(text.toDouble))
@@ -84,21 +88,34 @@ object GpxImport {
     } yield {
       time -> GPSPoint(latitude, longitude, s.elevation)(s.accuracy)
     }
-
-    val gpsStream = new DataStreamGPS(SortedMap(gpsSamples: _*))
-
-    // TODO: read distance when provided
-    val distData = /*if (distanceBuffer.nonEmpty) {
-      SortedMap(distanceBuffer:_*)
-    } else */ {
-      new DataStreamDist(DataStreamGPS.routeStreamFromGPS(gpsStream.stream))
+    val distSamples = for {
+      s <- parsed.samples
+      distance <- s.distance
+      time <- s.time
+    } yield {
+      time -> distance
+    }
+    val hrSamples = for {
+      s <- parsed.samples
+      v <- s.heartRate if v != 0
+      time <- s.time
+    } yield {
+      time -> v
     }
 
+    val gpsStream = new DataStreamGPS(SortedMap(gpsSamples: _*))
+    val hrStream = if (hrSamples.exists(_._2 != 0)) Some(new DataStreamHR(SortedMap(hrSamples: _*))) else None
+
+    val distData = if (distSamples.nonEmpty) {
+      new DataStreamDist(SortedMap(distSamples:_*))
+    } else {
+      new DataStreamDist(DataStreamGPS.routeStreamFromGPS(gpsStream.stream))
+    }
 
     // TODO: read ActivityType from XML
     val sport = Event.Sport.Workout
 
-    val allStreams = Seq(gpsStream, distData) //++ hrStream
+    val allStreams = Seq(gpsStream, distData) ++ hrStream
 
     val activity = for {
       startTime <- allStreams.flatMap(_.startTime).minOpt
@@ -114,7 +131,7 @@ object GpxImport {
 
       val allEvents = (events ++ lapEvents).sortBy(_.stamp)
 
-      ActivityEvents(id, allEvents, distData, gpsStream, Nil)
+      ActivityEvents(id, allEvents, distData, gpsStream, hrStream.toSeq)
     }
 
     activity.get
