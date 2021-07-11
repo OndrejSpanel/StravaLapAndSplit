@@ -38,6 +38,8 @@ object FitConvert {
       }
     } else if (filename.endsWith(".gpx")) {
       GpxImport(filename, "", is)
+    } else if (filename.endsWith(".tcx")) {
+      TcxImport(filename, "", is)
     } else Failure(new UnsupportedOperationException("Unsupported file format"))
 
   }
