@@ -17,51 +17,53 @@ object FitConvert {
   import java.util.zip.GZIPInputStream
 
   def decompressGzip(source: GZIPInputStream): InputStream = {
-    try {
-      val os = new ByteArrayOutputStream
-      try { // copy GZIPInputStream to FileOutputStream
-        val buffer = new Array[Byte](1024)
-        var len = 0
-        do {
-          len = source.read(buffer)
-          if (len > 0) os.write(buffer, 0, len)
-        } while (len > 0)
-      } finally {
-        os.close()
-      }
-      new ByteArrayInputStream(os.toByteArray)
+    val os = new ByteArrayOutputStream
+    try { // copy GZIPInputStream to FileOutputStream
+      val buffer = new Array[Byte](1024)
+      var len = 0
+      do {
+        len = source.read(buffer)
+        if (len > 0) os.write(buffer, 0, len)
+      } while (len > 0)
+    } finally {
+      os.close()
     }
+    new ByteArrayInputStream(os.toByteArray)
   }
 
-  def loadFileUncompressed(filename: String, is: InputStream) = {
+  def loadFileUncompressed(filename: String, is: InputStream): Try[ActivityEvents] = {
     if (filename.endsWith(".fit")) {
       Try {
         FitImport(filename, "", is).get
       }
+    } else if (filename.endsWith(".gpx")) {
+      GpxImport(filename, "", is)
     } else Failure(new UnsupportedOperationException("Unsupported file format"))
 
   }
 
   def loadFile(file: File) = {
-    val gzSuffix = ".gz"
-    if (file.getName.endsWith(gzSuffix)) {
-      val uncompressedFilename = file.toString.dropRight(gzSuffix.length)
-      val is = new FileInputStream(file)
-      // for some reason it seems GZIPInputStream does not work with FitImport directly - we decompress it in memory instead
-      val gzStream = decompressGzip(new GZIPInputStream(is))
-      is.close()
+    if (file.exists && file.isFile) {
+      val gzSuffix = ".gz"
+      if (file.getName.endsWith(gzSuffix)) {
+        val uncompressedFilename = file.toString.dropRight(gzSuffix.length)
+        val is = new FileInputStream(file)
+        // for some reason it seems GZIPInputStream does not work with FitImport directly - we decompress it in memory instead
+        val gzStream = decompressGzip(new GZIPInputStream(is))
+        is.close()
 
-      val ret = loadFileUncompressed(uncompressedFilename, gzStream)
+        val ret = loadFileUncompressed(uncompressedFilename, gzStream)
 
-      gzStream.close()
+        gzStream.close()
 
-      ret
-    } else {
-      val is = new FileInputStream(file)
-      val ret = loadFileUncompressed(file.toString, is)
-      is.close()
-      ret
-    }
+        ret
+      } else {
+        val is = new FileInputStream(file)
+        val ret = loadFileUncompressed(file.toString, is)
+        is.close()
+        ret
+      }
+    } else Failure(new FileNotFoundException(file.toString))
   }
 
   def changeExtension(file: File, extension: String): File = {
