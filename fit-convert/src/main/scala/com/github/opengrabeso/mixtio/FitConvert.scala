@@ -33,29 +33,35 @@ object FitConvert {
     }
   }
 
+  def loadFileUncompressed(filename: String, is: InputStream) = {
+    if (filename.endsWith(".fit")) {
+      Try {
+        FitImport(filename, "", is).get
+      }
+    } else Failure(new UnsupportedOperationException("Unsupported file format"))
+
+  }
+
   def loadFile(file: File) = {
-
-    if (file.getName.endsWith(".fit.gz")) {
-
+    val gzSuffix = ".gz"
+    if (file.getName.endsWith(gzSuffix)) {
+      val uncompressedFilename = file.toString.dropRight(gzSuffix.length)
       val is = new FileInputStream(file)
       // for some reason it seems GZIPInputStream does not work with FitImport directly - we decompress it in memory instead
       val gzStream = decompressGzip(new GZIPInputStream(is))
+      is.close()
 
-      val ret = Try {
-        FitImport(file.toString, "", gzStream).get
-      }
+      val ret = loadFileUncompressed(uncompressedFilename, gzStream)
+
       gzStream.close()
-      is.close()
 
       ret
-    } else if (file.getName.endsWith(".fit")) {
+    } else {
       val is = new FileInputStream(file)
-      val ret = Try {
-        FitImport(file.toString, "", is).get
-      }
+      val ret = loadFileUncompressed(file.toString, is)
       is.close()
       ret
-    } else Failure(new UnsupportedOperationException("Unsupported file format"))
+    }
   }
 
   def changeExtension(file: File, extension: String): File = {
