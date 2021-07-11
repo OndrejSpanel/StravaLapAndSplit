@@ -3,7 +3,7 @@ package com.github.opengrabeso.mixtio
 import common.Util._
 import common.model._
 
-import java.io.InputStream
+import java.io.{InputStream, PushbackInputStream}
 import java.time.ZonedDateTime
 import scala.collection.immutable.SortedMap
 import scala.collection.mutable.ArrayBuffer
@@ -15,24 +15,28 @@ object TcxImport {
     import SAXParser._
 
     object parsed extends SAXParserWithGrammar {
-      var rrData = Seq.empty[Int]
       var deviceName = Option.empty[String]
       var startTime = Option.empty[ZonedDateTime]
-      var distance: Int = 0
-      var durationMs: Int = 0
-      var paused: Boolean = false
-      var pauseStartTime = Option.empty[ZonedDateTime]
+      var sportName = Option.empty[String]
       class Sample {
-        /* GPX example:
-         <trkpt lat="49.7838710" lon="14.1806550">
-          <ele>367.7</ele>
-          <time>2017-06-23T08:52:42Z</time>
-          <extensions>
-           <gpxtpx:TrackPointExtension>
-            <gpxtpx:hr>94</gpxtpx:hr>
-           </gpxtpx:TrackPointExtension>
-          </extensions>
-         </trkpt>
+        /* TCX example:
+         <Trackpoint>
+          <Time>2017-10-20T09:47:12Z</Time>
+          <Position>
+           <LatitudeDegrees>49.7970480</LatitudeDegrees>
+           <LongitudeDegrees>14.1720700</LongitudeDegrees>
+          </Position>
+          <AltitudeMeters>394.0</AltitudeMeters>
+          <DistanceMeters>4262.7</DistanceMeters>
+          <HeartRateBpm>
+           <Value>173</Value>
+          </HeartRateBpm>
+          <Extensions>
+           <TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+            <Speed>4.1</Speed>
+           </TPX>
+          </Extensions>
+         </Trackpoint>
         */
         var time = Option.empty[ZonedDateTime]
         var distance = Option.empty[Double]
@@ -54,31 +58,44 @@ object TcxImport {
         }
       }
       def grammar = root(
-        "Device" tag ("Name" text (text => deviceName = Some(text))),
-        "Metadata" tag (
-          "time" text (text => startTime = Some(timeToUTC(ZonedDateTime.parse(text)))),
-          ),
-        "trk" tag {
-          "trkseg" tag {
-            "trkpt" tagWithOpen(
-              samples += new Sample,
-              "ele" text (text => samples.last.elevation = Some(text.toDouble.round.toInt)),
-              "time" text (text => samples.last.time = safeParse(text).toOption),
-              "extensions" tag (
-                "TrackPointExtension" tag (
-                  "hr" text (text => samples.last.heartRate = Some(text.toInt))
-                  )
+        "Activities" tag {
+          "Activity" tag {
+            "Id" text (text => startTime = Try(timeToUTC(ZonedDateTime.parse(text))).toOption)
+            "Lap" tag (
+              "Track" tag {
+                "Trackpoint" tagWithOpen(
+                  samples += new Sample,
+                  "ele" text (text => samples.last.elevation = Some(text.toDouble.round.toInt)),
+                  "Time" text (text => samples.last.time = safeParse(text).toOption),
+                  "Position" tag(
+                    "LatitudeDegrees" text (text => samples.last.latitude = Some(text.toDouble)),
+                    "LongitudeDegrees" text (text => samples.last.longitude = Some(text.toDouble))
+                  ),
+                  "AltitudeMeters" text (text => samples.last.elevation = Some(text.toDouble.round.toInt)),
+                  "DistanceMeters" text (text => samples.last.distance = Some(text.toDouble)),
+                  "HeartRateBpm" tag (
+                    "Value" text (text => samples.last.heartRate = Some(text.toDouble.round.toInt))
+                    )
                 )
+              }
             ) attrs (
-              "lat" attr (text => samples.last.latitude = Some(text.toDouble)),
-              "lon" attr (text => samples.last.longitude = Some(text.toDouble))
+              "StartTime" attr (text => laps.append(Lap("Lap", timeToUTC(ZonedDateTime.parse(text)))))
             )
-          }
+          } attrs (
+            "Sport" attr (text => sportName = Some(text))
+          )
         }
       )
     }
 
-    SAXParser.parse(in)(parsed)
+    val skipSpaces = new PushbackInputStream(in)
+    var lastChar: Int = 0
+    do {
+      lastChar = skipSpaces.read()
+    } while (lastChar == ' ')
+    skipSpaces.unread(lastChar)
+
+    SAXParser.parse(skipSpaces)(parsed)
 
     val gpsSamples = for {
       s <- parsed.samples
@@ -112,8 +129,10 @@ object TcxImport {
       new DataStreamDist(DataStreamGPS.routeStreamFromGPS(gpsStream.stream))
     }
 
-    // TODO: read ActivityType from XML
-    val sport = Event.Sport.Workout
+    val sport = parsed.sportName.flatMap { s =>
+      val condensedName = s.replaceAll("\\s", "")
+      Try(Event.Sport.withName(condensedName)).toOption
+    }.getOrElse(Event.Sport.Workout)
 
     val allStreams = Seq(gpsStream, distData) ++ hrStream
 
@@ -121,13 +140,15 @@ object TcxImport {
       startTime <- allStreams.flatMap(_.startTime).minOpt
       endTime <- allStreams.flatMap(_.endTime).maxOpt
     } yield {
+      def inRange(t: ZonedDateTime) = t >= startTime && t <= endTime
 
       val id = ActivityId(FileId.FilenameId(filename), digest, "Activity", startTime, endTime, sport, distData.stream.last._2)
 
       val events = Array[Event](BegEvent(id.startTime, sport), EndEvent(id.endTime))
 
-      // TODO: avoid duplicate timestamp events
-      val lapEvents = Nil // lapTimes.map(LapEvent)
+      val lapTimes = parsed.laps.map(_.timestamp).filter(inRange)
+
+      val lapEvents = lapTimes.map(LapEvent)
 
       val allEvents = (events ++ lapEvents).sortBy(_.stamp)
 
