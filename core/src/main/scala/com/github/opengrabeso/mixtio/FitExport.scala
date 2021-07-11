@@ -165,6 +165,7 @@ object FitExport {
       fileIdMesg.setManufacturer(Manufacturer.SUUNTO)
       fileIdMesg.setType(fit.File.ACTIVITY)
       fileIdMesg.setProduct(1) // TODO: detect for real
+      fileIdMesg.setTimeCreated(toTimestamp(timeBeg))
       encoder.onMesg(fileIdMesg)
     }
 
