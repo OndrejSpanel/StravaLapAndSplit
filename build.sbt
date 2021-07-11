@@ -87,6 +87,7 @@ lazy val core = (project in file("core"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .settings(
     commonSettings,
+    libraryDependencies += "com.fasterxml" % "aalto-xml" % "1.0.0",
     libraryDependencies ++= commonLibs
   )
 
@@ -162,10 +163,6 @@ lazy val backend = (project in file("backend"))
 
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
       "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-
-      "com.fasterxml" % "aalto-xml" % "1.0.0",
-
-      //"org.webjars" % "webjars-locator-core" % "0.39",
 
       "fr.opensagres.xdocreport.appengine-awt" % "appengine-awt" % "1.0.0",
 
