@@ -7,26 +7,76 @@ import scala.collection.JavaConverters._
 import java.io.{File, _}
 import com.opencsv.CSVReader
 
-import java.util.zip.GZIPInputStream
 import scala.annotation.tailrec
-import scala.collection.mutable
+import scala.util.Failure
 import scala.util.chaining._
 
 object FitConvert {
+  import java.io.FileInputStream
+  import java.io.FileOutputStream
+  import java.util.zip.GZIPInputStream
+
+  def decompressGzip(source: GZIPInputStream): InputStream = {
+    try {
+      val os = new ByteArrayOutputStream
+      try { // copy GZIPInputStream to FileOutputStream
+        val buffer = new Array[Byte](1024)
+        var len = 0
+        do {
+          len = source.read(buffer)
+          if (len > 0) os.write(buffer, 0, len)
+        } while (len > 0)
+      } finally {
+        os.close()
+      }
+      new ByteArrayInputStream(os.toByteArray)
+    }
+  }
+
+  def loadFile(file: File) = {
+
+    if (file.getName.endsWith(".fit.gz")) {
+
+      val is = new FileInputStream(file)
+      // for some reason it seems GZIPInputStream does not work with FitImport directly - we decompress it in memory instead
+      val gzStream = decompressGzip(new GZIPInputStream(is))
+
+      val ret = Try {
+        FitImport(file.toString, "", gzStream).get
+      }
+      gzStream.close()
+      is.close()
+
+      ret
+    } else if (file.getName.endsWith(".fit")) {
+      val is = new FileInputStream(file)
+      val ret = Try {
+        FitImport(file.toString, "", is).get
+      }
+      is.close()
+      ret
+    } else Failure(new UnsupportedOperationException("Unsupported file format"))
+  }
+
+  def changeExtension(file: File, extension: String): File = {
+    assert(extension.startsWith("."))
+    // note: this fails when a directory contains a dot
+    val baseName = file.toString.takeWhile(_ != '.')
+    new File(baseName + extension)
+  }
+
+  def saveFile(outFile: File, activity: ActivityEvents): Unit = {
+    val bytes = FitExport.export(activity)
+    val outStream = new FileOutputStream(outFile)
+    outStream.write(bytes)
+    outStream.close()
+
+    outFile.setLastModified(activity.id.startTime.toInstant.toEpochMilli)
+  }
+
   def convertOneFile(inFile: File, outFile: File): Unit = {
-    if (inFile.getName.endsWith(".fit")) {
-      val stream = new FileInputStream(inFile)
-      // we do not care about digests here - we just handle fit files, do not store them on mixtio
-      val a = Try {
-        FitImport(inFile.getName, "", stream).get
-      }
-      stream.close()
-      for (activity <- a) {
-        val bytes = FitExport.export(activity)
-        val outStream = new FileOutputStream(outFile)
-        outStream.write(bytes)
-        outStream.close()
-      }
+    for (activity <- loadFile(inFile)) {
+      saveFile(outFile, activity)
     }
   }
 
@@ -71,77 +121,28 @@ object FitConvert {
 
   }
 
-  import java.io.FileInputStream
-  import java.io.FileOutputStream
-  import java.io.IOException
-  import java.util.zip.GZIPInputStream
-
-  def decompressGzip(source: GZIPInputStream): InputStream = {
-    try {
-      val os = new ByteArrayOutputStream
-      try { // copy GZIPInputStream to FileOutputStream
-        val buffer = new Array[Byte](1024)
-        var len = 0
-        do {
-          len = source.read(buffer)
-          if (len > 0) os.write(buffer, 0, len)
-        } while (len > 0)
-      } finally {
-        os.close()
-      }
-      new ByteArrayInputStream(os.toByteArray)
-    }
-  }
-
   private def convertSingleCSVLine(inFile: File, outFile: File, headerIndex: Map[String, Int], values: Array[String]) = {
-    def safeValue(i: Int) = if (i >=0 && i < values.length) Some(values(i)) else None
+    def safeValue(i: Int) = if (i >= 0 && i < values.length) Some(values(i)) else None
     def getColumn(x: String) = headerIndex.get(x).flatMap(safeValue)
     for (aFile <- getColumn("Filename")) {
-      if (aFile.endsWith(".fit.gz")) {
-        val aFileName = inFile.toPath.resolveSibling(aFile)
-
-        val is = new FileInputStream(aFileName.toFile)
-        // for some reason it seems GZIPInputStream does not work with FitImport directly - we decompress it in memory instead
-        val gzStream = decompressGzip(new GZIPInputStream(is))
-
-        val a = Try {
-          FitImport(aFileName.toString, "", gzStream).get.pipe { activity =>
-            getColumn("Activity Name") match {
-              case Some(name) =>
-                activity.copy(id = activity.id.copy(name = name))
-              case None =>
-                activity
-            }
-          }.pipe { activity =>
-            val sportName = getColumn("Activity Type").flatMap { s =>
-              val condensedName = s.replaceAll("\\s", "")
-              Try(common.model.SportId.withName(condensedName)).toOption
-            }
-            sportName.map { sport =>
-              activity.copy(id = activity.id.copy(sportName = sport))
-            }.getOrElse {
-              activity
-            }
+      val aFileName = inFile.toPath.resolveSibling(aFile)
+      for (a <- loadFile(aFileName.toFile)) {
+        a.pipe { activity =>
+          val sportName = getColumn("Activity Type").flatMap { s =>
+            val condensedName = s.replaceAll("\\s", "")
+            Try(common.model.SportId.withName(condensedName)).toOption
           }
+          sportName.map { sport =>
+            activity.copy(id = activity.id.copy(sportName = sport))
+          }.getOrElse {
+            activity
+          }
+        }.pipe { activity =>
+          val outFileName = changeExtension(outFile.toPath.resolve(new File(aFile).toPath.getFileName).toFile, ".fit")
+
+          saveFile(outFileName, activity)
         }
 
-        gzStream.close()
-        is.close()
-
-        for (activity <- a) {
-
-          val outFileName = outFile.toPath.resolve(new File(aFile).toPath.getFileName).toString
-
-          val baseName = outFileName.takeWhile(_ != '.')
-
-          val bytes = FitExport.export(activity)
-          val outStream = new FileOutputStream(baseName + ".fit")
-          outStream.write(bytes)
-          outStream.close()
-
-          new File(baseName + ".fit").setLastModified(activity.id.startTime.toInstant.toEpochMilli)
-
-        }
       }
     }
   }
@@ -160,7 +161,7 @@ object FitConvert {
         new File(out).mkdirs()
         val csvReader = new CSVReader(new FileReader(in))
         val headers = csvReader.readNextSilently()
-        val headerIndex = (headers.zipWithIndex).toMap
+        val headerIndex = headers.zipWithIndex.toMap
         @tailrec
         def processNextLine(): Unit = {
           val values = csvReader.readNext()
@@ -176,12 +177,11 @@ object FitConvert {
 
         for (f <- inFile.listFiles) {
           val shortName = f.getName
-          val outName = new File(out).toPath.resolve(shortName)
+          val outName = new File(out).toPath.resolve(shortName).toFile
           if (dump) {
-            val outName = new File(out).toPath.resolve(shortName)
-            dumpOneFile(f, new File(outName.toString + ".txt"))
+            dumpOneFile(f, changeExtension(outName, ".txt"))
           } else {
-            convertOneFile(f, outName.toFile)
+            convertOneFile(f, changeExtension(outName, ".fit"))
           }
         }
       } else {
