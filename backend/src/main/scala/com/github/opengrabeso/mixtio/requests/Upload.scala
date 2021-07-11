@@ -25,6 +25,10 @@ object Upload extends ActivityStorage {
         FitImport(name, digest, stream).toSeq
       case "sml" =>
         loadSml(name, digest, stream).toSeq
+      case "gpx" =>
+        GpxImport(name, digest, stream).toOption.toSeq
+      case "tcx" =>
+        TcxImport(name, digest, stream).toOption.toSeq
       case "xml" =>
         loadXml(name, digest, stream, timezone).zipWithIndex.flatMap { case (act,index) =>
           // some activities (Quest) have more parts, each part needs a distinct name
