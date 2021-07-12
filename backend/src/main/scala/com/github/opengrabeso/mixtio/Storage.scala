@@ -328,7 +328,7 @@ object Storage extends FileStore {
 
   def itemModified(item: FileItem) = Option(new java.util.Date(item.getUpdateTime))
 
-  def deleteItem(item: FileItem) = storage.delete(item.getName)
+  def deleteItem(item: FileItem) = storage.delete(bucket, item.getName)
 
   def itemName(item: FileItem): String = item.getName
 
