@@ -3,7 +3,6 @@ package com.github.opengrabeso.mixtio
 import java.io.InputStream
 
 import com.garmin.fit._
-import com.github.opengrabeso.mixtio.Main.ActivityEvents
 import java.time.{LocalDateTime, ZoneId, ZoneOffset, ZonedDateTime}
 
 import common.Util._
@@ -18,12 +17,12 @@ import scala.collection.mutable.ArrayBuffer
   */
 object FitImport {
 
-  private def fromTimestamp(time: Long): ZonedDateTime = {
+  def fromTimestamp(time: Long): ZonedDateTime = {
     val localTime = LocalDateTime.ofEpochSecond(time + DateTime.OFFSET / 1000, 0, ZoneOffset.UTC)
     ZonedDateTime.of(localTime, ZoneOffset.UTC)
   }
 
-  private def decodeLatLng(lat: Int, lng: Int, elev: Option[java.lang.Float]): GPSPoint = {
+  def decodeLatLng(lat: Int, lng: Int, elev: Option[java.lang.Float]): GPSPoint = {
     val longLatScale = (1L << 31).toDouble / 180
     GPSPoint(lat / longLatScale, lng / longLatScale, elev.map(_.toInt))(None)
   }
@@ -135,7 +134,7 @@ object FitImport {
       // TODO: digest
       val id = ActivityId(FilenameId(filename), digest, "Activity", startTime, endTime, header.sport.getOrElse(Event.Sport.Workout), distData.last._2)
 
-      object ImportedStreams extends Main.ActivityStreams {
+      object ImportedStreams extends ActivityEvents.ActivityStreams {
 
         val dist = new DataStreamDist(distData)
 
@@ -149,7 +148,7 @@ object FitImport {
 
       }
 
-      Some(Main.processActivityStream(id, ImportedStreams, lapBuffer, Nil))
+      Some(ActivityEvents.processActivityStream(id, ImportedStreams, lapBuffer, Nil))
 
     } catch {
       case ex: Exception =>

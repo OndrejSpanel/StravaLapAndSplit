@@ -26,7 +26,7 @@ object MoveslinkImport {
     }
   }
 
-  def loadFromMove(fileName: String, digest: String, move: Move): Option[Main.ActivityEvents] = {
+  def loadFromMove(fileName: String, digest: String, move: Move): Option[ActivityEvents] = {
     // Move(fileName: Set[String], header: MoveHeader, streams: Map[Class[_], DataStream[_]]) {
     // ActivityEvents(id: ActivityId, events: Array[Event], dist: DataStreamDist, gps: DataStreamGPS, attributes: Seq[DataStream[_]]) {
 
@@ -66,11 +66,11 @@ object MoveslinkImport {
 
       val allEvents = (events ++ lapEvents).sortBy(_.stamp)
 
-      Main.ActivityEvents(id, allEvents, dist, gps, Seq(hrStream))
+      ActivityEvents(id, allEvents, dist, gps, Seq(hrStream))
     }
   }
 
-  def loadSml(fileName: String, digest: String, stream: InputStream): Option[Main.ActivityEvents] = {
+  def loadSml(fileName: String, digest: String, stream: InputStream): Option[ActivityEvents] = {
 
     implicit val timing = Timing.start()
 

@@ -6,7 +6,8 @@ lazy val commonSettings = Seq(
   organization := "com.github.ondrejspanel",
   version := "0.4.2-beta",
   scalaVersion := "2.12.10",
-  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
+  libraryDependencies += "org.scala-lang.modules" %%% "scala-collection-compat" % "2.2.0"
 )
 
 lazy val jsCommonSettings = Seq(
@@ -26,7 +27,7 @@ lazy val jvmLibs = Seq(
   "io.udash" %% "udash-core" % udashVersion,
   "io.udash" %% "udash-rest" % udashVersion,
   "io.udash" %% "udash-rpc" % udashVersion,
-  "io.udash" %% "udash-css" % udashVersion,
+  "io.udash" %% "udash-css" % udashVersion
 )
 
 lazy val jsLibs = libraryDependencies ++= Seq(
@@ -81,6 +82,14 @@ lazy val shared = (project in file("shared"))
     libraryDependencies ++= commonLibs
   )
 
+lazy val core = (project in file("core"))
+  .dependsOn(shared, sharedJs_JVM)
+  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .settings(
+    commonSettings,
+    libraryDependencies += "com.fasterxml" % "aalto-xml" % "1.0.0",
+    libraryDependencies ++= commonLibs
+  )
 
 lazy val pushUploader = (project in file("push-uploader"))
   .enablePlugins(sbtassembly.AssemblyPlugin)
@@ -90,24 +99,35 @@ lazy val pushUploader = (project in file("push-uploader"))
     commonSettings,
     libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
     libraryDependencies ++= commonLibs ++ jvmLibs,
-    assemblyMergeStrategy in assembly := {
+    assembly / assemblyMergeStrategy  := {
       case x if x.contains("io.netty.versions.properties") => MergeStrategy.discard
       case x =>
-        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)
     }
   )
+
+lazy val fitConvert = (project in file("fit-convert"))
+  .dependsOn(core)
+  .settings(
+    name := "FitConvert",
+    commonSettings,
+    libraryDependencies ++= commonLibs ++ jvmLibs,
+    libraryDependencies += "commons-io" % "commons-io" % "2.1",
+    libraryDependencies += "com.opencsv" % "opencsv" % "5.5"
+  )
+
 
 def inDevMode = true || sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
 
 def addJavaScriptToServerResources(): Def.SettingsDefinition = {
   val optJs = if (inDevMode) fastOptJS else fullOptJS
-  (resources in Compile) += (optJs in(frontend, Compile)).value.data
+  (Compile / resources) += (frontend / Compile / optJs).value.data
 }
 
 def addJSDependenciesToServerResources(): Def.SettingsDefinition = {
   val depJs = if (inDevMode) packageJSDependencies else packageMinifiedJSDependencies
-  (resources in Compile) += (depJs in(frontend, Compile)).value
+  (Compile / resources) += (frontend / Compile / depJs).value
 }
 
 lazy val frontend = project.settings(
@@ -119,14 +139,14 @@ lazy val frontend = project.settings(
 
 lazy val backend = (project in file("backend"))
   .disablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared, sharedJs_JVM)
+  .dependsOn(core)
   .settings(
 
     addJavaScriptToServerResources(),
     addJSDependenciesToServerResources(),
 
-    resourceGenerators in Compile += Def.task {
-      val file = (resourceManaged in Compile).value / "config.properties"
+    Compile / resourceGenerators += Def.task {
+      val file = (Compile / resourceManaged).value / "config.properties"
       val contents = s"devMode=${inDevMode}"
       IO.write(file, contents)
       Seq(file)
@@ -143,10 +163,6 @@ lazy val backend = (project in file("backend"))
 
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
       "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-
-      "com.fasterxml" % "aalto-xml" % "1.0.0",
-
-      //"org.webjars" % "webjars-locator-core" % "0.39",
 
       "fr.opensagres.xdocreport.appengine-awt" % "appengine-awt" % "1.0.0",
 

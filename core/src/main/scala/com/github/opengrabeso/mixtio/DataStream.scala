@@ -2,11 +2,7 @@ package com.github.opengrabeso.mixtio
 
 import java.time.temporal.ChronoUnit
 
-import com.google.appengine.api.ThreadManager
-import mapbox.GetElevation
 import java.time.{ZonedDateTime, Duration => JDuration}
-
-import com.github.opengrabeso.mixtio.requests.BackgroundTasks
 
 import scala.collection.immutable.SortedMap
 import common.Util._
@@ -14,8 +10,6 @@ import common.model._
 import shared.Timing
 
 import scala.annotation.tailrec
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 
 @SerialVersionUID(12L)
 case class GPSPoint(latitude: Double, longitude: Double, elevation: Option[Int])(val in_accuracy: Option[Double]) {
@@ -103,6 +97,24 @@ object DataStream {
   }
 
   type EventTimes = List[ZonedDateTime]
+
+  type GPSPointWithTime = (ZonedDateTime, GPSPoint)
+
+  type DistStream  = SortedMap[ZonedDateTime, Double]
+  type DistList  = List[(ZonedDateTime, Double)]
+
+  object FilterSettings {
+    def none = new FilterSettings(0, 0, "None")
+    def weak = new FilterSettings(5, 3, "Weak")
+    def normal = new FilterSettings(9, 5, "Normal")
+    def strong = new FilterSettings(13, 7, "Strong")
+    val list = IndexedSeq(none, weak, normal, strong)
+    def names = list.map(_.name).zipWithIndex
+
+    def select(i: Int): FilterSettings = if (i<0) list(0) else if (i>=list.size) list.last else list(i)
+  }
+  class FilterSettings(val slidingWindow: Int, val useMiddle: Int, val name: String)
+
 }
 
 import DataStream._
@@ -173,6 +185,7 @@ sealed abstract class DataStream extends Serializable {
   }
 
   def samplesAt(times: List[ZonedDateTime]): DataStream = DataStream.samplesAt(this, times)
+
   def optimize(eventTimes: EventTimes): DataStream
 
   def toLog = s"$typeToLog: ${startTime.map(_.toLog).getOrElse("")} .. ${endTime.map(_.toLogShort).getOrElse("")}"
@@ -204,23 +217,6 @@ object DataStreamGPS {
     val maxSpeed = 0.2
     d <= (maxSpeed * duration min 100)
   }
-
-  type GPSPointWithTime = (ZonedDateTime, GPSPoint)
-
-  private type DistStream  = SortedMap[ZonedDateTime, Double]
-  private type DistList  = List[(ZonedDateTime, Double)]
-
-  object FilterSettings {
-    def none = new FilterSettings(0, 0, "None")
-    def weak = new FilterSettings(5, 3, "Weak")
-    def normal = new FilterSettings(9, 5, "Normal")
-    def strong = new FilterSettings(13, 7, "Strong")
-    val list = IndexedSeq(none, weak, normal, strong)
-    def names = list.map(_.name).zipWithIndex
-
-    def select(i: Int): FilterSettings = if (i<0) list(0) else if (i>=list.size) list.last else list(i)
-  }
-  class FilterSettings(val slidingWindow: Int, val useMiddle: Int, val name: String)
 
   /**
     * Experiments have shown smoothingInterval = 60 gives most accurate results.
@@ -465,8 +461,7 @@ class DataStreamGPS(override val stream: DataStreamGPS.GPSStream) extends DataSt
     distStreamToCSV(smooth)
   }
 
-
-  override def optimize(eventTimes: EventTimes) = {
+  def optimize(eventTimes: EventTimes): DataStreamGPS = {
 
     case class EventsCursor(eventsBefore: List[ZonedDateTime], eventsAfter: List[ZonedDateTime]) {
       def advance(t: ZonedDateTime): EventsCursor = {
@@ -529,47 +524,6 @@ class DataStreamGPS(override val stream: DataStreamGPS.GPSStream) extends DataSt
     pickData(SortedMap(optimized:_*))
   }
 
-  def filterElevation(filter: Int) = {
-    val timing = Timing.start()
-    val cache = new GetElevation.TileCache
-    // TODO: handle 50 threads per request limitation gracefully
-    implicit val threadFactor = BackgroundTasks.currentRequestThreadFactory
-    val elevationFutures = stream.toVector.flatMap {
-      case (k, v) =>
-        v.elevation.map(elev => (k, elev, cache.possibleRange(v.longitude, v.latitude)))
-    }
-
-    val elevationStream = elevationFutures.map {
-      case (k, elev, rangeFuture) =>
-        val range = Await.result(rangeFuture, Duration.Inf)
-        (k, range._1 max elev min range._2)
-    }
-
-    if (elevationStream.nonEmpty) {
-      timing.logTime("All images read")
-    }
-
-    val settings = FilterSettings.select(filter)
-    import settings._
-    val midIndex = slidingWindow / 2
-    val filteredElevationData = slidingRepeatHeadTail(elevationStream, slidingWindow){ s =>
-      val mid = s(midIndex)
-      val values = s.map(_._2)
-      // remove extremes, smooth the rest
-      val extremes = values.sorted
-      val removeFromEachSide = (slidingWindow - useMiddle) / 2
-      val withoutExtremes = extremes.slice(removeFromEachSide, removeFromEachSide + useMiddle)
-      val avg = if (withoutExtremes.nonEmpty) withoutExtremes.sum / withoutExtremes.size else 0
-      mid._1 -> avg
-    }.toSeq
-    val filteredElevationStream = filteredElevationData.toMap
-    val filteredGpsStream = stream.map { case (k, v) =>
-      k -> v.copy(elevation = filteredElevationStream.get(k).map(_.toInt))(v.in_accuracy)
-    }
-    timing.logTime("filterElevation")
-    pickData(filteredGpsStream)
-  }
-
 }
 
 @SerialVersionUID(10L)
@@ -595,6 +549,7 @@ class DataStreamHR(stream: SortedMap[ZonedDateTime, Int]) extends DataStreamAttr
   override def dropAlmostEmpty: DataStreamHR = this // TODO: drop
 
   override def optimize(eventTimes: EventTimes): DataStreamHR = DataStream.optimize(this)
+
   def removeAboveMax(maxHR: Int): DataStreamHR = {
 
     val validatedHR = stream.map { case (key, hr) =>

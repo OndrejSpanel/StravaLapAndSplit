@@ -3,7 +3,6 @@ package com.github.opengrabeso.mixtio
 import java.time.temporal.ChronoUnit
 import com.garmin.fit
 import com.garmin.fit.{Event => FitEvent, _}
-import Main.ActivityEvents
 import common.Util._
 import common.model._
 
@@ -166,6 +165,7 @@ object FitExport {
       fileIdMesg.setManufacturer(Manufacturer.SUUNTO)
       fileIdMesg.setType(fit.File.ACTIVITY)
       fileIdMesg.setProduct(1) // TODO: detect for real
+      fileIdMesg.setTimeCreated(toTimestamp(timeBeg))
       encoder.onMesg(fileIdMesg)
     }
 
@@ -180,8 +180,8 @@ object FitExport {
 
     val (sport, subsport) = events.id.sportName match {
       // TODO: handle other sports
-      case Event.Sport.Run => (Sport.RUNNING, SubSport.STREET)
-      case Event.Sport.Ride => (Sport.CYCLING, SubSport.ROAD)
+      case Event.Sport.Run => (Sport.RUNNING, SubSport.GENERIC)
+      case Event.Sport.Ride => (Sport.CYCLING, SubSport.GENERIC)
       case Event.Sport.Swim => (Sport.SWIMMING, SubSport.GENERIC)
       case Event.Sport.Hike => (Sport.HIKING, SubSport.GENERIC)
       case Event.Sport.Walk => (Sport.WALKING, SubSport.GENERIC)

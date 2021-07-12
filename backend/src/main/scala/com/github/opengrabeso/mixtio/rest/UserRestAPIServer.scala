@@ -4,10 +4,11 @@ package rest
 import java.io.ByteArrayInputStream
 import java.time.{ZoneId, ZonedDateTime}
 
-import com.github.opengrabeso.mixtio.Main.{ActivityEvents, namespace}
-import com.github.opengrabeso.mixtio.requests.Upload.storeFromStream
-import com.google.api.client.http.HttpResponseException
+import Main.namespace
+import Optimize._
+import requests.Upload.storeFromStream
 import requests.{UploadDone, UploadDuplicate, UploadError, UploadInProgress}
+import com.google.api.client.http.HttpResponseException
 import shared.Timing
 import common.model._
 import io.udash.rest.raw.{HttpBody, HttpErrorException}
@@ -70,7 +71,7 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
 
     val activities = for {
       id <- ids
-      events <- Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.stage, id.filename, userAuth.userId))
+      events <- Storage.load2nd[ActivityEvents](Storage.getFullName(Main.namespace.stage, id.filename, userAuth.userId))
     } yield {
       events
     }
@@ -98,7 +99,7 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
   }
 
   def processOne[T](id: FileId, events: Seq[(String, Int)], time: Int)(process: (Int, ActivityEvents) => T): Option[T] = {
-    Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId)).flatMap { activity =>
+    Storage.load2nd[ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId)).flatMap { activity =>
       val editedEvents = events.collect {
         case (ei, time) if (ei.startsWith("split")) =>
           val sportName = ei.substring("split".length)
@@ -244,7 +245,7 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
 
   def routeData(id: FileId) = syncResponse {
     // TODO: consider some activity caching on the frontend/backend side
-    Storage.load2nd[Main.ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId))
+    Storage.load2nd[ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId))
       .map(_.routeData).getOrElse(Nil)
 
   }

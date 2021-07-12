@@ -13,10 +13,11 @@ import scala.collection.mutable.ArrayBuffer
 object SAXParser {
 
   trait Events {
-    def open(path: Seq[String])
-    def read(path: Seq[String], text: String)
+    def open(path: Seq[String]): Unit
+    def read(path: Seq[String], text: String): Unit
+    def readAttribute(path: Seq[String], name: String, value: String): Unit
     def wantText: Boolean
-    def close(path: Seq[String])
+    def close(path: Seq[String]): Unit
   }
 
   // reverse :: associativity so that paths can be written in a natural order
@@ -40,6 +41,11 @@ object SAXParser {
         path = localName :: path
         elementStack += new StringBuilder()
         handler.open(path)
+        for (i <- 0 until attributes.getLength) {
+          val name = attributes.getLocalName(i)
+          val value = attributes.getValue(i)
+          handler.readAttribute(path, name, value)
+        }
       }
 
       override def endElement(uri: String, localName: String, qName: String) = {
@@ -68,34 +74,53 @@ object SAXParser {
 
 
   trait TagHandler {
-    def open() = ()
-    def text(s: String) = ()
-    def close() = ()
-    def wantText = false
+    def open(): Unit = ()
+    def text(s: String): Unit = ()
+    def close(): Unit = ()
+    def wantText: Boolean = false
+  }
+
+  trait AttributeHandler {
+    def text(s: String): Unit = ()
   }
 
   object root {
-    def apply(inner: XMLTag*): XMLTag = new XMLTag("--root--", inner:_*)
+    def apply(inner: XMLTag*): XMLTag = new XMLTag("--root--", inner:_*)()
   }
-  class XMLTag(val name: String, val inner: XMLTag*) extends TagHandler {
+  class XMLTag(val name: String, val inner: XMLTag*)(val attributes: XMLAttribute*) extends TagHandler {
 
     val tagMap: Map[String, XMLTag] = inner.map(tag => tag.name -> tag)(collection.breakOut)
 
     def findInner(tag: String): Option[XMLTag] = tagMap.get(tag)
+
+    def addAttributes(newAttributes: Seq[XMLAttribute]) = new XMLTag(name, inner:_*)(attributes ++ newAttributes:_*)
   }
-  private class XMLTagWithOpen(name: String, openFunc: => Unit, inner: XMLTag*) extends XMLTag(name, inner:_*) {
+  private class XMLTagWithOpen(name: String, openFunc: => Unit, inner: XMLTag*)(attributes: XMLAttribute*) extends XMLTag(name, inner:_*)(attributes:_*) {
     override def open() = openFunc
+
+    override def addAttributes(newAttributes: Seq[XMLAttribute]) = new XMLTagWithOpen(name, openFunc, inner:_*)(attributes ++ newAttributes:_*)
   }
 
-  class ProcessText(name: String, process: String => Unit) extends XMLTag(name) {
+  class XMLAttribute(val name: String) extends AttributeHandler
+
+  class ProcessText(name: String, process: String => Unit) extends XMLTag(name)() {
     override def text(s: String) = process(s)
     override def wantText = true
   }
 
+  class ProcessAttribute(name: String, process: String => Unit) extends XMLAttribute(name) {
+    override def text(s: String) = process(s)
+  }
+
   implicit class DSL(name: String) {
+    def attr(process: String => Unit): ProcessAttribute = new ProcessAttribute(name, process)
     def text(process: String => Unit): ProcessText = new ProcessText(name, process)
-    def tag(inner: XMLTag*): XMLTag = new XMLTag(name, inner:_*)
-    def tagWithOpen(open: => Unit, inner: XMLTag*): XMLTag = new XMLTagWithOpen(name, open, inner:_*)
+    def tag(inner: XMLTag*): XMLTag = new XMLTag(name, inner:_*)()
+    def tagWithOpen(open: => Unit, inner: XMLTag*): XMLTag = new XMLTagWithOpen(name, open, inner:_*)()
+  }
+
+  implicit class AddAttributes(tag: XMLTag) {
+    def attrs(attributes: XMLAttribute*) = tag.addAttributes(attributes)
   }
 
 
@@ -122,6 +147,17 @@ object SAXParser {
         inTags.head.text(text)
       }
     }
+
+    def readAttribute(path: Seq[String], name: String, value: String): Unit = {
+      if (known.head) {
+        val as = inTags.head.attributes
+        // could be optimized by using Map for attributes
+        for (a <- as if a.name == name) {
+          a.text(value)
+        }
+      }
+    }
+
 
     def wantText = known.head && inTags.head.wantText
 
