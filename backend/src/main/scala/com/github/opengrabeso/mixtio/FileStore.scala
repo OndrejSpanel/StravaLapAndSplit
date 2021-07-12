@@ -23,6 +23,9 @@ trait FileStore {
       Some(maxSessionAge)
     } else if (name.contains("/" + namespace.upload(""))) {
       Some(maxSessionAge)
+    } else if (name.contains("/" + namespace.session(""))) {
+      // clean session auth storage (like mixtio.appspot.com/xxxx/session/full-session-1572538315230/auth)
+      Some(maxSessionAge)
     } else {
       None
     }
