@@ -34,7 +34,13 @@ object BackgroundTasks {
       val t = q.poll()
       t match {
         case Some(task) =>
-          task.run()
+          try {
+            task.run()
+          } catch {
+            case ex: Exception =>
+              println("Exception while processing a task")
+              ex.printStackTrace()
+          }
           run()
         case None =>
       }
