@@ -250,8 +250,6 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
 
   }
 
-  def push(sessionId: String, localTimeZone: String): PushRestAPI = new PushRestAPIServer(this, sessionId, localTimeZone)
-
   def upload(files: HttpBody) = syncResponse {
 
     files match {

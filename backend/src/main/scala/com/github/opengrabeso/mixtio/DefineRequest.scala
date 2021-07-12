@@ -186,8 +186,6 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     }
   }
 
-  def showSuuntoUploadInstructions = true
-
   def loginPage(request: Request, resp: Response, afterLogin: String, afterLoginParams: Option[String]): NodeSeq = {
     println("Login page, delete authCode cookie")
     resp.cookie("authCode", "", 0) // delete the cookie
@@ -205,36 +203,15 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
         val action = uri + "client_id=" + clientId + "&response_type=code&redirect_uri=" + afterLogin + state + "&scope=read,activity:read_all,activity:write&approval_prompt=force"
         <h3>Work in progress, use at your own risk.</h3>
           <p>
-            Automated uploading and processing of Suunto data to Strava
-          </p> ++
-          {
-            if (showSuuntoUploadInstructions) {
-              <h4>Suunto Upload</h4>
-                <p>
-                If you want to upload Suunto files, start the {appName} Start application
-                which will open a new web page with the upload progress.
-              </p>
-              <p>
-                The application can be downloaded from
-                <a href={s"https://github.com/OndrejSpanel/${gitHubName}/releases"}>GitHub {gitHubName} Releases page</a>
-                .
-              </p>
-            } else NodeSeq.Empty
-          } ++
-          <h4>Working</h4>
-          <ul>
-            <li>Merges Quest and GPS Track Pod data</li>
-            <li>Splits GPS data as needed between Quest activities</li>
-            <li>Corrects quest watch time inaccuracies</li>
-          </ul>
-          <h4>Work in progress</h4>
+            Strava activity editing (including uploading, merging and splitting)
+          </p>
           <ul>
             <li>Merge activities</li>
             <li>Edit lap information</li>
             <li>Show activity map</li>
             <li>Split activities</li>
           </ul> :+ {
-          if (!clientId.isEmpty) {
+          if (clientId.nonEmpty) {
             <a href={action}>
               <img src="static/ConnectWithStrava.png" alt="Connect with STRAVA"></img>
             </a>
