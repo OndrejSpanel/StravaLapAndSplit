@@ -65,39 +65,6 @@ class UserRestAPIServer(val userAuth: Main.StravaAuthResult) extends UserRestAPI
     }
   }
 
-  /* Send activities from staging area to Strava, directly, with no editing, merge smart
-  * */
-  def sendActivitiesToStrava(ids: Seq[FileId], sessionId: String) = syncResponse {
-
-    val activities = for {
-      id <- ids
-      events <- Storage.load2nd[ActivityEvents](Storage.getFullName(Main.namespace.stage, id.filename, userAuth.userId))
-    } yield {
-      events
-    }
-
-    // TODO: move mergeAndUpload from requests
-    import com.github.opengrabeso.mixtio.requests.Process
-
-    val merged = Process.mergeForUpload(userAuth, activities)
-
-    if (merged.nonEmpty) {
-      // TODO: DRY with findMatchingStrava
-      val matching = activities.flatMap { a =>
-        merged.filter(_.id.isMatching(a.id)).map(a.id.id -> _.id.id)
-      }
-
-      val mergedUploadIds = Process.uploadMultiple(merged)(userAuth, sessionId)
-      assert(mergedUploadIds.size == merged.size)
-
-      val mergedToUploads = (merged.map(_.id.id) zip mergedUploadIds).toMap
-
-      matching.map { case (source, matchingMerged) =>
-        source -> mergedToUploads(matchingMerged)
-      }
-    }  else Nil
-  }
-
   def processOne[T](id: FileId, events: Seq[(String, Int)], time: Int)(process: (Int, ActivityEvents) => T): Option[T] = {
     Storage.load2nd[ActivityEvents](Storage.getFullName(Main.namespace.edit, id.filename, userAuth.userId)).flatMap { activity =>
       val editedEvents = events.collect {

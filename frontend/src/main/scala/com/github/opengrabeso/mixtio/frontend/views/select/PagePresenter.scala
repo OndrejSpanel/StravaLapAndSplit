@@ -96,10 +96,6 @@ class PagePresenter(
     }
   }
 
-  def sendSelectedToStrava(): Unit = {
-    uploads.startUpload(userService.api.get, selectedIds)
-  }
-
   def uploadNewActivity() = {
     val selectedFiles = model.subSeq(_.uploads.selectedFiles).get
 
@@ -165,34 +161,6 @@ class PagePresenter(
 
   def gotoSettings(): Unit = {
     application.goTo(SettingsPageState)
-  }
-
-  object uploads extends PendingUploads[FileId] {
-    override def sendToStrava(fileIds: Seq[FileId]): Future[Seq[(FileId, String)]] = {
-      userService.api.get.sendActivitiesToStrava(fileIds, facade.UdashApp.sessionId)
-    }
-
-    def modifyActivities(fileId: Set[FileId])(modify: ActivityRow => ActivityRow): Unit = {
-      if (fileId.nonEmpty) model.subProp(_.activities).set {
-        model.subProp(_.activities).get.map { a =>
-          if (a.staged.exists(a => fileId.contains(a.id.id))) {
-            modify(a)
-          } else a
-        }
-      }
-    }
-
-    def setStravaFile(fileId: Set[FileId], stravaId: Option[FileId.StravaId]): Unit = {
-      modifyActivities(fileId) { a =>
-        a.copy(strava = stravaId.flatMap(s => a.staged.map(i => i.copy(id = i.id.copy(id = s)))))
-      }
-    }
-
-    def setUploadProgressFile(fileId: Set[FileId], uploading: Boolean, uploadState: String): Unit = {
-      modifyActivities(fileId) { a =>
-        a.copy(uploading = uploading, uploadState = uploadState)
-      }
-    }
   }
 
 }

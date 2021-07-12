@@ -31,7 +31,6 @@ class PageView(
     model.subProp(_.activities).transform(!_.exists(_.selected))
   }
 
-  private val sendToStrava = button(nothingSelected, "Send to Strava".toProperty)
   private val deleteActivity = button(nothingSelected, s"Delete from $appName".toProperty)
   private val mergeAndEdit = button(
     nothingSelected,
@@ -43,7 +42,6 @@ class PageView(
 
   buttonOnClick(settingsButton) {presenter.gotoSettings()}
   buttonOnClick(uncheckAll)(presenter.unselectAll())
-  buttonOnClick(sendToStrava) {presenter.sendSelectedToStrava()}
   buttonOnClick(mergeAndEdit) {presenter.mergeAndEdit()}
   buttonOnClick(deleteActivity) {presenter.deleteSelected()}
   buttonOnClick(uploadButton) {presenter.uploadNewActivity()}
@@ -173,7 +171,6 @@ class PageView(
         )
       ),
       div(
-        sendToStrava.render,
         mergeAndEdit.render,
         deleteActivity.render,
         uncheckAll.render
