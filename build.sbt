@@ -91,22 +91,6 @@ lazy val core = (project in file("core"))
     libraryDependencies ++= commonLibs
   )
 
-lazy val pushUploader = (project in file("push-uploader"))
-  .enablePlugins(sbtassembly.AssemblyPlugin)
-  .dependsOn(shared, sharedJs_JVM)
-  .settings(
-    name := "MixtioStart",
-    commonSettings,
-    libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.9",
-    libraryDependencies ++= commonLibs ++ jvmLibs,
-    assembly / assemblyMergeStrategy  := {
-      case x if x.contains("io.netty.versions.properties") => MergeStrategy.discard
-      case x =>
-        val oldStrategy = (assembly / assemblyMergeStrategy).value
-        oldStrategy(x)
-    }
-  )
-
 lazy val fitConvert = (project in file("fit-convert"))
   .dependsOn(core)
   .settings(
