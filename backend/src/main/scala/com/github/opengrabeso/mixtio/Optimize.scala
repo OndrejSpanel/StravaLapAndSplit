@@ -206,7 +206,7 @@ object Optimize {
         case attr =>
           attr
       }
-      if (attributes.exists(_.attribName == "temp")) {
+      if (attributes.exists(_.attribName == "temp") && (id.sportName == SportId.Swim || !settings.darkSky) ) {
         copy(attributes = hrFiltered)
       } else {
         val temperaturePos = weather.GetTemperature.pickPositions(elevFiltered.gps)
