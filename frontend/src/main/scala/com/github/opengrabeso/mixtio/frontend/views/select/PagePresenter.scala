@@ -40,17 +40,18 @@ class PagePresenter(
     for (UserContextService.LoadedActivities(stagedActivities, allStravaActivities) <- load) {
       println(s"loadActivities loaded staged: ${stagedActivities.size}, Strava: ${allStravaActivities.size}")
 
-      def filterListed(activity: ActivityHeader, strava: Option[ActivityHeader]) = showAll || strava.isEmpty
+      val (stravaActivities, oldStravaActivities) = allStravaActivities.splitAt(UserContextService.normalCount)
+
+      // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
+      val notBefore = if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 3
+      else stravaActivities.map(a => a.id.startTime).min minusMonths 1
+
+      def filterListed(activity: ActivityHeader, strava: Option[ActivityHeader]) = showAll || strava.isEmpty || strava.exists(_.id.startTime >= notBefore)
       def findMatchingStrava(ids: Seq[ActivityHeader], strava: Seq[ActivityHeader]): Seq[(ActivityHeader, Option[ActivityHeader])] = {
         ids.map( a => a -> strava.find(_.id isMatching a.id))
       }
 
-      val (stravaActivities, oldStravaActivities) = allStravaActivities.splitAt(UserContextService.normalCount)
       val neverBefore = alwaysIgnoreBefore(stravaActivities.map(_.id))
-
-      // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
-      val notBefore = if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 3
-      else stravaActivities.map(a => a.id.startTime).min
 
       // never display any activity which should be cleaned by UserCleanup
       val oldStagedActivities = stagedActivities.filter(_.id.startTime < neverBefore)
@@ -60,7 +61,9 @@ class PagePresenter(
       val recentToStrava = findMatchingStrava(recentActivities, allStravaActivities).filter((filterListed _).tupled).map(a => (Some(a._1), a._2))
 
       // list Strava activities which have no Mixtio storage counterpart
-      val stravaOnly = if (showAll) allStravaActivities.filterNot(a => recentActivities.exists(_.id.isMatchingExactly(a.id))).map(a => None -> Some(a)) else Nil
+      val stravaOnlyAll = allStravaActivities.filterNot(a => recentActivities.exists(_.id.isMatchingExactly(a.id))).map(a => None -> Some(a))
+
+      val stravaOnly = if (showAll) stravaOnlyAll else stravaOnlyAll.take(10)
 
       val toShow = (recentToStrava ++ stravaOnly).sortBy(a => a._1.orElse(a._2).get.id.startTime)
       val mostRecentStrava = stravaActivities.headOption.map(_.id.startTime)

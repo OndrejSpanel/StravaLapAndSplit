@@ -25,7 +25,7 @@ object UserContextService {
 
     private def notBeforeByStrava(showAll: Boolean, stravaActivities: Seq[ActivityHeader]): ZonedDateTime = {
       if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 24
-      else stravaActivities.map(a => a.id.startTime).min
+      else stravaActivities.map(a => a.id.startTime).min minusMonths 1
     }
 
     private def doLoadActivities(showAll: Boolean): Future[LoadedActivities] = {
