@@ -34,9 +34,9 @@ object Root {
 
     def login() = {
       val globalUserId = facade.UdashApp.currentUserId.orNull
-      val globalAuthCode = facade.UdashApp.currentAuthCode.orNull
+      val globalAuthToken = facade.UdashApp.currentAuthToken.orNull
       val sessionId = facade.UdashApp.sessionId
-      val ctx = userContextService.login(globalUserId, globalAuthCode, sessionId)
+      val ctx = userContextService.login(globalUserId, globalAuthToken, sessionId)
       userContextService.userName.foreach(_.foreach { name =>
         model.subProp(_.athleteName).set(name)
       })
@@ -54,7 +54,7 @@ object Root {
             model.subProp(_.athleteName).set(null)
             model.subProp(_.userId).set(null)
             facade.UdashApp.currentUserId = scalajs.js.undefined
-            MainJS.deleteCookie("authCode")
+            MainJS.deleteCookie("authToken")
             application.redirectTo("/app")
           case Failure(_) =>
         }

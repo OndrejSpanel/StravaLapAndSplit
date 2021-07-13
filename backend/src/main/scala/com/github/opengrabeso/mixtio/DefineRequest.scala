@@ -1,7 +1,6 @@
 package com.github.opengrabeso.mixtio
 
-import java.net.URLEncoder
-
+import java.net.{URLDecoder, URLEncoder}
 import Main._
 import com.google.api.client.http.HttpResponseException
 import spark.{Request, Response, Session}
@@ -115,18 +114,46 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
   def storeAuth(session: Session, auth: StravaAuthResult) = {
     session.attribute("auth", auth)
   }
+  def storeAuthCookies(resp: Response, auth: StravaAuthResult) = {
+    println(s"Store auth cookies session ${auth.sessionId}")
+    val loginAge = 3600 * 24 * 30 // 30 days
+    resp.cookie("authToken", auth.token, loginAge)
+    resp.cookie("authRefreshToken", auth.refreshToken, loginAge)
+    resp.cookie("authRefreshExpire", auth.refreshExpire.toString, loginAge)
+    resp.cookie("authUserName", URLEncoder.encode(auth.name, "UTF-8"), loginAge)
+    resp.cookie("sessionId", auth.sessionId) // session cookie - no expiry
+  }
+
   def performAuth(code: String, resp: Response, session: Session): Try[StravaAuthResult] = {
     val authResult = Try(Main.stravaAuth(code))
     authResult.foreach { auth =>
       println("Login done, create authCode cookie")
-      resp.cookie("authCode", code, 3600 * 24 * 30) // 30 days
-      resp.cookie("sessionId", auth.sessionId) // session cookie - no expiry
       storeAuth(session, auth)
+      storeAuthCookies(resp, auth)
     }
     if (authResult.isFailure) {
       println("Strava authentication failed")
     }
     authResult
+  }
+
+  def loadAuthFromCookies(r: Request): Option[StravaAuthResult] = {
+    val token = r.cookie("authToken")
+    val refresh = r.cookie("authRefreshToken")
+    val refreshExpire = r.cookie("authRefreshExpire")
+    val userName = r.cookie("authUserName")
+    if (token != null && refresh != null && refreshExpire != null && userName != null) {
+      Some {
+        StravaAuthResult(
+          token, refresh, refreshExpire.toLong,
+          mapboxToken = secret.mapboxToken, id = secret.appId,
+          name = URLDecoder.decode(userName, "UTF-8"),
+          sessionId = "full-session-" + System.currentTimeMillis().toString
+        )
+      }
+    } else {
+      None
+    }
   }
 
   def withAuth(req: Request, resp: Response)(body: StravaAuthResult => NodeSeq): NodeSeq = {
@@ -136,10 +163,11 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
       val codePar = Option(req.queryParams("code"))
       val statePar = Option(req.queryParams("state")).filter(_.nonEmpty)
       codePar.fold {
-        val code = Option(req.cookie("authCode"))
-        code.flatMap { code =>
-          println("withAuth performAuth")
-          performAuth(code, resp, session).toOption.map(body)
+        val auth = loadAuthFromCookies(req).map(stravaAuthRefresh)
+        auth.map { a =>
+          storeAuth(session, a)
+          storeAuthCookies(resp, a)
+          body(a)
         }.getOrElse {
           println("withAuth loginPage")
           loginPage(req, resp, req.url, Option(req.queryString))
@@ -162,9 +190,8 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
         val res = Try {
           println("withAuth codePar stravaAuthRefresh")
           val newAuth = stravaAuthRefresh(auth)
-          resp.cookie("authCode", newAuth.code, 3600 * 24 * 30) // 30 days
-          resp.cookie("sessionId", auth.sessionId) // session cookie - no expiry
           storeAuth(session, newAuth)
+          storeAuthCookies(resp, newAuth)
           body(newAuth)
         }
         val resRecovered = res.recover {
@@ -187,8 +214,18 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
   }
 
   def loginPage(request: Request, resp: Response, afterLogin: String, afterLoginParams: Option[String]): NodeSeq = {
-    println("Login page, delete authCode cookie")
-    resp.cookie("authCode", "", 0) // delete the cookie
+    if (request.cookie("authToken") != null) {
+      println("Login page, delete authCode cookie")
+    } else {
+      println("Login page, no authToken cookie")
+    }
+
+    resp.removeCookie("authToken")
+    resp.removeCookie("authRefreshToken")
+    resp.removeCookie("authRefreshExpire")
+    resp.removeCookie("authUserName")
+
+    resp.removeCookie("authCode") // obsolete, but we delete it anyway
     <html>
       <head>
         {headPrefix}

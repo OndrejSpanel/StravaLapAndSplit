@@ -19,7 +19,7 @@ object UdashApp  extends DefineRequest("/app") {
         <link href='https://api.mapbox.com/mapbox-gl-js/v1.0.0/mapbox-gl.css' rel='stylesheet' />
         <script> // no secrets should be inserted here, this is readable by any end-user
           var currentUserId = '{auth.userId}';
-          var currentAuthCode = getCookie('authCode');
+          var currentAuthToken = getCookie('authToken');
           var sessionId = `{auth.sessionId}`; // time when the session was created on the server
           var mapBoxToken = `{auth.mapboxToken}`;
           appMain()

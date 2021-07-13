@@ -28,37 +28,20 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
     auth
   }
 
-  private def createUploadSession(userId: String, authCode: String) = {
-    val sessionId = "limited-session-" + System.currentTimeMillis().toString
-    val auth = StravaAuthResult(authCode, "", "", 0, "", userId, "", sessionId)
-    createUser(auth)
-    auth.sessionId
-
-  }
-  def uploadSession(userId: String, authCode: String, version: String) = syncResponse {
-    if (version != RestAPI.apiVersion) {
-      throw HttpErrorException(403, s"Client version $version, required: ${RestAPI.apiVersion}")
-    } else {
-      createUploadSession(userId, authCode)
-    }
-  }
-
-  def reportUploadSessionError(userId: String, authCode: String) = syncResponse {
-    createUploadSession(userId, authCode)
-  }
-
-  def userAPI(userId: String, authCode: String, session: String): UserRestAPI = {
+  def userAPI(userId: String, authToken: String, session: String): UserRestAPI = {
     val logging = false
     if (logging) println(s"Try userAPI for user $userId, session $session")
     val auth = Storage.load[StravaAuthResult](sessionFileName(session, userId, "auth"))
     auth.map { a =>
-      if (a.code == authCode) {
+      if (a.token == authToken) {
         if (logging) println(s"Get userAPI for user $userId, session $session, auth.session ${a.sessionId}")
         new UserRestAPIServer(a)
       } else {
-        throw HttpErrorException(401, "Provided auth code '$authCode' does not match the one stored on the server")
+        if (logging) println("Provided auth token does not match")
+        throw HttpErrorException(401, s"Provided auth token '$authToken' does not match the one stored on the server")
       }
     }.getOrElse {
+      if (logging) println("User ID not authenticated")
       throw HttpErrorException(401, "User ID not authenticated. Page reload may be necessary.")
     }
   }

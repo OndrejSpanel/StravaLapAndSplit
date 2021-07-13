@@ -58,7 +58,7 @@ object Main extends common.Formatting {
     prop.getProperty("devMode").toBoolean
   }
 
-  case class StravaAuthResult(code: String, token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String, sessionId: String) {
+  case class StravaAuthResult(token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String, sessionId: String) {
     // userId used for serialization, needs to be stable, cannot be created from a token
     lazy val userId: String = id
   }
@@ -76,7 +76,13 @@ object Main extends common.Formatting {
     val content = new JsonHttpContent(new JacksonFactory(), json)
 
     val request = requestFactory.buildPostRequest(new GenericUrl("https://www.strava.com/oauth/token"), content)
-    val response = request.execute() // TODO: async?
+    val response = try {
+      request.execute() // TODO: async?
+    } catch {
+      case ex: Exception =>
+        println(s"authRequest failed: $ex")
+        throw ex
+    }
 
     jsonMapper.readTree(response.getContent)
   }
@@ -89,6 +95,7 @@ object Main extends common.Formatting {
     json.put("code", code)
     json.put("grant_type", "authorization_code")
 
+    println(s"stravaAuth ${json.asScala}")
     val responseJson = authRequest(json)
 
     val token = responseJson.path("access_token").textValue
@@ -100,7 +107,7 @@ object Main extends common.Formatting {
     val name = athleteJson.path("firstname").textValue + " " + athleteJson.path("lastname").textValue
 
     val sessionId = "full-session-" + System.currentTimeMillis().toString
-    val auth = StravaAuthResult(code, token, refreshToken, refreshExpire, mapboxToken, id, name, sessionId)
+    val auth = StravaAuthResult(token, refreshToken, refreshExpire, mapboxToken, id, name, sessionId)
     rest.RestAPIServer.createUser(auth)
     auth
   }
@@ -127,6 +134,7 @@ object Main extends common.Formatting {
       rest.RestAPIServer.createUser(auth)
       auth
     } else {
+      rest.RestAPIServer.createUser(previous)
       previous
     }
   }
