@@ -357,8 +357,14 @@ object Main extends common.Formatting {
       }
     }
 
+    // recompute start / end times based on the real data (Strava sometimes stores duration too short)
+    val startTimes = Seq(actId.startTime) ++ StravaActivityStreams.latlng.stream.headOption.map(_._1) ++ StravaActivityStreams.attributes.flatMap(_.stream.headOption.map(_._1))
+    val endTimes = Seq(actId.endTime) ++ StravaActivityStreams.latlng.stream.lastOption.map(_._1) ++ StravaActivityStreams.attributes.flatMap(_.stream.lastOption.map(_._1))
 
-    ActivityEvents.processActivityStream(actId, StravaActivityStreams, laps, segments)
+    val realStartTime = startTimes.min
+    val realEndTime = endTimes.max
+
+    ActivityEvents.processActivityStream(actId.copy(startTime = realStartTime, endTime = realEndTime), StravaActivityStreams, laps, segments)
 
   }
 
