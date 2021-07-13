@@ -12,9 +12,9 @@ import scala.util.control.Breaks.{break, breakable}
 object ActivityEvents {
   def mergeAttributes(thisAttributes: Seq[DataStreamAttrib], thatAttributes: Seq[DataStreamAttrib]): Seq[DataStreamAttrib] = {
     val mergedAttr = thisAttributes.map { a =>
-      val aThat = thatAttributes.find(_.streamType == a.streamType)
+      val aThat = thatAttributes.find(t => t.streamType == a.streamType && t.attribName == a.attribName)
       val aStream = aThat.map(a.stream ++ _.stream).getOrElse(a.stream)
-      a.pickData(aStream.asInstanceOf[a.DataMap])
+      a.pickData(aStream)
     }
     val notMergedFromThat = thatAttributes.find(ta => !thisAttributes.exists(_.streamType == ta.streamType))
     mergedAttr ++ notMergedFromThat
