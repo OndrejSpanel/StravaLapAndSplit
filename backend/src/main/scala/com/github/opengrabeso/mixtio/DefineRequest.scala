@@ -121,6 +121,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     resp.cookie("authRefreshToken", auth.refreshToken, loginAge)
     resp.cookie("authRefreshExpire", auth.refreshExpire.toString, loginAge)
     resp.cookie("authUserName", URLEncoder.encode(auth.name, "UTF-8"), loginAge)
+    resp.cookie("authUserId", auth.userId, loginAge)
     resp.cookie("sessionId", auth.sessionId) // session cookie - no expiry
   }
 
@@ -141,12 +142,13 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     val token = r.cookie("authToken")
     val refresh = r.cookie("authRefreshToken")
     val refreshExpire = r.cookie("authRefreshExpire")
+    val userId = r.cookie("authUserId")
     val userName = r.cookie("authUserName")
-    if (token != null && refresh != null && refreshExpire != null && userName != null) {
+    if (token != null && refresh != null && refreshExpire != null && userName != null && userId != null) {
       Some {
         StravaAuthResult(
           token, refresh, refreshExpire.toLong,
-          mapboxToken = secret.mapboxToken, id = secret.appId,
+          mapboxToken = secret.mapboxToken, id = userId,
           name = URLDecoder.decode(userName, "UTF-8"),
           sessionId = "full-session-" + System.currentTimeMillis().toString
         )
@@ -224,6 +226,7 @@ abstract class DefineRequest(val handleUri: String, val method: Method = Method.
     resp.removeCookie("authRefreshToken")
     resp.removeCookie("authRefreshExpire")
     resp.removeCookie("authUserName")
+    resp.removeCookie("authUserId")
 
     resp.removeCookie("authCode") // obsolete, but we delete it anyway
     <html>

@@ -8,6 +8,7 @@ object UdashApp  extends DefineRequest("/app") {
   sessionId is a time when the initial session page was rendered on the server. A new page will constitute a new session.
   */
   def html(request: Request, resp: Response) = withAuth(request, resp) { auth =>
+    println(s"Auth $auth")
     <html>
       <head>
         <title>{appName}</title>{headPrefix}
