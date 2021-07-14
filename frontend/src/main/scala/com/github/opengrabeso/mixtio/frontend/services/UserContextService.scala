@@ -32,6 +32,7 @@ object UserContextService {
       println(s"loadActivities showAll=$showAll")
 
       userAPI.lastStravaActivities(normalCount * 2).flatMap { allActivities =>
+        println(s"lastStravaActivities returned ${allActivities.size}")
         val stravaActivities = allActivities.take(normalCount)
         val notBefore = notBeforeByStrava(showAll, stravaActivities)
 

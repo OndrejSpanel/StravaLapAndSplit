@@ -34,46 +34,54 @@ class PagePresenter(
     if (!load.isCompleted) {
       // if not completed immediately, show as pending
       model.subProp(_.loading).set(true)
+      model.subProp(_.error).set(None)
       model.subProp(_.activities).set(Nil)
     }
 
-    for (UserContextService.LoadedActivities(stagedActivities, allStravaActivities) <- load) {
-      println(s"loadActivities loaded staged: ${stagedActivities.size}, Strava: ${allStravaActivities.size}")
+    load.onComplete {
+      case Success(loaded) =>
+        import loaded._
+        val stagedActivities = staged
+        val allStravaActivities = strava
+        println(s"loadActivities loaded staged: ${stagedActivities.size}, Strava: ${allStravaActivities.size}")
 
-      val (stravaActivities, oldStravaActivities) = allStravaActivities.splitAt(UserContextService.normalCount)
+        val (stravaActivities, oldStravaActivities) = allStravaActivities.splitAt(UserContextService.normalCount)
 
-      // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
-      val notBefore = if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 3
-      else stravaActivities.map(a => a.id.startTime).min minusMonths 1
+        // without "withZoneSameInstant" the resulting time contained strange [SYSTEM] zone suffix
+        val notBefore = if (showAll) ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC) minusMonths 3
+        else stravaActivities.map(a => a.id.startTime).min minusMonths 1
 
-      def filterListed(activity: ActivityHeader, strava: Option[ActivityHeader]) = showAll || strava.isEmpty || strava.exists(_.id.startTime >= notBefore)
-      def findMatchingStrava(ids: Seq[ActivityHeader], strava: Seq[ActivityHeader]): Seq[(ActivityHeader, Option[ActivityHeader])] = {
-        ids.map( a => a -> strava.find(_.id isMatching a.id))
-      }
+        def filterListed(activity: ActivityHeader, strava: Option[ActivityHeader]) = showAll || strava.isEmpty || strava.exists(_.id.startTime >= notBefore)
+        def findMatchingStrava(ids: Seq[ActivityHeader], strava: Seq[ActivityHeader]): Seq[(ActivityHeader, Option[ActivityHeader])] = {
+          ids.map( a => a -> strava.find(_.id isMatching a.id))
+        }
 
-      val neverBefore = alwaysIgnoreBefore(stravaActivities.map(_.id))
+        val neverBefore = alwaysIgnoreBefore(stravaActivities.map(_.id))
 
-      // never display any activity which should be cleaned by UserCleanup
-      val oldStagedActivities = stagedActivities.filter(_.id.startTime < neverBefore)
-      val toCleanup = findMatchingStrava(oldStagedActivities, oldStravaActivities).flatMap { case (k,v) => v.map(k -> _)}
-      val recentActivities = (stagedActivities diff toCleanup.map(_._1)).filter(_.id.startTime >= notBefore).sortBy(_.id.startTime)
+        // never display any activity which should be cleaned by UserCleanup
+        val oldStagedActivities = stagedActivities.filter(_.id.startTime < neverBefore)
+        val toCleanup = findMatchingStrava(oldStagedActivities, oldStravaActivities).flatMap { case (k,v) => v.map(k -> _)}
+        val recentActivities = (stagedActivities diff toCleanup.map(_._1)).filter(_.id.startTime >= notBefore).sortBy(_.id.startTime)
 
-      val recentToStrava = findMatchingStrava(recentActivities, allStravaActivities).filter((filterListed _).tupled).map(a => (Some(a._1), a._2))
+        val recentToStrava = findMatchingStrava(recentActivities, allStravaActivities).filter((filterListed _).tupled).map(a => (Some(a._1), a._2))
 
-      // list Strava activities which have no Mixtio storage counterpart
-      val stravaOnlyAll = allStravaActivities.filterNot(a => recentActivities.exists(_.id.isMatchingExactly(a.id))).map(a => None -> Some(a))
+        // list Strava activities which have no Mixtio storage counterpart
+        val stravaOnlyAll = allStravaActivities.filterNot(a => recentActivities.exists(_.id.isMatchingExactly(a.id))).map(a => None -> Some(a))
 
-      val stravaOnly = if (showAll) stravaOnlyAll else stravaOnlyAll.take(10)
+        val stravaOnly = if (showAll) stravaOnlyAll else stravaOnlyAll.take(10)
 
-      val toShow = (recentToStrava ++ stravaOnly).sortBy(a => a._1.orElse(a._2).get.id.startTime)
-      val mostRecentStrava = stravaActivities.headOption.map(_.id.startTime)
+        val toShow = (recentToStrava ++ stravaOnly).sortBy(a => a._1.orElse(a._2).get.id.startTime)
+        val mostRecentStrava = stravaActivities.headOption.map(_.id.startTime)
 
-      model.subProp(_.activities).set(toShow.map { case (act, actStrava) =>
+        model.subProp(_.activities).set(toShow.map { case (act, actStrava) =>
 
-        val ignored = actStrava.isDefined || mostRecentStrava.exists(s => act.exists(s >= _.id.startTime))
-        ActivityRow(act, actStrava, !ignored)
-      })
-      model.subProp(_.loading).set(false)
+          val ignored = actStrava.isDefined || mostRecentStrava.exists(s => act.exists(s >= _.id.startTime))
+          ActivityRow(act, actStrava, !ignored)
+        })
+        model.subProp(_.loading).set(false)
+      case Failure(exception) =>
+        model.subProp(_.error).set(Some(exception))
+        model.subProp(_.loading).set(false)
     }
 
   }
