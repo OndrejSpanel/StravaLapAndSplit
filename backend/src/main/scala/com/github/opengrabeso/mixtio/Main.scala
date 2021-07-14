@@ -59,7 +59,6 @@ object Main extends common.Formatting {
   }
 
   case class StravaAuthResult(token: String, refreshToken: String, refreshExpire: Long, mapboxToken: String, id: String, name: String, sessionId: String) {
-    assert(id != "8138")
     // userId used for serialization, needs to be stable, cannot be created from a token
     lazy val userId: String = id
   }
@@ -96,7 +95,6 @@ object Main extends common.Formatting {
     json.put("code", code)
     json.put("grant_type", "authorization_code")
 
-    println(s"stravaAuth ${json.asScala}")
     val responseJson = authRequest(json)
 
     val token = responseJson.path("access_token").textValue
