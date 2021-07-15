@@ -10,11 +10,11 @@ class StravaRestAPIServer(val auth: Main.StravaAuthResult, val sessionId: String
     UploadResultToStrava(auth, sessionId).execute(key)
   }
 
-  def waitForUpload(key: String, id: Long) = syncResponse {
+  def waitForUpload(pars: (String, Long)) = syncResponse {
     println("StravaRestAPIServer / waitForUpload")
     // check if the upload has finished
     // Strava recommends polling no more than once a second
-    WaitForStravaUpload(auth, sessionId).execute((key, id))
+    WaitForStravaUpload(auth, sessionId).execute(pars)
   }
 
 }
