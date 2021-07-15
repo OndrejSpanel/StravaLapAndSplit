@@ -96,7 +96,7 @@ object BackgroundTasks {
           .setAppEngineHttpRequest(
             AppEngineHttpRequest.newBuilder()
               .setBody(ByteString.copyFrom(builder.toString, Charset.defaultCharset()))
-              .putAllHeaders(Map("Content-Type" -> "").asJava)
+              .putAllHeaders(Map("Content-Type" -> "application/json").asJava)
               .setRelativeUri(task.path)
               .setHttpMethod(HttpMethod.POST)
               .build()
