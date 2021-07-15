@@ -5,11 +5,12 @@ import com.avsystem.commons.JStringBuilder
 import com.avsystem.commons.serialization.GenCodec
 import com.avsystem.commons.serialization.json.JsonStringOutput
 
-import java.util.concurrent.{ConcurrentLinkedQueue, PriorityBlockingQueue, Semaphore, ThreadFactory}
+import java.util.concurrent.{PriorityBlockingQueue, ThreadFactory}
 import com.google.appengine.api.ThreadManager
 import com.google.appengine.api.utils.SystemProperty
 import com.google.cloud.tasks.v2._
 import com.google.protobuf.{ByteString, Timestamp}
+import collection.JavaConverters._
 
 import java.nio.charset.Charset
 
@@ -95,6 +96,7 @@ object BackgroundTasks {
           .setAppEngineHttpRequest(
             AppEngineHttpRequest.newBuilder()
               .setBody(ByteString.copyFrom(builder.toString, Charset.defaultCharset()))
+              .putAllHeaders(Map("Content-Type" -> "").asJava)
               .setRelativeUri(task.path)
               .setHttpMethod(HttpMethod.POST)
               .build()
