@@ -7,10 +7,10 @@ import scala.concurrent.Future
 
 trait StravaRestAPI {
   @POST // used as Cloud task, Post (and body parameters, which are default for it) needed
-  def uploadFile(@CustomBody key: String): Future[Unit]
+  def uploadFile(key: String): Future[Unit]
 
   @POST // used as Cloud task, Post (and body parameters, which are default for it) needed
-  def waitForUpload(@CustomBody pars: (String, Long)): Future[Unit]
+  def waitForUpload(pars: (String, Long)): Future[Unit]
 }
 
 
