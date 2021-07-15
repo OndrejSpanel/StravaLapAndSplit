@@ -61,8 +61,8 @@ object RestAPIServer extends RestAPI with RestAPIUtils {
     ZonedDateTime.now()
   }
 
-  def cleanup(kind: String) = syncResponse {
-    Cleanup.BackgroundCleanup.execute(kind)
+  def cleanup(pars: String) = syncResponse {
+    Cleanup.BackgroundCleanup.execute(pars)
   }
 
 }

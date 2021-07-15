@@ -23,7 +23,7 @@ trait RestAPI {
   @GET
   def now: Future[ZonedDateTime]
 
-  def cleanup(kind: String): Future[Unit]
+  def cleanup(pars: String): Future[Unit]
 }
 
 object RestAPI extends RestApiCompanion[EnhancedRestImplicits,RestAPI](EnhancedRestImplicits) {

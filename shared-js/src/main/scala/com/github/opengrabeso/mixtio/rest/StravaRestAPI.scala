@@ -6,10 +6,10 @@ import io.udash.rest._
 import scala.concurrent.Future
 
 trait StravaRestAPI {
-  @POST // used as Cloud task, Post (and body parameters, which are default for it) needed
-  def uploadFile(key: String): Future[Unit]
+  @POST // used as Cloud task, a single parameter named pars is needed
+  def uploadFile(pars: String): Future[Unit]
 
-  @POST // used as Cloud task, Post (and body parameters, which are default for it) needed
+  @POST // used as Cloud task, a single parameter named pars is needed
   def waitForUpload(pars: (String, Long)): Future[Unit]
 }
 

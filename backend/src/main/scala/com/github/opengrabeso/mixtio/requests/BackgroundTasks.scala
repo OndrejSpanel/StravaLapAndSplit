@@ -90,12 +90,17 @@ object BackgroundTasks {
       val builder = new JStringBuilder
       val output = new JsonStringOutput(builder)
       codec.write(output, pars)
-      println(s"### Execute ${task.path} with ${builder.toString}")
+      val body =
+        s"""{
+           |"pars" : ${builder.toString}
+           |}""".stripMargin
+
+      println(s"### Execute ${task.path} with $body")
 
       val taskBuilder = Task.newBuilder()
           .setAppEngineHttpRequest(
             AppEngineHttpRequest.newBuilder()
-              .setBody(ByteString.copyFrom(builder.toString, Charset.defaultCharset()))
+              .setBody(ByteString.copyFrom(body, Charset.defaultCharset()))
               .putAllHeaders(Map("Content-Type" -> "application/json").asJava)
               .setRelativeUri(task.path)
               .setHttpMethod(HttpMethod.POST)
