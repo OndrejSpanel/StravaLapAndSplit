@@ -87,14 +87,15 @@ object BackgroundTasks {
       val codec = implicitly[GenCodec[T]]
 
       val builder = new JStringBuilder
-      val output = new JsonStringOutput (builder)
+      val output = new JsonStringOutput(builder)
       codec.write(output, pars)
+      println(s"### Execute ${task.path} with ${builder.toString}")
 
       val taskBuilder = Task.newBuilder()
           .setAppEngineHttpRequest(
             AppEngineHttpRequest.newBuilder()
               .setBody(ByteString.copyFrom(builder.toString, Charset.defaultCharset()))
-              .setRelativeUri("/tasks/create")
+              .setRelativeUri(task.path)
               .setHttpMethod(HttpMethod.POST)
               .build()
           )
@@ -104,8 +105,8 @@ object BackgroundTasks {
         taskBuilder.setScheduleTime(Timestamp.newBuilder.setSeconds(eta / 1000))
       }
 
-      val task = client.createTask(queuePath, taskBuilder.build)
-      System.out.println("Task created: " + task.getName)
+      val cloudTask = client.createTask(queuePath, taskBuilder.build)
+      System.out.println("Task created: " + cloudTask.getName)
     }
   }
 

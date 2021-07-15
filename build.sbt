@@ -147,7 +147,7 @@ lazy val backend = (project in file("backend"))
 
       "com.google.appengine.tools" % "appengine-gcs-client" % "0.8.1" exclude("javax.servlet", "servlet.api"),
       "com.google.cloud" % "google-cloud-storage" % "1.118.0",
-      "com.google.cloud" % "google-cloud-tasks" % "1.29.1",
+      "com.google.cloud" % "google-cloud-tasks" % "1.33.2",
 
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
       "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,

@@ -23,7 +23,7 @@ object Cleanup extends DefineRequest("/cleanup") {
           println(s"Exception $ex during cleanup")
       }
     }
-    override def path = "/cleanup"
+    override def path = "/rest/cleanup"
   }
 
 
